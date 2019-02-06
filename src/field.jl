@@ -1,3 +1,4 @@
+
 function compute_exch(spin::Array, field::Array, energy::Array, ngbs::Array, J::Float64)
   fd = [0.0,0.0,0.0]
   for i=1:size(spin)[2]
@@ -26,14 +27,15 @@ function compute_anis(spin::Array, field::Array, energy::Array, Ku::Array, axis:
 end
 
 
-function effective_field(sim::SimData, spin::Array)
+function effective_field(sim::SimData, spin::Array, t::Float64)
   n = sim.nxyz
   H = [sim.Hx, sim.Hy, sim.Hz]
+  b = reshape(sim.field, 3, sim.nxyz)
   for i=1:n
-   sim.field[:,i] = H[:]
+   b[:, i] = H[:]
   end
   if sim.J!=0.0
-    compute_anis(spin, sim.field, sim.energy, sim.ngbs, sim.J)
+    #compute_anis(spin, sim.field, sim.energy, sim.ngbs, sim.J)
   end
   return 0
 end

@@ -1,5 +1,5 @@
 using SpinDynamics
-using Base.Test
+using Test
 
 #Test mesh
 mesh =  SpinDynamics.create_mesh(dx=1.1, nx=10)

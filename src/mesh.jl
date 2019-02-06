@@ -1,4 +1,4 @@
-type Mesh
+struct Mesh
   dx::Float64
   dy::Float64
   dz::Float64

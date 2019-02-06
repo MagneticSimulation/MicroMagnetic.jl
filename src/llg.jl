@@ -1,32 +1,32 @@
-function cross_x(a::Array{Float64}, b::Array{Float64})
-  return a[2]*b[3]-a[3]*b[2]
+function cross_x(x1::Float64, x2::Float64, x3::Float64, y1::Float64, y2::Float64, y3::Float64)
+    return -x3*y2 + x2*y3
 end
 
-function cross_y(a::Array{Float64}, b::Array{Float64})
-  return a[3]*b[1]-a[1]*b[3]
+function cross_y(x1::Float64, x2::Float64, x3::Float64, y1::Float64, y2::Float64, y3::Float64)
+    return x3*y1 - x1*y3
 end
 
-function cross_z(a::Array{Float64}, b::Array{Float64})
-  return a[1]*b[2]-a[2]*b[1]
+function cross_z(x1::Float64, x2::Float64, x3::Float64, y1::Float64, y2::Float64, y3::Float64)
+    return -x2*y1 + x1*y2
 end
 
-function llg_rhs(dm_dt::Array{Float64}, m::Array{Float64}, h::Array{Float64}, alpha::Float64, gamma::Float64)
-  n = size(m)[2]
-  coeff = -gamma/(1.0 + alpha*alpha)
-  hp = [0.0,0.0,0.0]
-  mth = [0.0,0.0,0.0]
-  for i=1:n
-    mm = dot(m[:,i],m[:,i])
-    mh = dot(m[:,i],h[:,i])
-    hp[:] = mm*h[:,i]-mh*m[:,i]
-    mth[1] = cross_x(m[:,i], hp[:])
-    mth[2] = cross_y(m[:,i], hp[:])
-    mth[3] = cross_z(m[:,i], hp[:])
-    dm_dt[:,i] = coeff*(mth[:] - hp[:]*alpha)
-    #The above is llg equation
-    c = 6*sqrt(dot(dm_dt[:,i], dm_dt[:,i]))
+function llg_rhs(dw_dt::Array{Float64}, m::Array{Float64}, h::Array{Float64},
+                 omega::Array{Float64}, alpha::Float64, gamma::Float64, N::Int64)
+  for i = 0:N-1
+    j = 3*i+1
+		a = -gamma/(1+alpha*alpha)
+		b = alpha*a
+		mh = m[j]*h[j] + m[j+1]*h[j+1] + m[j+2]*h[j+2]
+		h1 = h[j] - mh*m[j]
+		h2 = h[j+1] - mh*m[j+1]
+		h3 = h[j+2] - mh*m[j+2]
+		f1 = -a*h1 - b*cross_x(m[j],m[j+1],m[j+2], h1,h2,h3)
+		f2 = -a*h2 - b*cross_y(m[j],m[j+1],m[j+2], h1,h2,h3)
+		f3 = -a*h3 - b*cross_z(m[j],m[j+1],m[j+2], h1,h2,h3)
 
-    dm_dt[:,i] += c*(1-mm)*m[:,i]
-
+		wf = omega[j]*f1 + omega[j+1]*f2 + omega[j+2]*f3
+		dw_dt[j] = f1 - 0.5*cross_x(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j]
+		dw_dt[j+1] = f2 - 0.5*cross_y(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j+1]
+		dw_dt[j+2] = f3 - 0.5*cross_z(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j+2]
   end
 end

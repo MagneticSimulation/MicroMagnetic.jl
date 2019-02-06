@@ -1,13 +1,13 @@
 using SpinDynamics
-using Base.Test
+using Test
 
 function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     precession = gamma / (1 + alpha*alpha)
     beta = precession * H0 * ts
 
-    mx = cos(beta) ./ cosh(alpha .* beta)
-    my = sin(beta) ./ cosh(alpha .* beta)
-    mz = tanh(alpha .* beta)
+    mx = cos.(beta) ./ cosh.(alpha .* beta)
+    my = sin.(beta) ./ cosh.(alpha .* beta)
+    mz = tanh.(alpha .* beta)
     return mx, my, mz
 end
 
@@ -16,18 +16,36 @@ mesh =  SpinDynamics.create_mesh(nx=1)
 
 sim = SpinDynamics.create_sim(mesh, name="dyn")
 
-sim.alpha = 0.5
-#sim.mu_s = 1.0
-sim.Hz = 1.0
+sim.alpha = 0.1
+sim.gamma = 2.21e5
+#sim.Ms = 1.0
+sim.Hz = 1e5
 
-ts = [0.2*i for i in 1:10]
-mx, my = SpinDynamics.solver(sim, ts)
-print(mx)
+SpinDynamics.init_m0(sim, 1.0, 0.0, 0.0)
+
+ts = Float64[]
+mx = Float64[]
+my = Float64[]
+mz = Float64[]
+for i=1:100
+  SpinDynamics.run_until(sim, 1e-11*i)
+  println(i, sim.ode.t, sim.spin)
+  push!(ts, i*1e-11)
+  push!(mx, sim.spin[1])
+  push!(my, sim.spin[2])
+  push!(mz, sim.spin[3])
+end
+#SpinDynamics.advance_step(sim, sim.ode)
 
 #using PlotlyJS
-using PyPlot
-ts = [0.2*i for i in 0:10]
-ay1, ay2, ay3 = analytical(0.5, 1.0, 1.0, ts)
-plot(ts, mx, color=:red, linewidth=2, label="sim")
-plot(ts, ay1, color=:blue, linewidth=2, label="al", dashes=(2,2))
+using Plots
+gr()
+
+ay1, ay2, ay3 = analytical(0.1, 2.21e5, 1e5, ts)
+plot!(ts, mx, line=(:dot, 2), marker=([:hex :d]), label="sim")
+plot!(ts, my, line=(:dot, 2), markersize=2, label="sim")
+plot!(ts, mz, line=(:dot, 2), label="sim")
+plot!(ts, ay1, color=:blue, label="al")
+plot!(ts, ay1, color=:blue, label="al")
+plot!(ts, ay1, color=:blue, label="al")
 savefig("m_ts.png")
