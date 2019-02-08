@@ -5,6 +5,7 @@ struct Mesh
   nx::Int64
   ny::Int64
   nz::Int64
+  unit_length::Float64
   ngbs::Array{Int64}
 end
 
@@ -15,7 +16,7 @@ function index(i, j, k, nx, ny, nz)
   return (k-1) * nx*ny + (j-1) * nx + i
 end
 
-function create_mesh(;dx=1.0, dy=1.0, dz=1.0, nx=1, ny=1, nz=1)
+function create_mesh(;dx=1.0, dy=1.0, dz=1.0, nx=1, ny=1, nz=1, unit_length=1.0)
   ngbs = zeros(Int64,6,nx*ny*nz)
   for i = 1:nx
     for j = 1:ny
@@ -30,5 +31,5 @@ function create_mesh(;dx=1.0, dy=1.0, dz=1.0, nx=1, ny=1, nz=1)
       end
     end
   end
-  return Mesh(dx, dy, dz, nx, ny, nz, ngbs)
+  return Mesh(dx, dy, dz, nx, ny, nz, unit_length, ngbs)
 end

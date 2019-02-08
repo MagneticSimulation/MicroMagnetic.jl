@@ -4,7 +4,6 @@ include("mesh.jl")
 include("llg.jl")
 include("helper.jl")
 
-
 mutable struct Dopri5
    tol::Float64
    t::Float64
@@ -25,22 +24,21 @@ end
 
 
 mutable struct SimData
+  mesh::Mesh
   ode::Dopri5
   spin::Array{Float64}
   prespin::Array{Float64}
   field::Array{Float64}
   energy::Array{Float64}
+  Ms::Array{Float64}
   nxyz::Int64
   name::String
   alpha::Float64
   gamma::Float64
-  J::Float64
-  K::Float64
-  Hx::Float64
-  Hy::Float64
-  Hz::Float64
+  interactions::Array
 end
 
+include("ode.jl")
 
 function create_sim(mesh::Mesh; name="dyn", tol=1e-6)
   nxyz = mesh.nx*mesh.ny*mesh.nz
@@ -48,8 +46,10 @@ function create_sim(mesh::Mesh; name="dyn", tol=1e-6)
   prespin = zeros(Float64,3*nxyz)
   field = zeros(Float64,3*nxyz)
   energy = zeros(Float64,nxyz)
+  Ms = zeros(Float64,nxyz)
   dopri5 = init_runge_kutta(nxyz, rhs_call_back, tol)
-  return SimData(dopri5, spin, prespin, field, energy, nxyz, name, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+  interactions = []
+  return SimData(mesh, dopri5, spin, prespin, field, energy, Ms, nxyz, name, 0.1, 2.21e5, interactions)
 end
 
 function init_m0(sim::SimData, mx::Float64, my::Float64, mz::Float64)
@@ -60,6 +60,14 @@ function init_m0(sim::SimData, mx::Float64, my::Float64, mz::Float64)
    b[3, i] = mz
 	end
   sim.spin[:] = sim.prespin
+end
+
+function add_zeeman(sim::SimData, Hx::Number, Hy::Number, Hz::Number; name="zeeman")
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  zeeman =  Zeeman(Hx, Hy, Hz, field, energy, name)
+  push!(sim.interactions, zeeman)
 end
 
 function rhs_call_back(sim::SimData, t::Float64, omega::Array{Float64})
@@ -74,6 +82,6 @@ function rhs_call_back(sim::SimData, t::Float64, omega::Array{Float64})
 end
 
 
-include("ode.jl")
+
 
 end
