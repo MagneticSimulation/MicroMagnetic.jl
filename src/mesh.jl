@@ -9,7 +9,7 @@ struct Mesh
   ngbs::Array{Int64}
 end
 
-function index(i, j, k, nx, ny, nz)
+function index(i::Int64, j::Int64, k::Int64, nx::Int64, ny::Int64, nz::Int64)
   if i < 1 || j < 1 || k < 1 || k > nz || j > ny || i > nx
     return -1
   end

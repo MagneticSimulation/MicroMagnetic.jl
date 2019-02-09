@@ -1,8 +1,10 @@
 module SpinDynamics
 
+export create_mesh, create_sim, init_m0, add_zeeman, run_until
+
 include("mesh.jl")
 include("llg.jl")
-include("helper.jl")
+
 
 mutable struct Dopri5
    tol::Float64
@@ -38,6 +40,7 @@ mutable struct SimData
   interactions::Array
 end
 
+include("helper.jl")
 include("ode.jl")
 
 function create_sim(mesh::Mesh; name="dyn", tol=1e-6)
@@ -52,20 +55,21 @@ function create_sim(mesh::Mesh; name="dyn", tol=1e-6)
   return SimData(mesh, dopri5, spin, prespin, field, energy, Ms, nxyz, name, 0.1, 2.21e5, interactions)
 end
 
-function init_m0(sim::SimData, mx::Float64, my::Float64, mz::Float64)
-  b = reshape(sim.prespin, 3, sim.nxyz)
-	for i=1:sim.nxyz
-	 b[1, i] = mx
-   b[2, i] = my
-   b[3, i] = mz
-	end
-  sim.spin[:] = sim.prespin
+function init_m0(sim::SimData, m0::Any)
+  init_vector!(sim.prespin, sim.mesh, m0)
+  normalise(sim.prespin, sim.nxyz)
+  sim.spin[:] .= sim.prespin[:]
 end
 
-function add_zeeman(sim::SimData, Hx::Number, Hy::Number, Hz::Number; name="zeeman")
+function add_zeeman(sim::SimData, H0::Any; name="zeeman")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
+  init_vector!(field, sim.mesh, H0)
+  b = reshape(field, 3, nxyz)
+  Hx = sum(b[1,:])/nxyz
+  Hy = sum(b[2,:])/nxyz
+  Hz = sum(b[3,:])/nxyz
   zeeman =  Zeeman(Hx, Hy, Hz, field, energy, name)
   push!(sim.interactions, zeeman)
 end

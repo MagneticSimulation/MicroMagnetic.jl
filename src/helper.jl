@@ -1,4 +1,37 @@
+function init_vector!(v::Array{Float64}, mesh::Mesh, init::Function)
+  nxyz = mesh.nx*mesh.ny*mesh.nz
+  b = reshape(v, 3, nxyz)
+	for i = 1:nx
+		for j = 1:ny
+			for k = 1:nz
+        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        b[:, id] .=  init(i,j,k)
+      end
+    end
+  end
+end
 
+function init_vector!(v::Array{Float64}, mesh::Mesh, init::Tuple{Number,Number,Number})
+  nxyz = mesh.nx*mesh.ny*mesh.nz
+  b = reshape(v, 3, nxyz)
+	b[1, :] .= init[1]
+  b[2, :] .= init[2]
+  b[3, :] .= init[3]
+end
+
+function init_vector!(v::Array{Float64}, mesh::Mesh, init::Array{Number})
+	nxyz = mesh.nx*mesh.ny*mesh.nz
+	b = reshape(v, 3, nxyz)
+  if length(init) == 3
+		b[1, :] .= init[1]
+    b[2, :] .= init[2]
+    b[3, :] .= init[3]
+  elseif length(init) == length(v)
+    v[:] .= init[:]
+  else
+    error("Init array length must be equal to 3*nx*ny*nz or 3")
+  end
+end
 
 function normalise(a::Array, N::Int64)
   for i = 0:N-1

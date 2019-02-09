@@ -13,24 +13,23 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
 end
 
 #Test mesh
-mesh =  SpinDynamics.create_mesh(nx=1)
+mesh =  create_mesh(nx=1)
 
-sim = SpinDynamics.create_sim(mesh, name="dyn")
+sim = create_sim(mesh, name="dyn")
 
 sim.alpha = 0.1
 sim.gamma = 2.21e5
-#sim.Ms = 1.0
 
-SpinDynamics.add_zeeman(sim, 0.0, 0.0, 1e5)
+add_zeeman(sim, (0, 0, 1e5))
 
-SpinDynamics.init_m0(sim, 1.0, 0.0, 0.0)
+init_m0(sim, (1.0, 0, 0))
 
 ts = Float64[]
 mx = Float64[]
 my = Float64[]
 mz = Float64[]
 for i=1:100
-  SpinDynamics.run_until(sim, 1e-11*i)
+  run_until(sim, 1e-11*i)
 	s = @sprintf "t=%g sim.t=%g m=%g %g %g" i*1e-11 sim.ode.t sim.spin[1] sim.spin[2] sim.spin[3];
   println(s)
   push!(ts, i*1e-11)
