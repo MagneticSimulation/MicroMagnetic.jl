@@ -6,6 +6,7 @@ struct Mesh
   ny::Int64
   nz::Int64
   unit_length::Float64
+  volume::Float64
   ngbs::Array{Int64}
   pbc::String
 end
@@ -29,10 +30,20 @@ mutable struct Dopri5
    succeed::Bool
 end
 
+mutable struct DataSaver
+  name::String
+	t::Float64
+	nsteps::Int64
+  header_saved::Bool
+  headers::Array  #string or tuple<string> array
+  units::Array #string or tuple<string> array
+  results::Array  #function array
+end
 
 mutable struct SimData
   mesh::Mesh
   ode::Dopri5
+  saver::DataSaver
   spin::Array{Float64}
   prespin::Array{Float64}
   field::Array{Float64}
@@ -44,4 +55,35 @@ mutable struct SimData
   gamma::Float64
   precession::Bool
   interactions::Array
+end
+
+mutable struct Exchange
+   A::Float64
+	 field::Array{Float64}
+   energy::Array{Float64}
+   name::String
+end
+
+mutable struct BulkDMI
+   D::Float64
+	 field::Array{Float64}
+   energy::Array{Float64}
+   name::String
+end
+
+mutable struct Anisotropy
+   Ku::Array{Float64}
+   axis::Tuple
+	 field::Array{Float64}
+   energy::Array{Float64}
+   name::String
+end
+
+mutable struct Zeeman
+   Hx::Float64
+   Hy::Float64
+   Hz::Float64
+	 field::Array{Float64}
+   energy::Array{Float64}
+   name::String
 end

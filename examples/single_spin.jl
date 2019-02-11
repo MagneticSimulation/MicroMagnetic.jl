@@ -13,10 +13,11 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
 end
 
 #Test mesh
-mesh =  create_mesh(nx=1)
+mesh =  create_mesh(nx=1, dx=1, unit_length=1e-9)
 
-sim = create_sim(mesh, name="dyn")
+sim = create_sim(mesh, name="spin")
 
+sim.Ms[:] .= 8e5
 sim.alpha = 0.1
 sim.gamma = 2.21e5
 

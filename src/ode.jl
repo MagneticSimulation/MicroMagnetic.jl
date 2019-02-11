@@ -119,36 +119,3 @@ function interpolation_dopri5(rk_data::Dopri5, t::Float64)
 
     rk_data.omega_t[:] = (b1*ks[:,1]+b2*ks[:,2]+b3*ks[:,3]+b4*ks[:,4]+b5*ks[:,5]+b6*ks[:,6]+b7*ks[:,7])*rk_data.step
 end
-
-
-function run_until(sim::SimData, t_end::Float64)
-      rk_data = sim.ode
-			if t_end < rk_data.t - rk_data.step
-				  println("Run_until: t_end >= rk_data.t - rk_data.step")
-          return
-			elseif t_end == rk_data.t
-					rk_data.omega_t[:] = rk_data.omega[:]
-					return
-			elseif t_end > rk_data.t - rk_data.step && rk_data.step > 0 && t_end < rk_data.t
-					interpolation_dopri5(rk_data, t_end)
-          omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
-					return
-      end
-
-			# so we have t_end > self.t
-			if rk_data.step_next<=0
-					rk_data.step_next = compute_init_step(sim, t_end - rk_data.t)
-      end
-
-			while rk_data.t < t_end
-					ratio = (t_end - rk_data.t)/rk_data.step_next
-					if ratio<1.2 && ratio>0.8
-							rk_data.step_next = t_end - rk_data.t
-          end
-
-					advance_step(sim, rk_data)
-      end
-
-			interpolation_dopri5(rk_data, t_end)
-      omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
-end

@@ -47,5 +47,6 @@ function create_mesh(;dx=1.0, dy=1.0, dz=1.0, nx=1, ny=1, nz=1, unit_length=1.0,
       end
     end
   end
-  return Mesh(dx, dy, dz, nx, ny, nz, unit_length, ngbs, pbc)
+  volume = dx*dy*dz*unit_length^3
+  return Mesh(dx, dy, dz, nx, ny, nz, unit_length, volume, ngbs, pbc)
 end

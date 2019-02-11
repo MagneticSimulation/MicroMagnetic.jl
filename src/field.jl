@@ -1,41 +1,11 @@
-mutable struct Exchange
-   A::Float64
-	 field::Array{Float64}
-   energy::Array{Float64}
-   name::String
-end
-
-mutable struct BulkDMI
-   D::Float64
-	 field::Array{Float64}
-   energy::Array{Float64}
-   name::String
-end
-
-mutable struct Anisotropy
-   Ku::Array{Float64}
-   axis::Tuple
-	 field::Array{Float64}
-   energy::Array{Float64}
-   name::String
-end
-
-mutable struct Zeeman
-   Hx::Float64
-   Hy::Float64
-   Hz::Float64
-	 field::Array{Float64}
-   energy::Array{Float64}
-   name::String
-end
-
 function effective_field(zee::Zeeman, sim::SimData, spin::Array{Float64}, t::Float64)
+  mu0 = 4*pi*1e-7
   nxyz = sim.nxyz
-	b = reshape(zee.field, 3, nxyz)
+  field = zee.field
+  volume = sim.mesh.volume
 	for i = 1:nxyz
-	  b[1, i] = zee.Hx
-    b[2, i] = zee.Hy
-    b[3, i] = zee.Hz
+    j = 3*(i-1)
+    zee.energy[i] = -mu0*sim.Ms[i]*volume*(spin[j+1]*field[j+1] + spin[j+2]*field[j+2] + spin[j+3]*field[j+3])
 	end
 end
 
@@ -164,6 +134,7 @@ function effective_field(sim::SimData, spin::Array, t::Float64)
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)
     sim.field[:] += interaction.field[:]
+    sim.energy[:] += interaction.energy[:]
   end
   return 0
 end
