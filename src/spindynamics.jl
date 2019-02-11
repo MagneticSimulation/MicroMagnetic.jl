@@ -3,43 +3,10 @@ using Printf
 
 export create_mesh, create_sim, init_m0, add_zeeman, add_exch, add_anis, run_until, relax
 
+include("head.jl")
+
 include("mesh.jl")
 include("llg.jl")
-
-mutable struct Dopri5
-   tol::Float64
-   t::Float64
-   step::Float64
-   step_next::Float64
-   facmax::Float64
-   facmin::Float64
-   safety::Float64
-   nsteps::Int64
-   nfevals::Int64
-   omega::Array{Float64}
-   omega_t::Array{Float64}
-   dw_dt::Array{Float64}
-   ks::Array{Float64}
-   rhs_fun
-   succeed
-end
-
-
-mutable struct SimData
-  mesh::Mesh
-  ode::Dopri5
-  spin::Array{Float64}
-  prespin::Array{Float64}
-  field::Array{Float64}
-  energy::Array{Float64}
-  Ms::Array{Float64}
-  nxyz::Int64
-  name::String
-  alpha::Float64
-  gamma::Float64
-  precession::Bool
-  interactions::Array
-end
 
 include("helper.jl")
 include("ode.jl")

@@ -1,15 +1,3 @@
-struct Mesh
-  dx::Float64
-  dy::Float64
-  dz::Float64
-  nx::Int64
-  ny::Int64
-  nz::Int64
-  unit_length::Float64
-  ngbs::Array{Int64}
-  pbc::String
-end
-
 function index(i::Int64, j::Int64, k::Int64, nx::Int64, ny::Int64, nz::Int64)
   if i < 1 || j < 1 || k < 1 || k > nz || j > ny || i > nx
     return -1
