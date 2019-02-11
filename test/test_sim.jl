@@ -2,18 +2,20 @@ using SpinDynamics
 using Test
 
 #Test mesh
-mesh =  SpinDynamics.create_mesh(dx=1.1, nx=10)
-@test mesh.dx==1.1
-@test mesh.nx==10
+mesh =  create_mesh(dx=1.1, nx=10)
+@test mesh.dx == 1.1
+@test mesh.nx == 10
 #println(mesh.ngbs)
 @test mesh.ngbs[1,1] == -1
 @test mesh.ngbs[1,10] == 9
 
-sim = SpinDynamics.create_sim(mesh)
-println(sim.nxyz)
+sim = create_sim(mesh)
 
-sim.spin[1,1]=1.0
+@test sim.nxyz == 10
+
+init_m0(sim, (1.0, 1.0, 0))
+
+@test isapprox(sim.spin[1],0.5*2^0.5)
+@test isapprox(sim.spin[2],0.5*2^0.5)
+@test sim.spin[3] == 0.0
 println(sim.spin)
-
-SpinDynamics.compute_exch(sim.spin, sim.field, sim.energy, mesh.ngbs, 1.0)
-println(sim.field)

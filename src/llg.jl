@@ -11,7 +11,7 @@ function cross_z(x1::Float64, x2::Float64, x3::Float64, y1::Float64, y2::Float64
 end
 
 function llg_rhs(dw_dt::Array{Float64}, m::Array{Float64}, h::Array{Float64},
-                 omega::Array{Float64}, alpha::Float64, gamma::Float64, N::Int64)
+                 omega::Array{Float64}, alpha::Float64, gamma::Float64, precession::Bool, N::Int64)
   for i = 0:N-1
     j = 3*i+1
 		a = -gamma/(1+alpha*alpha)
@@ -20,9 +20,9 @@ function llg_rhs(dw_dt::Array{Float64}, m::Array{Float64}, h::Array{Float64},
 		h1 = h[j] - mh*m[j]
 		h2 = h[j+1] - mh*m[j+1]
 		h3 = h[j+2] - mh*m[j+2]
-		f1 = -a*h1 - b*cross_x(m[j],m[j+1],m[j+2], h1,h2,h3)
-		f2 = -a*h2 - b*cross_y(m[j],m[j+1],m[j+2], h1,h2,h3)
-		f3 = -a*h3 - b*cross_z(m[j],m[j+1],m[j+2], h1,h2,h3)
+		f1 = -a*h1*precession - b*cross_x(m[j],m[j+1],m[j+2], h1,h2,h3)
+		f2 = -a*h2*precession - b*cross_y(m[j],m[j+1],m[j+2], h1,h2,h3)
+		f3 = -a*h3*precession - b*cross_z(m[j],m[j+1],m[j+2], h1,h2,h3)
 
 		wf = omega[j]*f1 + omega[j+1]*f2 + omega[j+2]*f3
 		dw_dt[j] = f1 - 0.5*cross_x(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j]

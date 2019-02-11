@@ -47,7 +47,7 @@ function dopri5_step(sim::SimData, step::Float64, t::Float64)
 	sim.ode.nfevals += 7
 	error = (w[1]*ks[:,1]+w[2]*ks[:,2]+w[3]*ks[:,3]+w[4]*ks[:,4]+w[5]*ks[:,5]+w[6]*ks[:,6]+w[7]*ks[:,7])*step
 
-	return maximum(abs.(error))
+	return maximum(abs.(error)) + eps()
 end
 
 function compute_init_step(sim::SimData, dt::Float64)
@@ -151,5 +151,4 @@ function run_until(sim::SimData, t_end::Float64)
 
 			interpolation_dopri5(rk_data, t_end)
       omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
-
 end

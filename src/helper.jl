@@ -1,11 +1,12 @@
 function init_vector!(v::Array{Float64}, mesh::Mesh, init::Function)
   nxyz = mesh.nx*mesh.ny*mesh.nz
+  dx,dy,dz = mesh.dx, mesh.dy, mesh.dz
   b = reshape(v, 3, nxyz)
-	for i = 1:nx
-		for j = 1:ny
-			for k = 1:nz
+	for i = 1:mesh.nx
+		for j = 1:mesh.ny
+			for k = 1:mesh.nz
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        b[:, id] .=  init(i,j,k)
+        b[:, id] .=  init(i,j,k,dx*mesh.unit_length,dy*mesh.unit_length,dz*mesh.unit_length)
       end
     end
   end
@@ -70,5 +71,20 @@ function omega_to_spin(omega::Array, spin::Array, spin_next::Array, N::Int64)
 		spin_next[j] = (a11*m1 + a12*m2 + a13*m3)/r
 		spin_next[j+1] = (a21*m1 + a22*m2 + a23*m3)/r
 		spin_next[j+2] = (a31*m1 + a32*m2 + a33*m3)/r
+  end
+end
+
+function compute_dmdt(m1::Array{Float64}, m2::Array{Float64}, N::Int64, dt::Float64)
+  max_dmdt = 0.0
+  for i = 0:N-1
+    j = 3*i + 1
+    mx = m1[j] - m2[j]
+    my = m1[j+1] - m2[j+1]
+    mz = m1[j+2] - m2[j+2]
+    dmdt = sqrt(mx*mx + my*my + mz*mz)/dt
+    if dmdt > max_dmdt
+      max_dmdt = dmdt
+    end
+    return max_dmdt
   end
 end
