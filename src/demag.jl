@@ -5,17 +5,17 @@ mutable struct Demag
 	nx_fft::Int64
   ny_fft::Int64
   nz_fft::Int64
-  tensor_xx::Array{Complex{Float64}}
-  tensor_yy::Array{Complex{Float64}}
-  tensor_zz::Array{Complex{Float64}}
-  tensor_xy::Array{Complex{Float64}}
-  tensor_xz::Array{Complex{Float64}}
-  tensor_yz::Array{Complex{Float64}}
-  m_field::Array{Complex{Float64}}
+  tensor_xx::Array{Float64}
+  tensor_yy::Array{Float64}
+  tensor_zz::Array{Float64}
+  tensor_xy::Array{Float64}
+  tensor_xz::Array{Float64}
+  tensor_yz::Array{Float64}
+  m_field::Array{Float64}
   Mx::Array{Complex{Float64}}
   My::Array{Complex{Float64}}
   Mz::Array{Complex{Float64}}
-	h_field::Array{Complex{Float64}}
+	h_field::Array{Float64}
   H_field::Array{Complex{Float64}}
   m_plan::Any
   h_plan::Any
@@ -61,23 +61,23 @@ function init_demag(sim::SimData)
     end
   end
 
-  tensor_xx = real(FFTW.fft(tensor_xx)) #tensors xx, xy, .. should be pure real
-  tensor_yy = real(FFTW.fft(tensor_yy))
-  tensor_zz = real(FFTW.fft(tensor_zz))
-  tensor_xy = real(FFTW.fft(tensor_xy))
-  tensor_xz = real(FFTW.fft(tensor_xz))
-  tensor_yz = real(FFTW.fft(tensor_yz))
+  tensor_xx = real(FFTW.rfft(tensor_xx)) #tensors xx, xy, .. should be pure real
+  tensor_yy = real(FFTW.rfft(tensor_yy))
+  tensor_zz = real(FFTW.rfft(tensor_zz))
+  tensor_xy = real(FFTW.rfft(tensor_xy))
+  tensor_xz = real(FFTW.rfft(tensor_xz))
+  tensor_yz = real(FFTW.rfft(tensor_yz))
 
-	m_field = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-  Mx = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-  My = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-  Mz = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-  m_plan = FFTW.plan_fft(m_field)
+	m_field = zeros(nx_fft, ny_fft, nz_fft)
+  Mx = zeros(Complex{Float64}, nx, ny_fft, nz_fft)
+  My = zeros(Complex{Float64}, nx, ny_fft, nz_fft)
+  Mz = zeros(Complex{Float64}, nx, ny_fft, nz_fft)
+  m_plan = FFTW.plan_rfft(m_field)
 
-	h_field = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-	H_field = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
+	h_field = zeros(nx_fft, ny_fft, nz_fft)
+	H_field = zeros(Complex{Float64}, nx, ny_fft, nz_fft)
 
-  h_plan = FFTW.plan_ifft(h_field)
+  h_plan = FFTW.plan_irfft(H_field, nx_fft)
 
 	field = zeros(Float64, 3*sim.nxyz)
 	energy = zeros(Float64, sim.nxyz)
@@ -87,17 +87,17 @@ function init_demag(sim::SimData)
   return demag
 end
 
-function copy_spin_to_m(m::Array{Complex{Float64}}, spin::Array{Float64}, Ms::Array{Float64}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
+function copy_spin_to_m(m::Array{Float64}, spin::Array{Float64}, Ms::Array{Float64}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
   for k=1:nz, j=1:ny, i=1:nx
         p = (k-1) * nx*ny + (j-1) * nx + i
         m[i,j,k] = spin[3*p+bias]*Ms[p]
   end
 end
 
-function copy_cfield_to_field(field::Array{Float64}, cfield::Array{Complex{Float64}}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
+function copy_cfield_to_field(field::Array{Float64}, cfield::Array{Float64}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
   for k=1:nz, j=1:ny, i=1:nx
     p = (k-1) * nx*ny + (j-1) * nx + i
-    field[3*p+bias] = -1.0*real(cfield[i,j,k])
+    field[3*p+bias] = -1.0*cfield[i,j,k]
   end
 end
 
