@@ -39,18 +39,18 @@ function init_demag(sim::SimData)
   ny_fft = 2*mesh.ny - 1
   nz_fft = 2*mesh.nz - 1
 
-  tensor_xx = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-  tensor_yy = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-  tensor_zz = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-  tensor_xy = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-  tensor_xz = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
-  tensor_yz = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
+  tensor_xx = zeros(nx_fft, ny_fft, nz_fft)
+  tensor_yy = zeros(nx_fft, ny_fft, nz_fft)
+  tensor_zz = zeros(nx_fft, ny_fft, nz_fft)
+  tensor_xy = zeros(nx_fft, ny_fft, nz_fft)
+  tensor_xz = zeros(nx_fft, ny_fft, nz_fft)
+  tensor_yz = zeros(nx_fft, ny_fft, nz_fft)
   for i = 1:nx_fft
     for j = 1:ny_fft
       for k = 1:nz_fft
-        x = (i - nx) * dx
-        y = (j - ny) * dy
-        z = (k - nz) * dz
+        x = (i<=nx) ? (i-1)*dx : (i-2*nx)*dx
+        y = (j<=ny) ? (j-1)*dy : (j-2*ny)*dy
+        z = (k<=nz) ? (k-1)*dz : (k-2*nz)*dz
         tensor_xx[i,j,k] = demag_tensor_xx(x,y,z,dx,dy,dz)
         tensor_yy[i,j,k] = demag_tensor_xx(y,x,z,dy,dx,dz)
         tensor_zz[i,j,k] = demag_tensor_xx(z,y,x,dz,dy,dx)
@@ -60,12 +60,13 @@ function init_demag(sim::SimData)
       end
     end
   end
-  FFTW.fft!(tensor_xx)
-  FFTW.fft!(tensor_yy)
-  FFTW.fft!(tensor_zz)
-  FFTW.fft!(tensor_xy)
-  FFTW.fft!(tensor_xz)
-  FFTW.fft!(tensor_yz)
+
+  tensor_xx = real(FFTW.fft(tensor_xx)) #tensors xx, xy, .. should be pure real
+  tensor_yy = real(FFTW.fft(tensor_yy))
+  tensor_zz = real(FFTW.fft(tensor_zz))
+  tensor_xy = real(FFTW.fft(tensor_xy))
+  tensor_xz = real(FFTW.fft(tensor_xz))
+  tensor_yz = real(FFTW.fft(tensor_yz))
 
 	m_field = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
   Mx = zeros(Complex{Float64}, nx_fft, ny_fft, nz_fft)
@@ -96,7 +97,7 @@ end
 function copy_cfield_to_field(field::Array{Float64}, cfield::Array{Complex{Float64}}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
   for k=1:nz, j=1:ny, i=1:nx
     p = (k-1) * nx*ny + (j-1) * nx + i
-    field[3*p+bias] = -1.0*real(cfield[i+nx-1,j+ny-1,k+nz-1])
+    field[3*p+bias] = -1.0*real(cfield[i,j,k])
   end
 end
 
