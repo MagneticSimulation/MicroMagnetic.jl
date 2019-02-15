@@ -35,9 +35,10 @@ function init_demag(sim::SimData)
   ny = mesh.ny
   nz = mesh.nz
 
-  nx_fft = 2*mesh.nx - 1
-  ny_fft = 2*mesh.ny - 1
-  nz_fft = 2*mesh.nz - 1
+  cn = 10
+  nx_fft = mesh.nx > cn ? 2*mesh.nx : 2*mesh.nx - 1
+  ny_fft = mesh.ny > cn ? 2*mesh.ny : 2*mesh.ny - 1
+  nz_fft = mesh.nz > cn ? 2*mesh.nz : 2*mesh.nz - 1
 
   tensor_xx = zeros(nx_fft, ny_fft, nz_fft)
   tensor_yy = zeros(nx_fft, ny_fft, nz_fft)
@@ -48,9 +49,12 @@ function init_demag(sim::SimData)
   for i = 1:nx_fft
     for j = 1:ny_fft
       for k = 1:nz_fft
-        x = (i<=nx) ? (i-1)*dx : (i-2*nx)*dx
-        y = (j<=ny) ? (j-1)*dy : (j-2*ny)*dy
-        z = (k<=nz) ? (k-1)*dz : (k-2*nz)*dz
+        if (nx_fft%2 == 0 && i == nx+1) || (ny_fft%2 == 0 && j == ny+1) || (nz_fft%2 == 0 && k == nz+1)
+          continue
+        end
+        x = (i<=nx) ? (i-1)*dx : (i-nx_fft-1)*dx
+        y = (j<=ny) ? (j-1)*dy : (j-ny_fft-1)*dy
+        z = (k<=nz) ? (k-1)*dz : (k-nz_fft-1)*dz
         tensor_xx[i,j,k] = demag_tensor_xx(x,y,z,dx,dy,dz)
         tensor_yy[i,j,k] = demag_tensor_xx(y,x,z,dy,dx,dz)
         tensor_zz[i,j,k] = demag_tensor_xx(z,y,x,dz,dy,dx)
@@ -69,13 +73,14 @@ function init_demag(sim::SimData)
   tensor_yz = real(FFTW.rfft(tensor_yz))
 
 	m_field = zeros(nx_fft, ny_fft, nz_fft)
-  Mx = zeros(Complex{Float64}, nx, ny_fft, nz_fft)
-  My = zeros(Complex{Float64}, nx, ny_fft, nz_fft)
-  Mz = zeros(Complex{Float64}, nx, ny_fft, nz_fft)
+  lenx = (nx_fft%2>0) ? nx : nx+1
+  Mx = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
+  My = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
+  Mz = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
   m_plan = FFTW.plan_rfft(m_field)
 
 	h_field = zeros(nx_fft, ny_fft, nz_fft)
-	H_field = zeros(Complex{Float64}, nx, ny_fft, nz_fft)
+	H_field = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
 
   h_plan = FFTW.plan_irfft(H_field, nx_fft)
 
