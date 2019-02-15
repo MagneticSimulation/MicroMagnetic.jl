@@ -70,8 +70,11 @@ function add_exch(sim::SimData, A::Float64; name="exch")
   energy = zeros(Float64, nxyz)
   exch =  Exchange(A, field, energy, name)
   push!(sim.interactions, exch)
+end
 
-
+function add_demag(sim::SimData)
+  demag = init_demag(sim)
+  push!(sim.interactions, demag)
 end
 
 function add_anis(sim::SimData, Ku::Float64; axis=(0,0,1), name="anis")
@@ -86,7 +89,7 @@ end
 
 function relax(sim::SimData; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, save_m_every = 10)
   step = 0
-  sim.precession = false
+  sim.precession = true
   rk_data = sim.ode
   rk_data.step_next = compute_init_step(sim, init_step)
   dmdt_factor = (2 * pi / 360) * 1e9
@@ -95,9 +98,10 @@ function relax(sim::SimData; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.
     step_size = rk_data.step
     omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
     max_dmdt = compute_dmdt(sim.prespin, sim.spin, sim.nxyz, step_size)
-    output = @sprintf("step =%5d   step_size=%6g    sim.t=%6g    max_dmdt=%6g", i, step_size, rk_data.t, max_dmdt/dmdt_factor)
+    max_length = error_length_m(sim.spin, sim.nxyz)
+    output = @sprintf("step =%5d   step_size=%6g    sim.t=%6g    max_dmdt=%6g  m_legnth=%6g", i, step_size, rk_data.t, max_dmdt/dmdt_factor, max_length)
     println(output)
-		if sim.nsteps%save_m_every == 0
+		if i%save_m_every == 0
       write_data(sim)
     end
 		sim.saver.t = rk_data.t
@@ -116,6 +120,7 @@ function run_until(sim::SimData, t_end::Float64)
           return
 			elseif t_end == rk_data.t
 					rk_data.omega_t[:] = rk_data.omega[:]
+          omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
 					return
 			elseif t_end > rk_data.t - rk_data.step && rk_data.step > 0 && t_end < rk_data.t
 					interpolation_dopri5(rk_data, t_end)

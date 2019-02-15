@@ -20,7 +20,7 @@ function init_vector!(v::Array{Float64}, mesh::Mesh, init::Tuple{Number,Number,N
   b[3, :] .= init[3]
 end
 
-function init_vector!(v::Array{Float64}, mesh::Mesh, init::Array{Number})
+function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Array{Float64, 1})
 	nxyz = mesh.nx*mesh.ny*mesh.nz
 	b = reshape(v, 3, nxyz)
   if length(init) == 3
@@ -45,6 +45,22 @@ function normalise(a::Array, N::Int64)
 				a[j+2] *= length
       end
     end
+end
+
+function error_length_m(a::Array, N::Int64)
+  maxlength = 0.0
+  minlength = 100.0
+	for i = 0:N-1
+		j = 3*i+1
+		length = sqrt(a[j]*a[j]+a[j+1]*a[j+1]+a[j+2]*a[j+2])
+    if length > maxlength
+      maxlength = length
+    end
+    if length < minlength
+      minlength = length
+    end
+  end
+  return maxlength-minlength
 end
 
 function omega_to_spin(omega::Array, spin::Array, spin_next::Array, N::Int64)
