@@ -1,9 +1,13 @@
 function formatstring(s::String)
-  return @sprintf("%18s", s)
+  return @sprintf("%18s ", s)
 end
 
-function formatstring(x::Number)
-  return @sprintf("%18.12g ", x)
+function formatstring(x::Int)
+  return @sprintf("%18d ", x)
+end
+
+function formatstring(x::Float64)
+  return @sprintf("%18.12e ", x)
 end
 
 function formatstring(data::Tuple)
@@ -16,8 +20,8 @@ end
 
 function write_data(sim::SimData)
   saver = sim.saver
-  io = open(saver.name, "a");
   if !saver.header_saved
+    io = open(saver.name, "w");
     write(io, "#")
     for header in saver.headers
       write(io, formatstring(header));
@@ -29,6 +33,8 @@ function write_data(sim::SimData)
     end
     write(io, "\n")
     saver.header_saved = true
+  else
+    io = open(saver.name, "a");
   end
 
   for fun in saver.results

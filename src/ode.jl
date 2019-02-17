@@ -47,7 +47,8 @@ function dopri5_step(sim::SimData, step::Float64, t::Float64)
 	sim.ode.nfevals += 7
 	error = (w[1]*ks[:,1]+w[2]*ks[:,2]+w[3]*ks[:,3]+w[4]*ks[:,4]+w[5]*ks[:,5]+w[6]*ks[:,6]+w[7]*ks[:,7])*step
 
-	return maximum(abs.(error)) + eps()
+  return compute_error2(error, length(error))
+	#return maximum(abs.(error)) + eps()
 end
 
 function compute_init_step(sim::SimData, dt::Float64)
@@ -86,15 +87,15 @@ function advance_step(sim::SimData, rk_data::Dopri5)
 
 				rk_data.succeed = (max_error <= 1)
 
-				factor =  rk_data.safety*(1.0/max_error)^0.2
-
 				if rk_data.succeed
 						rk_data.nsteps += 1
 						rk_data.step = step_next
 						rk_data.t += rk_data.step
+            factor =  rk_data.safety*(1.0/max_error)^0.2
 						rk_data.step_next = step_next*min(rk_data.facmax, max(rk_data.facmin, factor))
 						break
 				else
+            factor =  rk_data.safety*(1.0/max_error)^0.25
 						step_next = step_next*min(rk_data.facmax, max(rk_data.facmin, factor))
         end
     end

@@ -26,9 +26,11 @@ function create_sim(mesh::Mesh; name="dyn", tol=1e-6)
   dopri5 = init_runge_kutta(nxyz, rhs_call_back, tol)
   interactions = []
 
-	headers = ["step", "time", ("m_x", "m_y", "m_z")]
-	units = ["<>", "<s>", ("<>", "<>", "<>")]
-	results = [o::SimData -> o.saver.nsteps, o::SimData -> o.saver.t, average_m]
+	headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
+	units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
+	results = [o::SimData -> o.saver.nsteps,
+             o::SimData -> o.saver.t,
+             o::SimData -> sum(o.energy), average_m]
   saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
   return SimData(mesh, dopri5, saver, spin, prespin, field, energy, Ms, nxyz, name, 0.1, 2.21e5, true, interactions)
 end
@@ -54,12 +56,12 @@ function add_zeeman(sim::SimData, H0::Any; name="zeeman")
   push!(sim.interactions, zeeman)
 
   push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
-  push!(sim.saver.units, ("A/m", "A/m", "A/m"))
+  push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
   id = length(sim.interactions)
   fun = o::SimData ->  (o.interactions[id].Hx, o.interactions[id].Hy, o.interactions[id].Hz)
   push!(sim.saver.results, fun)
 
-  push!(sim.saver.headers, string(name, "_energy"))
+  push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
@@ -70,11 +72,35 @@ function add_exch(sim::SimData, A::Float64; name="exch")
   energy = zeros(Float64, nxyz)
   exch =  Exchange(A, field, energy, name)
   push!(sim.interactions, exch)
+
+	push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
 
-function add_demag(sim::SimData)
+function add_dmi(sim::SimData, D::Float64; name="dmi")
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  dmi =  BulkDMI(D, field, energy, name)
+  push!(sim.interactions, dmi)
+
+	push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
+end
+
+function add_demag(sim::SimData; name="demag")
   demag = init_demag(sim)
+  demag.name = name
   push!(sim.interactions, demag)
+
+	push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
 
 function add_anis(sim::SimData, Ku::Float64; axis=(0,0,1), name="anis")
@@ -85,11 +111,16 @@ function add_anis(sim::SimData, Ku::Float64; axis=(0,0,1), name="anis")
   energy = zeros(Float64, nxyz)
   anis =  Anisotropy(Kus, axis, field, energy, name)
   push!(sim.interactions, anis)
+
+	push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
 
 function relax(sim::SimData; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, save_m_every = 10)
   step = 0
-  sim.precession = true
+  sim.precession = false
   rk_data = sim.ode
   rk_data.step_next = compute_init_step(sim, init_step)
   dmdt_factor = (2 * pi / 360) * 1e9
@@ -121,10 +152,16 @@ function run_until(sim::SimData, t_end::Float64)
 			elseif t_end == rk_data.t
 					rk_data.omega_t[:] = rk_data.omega[:]
           omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
+					sim.saver.t = t_end
+		      sim.saver.nsteps += 1
+		      write_data(sim)
 					return
 			elseif t_end > rk_data.t - rk_data.step && rk_data.step > 0 && t_end < rk_data.t
 					interpolation_dopri5(rk_data, t_end)
           omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
+					sim.saver.t = t_end
+					sim.saver.nsteps += 1
+					write_data(sim)
 					return
       end
 

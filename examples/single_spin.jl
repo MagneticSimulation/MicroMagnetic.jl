@@ -44,7 +44,7 @@ end
 using Plots
 gr()
 
-ay1, ay2, ay3 = analytical(0.1, 2.21e5, 1e5, ts)
+#ay1, ay2, ay3 = analytical(0.1, 2.21e5, 1e5, ts)
 ay1, ay2, ay3 = analytical(0.1, 2.21e5, 1e5, ts)
 plot(ts, mx, marker=:h, markersize=3, linewidth=1, label="sim")
 plot!(ts, my, marker=:c, markersize=3, linewidth=1, label="sim")

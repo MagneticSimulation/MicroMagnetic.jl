@@ -127,9 +127,12 @@ function effective_field(demag::Demag, sim::SimData, spin::Array{Float64}, t::Fl
   mul!(demag.h_field, demag.h_plan, demag.H_field)
   copy_cfield_to_field(demag.field, demag.h_field, nx, ny, nz, 0)
 
+  mu0 = 4*pi*1e-7
+  volume = sim.mesh.volume
+  field = demag.field
   for i=1:sim.nxyz
     j = 3*i
-    demag.energy[i] = -0.5*sim.Ms[i]*(demag.field[j-2]*spin[j-2] + demag.field[j-1]*spin[j-1] + demag.field[j]*spin[j])
+    demag.energy[i] = -0.5*mu0*volume*sim.Ms[i]*(field[j-2]*spin[j-2] + field[j-1]*spin[j-1] + field[j]*spin[j])
   end
 end
 

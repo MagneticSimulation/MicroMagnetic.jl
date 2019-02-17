@@ -32,7 +32,7 @@ function effective_field(anis::Anisotropy, sim::SimData, spin::Array{Float64}, t
 		field[k+1] = 2*Ku[i]*spin[k+1]*axis[1]*Ms_inv
 		field[k+2] = 2*Ku[i]*spin[k+2]*axis[2]*Ms_inv
 		field[k+3] = 2*Ku[i]*spin[k+3]*axis[3]*Ms_inv
-		energy[i] = Ku[i]*(1.0-sa*sa)
+		energy[i] = Ku[i]*(1.0-sa*sa)*mesh.volume
 	end
 
 end
@@ -74,7 +74,7 @@ function effective_field(exch::Exchange, sim::SimData, spin::Array{Float64}, t::
       end
     end
 		Ms_inv = 1.0/(Ms[i]*mu0)
-    energy[i] = -0.5*(fx*spin[3*i-2] + fy*spin[3*i-1] + fz*spin[3*i])
+    energy[i] = -0.5*(fx*spin[3*i-2] + fy*spin[3*i-1] + fz*spin[3*i])*mesh.volume
     field[3*i-2] = fx*Ms_inv
     field[3*i-1] = fy*Ms_inv
     field[3*i] = fz*Ms_inv
@@ -92,7 +92,7 @@ function effective_field(dmi::BulkDMI, sim::SimData, spin::Array{Float64}, t::Fl
   field = dmi.field
   energy = dmi.energy
   Ms = sim.Ms
-  D = sim.D
+  D = dmi.D
   Ds = (D/dx, D/dx, D/dy, D/dy, D/dz, D/dz)
   ax = (1.0,-1.0, 0.0, 0.0, 0.0, 0.0)
   ay = (0.0, 0.0, 1.0,-1.0, 0.0, 0.0)
@@ -111,7 +111,7 @@ function effective_field(dmi::BulkDMI, sim::SimData, spin::Array{Float64}, t::Fl
 	  fz = 0.0
 
     for j = 1:6
-      id = ngbs[1,j]
+      id = ngbs[j,i]
       if id>0 && Ms[id]>0
         k = 3*(id-1)+1
 			  fx += Ds[j]*cross_x(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
@@ -121,7 +121,7 @@ function effective_field(dmi::BulkDMI, sim::SimData, spin::Array{Float64}, t::Fl
     end
 
     Ms_inv = 1.0/(Ms[i]*mu0)
-    energy[i] = -0.5*(fx*spin[3*i-2] + fy*spin[3*i-1] + fz*spin[3*i])
+    energy[i] = -0.5*(fx*spin[3*i-2] + fy*spin[3*i-1] + fz*spin[3*i])*mesh.volume
     field[3*i-2] = fx*Ms_inv
     field[3*i-1] = fy*Ms_inv
     field[3*i] = fz*Ms_inv
@@ -131,6 +131,7 @@ end
 
 function effective_field(sim::SimData, spin::Array, t::Float64)
   fill!(sim.field, 0.0)
+  fill!(sim.energy, 0.0)
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)
     sim.field[:] += interaction.field[:]

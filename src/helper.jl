@@ -89,6 +89,13 @@ function omega_to_spin(omega::Array, spin::Array, spin_next::Array, N::Int64)
 		spin_next[j+2] = (a31*m1 + a32*m2 + a33*m3)/r
   end
 end
+function compute_error2(error::Array{Float64,1}, N::Int64)
+  norm = 0.0
+  for i=1:N
+    norm += error[i]^2
+  end
+  return sqrt(norm/N)
+end
 
 function compute_dmdt(m1::Array{Float64}, m2::Array{Float64}, N::Int64, dt::Float64)
   max_dmdt = 0.0
@@ -97,10 +104,10 @@ function compute_dmdt(m1::Array{Float64}, m2::Array{Float64}, N::Int64, dt::Floa
     mx = m1[j] - m2[j]
     my = m1[j+1] - m2[j+1]
     mz = m1[j+2] - m2[j+2]
-    dmdt = sqrt(mx*mx + my*my + mz*mz)/dt
+    dmdt = sqrt(mx*mx + my*my + mz*mz)
     if dmdt > max_dmdt
       max_dmdt = dmdt
     end
-    return max_dmdt
   end
+  return max_dmdt/dt
 end
