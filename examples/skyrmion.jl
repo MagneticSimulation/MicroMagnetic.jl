@@ -2,7 +2,7 @@ using SpinDynamics
 using Printf
 using NPZ
 
-mesh =  create_mesh(nx=100, ny=100, nz=1, dx=2.0, dy=2.0, dz=2.0, unit_length=1e-9, pbc="xy")
+mesh =  create_mesh(nx=100, ny=100, nz=50, dx=2.0, dy=2.0, dz=2.0, unit_length=1e-9, pbc="xy")
 
 function m0_fun(i,j,k,dx,dy,dz)
   r2 = (i-50)^2 + (j-50)^2
