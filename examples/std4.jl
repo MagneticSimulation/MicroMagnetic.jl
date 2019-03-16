@@ -39,5 +39,5 @@ function run_dynamics()
 end
 
 
-relax_system()
-#run_dynamics()
+#relax_system()
+run_dynamics()

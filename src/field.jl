@@ -53,8 +53,7 @@ function effective_field(exch::Exchange, sim::SimData, spin::Array{Float64, 1}, 
   az = 2.0 * exch.A / (dz * dz)
   A = (ax, ax, ay, ay, az, az)
 
-  fx, fy, fz = 0.0, 0.0, 0.0
-  for i = 1:nxyz
+  Threads.@threads for i = 1:nxyz
     if Ms[i] == 0.0
       energy[i] = 0.0
       field[3*i-2] = 0.0
@@ -97,7 +96,7 @@ function effective_field(dmi::BulkDMI, sim::SimData, spin::Array{Float64, 1}, t:
   ay = (0.0, 0.0, 1.0,-1.0, 0.0, 0.0)
   az = (0.0, 0.0, 0.0, 0.0, 1.0,-1.0)
 
-  for i = 1:nxyz
+  Threads.@threads for i = 1:nxyz
     if Ms[i] == 0.0
       energy[i] = 0.0
       field[3*i-2] = 0.0
