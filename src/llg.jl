@@ -10,8 +10,8 @@ function cross_z(x1::Float64, x2::Float64, x3::Float64, y1::Float64, y2::Float64
     return -x2*y1 + x1*y2
 end
 
-function llg_rhs(dw_dt::Array{Float64}, m::Array{Float64}, h::Array{Float64},
-                 omega::Array{Float64}, alpha::Float64, gamma::Float64, precession::Bool, N::Int64)
+function llg_rhs(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float64, 1},
+                 omega::Array{Float64, 1}, alpha::Float64, gamma::Float64, precession::Bool, N::Int64)
   for i = 0:N-1
     j = 3*i+1
     a = -gamma/(1+alpha*alpha)

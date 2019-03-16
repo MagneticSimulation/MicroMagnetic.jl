@@ -1,4 +1,4 @@
-function init_vector!(v::Array{Float64}, mesh::Mesh, init::Function)
+function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Function)
   nxyz = mesh.nx*mesh.ny*mesh.nz
   dx,dy,dz = mesh.dx, mesh.dy, mesh.dz
   b = reshape(v, 3, nxyz)
@@ -12,7 +12,7 @@ function init_vector!(v::Array{Float64}, mesh::Mesh, init::Function)
   end
 end
 
-function init_vector!(v::Array{Float64}, mesh::Mesh, init::Tuple{Number,Number,Number})
+function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Tuple{Number,Number,Number})
   nxyz = mesh.nx*mesh.ny*mesh.nz
   b = reshape(v, 3, nxyz)
   b[1, :] .= init[1]
@@ -34,7 +34,7 @@ function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Array{Float64, 1})
   end
 end
 
-function normalise(a::Array, N::Int64)
+function normalise(a::Array{Float64, 1}, N::Int64)
   for i = 0:N-1
       j = 3*i+1
       length = sqrt(a[j]*a[j]+a[j+1]*a[j+1]+a[j+2]*a[j+2])
@@ -47,7 +47,7 @@ function normalise(a::Array, N::Int64)
     end
 end
 
-function error_length_m(a::Array, N::Int64)
+function error_length_m(a::Array{Float64, 1}, N::Int64)
   maxlength = 0.0
   minlength = 100.0
   for i = 0:N-1
@@ -63,7 +63,7 @@ function error_length_m(a::Array, N::Int64)
   return maxlength-minlength
 end
 
-function omega_to_spin(omega::Array, spin::Array, spin_next::Array, N::Int64)
+function omega_to_spin(omega::Array{Float64, 1}, spin::Array{Float64, 1}, spin_next::Array{Float64, 1}, N::Int64)
   #compute Cay(Omega).m where Cay(Omega) = (I - 1/2 Omega)^-1 (I + 1/2 Omega)
   #where Omega = Skew[w1, w2, w3] = {{0, -w3, w2}, {w3, 0, -w1}, {-w2, w1, 0}}
   for i = 0:N-1
@@ -97,7 +97,7 @@ function compute_error2(error::Array{Float64,1}, N::Int64)
   return sqrt(norm/N)
 end
 
-function compute_dmdt(m1::Array{Float64}, m2::Array{Float64}, N::Int64, dt::Float64)
+function compute_dmdt(m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64, dt::Float64)
   max_dmdt = 0.0
   for i = 0:N-1
     j = 3*i + 1

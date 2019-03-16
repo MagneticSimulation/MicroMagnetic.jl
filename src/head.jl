@@ -7,7 +7,7 @@ struct Mesh
   nz::Int64
   unit_length::Float64
   volume::Float64
-  ngbs::Array{Int64}
+  ngbs::Array{Int64, 2}
   pbc::String
 end
 
@@ -22,10 +22,10 @@ mutable struct Dopri5
    safety::Float64
    nsteps::Int64
    nfevals::Int64
-   omega::Array{Float64}
-   omega_t::Array{Float64}
-   dw_dt::Array{Float64}
-   ks::Array{Float64}
+   omega::Array{Float64, 1}
+   omega_t::Array{Float64, 1}
+   dw_dt::Array{Float64, 1}
+   ks::Array{Float64, 2}
    rhs_fun::Function
    succeed::Bool
 end
@@ -44,11 +44,11 @@ mutable struct SimData
   mesh::Mesh
   ode::Dopri5
   saver::DataSaver
-  spin::Array{Float64}
-  prespin::Array{Float64}
-  field::Array{Float64}
-  energy::Array{Float64}
-  Ms::Array{Float64}
+  spin::Array{Float64, 1}
+  prespin::Array{Float64, 1}
+  field::Array{Float64, 1}
+  energy::Array{Float64, 1}
+  Ms::Array{Float64, 1}
   nxyz::Int64
   name::String
   alpha::Float64
@@ -59,23 +59,23 @@ end
 
 mutable struct Exchange
    A::Float64
-   field::Array{Float64}
-   energy::Array{Float64}
+   field::Array{Float64, 1}
+   energy::Array{Float64, 1}
    name::String
 end
 
 mutable struct BulkDMI
    D::Float64
-   field::Array{Float64}
-   energy::Array{Float64}
+   field::Array{Float64, 1}
+   energy::Array{Float64, 1}
    name::String
 end
 
 mutable struct Anisotropy
-   Ku::Array{Float64}
+   Ku::Array{Float64, 1}
    axis::Tuple
-   field::Array{Float64}
-   energy::Array{Float64}
+   field::Array{Float64, 1}
+   energy::Array{Float64, 1}
    name::String
 end
 
@@ -83,7 +83,7 @@ mutable struct Zeeman
    Hx::Float64
    Hy::Float64
    Hz::Float64
-   field::Array{Float64}
-   energy::Array{Float64}
+   field::Array{Float64, 1}
+   energy::Array{Float64, 1}
    name::String
 end

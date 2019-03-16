@@ -5,22 +5,22 @@ mutable struct Demag
   nx_fft::Int64
   ny_fft::Int64
   nz_fft::Int64
-  tensor_xx::Array{Float64}
-  tensor_yy::Array{Float64}
-  tensor_zz::Array{Float64}
-  tensor_xy::Array{Float64}
-  tensor_xz::Array{Float64}
-  tensor_yz::Array{Float64}
+  tensor_xx::Array{Float64, 1}
+  tensor_yy::Array{Float64, 1}
+  tensor_zz::Array{Float64, 1}
+  tensor_xy::Array{Float64, 1}
+  tensor_xz::Array{Float64, 1}
+  tensor_yz::Array{Float64, 1}
   m_field::Array{Float64}
-  Mx::Array{Complex{Float64}}
-  My::Array{Complex{Float64}}
-  Mz::Array{Complex{Float64}}
-  h_field::Array{Float64}
-  H_field::Array{Complex{Float64}}
+  Mx::Array{Complex{Float64}, 1}
+  My::Array{Complex{Float64}, 1}
+  Mz::Array{Complex{Float64}, 1}
+  h_field::Array{Float64, 1}
+  H_field::Array{Complex{Float64}, 1}
   m_plan::Any
   h_plan::Any
-  field::Array{Float64}
-  energy::Array{Float64}
+  field::Array{Float64, 1}
+  energy::Array{Float64, 1}
   name::String
 end
 
@@ -92,21 +92,21 @@ function init_demag(sim::SimData)
   return demag
 end
 
-function copy_spin_to_m(m::Array{Float64}, spin::Array{Float64}, Ms::Array{Float64}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
+function copy_spin_to_m(m::Array{Float64, 1}, spin::Array{Float64, 1}, Ms::Array{Float64, 1}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
   for k=1:nz, j=1:ny, i=1:nx
         p = (k-1) * nx*ny + (j-1) * nx + i
         m[i,j,k] = spin[3*p+bias]*Ms[p]
   end
 end
 
-function copy_cfield_to_field(field::Array{Float64}, cfield::Array{Float64}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
+function copy_cfield_to_field(field::Array{Float64, 1}, cfield::Array{Float64, 1}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
   for k=1:nz, j=1:ny, i=1:nx
     p = (k-1) * nx*ny + (j-1) * nx + i
     field[3*p+bias] = -1.0*cfield[i,j,k]
   end
 end
 
-function effective_field(demag::Demag, sim::SimData, spin::Array{Float64}, t::Float64)
+function effective_field(demag::Demag, sim::SimData, spin::Array{Float64, 1}, t::Float64)
   nx, ny, nz = sim.mesh.nx, sim.mesh.ny, sim.mesh.nz
   copy_spin_to_m(demag.m_field, spin, sim.Ms, nx, ny, nz, -2)
   mul!(demag.Mx, demag.m_plan, demag.m_field)

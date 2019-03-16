@@ -1,4 +1,4 @@
-function effective_field(zee::Zeeman, sim::SimData, spin::Array{Float64}, t::Float64)
+function effective_field(zee::Zeeman, sim::SimData, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7
   nxyz = sim.nxyz
   field = zee.field
@@ -9,7 +9,7 @@ function effective_field(zee::Zeeman, sim::SimData, spin::Array{Float64}, t::Flo
   end
 end
 
-function effective_field(anis::Anisotropy, sim::SimData, spin::Array{Float64}, t::Float64)
+function effective_field(anis::Anisotropy, sim::SimData, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7
   mesh = sim.mesh
   nxyz = sim.nxyz
@@ -37,7 +37,7 @@ function effective_field(anis::Anisotropy, sim::SimData, spin::Array{Float64}, t
 
 end
 
-function effective_field(exch::Exchange, sim::SimData, spin::Array{Float64}, t::Float64)
+function effective_field(exch::Exchange, sim::SimData, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7
   mesh = sim.mesh
   dx = mesh.dx*mesh.unit_length
@@ -53,6 +53,7 @@ function effective_field(exch::Exchange, sim::SimData, spin::Array{Float64}, t::
   az = 2.0 * exch.A / (dz * dz)
   A = (ax, ax, ay, ay, az, az)
 
+  fx, fy, fz = 0.0, 0.0, 0.0
   for i = 1:nxyz
     if Ms[i] == 0.0
       energy[i] = 0.0
@@ -61,9 +62,7 @@ function effective_field(exch::Exchange, sim::SimData, spin::Array{Float64}, t::
       field[3*i] = 0.0
       continue
     end
-    fx = 0.0
-    fy = 0.0
-    fz = 0.0
+    fx, fy, fz = 0.0, 0.0, 0.0
     for j=1:6
       id = ngbs[j,i]
       if id>0 && Ms[id]>0
@@ -81,7 +80,7 @@ function effective_field(exch::Exchange, sim::SimData, spin::Array{Float64}, t::
   end
 end
 
-function effective_field(dmi::BulkDMI, sim::SimData, spin::Array{Float64}, t::Float64)
+function effective_field(dmi::BulkDMI, sim::SimData, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7
   mesh = sim.mesh
   dx = mesh.dx*mesh.unit_length
@@ -129,7 +128,7 @@ function effective_field(dmi::BulkDMI, sim::SimData, spin::Array{Float64}, t::Fl
 end
 
 
-function effective_field(sim::SimData, spin::Array, t::Float64)
+function effective_field(sim::SimData, spin::Array{Float64, 1}, t::Float64)
   fill!(sim.field, 0.0)
   fill!(sim.energy, 0.0)
   for interaction in sim.interactions
