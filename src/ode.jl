@@ -45,10 +45,16 @@ function dopri5_step(sim::SimData, step::Float64, t::Float64)
   ks[:,7] = rhs(sim, t + a[6]*step, y_next) #k7
 
   sim.ode.nfevals += 7
-  error = (w[1]*ks[:,1]+w[2]*ks[:,2]+w[3]*ks[:,3]+w[4]*ks[:,4]+w[5]*ks[:,5]+w[6]*ks[:,6]+w[7]*ks[:,7])*step
+  error = sim.ode.omega_t #we make use of omega_t to store the error temporary
+  error[:] = (w[1]*ks[:,1]+w[2]*ks[:,2]+w[3]*ks[:,3]+w[4]*ks[:,4]+w[5]*ks[:,5]+w[6]*ks[:,6]+w[7]*ks[:,7])*step
 
-  return compute_error2(error, length(error))
-  #return maximum(abs.(error)) + eps()
+  max_error =  maximum(abs.(error)) + eps()
+
+  #omega_to_spin(error, sim.prespin, sim.spin, sim.nxyz)
+  #sim.spin[:] -= sim.prespin[:]
+  #max_dm_error = maximum(abs.(sim.spin)) + eps()
+
+  return max_error
 end
 
 function compute_init_step(sim::SimData, dt::Float64)
@@ -68,7 +74,7 @@ function advance_step(sim::SimData, rk_data::Dopri5)
 
     if rk_data.succeed
         omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
-        if rk_data.nsteps%100 == 0
+        if rk_data.nsteps%10 == 0
           normalise(sim.spin, sim.nxyz)
         end
         sim.prespin[:] = sim.spin[:]

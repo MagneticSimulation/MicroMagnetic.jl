@@ -23,7 +23,7 @@ function relax_system()
 
   init_m0(sim, m0_fun)
   relax(sim, maxsteps=5000, stopping_dmdt = 0.1)
-  println(sim.spin)
+  #println(sim.spin)
   npzwrite("m0.npy", sim.spin)
   save_vtk(sim, "skx", fields=["exch", "dmi"])
 end
