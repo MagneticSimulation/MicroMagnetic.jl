@@ -14,7 +14,7 @@ function indexpbc(i::Int64, j::Int64, k::Int64, nx::Int64, ny::Int64, nz::Int64,
     end
   end
 
-	if 'y' in pbc
+  if 'y' in pbc
     if j < 1
       j += ny
     elseif j > ny
@@ -22,7 +22,7 @@ function indexpbc(i::Int64, j::Int64, k::Int64, nx::Int64, ny::Int64, nz::Int64,
     end
   end
 
-	if 'z' in pbc
+  if 'z' in pbc
     if k < 1
       k += nz
     elseif k > nz

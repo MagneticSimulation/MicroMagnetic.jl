@@ -2,7 +2,7 @@ using FFTW
 using LinearAlgebra
 
 mutable struct Demag
-	nx_fft::Int64
+  nx_fft::Int64
   ny_fft::Int64
   nz_fft::Int64
   tensor_xx::Array{Float64}
@@ -15,7 +15,7 @@ mutable struct Demag
   Mx::Array{Complex{Float64}}
   My::Array{Complex{Float64}}
   Mz::Array{Complex{Float64}}
-	h_field::Array{Float64}
+  h_field::Array{Float64}
   H_field::Array{Complex{Float64}}
   m_plan::Any
   h_plan::Any
@@ -72,20 +72,20 @@ function init_demag(sim::SimData)
   tensor_xz = real(FFTW.rfft(tensor_xz))
   tensor_yz = real(FFTW.rfft(tensor_yz))
 
-	m_field = zeros(nx_fft, ny_fft, nz_fft)
+  m_field = zeros(nx_fft, ny_fft, nz_fft)
   lenx = (nx_fft%2>0) ? nx : nx+1
   Mx = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
   My = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
   Mz = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
   m_plan = FFTW.plan_rfft(m_field)
 
-	h_field = zeros(nx_fft, ny_fft, nz_fft)
-	H_field = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
+  h_field = zeros(nx_fft, ny_fft, nz_fft)
+  H_field = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
 
   h_plan = FFTW.plan_irfft(H_field, nx_fft)
 
-	field = zeros(Float64, 3*sim.nxyz)
-	energy = zeros(Float64, sim.nxyz)
+  field = zeros(Float64, 3*sim.nxyz)
+  energy = zeros(Float64, sim.nxyz)
   demag = Demag(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
                 tensor_xy, tensor_xz, tensor_yz, m_field, Mx, My, Mz, h_field,
                 H_field, m_plan, h_plan, field, energy, "Demag")
@@ -110,20 +110,20 @@ function effective_field(demag::Demag, sim::SimData, spin::Array{Float64}, t::Fl
   nx, ny, nz = sim.mesh.nx, sim.mesh.ny, sim.mesh.nz
   copy_spin_to_m(demag.m_field, spin, sim.Ms, nx, ny, nz, -2)
   mul!(demag.Mx, demag.m_plan, demag.m_field)
-	copy_spin_to_m(demag.m_field, spin, sim.Ms, nx, ny, nz, -1)
-	mul!(demag.My, demag.m_plan, demag.m_field)
-	copy_spin_to_m(demag.m_field, spin, sim.Ms, nx, ny, nz, 0)
-	mul!(demag.Mz, demag.m_plan, demag.m_field)
+  copy_spin_to_m(demag.m_field, spin, sim.Ms, nx, ny, nz, -1)
+  mul!(demag.My, demag.m_plan, demag.m_field)
+  copy_spin_to_m(demag.m_field, spin, sim.Ms, nx, ny, nz, 0)
+  mul!(demag.Mz, demag.m_plan, demag.m_field)
 
   demag.H_field .= demag.tensor_xx.*demag.Mx .+ demag.tensor_xy.*demag.My .+  demag.tensor_xz.*demag.Mz
   mul!(demag.h_field, demag.h_plan, demag.H_field)
   copy_cfield_to_field(demag.field, demag.h_field, nx, ny, nz, -2)
 
-	demag.H_field .= demag.tensor_xy.*demag.Mx .+ demag.tensor_yy.*demag.My .+  demag.tensor_yz.*demag.Mz
+  demag.H_field .= demag.tensor_xy.*demag.Mx .+ demag.tensor_yy.*demag.My .+  demag.tensor_yz.*demag.Mz
   mul!(demag.h_field, demag.h_plan, demag.H_field)
   copy_cfield_to_field(demag.field, demag.h_field, nx, ny, nz, -1)
 
-	demag.H_field .= demag.tensor_xz.*demag.Mx .+ demag.tensor_yz.*demag.My .+  demag.tensor_zz.*demag.Mz
+  demag.H_field .= demag.tensor_xz.*demag.Mx .+ demag.tensor_yz.*demag.My .+  demag.tensor_zz.*demag.Mz
   mul!(demag.h_field, demag.h_plan, demag.H_field)
   copy_cfield_to_field(demag.field, demag.h_field, nx, ny, nz, 0)
 
@@ -179,11 +179,11 @@ function newell_g(x::Float64, y::Float64, z::Float64)::Float64
    if y2>0   g -= 0.5*y2*z*atan(x*z/(y*R)) end
    if x2>0   g -= 0.5*x2*z*atan(y*z/(x*R)) end
 
-	 if x2+y2>0
- 		g += x*y*z*asinh(z/(sqrt(x2+y2)))
- 	 end
+   if x2+y2>0
+     g += x*y*z*asinh(z/(sqrt(x2+y2)))
+    end
 
-	 if y2+z2>0
+   if y2+z2>0
      g += 1.0/6*y*(3*z2-y2)*asinh(x/(sqrt(y2+z2)))
    end
 
@@ -200,35 +200,35 @@ function demag_tensor_xx(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Fl
 
   tensor = 8.0*newell_f(x,y,z);
 
-	tensor -= 4.0*newell_f(x+dx,y,z);
-	tensor -= 4.0*newell_f(x-dx,y,z);
-	tensor -= 4.0*newell_f(x,y-dy,z);
-	tensor -= 4.0*newell_f(x,y+dy,z);
-	tensor -= 4.0*newell_f(x,y,z-dz);
-	tensor -= 4.0*newell_f(x,y,z+dz);
+  tensor -= 4.0*newell_f(x+dx,y,z);
+  tensor -= 4.0*newell_f(x-dx,y,z);
+  tensor -= 4.0*newell_f(x,y-dy,z);
+  tensor -= 4.0*newell_f(x,y+dy,z);
+  tensor -= 4.0*newell_f(x,y,z-dz);
+  tensor -= 4.0*newell_f(x,y,z+dz);
 
 
   tensor +=  2.0*newell_f(x+dx,y+dy,z);
   tensor +=  2.0*newell_f(x+dx,y-dy,z);
   tensor +=  2.0*newell_f(x-dx,y-dy,z);
   tensor +=  2.0*newell_f(x-dx,y+dy,z);
-	tensor +=  2.0*newell_f(x+dx,y,z+dz);
-	tensor +=  2.0*newell_f(x+dx,y,z-dz);
-	tensor +=  2.0*newell_f(x-dx,y,z+dz);
-	tensor +=  2.0*newell_f(x-dx,y,z-dz);
-	tensor +=  2.0*newell_f(x,y-dy,z-dz);
-	tensor +=  2.0*newell_f(x,y-dy,z+dz);
-	tensor +=  2.0*newell_f(x,y+dy,z+dz);
-	tensor +=  2.0*newell_f(x,y+dy,z-dz);
+  tensor +=  2.0*newell_f(x+dx,y,z+dz);
+  tensor +=  2.0*newell_f(x+dx,y,z-dz);
+  tensor +=  2.0*newell_f(x-dx,y,z+dz);
+  tensor +=  2.0*newell_f(x-dx,y,z-dz);
+  tensor +=  2.0*newell_f(x,y-dy,z-dz);
+  tensor +=  2.0*newell_f(x,y-dy,z+dz);
+  tensor +=  2.0*newell_f(x,y+dy,z+dz);
+  tensor +=  2.0*newell_f(x,y+dy,z-dz);
 
-	tensor -= newell_f(x+dx,y+dy,z+dz);
+  tensor -= newell_f(x+dx,y+dy,z+dz);
   tensor -= newell_f(x+dx,y+dy,z-dz);
-	tensor -= newell_f(x+dx,y-dy,z+dz);
-	tensor -= newell_f(x+dx,y-dy,z-dz);
+  tensor -= newell_f(x+dx,y-dy,z+dz);
+  tensor -= newell_f(x+dx,y-dy,z-dz);
   tensor -= newell_f(x-dx,y+dy,z+dz);
-	tensor -= newell_f(x-dx,y+dy,z-dz);
-	tensor -= newell_f(x-dx,y-dy,z+dz);
-	tensor -= newell_f(x-dx,y-dy,z-dz);
+  tensor -= newell_f(x-dx,y+dy,z-dz);
+  tensor -= newell_f(x-dx,y-dy,z+dz);
+  tensor -= newell_f(x-dx,y-dy,z-dz);
 
   return tensor/(4.0*pi*dx*dy*dz)
 
@@ -239,35 +239,35 @@ function demag_tensor_xy(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Fl
 
   tensor = 8.0*newell_g(x,y,z);
 
-	tensor -= 4.0*newell_g(x+dx,y,z);
-	tensor -= 4.0*newell_g(x-dx,y,z);
-	tensor -= 4.0*newell_g(x,y-dy,z);
-	tensor -= 4.0*newell_g(x,y+dy,z);
-	tensor -= 4.0*newell_g(x,y,z-dz);
-	tensor -= 4.0*newell_g(x,y,z+dz);
+  tensor -= 4.0*newell_g(x+dx,y,z);
+  tensor -= 4.0*newell_g(x-dx,y,z);
+  tensor -= 4.0*newell_g(x,y-dy,z);
+  tensor -= 4.0*newell_g(x,y+dy,z);
+  tensor -= 4.0*newell_g(x,y,z-dz);
+  tensor -= 4.0*newell_g(x,y,z+dz);
 
 
   tensor +=  2.0*newell_g(x+dx,y+dy,z);
   tensor +=  2.0*newell_g(x+dx,y-dy,z);
   tensor +=  2.0*newell_g(x-dx,y-dy,z);
   tensor +=  2.0*newell_g(x-dx,y+dy,z);
-	tensor +=  2.0*newell_g(x+dx,y,z+dz);
-	tensor +=  2.0*newell_g(x+dx,y,z-dz);
-	tensor +=  2.0*newell_g(x-dx,y,z+dz);
-	tensor +=  2.0*newell_g(x-dx,y,z-dz);
-	tensor +=  2.0*newell_g(x,y-dy,z-dz);
-	tensor +=  2.0*newell_g(x,y-dy,z+dz);
-	tensor +=  2.0*newell_g(x,y+dy,z+dz);
-	tensor +=  2.0*newell_g(x,y+dy,z-dz);
+  tensor +=  2.0*newell_g(x+dx,y,z+dz);
+  tensor +=  2.0*newell_g(x+dx,y,z-dz);
+  tensor +=  2.0*newell_g(x-dx,y,z+dz);
+  tensor +=  2.0*newell_g(x-dx,y,z-dz);
+  tensor +=  2.0*newell_g(x,y-dy,z-dz);
+  tensor +=  2.0*newell_g(x,y-dy,z+dz);
+  tensor +=  2.0*newell_g(x,y+dy,z+dz);
+  tensor +=  2.0*newell_g(x,y+dy,z-dz);
 
-	tensor -= newell_g(x+dx,y+dy,z+dz);
+  tensor -= newell_g(x+dx,y+dy,z+dz);
   tensor -= newell_g(x+dx,y+dy,z-dz);
-	tensor -= newell_g(x+dx,y-dy,z+dz);
-	tensor -= newell_g(x+dx,y-dy,z-dz);
+  tensor -= newell_g(x+dx,y-dy,z+dz);
+  tensor -= newell_g(x+dx,y-dy,z-dz);
   tensor -= newell_g(x-dx,y+dy,z+dz);
-	tensor -= newell_g(x-dx,y+dy,z-dz);
-	tensor -= newell_g(x-dx,y-dy,z+dz);
-	tensor -= newell_g(x-dx,y-dy,z-dz);
+  tensor -= newell_g(x-dx,y+dy,z-dz);
+  tensor -= newell_g(x-dx,y-dy,z+dz);
+  tensor -= newell_g(x-dx,y-dy,z-dz);
 
   return tensor/(4.0*pi*dx*dy*dz)
 

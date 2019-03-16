@@ -26,9 +26,9 @@ function create_sim(mesh::Mesh; name="dyn", tol=1e-6)
   dopri5 = init_runge_kutta(nxyz, rhs_call_back, tol)
   interactions = []
 
-	headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
-	units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
-	results = [o::SimData -> o.saver.nsteps,
+  headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
+  units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
+  results = [o::SimData -> o.saver.nsteps,
              o::SimData -> o.saver.t,
              o::SimData -> sum(o.energy), average_m]
   saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
@@ -73,7 +73,7 @@ function add_exch(sim::SimData, A::Float64; name="exch")
   exch =  Exchange(A, field, energy, name)
   push!(sim.interactions, exch)
 
-	push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
@@ -86,7 +86,7 @@ function add_dmi(sim::SimData, D::Float64; name="dmi")
   dmi =  BulkDMI(D, field, energy, name)
   push!(sim.interactions, dmi)
 
-	push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
@@ -97,7 +97,7 @@ function add_demag(sim::SimData; name="demag")
   demag.name = name
   push!(sim.interactions, demag)
 
-	push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
@@ -112,7 +112,7 @@ function add_anis(sim::SimData, Ku::Float64; axis=(0,0,1), name="anis")
   anis =  Anisotropy(Kus, axis, field, energy, name)
   push!(sim.interactions, anis)
 
-	push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
@@ -132,11 +132,11 @@ function relax(sim::SimData; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.
     max_length = error_length_m(sim.spin, sim.nxyz)
     output = @sprintf("step =%5d   step_size=%6g    sim.t=%6g    max_dmdt=%6g  m_legnth=%6g", i, step_size, rk_data.t, max_dmdt/dmdt_factor, max_length)
     println(output)
-		if i%save_m_every == 0
+    if i%save_m_every == 0
       write_data(sim)
     end
-		sim.saver.t = rk_data.t
-		sim.saver.nsteps += 1
+    sim.saver.t = rk_data.t
+    sim.saver.nsteps += 1
     if max_dmdt < stopping_dmdt*dmdt_factor
       break
     end
@@ -146,40 +146,40 @@ end
 
 function run_until(sim::SimData, t_end::Float64)
       rk_data = sim.ode
-			if t_end < rk_data.t - rk_data.step
-				  println("Run_until: t_end >= rk_data.t - rk_data.step")
+      if t_end < rk_data.t - rk_data.step
+          println("Run_until: t_end >= rk_data.t - rk_data.step")
           return
-			elseif t_end == rk_data.t
-					rk_data.omega_t[:] = rk_data.omega[:]
+      elseif t_end == rk_data.t
+          rk_data.omega_t[:] = rk_data.omega[:]
           omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
-					sim.saver.t = t_end
-		      sim.saver.nsteps += 1
-		      write_data(sim)
-					return
-			elseif t_end > rk_data.t - rk_data.step && rk_data.step > 0 && t_end < rk_data.t
-					interpolation_dopri5(rk_data, t_end)
+          sim.saver.t = t_end
+          sim.saver.nsteps += 1
+          write_data(sim)
+          return
+      elseif t_end > rk_data.t - rk_data.step && rk_data.step > 0 && t_end < rk_data.t
+          interpolation_dopri5(rk_data, t_end)
           omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
-					sim.saver.t = t_end
-					sim.saver.nsteps += 1
-					write_data(sim)
-					return
+          sim.saver.t = t_end
+          sim.saver.nsteps += 1
+          write_data(sim)
+          return
       end
 
-			# so we have t_end > self.t
-			if rk_data.step_next<=0
-					rk_data.step_next = compute_init_step(sim, t_end - rk_data.t)
+      # so we have t_end > self.t
+      if rk_data.step_next<=0
+          rk_data.step_next = compute_init_step(sim, t_end - rk_data.t)
       end
 
-			while rk_data.t < t_end
-					ratio = (t_end - rk_data.t)/rk_data.step_next
-					if ratio<1.2 && ratio>0.8
-							rk_data.step_next = t_end - rk_data.t
+      while rk_data.t < t_end
+          ratio = (t_end - rk_data.t)/rk_data.step_next
+          if ratio<1.2 && ratio>0.8
+              rk_data.step_next = t_end - rk_data.t
           end
 
-					advance_step(sim, rk_data)
+          advance_step(sim, rk_data)
       end
 
-			interpolation_dopri5(rk_data, t_end)
+      interpolation_dopri5(rk_data, t_end)
       omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
       sim.saver.t = t_end
       sim.saver.nsteps += 1
@@ -194,6 +194,6 @@ function rhs_call_back(sim::SimData, t::Float64, omega::Array{Float64})
   effective_field(sim, sim.spin, t)
   llg_rhs(dw_dt, sim.spin, sim.field, omega, sim.alpha, sim.gamma, sim.precession, sim.nxyz)
 
-	return dw_dt
+  return dw_dt
 
 end

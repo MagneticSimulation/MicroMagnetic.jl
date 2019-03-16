@@ -31,7 +31,7 @@ my = Float64[]
 mz = Float64[]
 for i=1:100
   run_until(sim, 1e-11*i)
-	s = @sprintf "t=%g sim.t=%g mx=%g my=%g mz=%g" i*1e-11 sim.ode.t sim.spin[1] sim.spin[2] sim.spin[3];
+  s = @sprintf "t=%g sim.t=%g mx=%g my=%g mz=%g" i*1e-11 sim.ode.t sim.spin[1] sim.spin[2] sim.spin[3];
   println(s)
   push!(ts, i*1e-11)
   push!(mx, sim.spin[1])

@@ -32,8 +32,8 @@ end
 
 mutable struct DataSaver
   name::String
-	t::Float64
-	nsteps::Int64
+  t::Float64
+  nsteps::Int64
   header_saved::Bool
   headers::Array  #string or tuple<string> array
   units::Array #string or tuple<string> array
@@ -59,14 +59,14 @@ end
 
 mutable struct Exchange
    A::Float64
-	 field::Array{Float64}
+   field::Array{Float64}
    energy::Array{Float64}
    name::String
 end
 
 mutable struct BulkDMI
    D::Float64
-	 field::Array{Float64}
+   field::Array{Float64}
    energy::Array{Float64}
    name::String
 end
@@ -74,7 +74,7 @@ end
 mutable struct Anisotropy
    Ku::Array{Float64}
    axis::Tuple
-	 field::Array{Float64}
+   field::Array{Float64}
    energy::Array{Float64}
    name::String
 end
@@ -83,7 +83,7 @@ mutable struct Zeeman
    Hx::Float64
    Hy::Float64
    Hz::Float64
-	 field::Array{Float64}
+   field::Array{Float64}
    energy::Array{Float64}
    name::String
 end

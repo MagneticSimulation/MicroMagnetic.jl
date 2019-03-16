@@ -6,9 +6,9 @@ mesh =  create_mesh(nx=200, ny=50, nz=1, dx=2.5, dy=2.5, dz=3, unit_length=1e-9)
 
 function relax_system()
   sim = create_sim(mesh, name="relax", tol=1e-6)
-	sim.Ms[:] .= 8.0e5
-	sim.alpha = 1.0
-	sim.gamma = 2.211e5
+  sim.Ms[:] .= 8.0e5
+  sim.alpha = 1.0
+  sim.gamma = 2.211e5
   add_exch(sim, 1.3e-11)
   add_demag(sim)
 
@@ -20,13 +20,13 @@ end
 
 function run_dynamics()
   sim = create_sim(mesh, name="std4", tol=1e-7)
-	sim.Ms[:] .= 8.0e5
-	sim.alpha = 0.02
-	sim.gamma = 2.211e5
+  sim.Ms[:] .= 8.0e5
+  sim.alpha = 0.02
+  sim.gamma = 2.211e5
 
   m0 = npzread("m0.npy")
   init_m0(sim, m0)
-	add_exch(sim, 1.3e-11)
+  add_exch(sim, 1.3e-11)
   add_demag(sim)
 
   mT = 0.001 / (4*pi*1e-7)

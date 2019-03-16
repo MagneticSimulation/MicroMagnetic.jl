@@ -28,7 +28,7 @@ function write_data(sim::SimData)
     end
     write(io, "\n#");
 
-		for s in saver.units
+    for s in saver.units
       write(io, formatstring(s));
     end
     write(io, "\n")
