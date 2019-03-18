@@ -34,18 +34,14 @@ end
 
 function create_mesh(;dx=1.0, dy=1.0, dz=1.0, nx=1, ny=1, nz=1, unit_length=1.0, pbc="open")
   ngbs = zeros(Int64,6,nx*ny*nz)
-  for i = 1:nx
-    for j = 1:ny
-      for k = 1:nz
-        id = index(i,j,k, nx, ny, nz)
-        ngbs[1,id] = indexpbc(i-1,j,k,nx,ny,nz,pbc)
-        ngbs[2,id] = indexpbc(i+1,j,k,nx,ny,nz,pbc)
-        ngbs[3,id] = indexpbc(i,j-1,k,nx,ny,nz,pbc)
-        ngbs[4,id] = indexpbc(i,j+1,k,nx,ny,nz,pbc)
-        ngbs[5,id] = indexpbc(i,j,k-1,nx,ny,nz,pbc)
-        ngbs[6,id] = indexpbc(i,j,k+1,nx,ny,nz,pbc)
-      end
-    end
+  for k = 1:nz, j = 1:ny, i=1:nx
+    id = index(i,j,k, nx, ny, nz)
+    ngbs[1,id] = indexpbc(i-1,j,k,nx,ny,nz,pbc)
+    ngbs[2,id] = indexpbc(i+1,j,k,nx,ny,nz,pbc)
+    ngbs[3,id] = indexpbc(i,j-1,k,nx,ny,nz,pbc)
+    ngbs[4,id] = indexpbc(i,j+1,k,nx,ny,nz,pbc)
+    ngbs[5,id] = indexpbc(i,j,k-1,nx,ny,nz,pbc)
+    ngbs[6,id] = indexpbc(i,j,k+1,nx,ny,nz,pbc)
   end
   volume = dx*dy*dz*unit_length^3
   return Mesh(dx, dy, dz, nx, ny, nz, unit_length, volume, ngbs, pbc)
