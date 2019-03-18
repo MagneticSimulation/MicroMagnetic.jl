@@ -11,12 +11,15 @@ mutable struct Demag
   tensor_xy::Array{Float64, 3}
   tensor_xz::Array{Float64, 3}
   tensor_yz::Array{Float64, 3}
-  m_field::Array{Float64, 3}
+  mx::Array{Float64, 3}
+  my::Array{Float64, 3}
+  mz::Array{Float64, 3}
   Mx::Array{Complex{Float64}, 3}
   My::Array{Complex{Float64}, 3}
   Mz::Array{Complex{Float64}, 3}
-  h_field::Array{Float64, 3}
-  H_field::Array{Complex{Float64}, 3}
+  Hx::Array{Complex{Float64}, 3}
+  Hy::Array{Complex{Float64}, 3}
+  Hz::Array{Complex{Float64}, 3}
   m_plan::Any
   h_plan::Any
   field::Array{Float64, 1}
@@ -72,60 +75,66 @@ function init_demag(sim::SimData)
   tensor_xz = real(FFTW.rfft(tensor_xz))
   tensor_yz = real(FFTW.rfft(tensor_yz))
 
-  m_field = zeros(nx_fft, ny_fft, nz_fft)
+  mx = zeros(nx_fft, ny_fft, nz_fft)
+  my = zeros(nx_fft, ny_fft, nz_fft)
+  mz = zeros(nx_fft, ny_fft, nz_fft)
   lenx = (nx_fft%2>0) ? nx : nx+1
   Mx = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
   My = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
   Mz = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
-  m_plan = FFTW.plan_rfft(m_field)
+  m_plan = FFTW.plan_rfft(mx)
 
-  h_field = zeros(nx_fft, ny_fft, nz_fft)
-  H_field = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
+  Hx = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
+  Hy = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
+  Hz = zeros(Complex{Float64}, lenx, ny_fft, nz_fft)
 
-  h_plan = FFTW.plan_irfft(H_field, nx_fft)
+  h_plan = FFTW.plan_irfft(Hx, nx_fft)
 
   field = zeros(Float64, 3*sim.nxyz)
   energy = zeros(Float64, sim.nxyz)
   demag = Demag(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
-                tensor_xy, tensor_xz, tensor_yz, m_field, Mx, My, Mz, h_field,
-                H_field, m_plan, h_plan, field, energy, "Demag")
+                tensor_xy, tensor_xz, tensor_yz, mx, my, mz, Mx, My, Mz,
+                Hx, Hy, Hz, m_plan, h_plan, field, energy, "Demag")
   return demag
 end
 
-function copy_spin_to_m(m::Array{Float64, 3}, spin::Array{Float64, 1}, Ms::Array{Float64, 1}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
+function copy_spin_to_m(mx::Array{Float64, 3}, my::Array{Float64, 3}, mz::Array{Float64, 3},
+	                   spin::Array{Float64, 1}, Ms::Array{Float64, 1}, nx::Int64, ny::Int64, nz::Int64)
   for k=1:nz, j=1:ny, i=1:nx
-        p = (k-1) * nx*ny + (j-1) * nx + i
-        m[i,j,k] = spin[3*p+bias]*Ms[p]
+	  p = (k-1) * nx*ny + (j-1) * nx + i
+	  mx[i,j,k] = spin[3*p-2]*Ms[p]
+	  my[i,j,k] = spin[3*p-1]*Ms[p]
+	  mz[i,j,k] = spin[3*p]*Ms[p]
   end
 end
 
-function copy_cfield_to_field(field::Array{Float64, 1}, cfield::Array{Float64, 3}, nx::Int64, ny::Int64, nz::Int64, bias::Int64)
+function extract_effective_field(field::Array{Float64, 1}, fx::Array{Float64, 3}, fy::Array{Float64, 3},
+	                          fz::Array{Float64, 3}, nx::Int64, ny::Int64, nz::Int64)
   for k=1:nz, j=1:ny, i=1:nx
     p = (k-1) * nx*ny + (j-1) * nx + i
-    field[3*p+bias] = -1.0*cfield[i,j,k]
+	field[3*p-2] = -1.0*fx[i,j,k]
+	field[3*p-1] = -1.0*fy[i,j,k]
+	field[3*p] = -1.0*fz[i,j,k]
   end
 end
 
 function effective_field(demag::Demag, sim::SimData, spin::Array{Float64, 1}, t::Float64)
   nx, ny, nz = sim.mesh.nx, sim.mesh.ny, sim.mesh.nz
-  copy_spin_to_m(demag.m_field, spin, sim.Ms, nx, ny, nz, -2)
-  mul!(demag.Mx, demag.m_plan, demag.m_field)
-  copy_spin_to_m(demag.m_field, spin, sim.Ms, nx, ny, nz, -1)
-  mul!(demag.My, demag.m_plan, demag.m_field)
-  copy_spin_to_m(demag.m_field, spin, sim.Ms, nx, ny, nz, 0)
-  mul!(demag.Mz, demag.m_plan, demag.m_field)
+  copy_spin_to_m(demag.mx, demag.my, demag.mz, spin, sim.Ms, nx, ny, nz)
 
-  demag.H_field .= demag.tensor_xx.*demag.Mx .+ demag.tensor_xy.*demag.My .+  demag.tensor_xz.*demag.Mz
-  mul!(demag.h_field, demag.h_plan, demag.H_field)
-  copy_cfield_to_field(demag.field, demag.h_field, nx, ny, nz, -2)
+  mul!(demag.Mx, demag.m_plan, demag.mx)
+  mul!(demag.My, demag.m_plan, demag.my)
+  mul!(demag.Mz, demag.m_plan, demag.mz)
 
-  demag.H_field .= demag.tensor_xy.*demag.Mx .+ demag.tensor_yy.*demag.My .+  demag.tensor_yz.*demag.Mz
-  mul!(demag.h_field, demag.h_plan, demag.H_field)
-  copy_cfield_to_field(demag.field, demag.h_field, nx, ny, nz, -1)
+  demag.Hx .= demag.tensor_xx.*demag.Mx .+ demag.tensor_xy.*demag.My .+  demag.tensor_xz.*demag.Mz
+  demag.Hy .= demag.tensor_xy.*demag.Mx .+ demag.tensor_yy.*demag.My .+  demag.tensor_yz.*demag.Mz
+  demag.Hz .= demag.tensor_xz.*demag.Mx .+ demag.tensor_yz.*demag.My .+  demag.tensor_zz.*demag.Mz
 
-  demag.H_field .= demag.tensor_xz.*demag.Mx .+ demag.tensor_yz.*demag.My .+  demag.tensor_zz.*demag.Mz
-  mul!(demag.h_field, demag.h_plan, demag.H_field)
-  copy_cfield_to_field(demag.field, demag.h_field, nx, ny, nz, 0)
+  mul!(demag.mx, demag.h_plan, demag.Hx) #we use mx to store field
+  mul!(demag.my, demag.h_plan, demag.Hy)
+  mul!(demag.mz, demag.h_plan, demag.Hz)
+
+  extract_effective_field(demag.field, demag.mx, demag.my, demag.mz, nx, ny, nz)
 
   mu0 = 4*pi*1e-7
   volume = sim.mesh.volume
