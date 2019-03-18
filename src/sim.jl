@@ -103,6 +103,18 @@ function add_demag(sim::SimData; name="demag")
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
 
+
+function add_demag_gpu(sim::SimData; name="demag")
+  demag = init_demag_gpu(sim)
+  demag.name = name
+  push!(sim.interactions, demag)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
+end
+
 function add_anis(sim::SimData, Ku::Float64; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
   Kus =  zeros(Float64, nxyz)
