@@ -1,8 +1,37 @@
-function set_Ms(mesh::FDMesh, fun_Ms::Function)
+function Sim(mesh::FDMesh; driver="LLG", name="dyn")
+  nxyz = mesh.nx*mesh.ny*mesh.nz
+  spin = zeros(Float64,3*nxyz)
+  prespin = zeros(Float64,3*nxyz)
+  field = zeros(Float64,3*nxyz)
+  energy = zeros(Float64,nxyz)
+  Ms = zeros(Float64,nxyz)
+  driver = create_driver(driver, nxyz)
+
+  headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
+  units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
+  results = [o::SimData -> o.saver.nsteps,
+             o::SimData -> o.saver.t,
+             o::SimData -> sum(o.energy), average_m]
+  saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
+  interactions = []
+  return MicroSim(mesh, driver, saver, spin, prespin, field, energy, Ms, nxyz, name, interactions)
+end
+
+
+function set_Ms(sim::MicroSim, fun_Ms::Function)
+    mesh = sim.mesh
     for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        mesh.Ms[id] = fun_Ms(i, j, k, mesh.dx, mesh.dy, mesh.dz)
+        sim.Ms[id] = fun_Ms(i, j, k, mesh.dx, mesh.dy, mesh.dz)
     end
+    return true
+end
+
+function set_Ms(sim::MicroSim, Ms::Number)
+    for i =1:sim.nxyz
+        sim.Ms[i] = Ms
+    end
+    return true
 end
 
 function average_m(sim::SimData)
@@ -42,7 +71,7 @@ function create_sim(mesh::Mesh; name="dyn", tol=1e-6)
   return SimData(mesh, dopri5, saver, spin, prespin, field, energy, Ms, nxyz, name, 0.1, 2.21e5, true, interactions)
 end
 
-function init_m0(sim::SimData, m0::Any; norm=true)
+function init_m0(sim::MicroSim, m0::Any; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
   if norm
     normalise(sim.prespin, sim.nxyz)
@@ -50,7 +79,7 @@ function init_m0(sim::SimData, m0::Any; norm=true)
   sim.spin[:] .= sim.prespin[:]
 end
 
-function add_zeeman(sim::SimData, H0::Any; name="zeeman")
+function add_zeeman(sim::MicroSim, H0::Any; name="zeeman")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -73,7 +102,7 @@ function add_zeeman(sim::SimData, H0::Any; name="zeeman")
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
 
-function add_exch(sim::SimData, A::Float64; name="exch")
+function add_exch(sim::MicroSim, A::Float64; name="exch")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -86,7 +115,7 @@ function add_exch(sim::SimData, A::Float64; name="exch")
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
 
-function add_dmi(sim::SimData, D::Float64; name="dmi")
+function add_dmi(sim::MicroSim, D::Float64; name="dmi")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -99,7 +128,7 @@ function add_dmi(sim::SimData, D::Float64; name="dmi")
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
 
-function add_demag(sim::SimData; name="demag")
+function add_demag(sim::MicroSim; name="demag")
   demag = init_demag(sim)
   demag.name = name
   push!(sim.interactions, demag)
@@ -111,7 +140,7 @@ function add_demag(sim::SimData; name="demag")
 end
 
 
-function add_demag_gpu(sim::SimData; name="demag")
+function add_demag_gpu(sim::MicroSim; name="demag")
   demag = init_demag_gpu(sim)
   demag.name = name
   push!(sim.interactions, demag)
@@ -122,7 +151,7 @@ function add_demag_gpu(sim::SimData; name="demag")
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
 
-function add_anis(sim::SimData, Ku::Float64; axis=(0,0,1), name="anis")
+function add_anis(sim::MicroSim, Ku::Float64; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
   Kus =  zeros(Float64, nxyz)
   Kus[:] .= Ku
@@ -137,7 +166,16 @@ function add_anis(sim::SimData, Ku::Float64; axis=(0,0,1), name="anis")
   push!(sim.saver.results, o::SimData->sum(o.interactions[id].energy))
 end
 
-function relax(sim::SimData; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, save_m_every = 10)
+function relax(sim::MicroSim; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, save_m_every = 10)
+    relax(sim, sim.driver, maxsteps=maxsteps, stopping_dmdt=stopping_dmdt, save_m_every=save_m_every)
+    return nothing
+end
+
+function relax(sim::MicroSim, driver::EnergyMinimization; maxsteps=10000, stopping_dmdt=0.01, save_m_every = 10)
+
+end
+
+function relax(sim::MicroSim, driver::LLG; maxsteps=10000,  stopping_dmdt=0.01, save_m_every = 10)
   step = 0
   sim.precession = false
   rk_data = sim.ode

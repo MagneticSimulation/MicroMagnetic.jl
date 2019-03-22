@@ -1,4 +1,4 @@
-function effective_field(zee::Zeeman, sim::SimData, spin::Array{Float64, 1}, t::Float64)
+function effective_field(zee::Zeeman, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7
   nxyz = sim.nxyz
   field = zee.field
@@ -9,7 +9,7 @@ function effective_field(zee::Zeeman, sim::SimData, spin::Array{Float64, 1}, t::
   end
 end
 
-function effective_field(anis::Anisotropy, sim::SimData, spin::Array{Float64, 1}, t::Float64)
+function effective_field(anis::Anisotropy, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7
   mesh = sim.mesh
   nxyz = sim.nxyz
@@ -37,7 +37,7 @@ function effective_field(anis::Anisotropy, sim::SimData, spin::Array{Float64, 1}
 
 end
 
-function effective_field(exch::Exchange, sim::SimData, spin::Array{Float64, 1}, t::Float64)
+function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7
   mesh = sim.mesh
   dx = mesh.dx*mesh.unit_length
@@ -79,7 +79,7 @@ function effective_field(exch::Exchange, sim::SimData, spin::Array{Float64, 1}, 
   end
 end
 
-function effective_field(dmi::BulkDMI, sim::SimData, spin::Array{Float64, 1}, t::Float64)
+function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7
   mesh = sim.mesh
   dx = mesh.dx*mesh.unit_length
@@ -127,7 +127,7 @@ function effective_field(dmi::BulkDMI, sim::SimData, spin::Array{Float64, 1}, t:
 end
 
 
-function effective_field(sim::SimData, spin::Array{Float64, 1}, t::Float64)
+function effective_field(sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   fill!(sim.field, 0.0)
   fill!(sim.energy, 0.0)
   for interaction in sim.interactions

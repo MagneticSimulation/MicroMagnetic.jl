@@ -1,10 +1,15 @@
-struct Mesh
+abstract type Driver end
+abstract type Mesh end
+
+
+struct FDMesh <: Mesh
   dx::Float64
   dy::Float64
   dz::Float64
   nx::Int64
   ny::Int64
   nz::Int64
+  nxyz::Int64
   unit_length::Float64
   volume::Float64
   ngbs::Array{Int64, 2}
@@ -55,6 +60,21 @@ mutable struct SimData
   precession::Bool
   interactions::Array
 end
+
+mutable struct MicroSim
+  mesh::FDMesh
+  driver::Driver
+  saver::DataSaver
+  spin::Array{Float64, 1}
+  prespin::Array{Float64, 1}
+  field::Array{Float64, 1}
+  energy::Array{Float64, 1}
+  Ms::Array{Float64, 1}
+  nxyz::Int64
+  name::String
+  interactions::Array
+end
+
 
 mutable struct Exchange
    A::Float64
