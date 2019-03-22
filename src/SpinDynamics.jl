@@ -4,7 +4,8 @@ using Printf
 export create_mesh, create_sim,
        init_m0, add_zeeman, add_dmi,
        add_exch, add_anis, add_demag,
-       run_until, relax, save_vtk
+	   add_demag_gpu, run_until, relax,
+	   save_vtk, FDMesh, set_Ms
 
 include("head.jl")
 

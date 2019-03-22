@@ -1,3 +1,10 @@
+function set_Ms(mesh::FDMesh, fun_Ms::Function)
+    for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
+        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        mesh.Ms[id] = fun_Ms(i, j, k, mesh.dx, mesh.dy, mesh.dz)
+    end
+end
+
 function average_m(sim::SimData)
   b = reshape(sim.spin, 3, sim.nxyz)
   mx,my,mz = 0.0,0.0,0.0
