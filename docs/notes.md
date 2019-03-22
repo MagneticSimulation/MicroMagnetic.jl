@@ -3,18 +3,26 @@ Preparing
 
 We try to use [Julia](http://julialang.org). Installation and IDE stuff can be found at http://julialang.org/downloads/. The suggested IDE is atom, seems quite nice.
 
-We probably will make use of [Sundials](https://github.com/jgoldfar/Sundials.jl), which can be installed through
-
-```julia
-Pkg.add("Sundials")
-```
-
 Design
 -------------------------------
-It seems that the OOP in Julia is not fully supported, so we will try to avoid
-to use them. For example, instead of creating a mesh using the constructors, we
-use a function:
+To start a micromagnetic simulation, we first create a FDMesh
 
 ```julia
-mesh = create_mesh(dx=1.0, nx=10)
+mesh = FDMesh(dx=1.0, dy=1.0, dz=1.0, nx=100, ny=100, nz=1, unit_length=1e-9)
+```
+and the geometry of the system can be defined by
+
+```julia
+set_Ms(mesh, circular_Ms)
+```
+where `circular_Ms` could be a scalar or a function. The function should take six parameters `(i,j,k,dx,dy,dz)`, 
+for instance
+
+```julia
+function circular_Ms(i,j,k,dx,dy,dz)
+	if (i-50.5)^2 + (j-50.5)^2 <= 50^2
+		return 8.6e5
+	end
+	return 0.0
+end
 ```
