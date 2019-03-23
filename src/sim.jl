@@ -173,7 +173,7 @@ function relax(sim::MicroSim; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0
     return nothing
 end
 
-function relax(sim::MicroSim, driver::EnergyMinimization; maxsteps=10000, stopping_torque=0.1, stopping_dm_step=0.01,  save_m_every = 10, save_vtk_every = 100)
+function relax(sim::MicroSim, driver::EnergyMinimization; maxsteps=10000, stopping_torque=0.1, save_m_every = 10, save_vtk_every = -1)
   for i=1:maxsteps
     run_step(sim, sim.driver)
 	max_torque = maximum(abs.(driver.gk))
@@ -184,12 +184,12 @@ function relax(sim::MicroSim, driver::EnergyMinimization; maxsteps=10000, stoppi
     end
 	if save_vtk_every > 0
 		if i%save_vtk_every == 0
-			fname =
 	  	  save_vtk(sim, @sprintf("output_%d", i))
 		end
 	end
     sim.saver.nsteps += 1
     if max_torque < stopping_torque
+      @info @sprintf("max torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
       break
     end
   end
