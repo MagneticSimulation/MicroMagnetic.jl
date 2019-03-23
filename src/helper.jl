@@ -111,3 +111,18 @@ function compute_dmdt(m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64, dt
   end
   return max_dmdt/dt
 end
+
+function compute_dm_step(m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64)
+  max_dm = 0.0
+  for i = 0:N-1
+    j = 3*i + 1
+    mx = m1[j] - m2[j]
+    my = m1[j+1] - m2[j+1]
+    mz = m1[j+2] - m2[j+2]
+    dmdt = sqrt(mx*mx + my*my + mz*mz)
+    if dmdt > max_dm
+      max_dm = dmdt
+    end
+  end
+  return max_dm
+end

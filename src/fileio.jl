@@ -18,7 +18,7 @@ function formatstring(data::Tuple)
   return s
 end
 
-function write_data(sim::SimData)
+function write_data(sim::MicroSim)
   saver = sim.saver
   if !saver.header_saved
     io = open(saver.name, "w");

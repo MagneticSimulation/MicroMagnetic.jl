@@ -1,6 +1,6 @@
 using WriteVTK
 
-function save_vtk(sim::SimData, fname::String; fields::Array{String, 1} = String[])
+function save_vtk(sim::MicroSim, fname::String; fields::Array{String, 1} = String[])
   mesh = sim.mesh
   nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
   xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
