@@ -27,7 +27,7 @@ mutable struct Demag
   name::String
 end
 
-function init_demag(sim::SimData)
+function init_demag(sim::MicroSim)
   mesh = sim.mesh
   max_size = max(mesh.dx, mesh.dy, mesh.dz)
   dx = mesh.dx/max_size
@@ -118,7 +118,7 @@ function extract_effective_field(field::Array{Float64, 1}, fx::Array{Float64, 3}
   end
 end
 
-function effective_field(demag::Demag, sim::SimData, spin::Array{Float64, 1}, t::Float64)
+function effective_field(demag::Demag, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   nx, ny, nz = sim.mesh.nx, sim.mesh.ny, sim.mesh.nz
   copy_spin_to_m(demag.mx, demag.my, demag.mz, spin, sim.Ms, nx, ny, nz)
 

@@ -12,6 +12,7 @@ mutable struct LLG <: Driver
   alpha::Float64
   gamma::Float64
   ode::Dopri5
+  tol::Float64
 end
 
 function create_driver(driver::String, nxyz::Int64) #TODO: FIX ME
@@ -21,7 +22,7 @@ function create_driver(driver::String, nxyz::Int64) #TODO: FIX ME
     elseif driver=="LLG"
 		tol = 1e-6
         dopri5 = init_runge_kutta(nxyz, llg_call_back, tol)
-		return LLG(true, 0.1, 2.21e5, dopri5)
+		return LLG(true, 0.1, 2.21e5, dopri5, tol)
     else
        error("Supported drivers: LLG, SDM.")
     end

@@ -212,8 +212,8 @@ function relax(sim::MicroSim, driver::LLG; maxsteps=10000,
 
 end
 
-function run_until(sim::SimData, t_end::Float64)
-      rk_data = sim.ode
+function run_until(sim::MicroSim, t_end::Float64)
+      rk_data = sim.driver.ode
       if t_end < rk_data.t - rk_data.step
           println("Run_until: t_end >= rk_data.t - rk_data.step")
           return

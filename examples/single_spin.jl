@@ -13,13 +13,13 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
 end
 
 #Test mesh
-mesh =  create_mesh(nx=1, dx=1, unit_length=1e-9)
+mesh =  FDMesh(nx=1, dx=1, unit_length=1e-9)
 
-sim = create_sim(mesh, name="spin")
+sim = Sim(mesh, name="spin")
 
-sim.Ms[:] .= 8e5
-sim.alpha = 0.1
-sim.gamma = 2.21e5
+set_Ms(sim, 8e5)
+sim.driver.alpha = 0.1
+sim.driver.gamma = 2.21e5
 
 add_zeeman(sim, (0, 0, 1e5))
 
@@ -31,8 +31,7 @@ my = Float64[]
 mz = Float64[]
 for i=1:100
   run_until(sim, 1e-11*i)
-  s = @sprintf "t=%g sim.t=%g mx=%g my=%g mz=%g" i*1e-11 sim.ode.t sim.spin[1] sim.spin[2] sim.spin[3];
-  println(s)
+  @info @sprintf "t=%g sim.t=%g mx=%g my=%g mz=%g" i*1e-11 sim.driver.ode.t sim.spin[1] sim.spin[2] sim.spin[3];
   push!(ts, i*1e-11)
   push!(mx, sim.spin[1])
   push!(my, sim.spin[2])
