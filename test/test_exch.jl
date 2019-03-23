@@ -10,7 +10,7 @@ function m0_fun(i,j,k,dx,dy,dz)
 end
 
 #Test mesh
-mesh =  create_mesh(dx=2e-9, nx=Nx, ny=1, nz=1, pbc="x")
+mesh =  FDMesh(dx=2e-9, nx=Nx, ny=1, nz=1, pbc="x")
 @test mesh.dx == 2e-9
 @test mesh.nx == Nx
 println(mesh.ngbs)
@@ -22,7 +22,7 @@ println(mesh.ngbs)
 Ms = 8.6e5
 A = 1.3e-11
 
-sim = create_sim(mesh)
+sim = Sim(mesh)
 sim.Ms[:] .= Ms
 
 init_m0(sim, m0_fun, norm=false)

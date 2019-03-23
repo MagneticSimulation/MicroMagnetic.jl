@@ -1,9 +1,9 @@
 using SpinDynamics
 using Test
 
-mesh =  create_mesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=2, ny=1, nz=1)
+mesh =  FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=2, ny=1, nz=1)
 Ms = 8.6e5
-sim = create_sim(mesh)
+sim = Sim(mesh)
 sim.Ms[:] .= Ms
 
 init_m0(sim, (1,0,0))
@@ -15,9 +15,9 @@ println(sim.field)
 
 
 
-mesh =  create_mesh(nx=3, ny=2, nz=1)
+mesh =  FDMesh(nx=3, ny=2, nz=1)
 Ms = 8.6e5
-sim = create_sim(mesh)
+sim = Sim(mesh)
 sim.Ms[:] .= Ms
 init_m0(sim, (0.1,0.2,1))
 add_demag(sim)
@@ -32,9 +32,9 @@ expected = [-9615.99019074, -39898.78767025, -430282.70478141,-8664.33293854,
 @test isapprox(sim.field, expected)
 
 
-mesh =  create_mesh(dx=2, dy=1, dz=1, nx=12, ny=1, nz=1)
+mesh =  FDMesh(dx=2, dy=1, dz=1, nx=12, ny=1, nz=1)
 Ms = 8.6e5
-sim = create_sim(mesh)
+sim = Sim(mesh)
 sim.Ms[:] .= Ms
 
 init_m0(sim, (0.5,0.6,0.7))
