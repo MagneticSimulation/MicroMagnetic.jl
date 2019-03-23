@@ -12,16 +12,17 @@ function init_runge_kutta(nxyz::Int64, rhs_fun, tol::Float64)
   return Dopri5(tol, 0.0, 0, 0, facmax, facmin, safety, 0, 0, omega, omega_t, dw_dt, ks, rhs_fun, false)
 end
 
-function dopri5_step(sim::SimData, step::Float64, t::Float64)
+function dopri5_step(sim::MicroSim, step::Float64, t::Float64)
   a = (1/5, 3/10, 4/5, 8/9, 1, 1)
   b = (1/5, 3/40, 9/40, 44/45, -56/15, 32/9)
   c = (19372/6561, -25360/2187, 64448/6561, -212/729)
   d = (9017/3168, -355/33, 46732/5247, 49/176, -5103/18656)
   v = (35/384, 0, 500/1113, 125/192, -2187/6784, 11/84)
   w = (71/57600, 0, -71/16695, 71/1920, -17253/339200, 22/525, -1/40)
-  rhs = sim.ode.rhs_fun
-  ks = sim.ode.ks
-  y_next = sim.ode.omega
+  ode = sim.driver.ode
+  rhs = ode.rhs_fun
+  ks = ode.ks
+  y_next = ode.omega
 
   fill!(y_next, 0) # we always have y=0
   ks[:,1] = rhs(sim, t, y_next)  # we can not simply copy k7 since we have modified y each time
@@ -44,8 +45,8 @@ function dopri5_step(sim::SimData, step::Float64, t::Float64)
   y_next[:] = (v[1]*ks[:,1]+v[2]*ks[:,2]+v[3]*ks[:,3]+v[4]*ks[:,4]+v[5]*ks[:,5]+v[6]*ks[:,6])*step
   ks[:,7] = rhs(sim, t + a[6]*step, y_next) #k7
 
-  sim.ode.nfevals += 7
-  error = sim.ode.omega_t #we make use of omega_t to store the error temporary
+  ode.nfevals += 7
+  error = ode.omega_t #we make use of omega_t to store the error temporary
   error[:] = (w[1]*ks[:,1]+w[2]*ks[:,2]+w[3]*ks[:,3]+w[4]*ks[:,4]+w[5]*ks[:,5]+w[6]*ks[:,6]+w[7]*ks[:,7])*step
 
   max_error =  maximum(abs.(error)) + eps()
@@ -57,10 +58,10 @@ function dopri5_step(sim::SimData, step::Float64, t::Float64)
   return max_error
 end
 
-function compute_init_step(sim::SimData, dt::Float64)
+function compute_init_step(sim::MicroSim, dt::Float64)
   abs_step = dt
   abs_step_tmp = dt
-  rk_data = sim.ode
+  rk_data = sim.driver.ode
   fill!(rk_data.omega, 0)
   r_step = maximum(abs.(rk_data.rhs_fun(sim, rk_data.t, rk_data.omega))/(rk_data.safety*rk_data.tol^0.2))
   rk_data.nfevals += 1
@@ -70,7 +71,7 @@ function compute_init_step(sim::SimData, dt::Float64)
   return min(abs_step, abs_step_tmp)
 end
 
-function advance_step(sim::SimData, rk_data::Dopri5)
+function advance_step(sim::MicroSim, rk_data::Dopri5)
 
     if rk_data.succeed
         omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)

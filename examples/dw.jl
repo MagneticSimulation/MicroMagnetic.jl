@@ -12,19 +12,20 @@ function init_dw(i,j,k,dx,dy,dz)
   end
 end
 
-mesh =  create_mesh(nx=300, dx=2e-9)
-sim = create_sim(mesh, name="dyn")
+mesh =  FDMesh(nx=300, dx=2e-9)
+sim = Sim(mesh, name="dyn")
 
-sim.Ms[:] .= 8.6e5
-sim.alpha = 0.5
-sim.gamma = 2.21e5
+set_Ms(sim, 8.6e5)
+sim.driver.alpha = 0.5
+sim.driver.gamma = 2.21e5
+sim.driver.precession = false
 
 add_exch(sim, 1.3e-11)
 add_anis(sim, 1e5, axis=(1,0,0))
 
 init_m0(sim, init_dw)
 
-relax(sim, maxsteps=500)
+relax(sim, maxsteps=1000)
 
 using Plots
 gr()

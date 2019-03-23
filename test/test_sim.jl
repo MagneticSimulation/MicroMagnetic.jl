@@ -2,14 +2,14 @@ using SpinDynamics
 using Test
 
 #Test mesh
-mesh =  create_mesh(dx=1.1, nx=10)
+mesh =  FDMesh(dx=1.1, nx=10)
 @test mesh.dx == 1.1
 @test mesh.nx == 10
 #println(mesh.ngbs)
 @test mesh.ngbs[1,1] == -1
 @test mesh.ngbs[1,10] == 9
 
-sim = create_sim(mesh)
+sim = Sim(mesh, driver="LLG")
 
 @test sim.nxyz == 10
 

@@ -52,25 +52,6 @@ function average_m(sim::MicroSim)
   return (mx/n, my/n, mz/n)
 end
 
-function create_sim(mesh::Mesh; name="dyn", tol=1e-6)
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  spin = zeros(Float64,3*nxyz)
-  prespin = zeros(Float64,3*nxyz)
-  field = zeros(Float64,3*nxyz)
-  energy = zeros(Float64,nxyz)
-  Ms = zeros(Float64,nxyz)
-  dopri5 = init_runge_kutta(nxyz, rhs_call_back, tol)
-  interactions = []
-
-  headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
-  units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
-  results = [o::SimData -> o.saver.nsteps,
-             o::SimData -> o.saver.t,
-             o::SimData -> sum(o.energy), average_m]
-  saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
-  return SimData(mesh, dopri5, saver, spin, prespin, field, energy, Ms, nxyz, name, 0.1, 2.21e5, true, interactions)
-end
-
 function init_m0(sim::MicroSim, m0::Any; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
   if norm
@@ -167,18 +148,22 @@ function add_anis(sim::MicroSim, Ku::Float64; axis=(0,0,1), name="anis")
 end
 
 function relax(sim::MicroSim; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1)
-    if isa(sim.driver, EnergyMinimization)
-       relax(sim, sim.driver, maxsteps=maxsteps, stopping_torque=stopping_torque, save_m_every=save_m_every, save_vtk_every=save_vtk_every)
-    end
-    return nothing
+  if isa(sim.driver, EnergyMinimization)
+    relax(sim, sim.driver, maxsteps=maxsteps, stopping_torque=stopping_torque, save_m_every=save_m_every, save_vtk_every=save_vtk_every)
+  elseif isa(sim.driver, LLG)
+    relax(sim, sim.driver, maxsteps=maxsteps, stopping_dmdt=stopping_dmdt, save_m_every=save_m_every, save_vtk_every=save_vtk_every)
+  end
+  return nothing
 end
 
-function relax(sim::MicroSim, driver::EnergyMinimization; maxsteps=10000, stopping_torque=0.1, save_m_every = 10, save_vtk_every = -1)
+function relax(sim::MicroSim, driver::EnergyMinimization; maxsteps=10000,
+	           stopping_torque=0.1, save_m_every = 10, save_vtk_every = -1)
   for i=1:maxsteps
     run_step(sim, sim.driver)
 	max_torque = maximum(abs.(driver.gk))
     max_length_error = error_length_m(sim.spin, sim.nxyz)
-	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e  |m|_error=%10.6e", i, driver.tau, max_torque, max_length_error)
+	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e  |m|_error=%10.6e",
+	               i, driver.tau, max_torque, max_length_error)
     if i%save_m_every == 0
       write_data(sim)
     end
@@ -189,17 +174,17 @@ function relax(sim::MicroSim, driver::EnergyMinimization; maxsteps=10000, stoppi
 	end
     sim.saver.nsteps += 1
     if max_torque < stopping_torque
-      @info @sprintf("max torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
+      @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
       break
     end
   end
 end
 
-function relax(sim::MicroSim, driver::LLG; maxsteps=10000, stopping_dmdt=0.01, save_m_every = 10)
+function relax(sim::MicroSim, driver::LLG; maxsteps=10000,
+	     stopping_dmdt=0.01, save_m_every = 10, save_vtk_every = -1)
   step = 0
-  sim.precession = false
-  rk_data = sim.ode
-  rk_data.step_next = compute_init_step(sim, init_step)
+  rk_data = sim.driver.ode
+  rk_data.step_next = compute_init_step(sim, 1e-13)
   dmdt_factor = (2 * pi / 360) * 1e9
   for i=1:maxsteps
     advance_step(sim, rk_data)
@@ -207,14 +192,20 @@ function relax(sim::MicroSim, driver::LLG; maxsteps=10000, stopping_dmdt=0.01, s
     omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
     max_dmdt = compute_dmdt(sim.prespin, sim.spin, sim.nxyz, step_size)
     max_length = error_length_m(sim.spin, sim.nxyz)
-    output = @sprintf("step =%5d   step_size=%6g    sim.t=%6g    max_dmdt=%6g  m_legnth=%6g", i, step_size, rk_data.t, max_dmdt/dmdt_factor, max_length)
-    println(output)
+    @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e  |m|_error=%10.6e",
+	               i, step_size, rk_data.t, max_dmdt/dmdt_factor, max_length)
     if i%save_m_every == 0
       write_data(sim)
     end
+	if save_vtk_every > 0
+		if i%save_vtk_every == 0
+		  save_vtk(sim, @sprintf("output_%d", i))
+		end
+	end
     sim.saver.t = rk_data.t
     sim.saver.nsteps += 1
     if max_dmdt < stopping_dmdt*dmdt_factor
+      @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
       break
     end
   end
@@ -264,12 +255,12 @@ function run_until(sim::SimData, t_end::Float64)
 end
 
 
-function rhs_call_back(sim::SimData, t::Float64, omega::Array{Float64})
+function llg_call_back(sim::MicroSim, t::Float64, omega::Array{Float64})
 
-  dw_dt = sim.ode.dw_dt
+  dw_dt = sim.driver.ode.dw_dt
   omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
   effective_field(sim, sim.spin, t)
-  llg_rhs(dw_dt, sim.spin, sim.field, omega, sim.alpha, sim.gamma, sim.precession, sim.nxyz)
+  llg_rhs(dw_dt, sim.spin, sim.field, omega, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
 
   return dw_dt
 

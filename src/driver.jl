@@ -8,16 +8,22 @@ mutable struct EnergyMinimization <: Driver
 end
 
 mutable struct LLG <: Driver
-  m::Array{Float64, 1}
-  m_next::Array{Float64, 1}
-  nsteps::Int64
-  nfevals::Int64
+  precession::Bool
+  alpha::Float64
+  gamma::Float64
+  ode::Dopri5
 end
 
 function create_driver(driver::String, nxyz::Int64) #TODO: FIX ME
     if driver=="SDM"
         gk = zeros(Float64,3*nxyz)
         return EnergyMinimization(gk, 0.0, 1e-4, 1e-14, 0, 0)
+    elseif driver=="LLG"
+		tol = 1e-6
+        dopri5 = init_runge_kutta(nxyz, llg_call_back, tol)
+		return LLG(true, 0.1, 2.21e5, dopri5)
+    else
+       error("Supported drivers: LLG, SDM.")
     end
     return nothing
 end
