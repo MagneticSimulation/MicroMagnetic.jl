@@ -1,6 +1,8 @@
 abstract type Driver end
 abstract type Mesh end
-
+abstract type AbstractSim end
+abstract type MicroEnergy end
+abstract type Interaction end
 
 struct FDMesh <: Mesh
   dx::Float64
@@ -12,6 +14,16 @@ struct FDMesh <: Mesh
   nxyz::Int64
   unit_length::Float64
   volume::Float64
+  ngbs::Array{Int64, 2}
+  pbc::String
+end
+
+struct CubicMesh <: Mesh
+  a::Float64
+  nx::Int64
+  ny::Int64
+  nz::Int64
+  nxyz::Int64
   ngbs::Array{Int64, 2}
   pbc::String
 end
@@ -44,24 +56,8 @@ mutable struct DataSaver
   results::Array  #function array
 end
 
-mutable struct SimData
-  mesh::Mesh
-  ode::Dopri5
-  saver::DataSaver
-  spin::Array{Float64, 1}
-  prespin::Array{Float64, 1}
-  field::Array{Float64, 1}
-  energy::Array{Float64, 1}
-  Ms::Array{Float64, 1}
-  nxyz::Int64
-  name::String
-  alpha::Float64
-  gamma::Float64
-  precession::Bool
-  interactions::Array
-end
 
-mutable struct MicroSim
+mutable struct MicroSim <: AbstractSim
   mesh::FDMesh
   driver::Driver
   saver::DataSaver
@@ -75,9 +71,30 @@ mutable struct MicroSim
   interactions::Array
 end
 
+mutable struct AtomicSim <: AbstractSim
+  mesh::CubicMesh
+  driver::Driver
+  saver::DataSaver
+  spin::Array{Float64, 1}
+  prespin::Array{Float64, 1}
+  field::Array{Float64, 1}
+  energy::Array{Float64, 1}
+  mu_s::Array{Float64, 1}
+  nxyz::Int64
+  name::String
+  interactions::Array
+end
 
-mutable struct Exchange
+
+mutable struct Exchange <: MicroEnergy
    A::Float64
+   field::Array{Float64, 1}
+   energy::Array{Float64, 1}
+   name::String
+end
+
+mutable struct HeisenbergExchange <: Interaction
+   J::Float64
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String

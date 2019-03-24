@@ -5,7 +5,8 @@ export create_mesh, create_sim,
        init_m0, add_zeeman, add_dmi,
        add_exch, add_anis, add_demag,
 	   add_demag_gpu, run_until, relax,
-	   save_vtk, FDMesh, set_Ms, Sim
+	   save_vtk, FDMesh, set_Ms, Sim,
+	   CubicMesh, set_mu_s
 
 include("head.jl")
 

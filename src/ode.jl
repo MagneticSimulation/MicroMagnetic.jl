@@ -12,7 +12,7 @@ function init_runge_kutta(nxyz::Int64, rhs_fun, tol::Float64)
   return Dopri5(tol, 0.0, 0, 0, facmax, facmin, safety, 0, 0, omega, omega_t, dw_dt, ks, rhs_fun, false)
 end
 
-function dopri5_step(sim::MicroSim, step::Float64, t::Float64)
+function dopri5_step(sim::AbstractSim, step::Float64, t::Float64)
   a = (1/5, 3/10, 4/5, 8/9, 1, 1)
   b = (1/5, 3/40, 9/40, 44/45, -56/15, 32/9)
   c = (19372/6561, -25360/2187, 64448/6561, -212/729)
@@ -58,7 +58,7 @@ function dopri5_step(sim::MicroSim, step::Float64, t::Float64)
   return max_error
 end
 
-function compute_init_step(sim::MicroSim, dt::Float64)
+function compute_init_step(sim::AbstractSim, dt::Float64)
   abs_step = dt
   abs_step_tmp = dt
   rk_data = sim.driver.ode
@@ -71,7 +71,7 @@ function compute_init_step(sim::MicroSim, dt::Float64)
   return min(abs_step, abs_step_tmp)
 end
 
-function advance_step(sim::MicroSim, rk_data::Dopri5)
+function advance_step(sim::AbstractSim, rk_data::Dopri5)
 
     if rk_data.succeed
         omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)

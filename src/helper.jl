@@ -1,4 +1,4 @@
-function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Function)
+function init_vector!(v::Array{Float64, 1}, mesh::FDMesh, init::Function)
   nxyz = mesh.nx*mesh.ny*mesh.nz
   dx,dy,dz = mesh.dx, mesh.dy, mesh.dz
   b = reshape(v, 3, nxyz)
@@ -7,6 +7,19 @@ function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Function)
       for k = 1:mesh.nz
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
         b[:, id] .=  init(i,j,k,dx*mesh.unit_length,dy*mesh.unit_length,dz*mesh.unit_length)
+      end
+    end
+  end
+end
+
+function init_vector!(v::Array{Float64, 1}, mesh::CubicMesh, init::Function)
+  nxyz = mesh.nx*mesh.ny*mesh.nz
+  b = reshape(v, 3, nxyz)
+  for i = 1:mesh.nx
+    for j = 1:mesh.ny
+      for k = 1:mesh.nz
+        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        b[:, id] .=  init(i,j,k)
       end
     end
   end
