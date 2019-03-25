@@ -2,3 +2,14 @@ name = "SpinDynamics"
 uuid = "3f4b01e0-4ecd-11e9-123b-5d715409f080"
 authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>"]
 version = "0.1.0"
+
+[deps]
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
