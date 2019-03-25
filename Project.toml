@@ -1,0 +1,4 @@
+name = "SpinDynamics"
+uuid = "3f4b01e0-4ecd-11e9-123b-5d715409f080"
+authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>"]
+version = "0.1.0"
