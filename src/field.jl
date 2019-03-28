@@ -9,6 +9,16 @@ function effective_field(zee::Zeeman, sim::MicroSim, spin::Array{Float64, 1}, t:
   end
 end
 
+function effective_field(zee::Zeeman, sim::AtomicSim, spin::Array{Float64, 1}, t::Float64)
+  nxyz = sim.nxyz
+  field = zee.field
+  mu_s = sim.mu_s
+  for i = 1:nxyz
+    j = 3*(i-1)
+    zee.energy[i] = -mu_s[i]*(spin[j+1]*field[j+1] + spin[j+2]*field[j+2] + spin[j+3]*field[j+3])
+  end
+end
+
 function effective_field(anis::Anisotropy, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7
   mesh = sim.mesh
@@ -131,6 +141,43 @@ function effective_field(exch::HeisenbergExchange, sim::AtomicSim, spin::Array{F
     field[3*i] = fz*mu_s_inv
   end
 end
+
+function effective_field(dmi::BulkDMI, sim::AtomicSim, spin::Array{Float64, 1}, t::Float64)
+  ngbs = sim.mesh.ngbs
+  nxyz = sim.nxyz
+  field = dmi.field
+  energy = dmi.energy
+  mu_s = sim.mu_s
+  ax = (1.0,-1.0, 0.0, 0.0, 0.0, 0.0)
+  ay = (0.0, 0.0, 1.0,-1.0, 0.0, 0.0)
+  az = (0.0, 0.0, 0.0, 0.0, 1.0,-1.0)
+
+  Threads.@threads for i = 1:nxyz
+    if mu_s[i] == 0.0
+      continue
+    end
+    fx = 0.0
+    fy = 0.0
+    fz = 0.0
+
+    for j = 1:6
+      id = ngbs[j,i]
+      if id>0 && mu_s[id]>0
+        k = 3*(id-1)+1
+        fx += dmi.D*cross_x(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
+        fy += dmi.D*cross_y(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
+        fz += dmi.D*cross_z(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
+      end
+    end
+
+    mu_s_inv = 1.0/(mu_s[i])
+    energy[i] = -0.5*(fx*spin[3*i-2] + fy*spin[3*i-1] + fz*spin[3*i])
+    field[3*i-2] = fx*mu_s_inv
+    field[3*i-1] = fy*mu_s_inv
+    field[3*i] = fz*mu_s_inv
+  end
+end
+
 
 function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7

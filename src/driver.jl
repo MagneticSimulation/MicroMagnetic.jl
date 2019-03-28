@@ -76,7 +76,7 @@ function compute_tau(driver::EnergyMinimization, m_pre::Array{Float64, 1}, m::Ar
   return nothing
 end
 
-function run_step(sim::MicroSim, driver::EnergyMinimization)
+function run_step(sim::AbstractSim, driver::EnergyMinimization)
   effective_field(sim, sim.spin, 0.0)
   compute_tau(driver, sim.prespin, sim.spin, sim.field, sim.nxyz)
 

@@ -80,7 +80,7 @@ function init_m0(sim::AbstractSim, m0::Any; norm=true)
   sim.spin[:] .= sim.prespin[:]
 end
 
-function add_zeeman(sim::MicroSim, H0::Any; name="zeeman")
+function add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -95,12 +95,12 @@ function add_zeeman(sim::MicroSim, H0::Any; name="zeeman")
   push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
   push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
   id = length(sim.interactions)
-  fun = o::MicroSim ->  (o.interactions[id].Hx, o.interactions[id].Hy, o.interactions[id].Hz)
+  fun = o::AbstractSim ->  (o.interactions[id].Hx, o.interactions[id].Hy, o.interactions[id].Hz)
   push!(sim.saver.results, fun)
 
   push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
-  push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
+  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
 end
 
 function add_exch(sim::AbstractSim, A::Float64; name="exch")
@@ -120,7 +120,7 @@ function add_exch(sim::AbstractSim, A::Float64; name="exch")
   push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
 end
 
-function add_dmi(sim::MicroSim, D::Float64; name="dmi")
+function add_dmi(sim::AbstractSim, D::Float64; name="dmi")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -130,7 +130,7 @@ function add_dmi(sim::MicroSim, D::Float64; name="dmi")
   push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
-  push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
+  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
 end
 
 function add_demag(sim::MicroSim; name="demag")
@@ -181,7 +181,7 @@ function relax(sim::AbstractSim; maxsteps=10000, init_step = 1e-13, stopping_dmd
 end
 
 function relax(sim::AbstractSim, driver::EnergyMinimization; maxsteps=10000,
-	           stopping_torque=0.1, save_m_every = 10, save_vtk_every = -1)
+               stopping_torque=0.1, save_m_every = 10, save_vtk_every = -1)
   for i=1:maxsteps
     run_step(sim, sim.driver)
 	max_torque = maximum(abs.(driver.gk))
