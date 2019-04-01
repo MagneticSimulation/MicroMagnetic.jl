@@ -88,10 +88,6 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
 
   Threads.@threads for i = 1:nxyz
     if Ms[i] == 0.0
-      energy[i] = 0.0
-      field[3*i-2] = 0.0
-      field[3*i-1] = 0.0
-      field[3*i] = 0.0
       continue
     end
     fx, fy, fz = 0.0, 0.0, 0.0

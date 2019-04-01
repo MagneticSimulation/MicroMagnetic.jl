@@ -1,3 +1,5 @@
+__precompile__()
+
 module SpinDynamics
 using Printf
 

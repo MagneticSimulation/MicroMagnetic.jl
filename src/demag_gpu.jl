@@ -34,7 +34,7 @@ mutable struct DemagGPU
   name::String
 end
 
-function init_demag_gpu(sim::SimData)
+function init_demag_gpu(sim::MicroSim)
   mesh = sim.mesh
   max_size = max(mesh.dx, mesh.dy, mesh.dz)
   dx = mesh.dx/max_size
@@ -94,8 +94,9 @@ function init_demag_gpu(sim::SimData)
   return demag
 end
 
-
-function compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz, nx, ny, nz, dx, dy, dz)
+function compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz,
+                                 tensor_xy, tensor_xz, tensor_yz,
+                                 nx::Int64, ny::Int64, nz::Int64, dx::Float64, dy::Float64, dz::Float64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx_fft, ny_fft, nz_fft = size(tensor_xx)
     if 0 < index <= nx_fft*ny_fft*nz_fft
@@ -116,7 +117,7 @@ function compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz, tensor_xy, ten
     return nothing
 end
 
-function distribute_m_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, nx,ny,nz)
+function distribute_m_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu,  nx::Int64,ny::Int64,nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx_fft, ny_fft, nz_fft = size(mx_gpu)
     if 0< index <= nx*ny*nz
@@ -129,7 +130,7 @@ function distribute_m_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, nx,ny,nz)
 end
 
 
-function collect_h_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, nx,ny,nz)
+function collect_h_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, nx::Int64,ny::Int64,nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx_fft, ny_fft, nz_fft = size(mx_gpu)
     if 0< index <= nx*ny*nz
@@ -141,7 +142,7 @@ function collect_h_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, nx,ny,nz)
     return nothing
 end
 
-function effective_field(demag::DemagGPU, sim::SimData, spin::Array{Float64, 1}, t::Float64)
+function effective_field(demag::DemagGPU, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   nx, ny, nz = sim.mesh.nx, sim.mesh.ny, sim.mesh.nz
   for i = 1:sim.nxyz
       j = 3*i
