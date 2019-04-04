@@ -6,9 +6,11 @@ using Printf
 export create_mesh, create_sim,
        init_m0, add_zeeman, add_dmi,
        add_exch, add_anis, add_demag,
-	   add_demag_gpu, run_until, relax,
+	   run_until, relax,
 	   save_vtk, FDMesh, set_Ms, Sim,
 	   CubicMesh, set_mu_s
+
+const FloatGPU = Float64
 
 include("head.jl")
 
@@ -26,8 +28,10 @@ include("demag.jl")
 include("vtk.jl")
 
 try
-	using CUDAdrv
+	using CUDAnative
 	include("demag_gpu.jl")
+    include("gpu/head.jl")
+    export add_demag_gpu, FDMeshGPU
 catch
     @warn "CUDA is not available!"
 end
