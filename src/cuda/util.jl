@@ -13,96 +13,35 @@ function init_vector!(v::Array{Float64, 1}, mesh::FDMeshGPU, init::Function)
   return nothing
 end
 
-function normalise(a::Array{Float64, 1}, N::Int64)
-  for i = 0:N-1
-      j = 3*i+1
-      length = sqrt(a[j]*a[j]+a[j+1]*a[j+1]+a[j+2]*a[j+2])
-      if length > 0
-        length = 1.0/length
-        a[j] *= length
-        a[j+1] *= length
-        a[j+2] *= length
-      end
-    end
-   return nothing
-end
-
-function error_length_m(a::Array{Float64, 1}, N::Int64)
-  maxlength = 0.0
-  minlength = 100.0
-  for i = 0:N-1
-    j = 3*i+1
-    length = sqrt(a[j]*a[j]+a[j+1]*a[j+1]+a[j+2]*a[j+2])
-    if length > maxlength
-      maxlength = length
-    end
-    if length < minlength
-      minlength = length
-    end
-  end
-  return maxlength-minlength
-end
-
-function omega_to_spin(omega::Array{Float64, 1}, spin::Array{Float64, 1}, spin_next::Array{Float64, 1}, N::Int64)
+function omega_to_spin(omega::CuArray{T, 1}, spin::CuArray{T, 1}, spin_next::CuArray{T, 1}, N::Int64) where {T<:AbstractFloat}
   #compute Cay(Omega).m where Cay(Omega) = (I - 1/2 Omega)^-1 (I + 1/2 Omega)
   #where Omega = Skew[w1, w2, w3] = {{0, -w3, w2}, {w3, 0, -w1}, {-w2, w1, 0}}
-  for i = 0:N-1
-    j = 3*i + 1
-    w1 = omega[j]*0.5
-    w2 = omega[j+1]*0.5
-    w3 = omega[j+2]*0.5
-    m1 = spin[j]
-    m2 = spin[j+1]
-    m3 = spin[j+2]
-    r = 1 + w1*w1 + w2*w2 + w3*w3
-    a11 = 1 + w1*w1 - w2*w2 - w3*w3
-    a12 = 2*(w1*w2 - w3)
-    a13 = 2*(w2 + w1*w3)
-    a21 = 2*(w1*w2 + w3)
-    a22 = 1 - w1*w1 + w2*w2 - w3*w3
-    a23 = -2*(w1-w2*w3)
-    a31 = 2*(-w2+w1*w3)
-    a32 = 2*(w1+w2*w3)
-    a33 = 1 - w1*w1 - w2*w2 + w3*w3
-    spin_next[j] = (a11*m1 + a12*m2 + a13*m3)/r
-    spin_next[j+1] = (a21*m1 + a22*m2 + a23*m3)/r
-    spin_next[j+2] = (a31*m1 + a32*m2 + a33*m3)/r
+  function kernal!(a, b, c, N::Int64)
+      i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+      if 0 < i <= N
+        j = 3*i-2
+        @inbounds w1 = a[j]*0.5
+        @inbounds w2 = a[j+1]*0.5
+        @inbounds w3 = a[j+2]*0.5
+        @inbounds m1 = b[j]
+        @inbounds m2 = b[j+1]
+        @inbounds m3 = b[j+2]
+        r = 1 + w1*w1 + w2*w2 + w3*w3
+        a11 = 1 + w1*w1 - w2*w2 - w3*w3
+        a12 = 2*(w1*w2 - w3)
+        a13 = 2*(w2 + w1*w3)
+        a21 = 2*(w1*w2 + w3)
+        a22 = 1 - w1*w1 + w2*w2 - w3*w3
+        a23 = -2*(w1-w2*w3)
+        a31 = 2*(-w2+w1*w3)
+        a32 = 2*(w1+w2*w3)
+        a33 = 1 - w1*w1 - w2*w2 + w3*w3
+        @inbounds c[j] = (a11*m1 + a12*m2 + a13*m3)/r
+        @inbounds c[j+1] = (a21*m1 + a22*m2 + a23*m3)/r
+        @inbounds c[j+2] = (a31*m1 + a32*m2 + a33*m3)/r
+      end
   end
-end
-function compute_error2(error::Array{Float64,1}, N::Int64)
-  norm = 0.0
-  for i=1:N
-    norm += error[i]^2
-  end
-  return sqrt(norm/N)
-end
-
-function compute_dmdt(m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64, dt::Float64)
-  max_dmdt = 0.0
-  for i = 0:N-1
-    j = 3*i + 1
-    mx = m1[j] - m2[j]
-    my = m1[j+1] - m2[j+1]
-    mz = m1[j+2] - m2[j+2]
-    dmdt = sqrt(mx*mx + my*my + mz*mz)
-    if dmdt > max_dmdt
-      max_dmdt = dmdt
-    end
-  end
-  return max_dmdt/dt
-end
-
-function compute_dm_step(m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64)
-  max_dm = 0.0
-  for i = 0:N-1
-    j = 3*i + 1
-    mx = m1[j] - m2[j]
-    my = m1[j+1] - m2[j+1]
-    mz = m1[j+2] - m2[j+2]
-    dmdt = sqrt(mx*mx + my*my + mz*mz)
-    if dmdt > max_dm
-      max_dm = dmdt
-    end
-  end
-  return max_dm
+  blk, thr = CuArrays.cudims(N)
+  @cuda blocks=blk threads=thr kernel!(omega, spin, spin_next, N)
+  return nothing
 end

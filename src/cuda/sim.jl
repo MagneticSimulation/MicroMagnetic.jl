@@ -77,3 +77,18 @@ function add_exch(sim::MicroSimGPU, A::Float64; name="exch")
   id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
 end
+
+function add_anis(sim::MicroSimGPU, Ku::Float64; axis=(0,0,1), name="anis")
+  nxyz = sim.nxyz
+  Kus =  cuzeros(FloatGPU, nxyz)
+  Kus[:] .= Ku
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  anis =  AnisotropyGPU(Kus, axis, field, energy, name)
+  push!(sim.interactions, anis)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+end

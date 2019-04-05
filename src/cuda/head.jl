@@ -84,3 +84,11 @@ mutable struct ZeemanGPU <: MicroEnergyGPU
    energy::Array{FloatGPU, 1}
    name::String
 end
+
+mutable struct AnisotropyGPU <: MicroEnergyGPU
+   Ku::CuArray{FloatGPU, 1}
+   axis::Tuple
+   field::Array{FloatGPU, 1}
+   energy::Array{FloatGPU, 1}
+   name::String
+end
