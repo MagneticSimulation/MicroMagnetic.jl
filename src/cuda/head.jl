@@ -1,6 +1,10 @@
 using CuArrays
 
-struct FDMeshGPU <: Mesh
+abstract type MeshGPU <: Mesh end
+abstract type DriverGPU end
+abstract type MicroEnergyGPU end
+
+struct FDMeshGPU <: MeshGPU
   dx::FloatGPU
   dy::FloatGPU
   dz::FloatGPU
@@ -30,24 +34,53 @@ mutable struct Dopri5GPU
    safety::Float64
    nsteps::Int64
    nfevals::Int64
-   omega::Array{FloatGPU, 1}
-   omega_t::Array{FloatGPU, 1}
-   dw_dt::Array{FloatGPU, 1}
-   ks::Array{FloatGPU, 2}
+   omega::CuArray{FloatGPU, 1}
+   omega_t::CuArray{FloatGPU, 1}
+   dw_dt::CuArray{FloatGPU, 1}
+   ks::CuArray{FloatGPU, 2}
    rhs_fun::Function
    succeed::Bool
 end
 
-mutable struct MicroSimGPU <: AbstractSim
-  mesh::FDMesh
-  driver::Driver
+mutable struct LLG_GPU <: DriverGPU
+  precession::Bool
+  alpha::Float64
+  gamma::Float64
+  ode::Dopri5GPU
+  tol::Float64
+  field::CuArray{FloatGPU, 1}
+end
+
+mutable struct MicroSimGPU
+  mesh::FDMeshGPU
+  driver::DriverGPU
   saver::DataSaver
-  spin::Array{Float64, 1}
-  prespin::Array{Float64, 1}
-  field::Array{Float64, 1}
-  energy::Array{Float64, 1}
-  Ms::Array{Float64, 1}
+  spin::CuArray{FloatGPU, 1}
+  prespin::CuArray{FloatGPU, 1}
+  field::CuArray{FloatGPU, 1}
+  energy::CuArray{FloatGPU, 1}
+  Ms::CuArray{FloatGPU, 1}
   nxyz::Int64
+  blocks::Int64
+  threads::Int64
   name::String
-  interactions::Array
+  interactions::Array{Any, 1}
+end
+
+mutable struct ExchangeGPU <: MicroEnergyGPU
+   A::Float64
+   field::Array{FloatGPU, 1}
+   energy::Array{FloatGPU, 1}
+   total_energy::FloatGPU
+   name::String
+end
+
+mutable struct ZeemanGPU <: MicroEnergyGPU
+   Hx::Float64
+   Hy::Float64
+   Hz::Float64
+   field::Array{FloatGPU, 1}
+   field_gpu::CuArray{FloatGPU, 1}
+   energy::Array{FloatGPU, 1}
+   name::String
 end

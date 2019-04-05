@@ -27,12 +27,25 @@ include("demag.jl")
 
 include("vtk.jl")
 
+cuda_available = true
 try
-	using CUDAnative
-	include("demag_gpu.jl")
-    include("gpu/head.jl")
-    export add_demag_gpu, FDMeshGPU
+	using CuArrays, CUDAnative, CUDAdrv
 catch
+    cuda_available = false
     @warn "CUDA is not available!"
 end
+
+if cuda_available
+    include("demag_gpu.jl")
+    include("cuda/head.jl")
+    include("cuda/driver.jl")
+    include("cuda/sim.jl")
+    include("cuda/ode.jl")
+    include("cuda/util.jl")
+    include("cuda/field.jl")
+    export add_demag_gpu, FDMeshGPU
+end
+
+
+
 end

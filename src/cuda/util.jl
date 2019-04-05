@@ -1,11 +1,4 @@
-function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
-    for i =1:mesh.nxyz
-        v[i] = init
-    end
-    return nothing
-end
-
-function init_vector!(v::Array{Float64, 1}, mesh::FDMesh, init::Function)
+function init_vector!(v::Array{Float64, 1}, mesh::FDMeshGPU, init::Function)
   nxyz = mesh.nx*mesh.ny*mesh.nz
   dx,dy,dz = mesh.dx, mesh.dy, mesh.dz
   b = reshape(v, 3, nxyz)
@@ -13,46 +6,9 @@ function init_vector!(v::Array{Float64, 1}, mesh::FDMesh, init::Function)
     for j = 1:mesh.ny
       for k = 1:mesh.nz
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        b[:, id] .=  init(i,j,k,dx*mesh.unit_length,dy*mesh.unit_length,dz*mesh.unit_length)
+        b[:, id] .=  init(i,j,k,dx,dy,dz)
       end
     end
-  end
-  return nothing
-end
-
-function init_vector!(v::Array{Float64, 1}, mesh::CubicMesh, init::Function)
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  b = reshape(v, 3, nxyz)
-  for i = 1:mesh.nx
-    for j = 1:mesh.ny
-      for k = 1:mesh.nz
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        b[:, id] .=  init(i,j,k)
-      end
-    end
-  end
-end
-
-function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Tuple{Number,Number,Number})
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  b = reshape(v, 3, nxyz)
-  b[1, :] .= init[1]
-  b[2, :] .= init[2]
-  b[3, :] .= init[3]
-  return nothing
-end
-
-function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Array{Float64, 1})
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  b = reshape(v, 3, nxyz)
-  if length(init) == 3
-    b[1, :] .= init[1]
-    b[2, :] .= init[2]
-    b[3, :] .= init[3]
-  elseif length(init) == length(v)
-    v[:] .= init[:]
-  else
-    error("Init array length must be equal to 3*nx*ny*nz or 3")
   end
   return nothing
 end
