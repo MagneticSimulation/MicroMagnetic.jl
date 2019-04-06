@@ -30,6 +30,7 @@ include("vtk.jl")
 cuda_available = true
 try
 	using CuArrays, CUDAnative, CUDAdrv
+    #CuArrays.allowscalar(false) TODO: where should it be?
 catch
     cuda_available = false
     @warn "CUDA is not available!"

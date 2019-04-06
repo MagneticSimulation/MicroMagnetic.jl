@@ -59,6 +59,30 @@ function dopri5_step(sim::MicroSimGPU, step::Float64, t::Float64)
   return max_error
 end
 
+
+function interpolation_dopri5(rk_data::Dopri5GPU, t::Float64)
+    x = (t-rk_data.t+rk_data.step)/rk_data.step
+    #assert x>=0 && x<=1
+    k1,k2,k3,k4,k5,k6,k7 = rk_data.k1, rk_data.k2, rk_data.k3, rk_data.k4, rk_data.k5, rk_data.k6, rk_data.k7
+    if x == 1.0
+        rk_data.omega_t .= rk_data.omega
+        return
+    end
+
+    v = (35/384, 0, 500/1113, 125/192, -2187/6784, 11/84)
+    x1 = x*x*(3-2*x)
+    x2 = x*x*(x-1)^2
+    b1 = x1*v[1] + x*(x-1)^2 - x2*5*(2558722523 - 31403016*x)/11282082432
+    #b2 = 0
+    b3 = x1*v[3] + x2*100*(882725551 - 15701508*x)/32700410799
+    b4 = x1*v[4] - x2*25*(443332067 - 31403016*x)/1880347072
+    b5 = x1*v[5] + x2*32805*(23143187 - 3489224*x)/199316789632
+    b6 = x1*v[6] - x2*55*(29972135 - 7076736*x)/822651844
+    b7 = x*x*(x-1) + x2*10*(7414447 - 829305*x)/29380423
+
+    rk_data.omega_t .= (b1.*k1 .+ b3.*k3 .+ b4.*k4 .+ b5.*k5 .+ b6.*k6 .+ b7*k7).*rk_data.step
+end
+
 function compute_init_step(sim::MicroSimGPU, dt::Float64)
   abs_step = dt
   abs_step_tmp = dt
@@ -92,7 +116,7 @@ function advance_step(sim::MicroSimGPU, rk_data::Dopri5GPU)
 
     while true
         max_error = dopri5_step(sim, step_next, t)/rk_data.tol
-        
+
         rk_data.succeed = (max_error <= 1)
 
         if rk_data.succeed

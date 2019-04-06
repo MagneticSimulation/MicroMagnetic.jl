@@ -1,3 +1,6 @@
+using CuArrays
+CuArrays.allowscalar(false)
+
 function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
   nxyz = mesh.nx*mesh.ny*mesh.nz
   spin = cuzeros(FloatGPU, 3*nxyz)
@@ -11,7 +14,7 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
   units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
   results = [o::AbstractSim -> o.saver.nsteps,
              o::AbstractSim -> o.saver.t,
-             o::AbstractSim -> o.total_energy, average_m]
+             o::AbstractSim -> sum(o.energy), average_m]
   saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
   interactions = []
 
@@ -49,7 +52,7 @@ function add_zeeman(sim::MicroSimGPU, H0::Any; name="zeeman")
   Hy = sum(b[2,:])/nxyz
   Hz = sum(b[3,:])/nxyz
   field_gpu = CuArray(field)
-  zeeman =  ZeemanGPU(Hx, Hy, Hz, field, field_gpu, energy, name)
+  zeeman =  ZeemanGPU(Hx, Hy, Hz, field, field_gpu, energy, FloatGPU(0.0), name)
   push!(sim.interactions, zeeman)
 
   push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
@@ -84,7 +87,7 @@ function add_anis(sim::MicroSimGPU, Ku::Float64; axis=(0,0,1), name="anis")
   Kus[:] .= Ku
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
-  anis =  AnisotropyGPU(Kus, axis, field, energy, name)
+  anis =  AnisotropyGPU(Kus, axis, field, energy, FloatGPU(0.0), name)
   push!(sim.interactions, anis)
 
   push!(sim.saver.headers, string("E_",name))
@@ -107,14 +110,12 @@ function relax(sim::MicroSimGPU; maxsteps=10000,
     advance_step(sim, rk_data)
     step_size = rk_data.step
     omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
-    println("prespin: ",sim.prespin)
-    println("spin: ",sim.spin)
     max_dmdt = compute_dmdt(sim.prespin, sim.spin, sim.nxyz, step_size)
     #max_length = error_length_m(sim.spin, sim.nxyz)
     @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
 	               i, step_size, rk_data.t, max_dmdt/dmdt_factor)
     if i%save_m_every == 0
-      #write_data(sim)
+      write_data(sim)
     end
 	if save_vtk_every > 0
 		if i%save_vtk_every == 0

@@ -1,6 +1,7 @@
 using CuArrays
 
 abstract type MeshGPU <: Mesh end
+abstract type AbstractSimGPU <:AbstractSim end
 abstract type DriverGPU end
 abstract type MicroEnergyGPU end
 
@@ -57,7 +58,7 @@ mutable struct LLG_GPU <: DriverGPU
   field::CuArray{FloatGPU, 1}
 end
 
-mutable struct MicroSimGPU
+mutable struct MicroSimGPU <:AbstractSimGPU
   mesh::FDMeshGPU
   driver::DriverGPU
   saver::DataSaver
@@ -88,6 +89,7 @@ mutable struct ZeemanGPU <: MicroEnergyGPU
    field::Array{FloatGPU, 1}
    field_gpu::CuArray{FloatGPU, 1}
    energy::Array{FloatGPU, 1}
+   total_energy::FloatGPU
    name::String
 end
 
@@ -96,5 +98,6 @@ mutable struct AnisotropyGPU <: MicroEnergyGPU
    axis::Tuple
    field::Array{FloatGPU, 1}
    energy::Array{FloatGPU, 1}
+   total_energy::FloatGPU
    name::String
 end

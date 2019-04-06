@@ -85,3 +85,9 @@ function normalise(a::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
 
    return nothing
 end
+
+
+function average_m(sim::AbstractSimGPU)
+  b = reshape(sim.spin, 3, sim.nxyz)
+  return Tuple(sum(b, dims=2)./sim.nxyz)  #FIXME: using non-zero N in general case?
+end
