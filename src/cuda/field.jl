@@ -10,7 +10,7 @@ function zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
         @inbounds h[j+1] = h_static[j+1]
         @inbounds h[j+2] = h_static[j+2]
         @inbounds h[j+3] = h_static[j+3]
-        @inbounds energy[i] = -mu0*Ms[i]*volume*(m[j+1]*h[j+1] + m[j+2]*h[j+2] + m[j+3]*h[j+3])
+        @inbounds energy[index] = -mu0*Ms[index]*volume*(m[j+1]*h[j+1] + m[j+2]*h[j+2] + m[j+3]*h[j+3])
     end
    return nothing
 end
@@ -20,7 +20,7 @@ function effective_field(zeeman::ZeemanGPU, sim::MicroSimGPU, spin::CuArray{Floa
   nxyz = sim.nxyz
   volume = sim.mesh.volume
   blocks_n, threads_n = sim.blocks, sim.threads
-  @cuda blocks=blocks_n threads=threads_n zeeman_kernel!(spin, sim.field, zeeman.field_gpu, energy, sim.Ms, volume, nxyz)
+  @cuda blocks=blocks_n threads=threads_n zeeman_kernel!(spin, sim.field, zeeman.field_gpu, sim.energy, sim.Ms, volume, nxyz)
   return nothing
 end
 
@@ -131,7 +131,7 @@ end
 function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Ku::CuDeviceArray{T, 1},
                         axis_x::T, axis_y::T, axis_z::T,
-                        Ms::CuDeviceArray{T, 1}, nxyz::Int64) where {T<:AbstractFloat}
+                        Ms::CuDeviceArray{T, 1}, volume::T, nxyz::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if index <= nxyz
         mu0 = 4*pi*1e-7
@@ -145,7 +145,7 @@ function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
         @inbounds h[j+1] = Ku[index]*m[j+1]*axis_x*Ms_inv
         @inbounds h[j+2] = Ku[index]*m[j+2]*axis_y*Ms_inv
         @inbounds h[j+3] = Ku[index]*m[j+3]*axis_z*Ms_inv
-        @inbounds energy[i] = Ku[index]*(1.0-sa*sa)*volume
+        @inbounds energy[index] = Ku[index]*(1.0-sa*sa)*volume
     end
    return nothing
 end
@@ -154,9 +154,10 @@ end
 function effective_field(anis::AnisotropyGPU, sim::MicroSimGPU, spin::CuArray{Float64, 1}, t::Float64)
     blocks_n, threads_n = sim.blocks, sim.threads
     axis = anis.axis
-    @cuda blocks=blocks_n threads=threads_n anisotropy_kernel!(spin, sim.field, sim.energy, anis.Ku, sim.Ms,
+    volume = sim.mesh.volume
+    @cuda blocks=blocks_n threads=threads_n anisotropy_kernel!(spin, sim.field, sim.energy, anis.Ku,
                                          FloatGPU(axis[1]), FloatGPU(axis[2]),FloatGPU(axis[3]),
-                                         sim.Ms, sim.nyz)
+                                         sim.Ms, volume, sim.nxyz)
     return nothing
 end
 

@@ -41,6 +41,7 @@ if cuda_available
     include("cuda/driver.jl")
     include("cuda/sim.jl")
     include("cuda/ode.jl")
+    include("cuda/llg.jl")
     include("cuda/util.jl")
     include("cuda/field.jl")
     export add_demag_gpu, FDMeshGPU

@@ -49,7 +49,7 @@ function add_zeeman(sim::MicroSimGPU, H0::Any; name="zeeman")
   Hy = sum(b[2,:])/nxyz
   Hz = sum(b[3,:])/nxyz
   field_gpu = CuArray(field)
-  zeeman =  Zeeman(Hx, Hy, Hz, field, field_gpu, energy, name)
+  zeeman =  ZeemanGPU(Hx, Hy, Hz, field, field_gpu, energy, name)
   push!(sim.interactions, zeeman)
 
   push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
@@ -91,4 +91,41 @@ function add_anis(sim::MicroSimGPU, Ku::Float64; axis=(0,0,1), name="anis")
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+end
+
+
+function relax(sim::MicroSimGPU; maxsteps=10000,
+	     stopping_dmdt=0.01, save_m_every = 10, save_vtk_every = -1)  #TODO: merge with CPU function?
+  step = 0
+  rk_data = sim.driver.ode
+  rk_data.step_next = compute_init_step(sim, 1e-13)
+  dmdt_factor = 1.0
+  if isa(sim, MicroSimGPU)
+    dmdt_factor = (2 * pi / 360) * 1e9
+  end
+  for i=1:maxsteps
+    advance_step(sim, rk_data)
+    step_size = rk_data.step
+    omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
+    println("prespin: ",sim.prespin)
+    println("spin: ",sim.spin)
+    max_dmdt = compute_dmdt(sim.prespin, sim.spin, sim.nxyz, step_size)
+    #max_length = error_length_m(sim.spin, sim.nxyz)
+    @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
+	               i, step_size, rk_data.t, max_dmdt/dmdt_factor)
+    if i%save_m_every == 0
+      #write_data(sim)
+    end
+	if save_vtk_every > 0
+		if i%save_vtk_every == 0
+		  save_vtk(sim, @sprintf("output_%d", i))
+		end
+	end
+    sim.saver.t = rk_data.t
+    sim.saver.nsteps += 1
+    if max_dmdt < stopping_dmdt*dmdt_factor
+      @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
+      break
+    end
+  end
 end

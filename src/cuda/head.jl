@@ -37,7 +37,13 @@ mutable struct Dopri5GPU
    omega::CuArray{FloatGPU, 1}
    omega_t::CuArray{FloatGPU, 1}
    dw_dt::CuArray{FloatGPU, 1}
-   ks::CuArray{FloatGPU, 2}
+   k1::CuArray{FloatGPU, 1}
+   k2::CuArray{FloatGPU, 1}
+   k3::CuArray{FloatGPU, 1}
+   k4::CuArray{FloatGPU, 1}
+   k5::CuArray{FloatGPU, 1}
+   k6::CuArray{FloatGPU, 1}
+   k7::CuArray{FloatGPU, 1}
    rhs_fun::Function
    succeed::Bool
 end

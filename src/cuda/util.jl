@@ -16,7 +16,7 @@ end
 function omega_to_spin(omega::CuArray{T, 1}, spin::CuArray{T, 1}, spin_next::CuArray{T, 1}, N::Int64) where {T<:AbstractFloat}
   #compute Cay(Omega).m where Cay(Omega) = (I - 1/2 Omega)^-1 (I + 1/2 Omega)
   #where Omega = Skew[w1, w2, w3] = {{0, -w3, w2}, {w3, 0, -w1}, {-w2, w1, 0}}
-  function kernal!(a, b, c, N::Int64)
+  function __kernal!(a, b, c, N::Int64)
       i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
       if 0 < i <= N
         j = 3*i-2
@@ -40,8 +40,48 @@ function omega_to_spin(omega::CuArray{T, 1}, spin::CuArray{T, 1}, spin_next::CuA
         @inbounds c[j+1] = (a21*m1 + a22*m2 + a23*m3)/r
         @inbounds c[j+2] = (a31*m1 + a32*m2 + a33*m3)/r
       end
+      return nothing
   end
   blk, thr = CuArrays.cudims(N)
-  @cuda blocks=blk threads=thr kernel!(omega, spin, spin_next, N)
+  @cuda blocks=blk threads=thr __kernal!(omega, spin, spin_next, N)
   return nothing
+end
+
+
+function compute_dmdt(m1::CuArray{T, 1}, m2::CuArray{T, 1}, N::Int64, dt::Float64) where {T<:AbstractFloat}
+  dmdt = cuzeros(T, N)
+  function __kernal!(a, b, c, n::Int64)
+     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+     if 0 < i <= n
+         j = 3*i - 2
+         @inbounds mx = a[j] - b[j]
+         @inbounds my = a[j+1] - b[j+1]
+         @inbounds mz = a[j+2] - b[j+2]
+         @inbounds c[i] = CUDAnative.sqrt(mx*mx + my*my + mz*mz)
+     end
+     return nothing
+  end
+  blk, thr = CuArrays.cudims(N)
+  @cuda blocks=blk threads=thr __kernal!(m1, m2, dmdt, N)
+  max_dmdt = maximum(dmdt)/dt #TODO: (1)how to free dmdt? (2)how to avoid to use maximum?
+  return max_dmdt
+end
+
+
+function normalise(a::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
+    function __kernal!(a,  n::Int64)
+       i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+       if 0 < i <= n
+           j = 3*i - 2
+           @inbounds length = 1.0/CUDAnative.sqrt(a[j]^2 + a[j+1]^2 + a[j+2]^2)
+           @inbounds a[j] *= length
+           @inbounds a[j+1] *= length
+           @inbounds a[j+2] *= length
+       end
+       return nothing
+    end
+    blk, thr = CuArrays.cudims(N)
+    @cuda blocks=blk threads=thr __kernal!(a, N)
+
+   return nothing
 end
