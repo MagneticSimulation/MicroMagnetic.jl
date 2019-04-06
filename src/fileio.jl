@@ -10,6 +10,10 @@ function formatstring(x::Float64)
   return @sprintf("%18.12e ", x)
 end
 
+function formatstring(x::Float32)
+  return @sprintf("%18.12e ", x)
+end
+
 function formatstring(data::Tuple)
   s = ""
   for x in data

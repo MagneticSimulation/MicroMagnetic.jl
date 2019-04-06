@@ -1,6 +1,9 @@
 using SpinDynamics
 using Test
 
+SpinDynamics.cuda_using_double(false)
+
+
 function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     precession = gamma / (1 + alpha*alpha)
     beta = precession * H0 * ts
@@ -24,10 +27,6 @@ add_zeeman(sim, (0, 0, 1e5))
 
 init_m0(sim, (1.0, 0, 0))
 
-ts = Float64[]
-mx = Float64[]
-my = Float64[]
-mz = Float64[]
 for i=1:30
   run_until(sim, 1e-11*i)
 end

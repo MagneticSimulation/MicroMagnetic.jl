@@ -1,13 +1,18 @@
-using CuArrays
-CuArrays.allowscalar(false)
+function FDMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=10, ny=10, nz=1, pbc=(false, false, false))
+  nxyz = nx*ny*nz
+  volume = dx*dy*dz
+  Float = _cuda_using_double.x ? Float64 : Float32
+  return FDMeshGPU(Float(dx), Float(dy), Float(dz), nx, ny, nz, nxyz, pbc[1], pbc[2], pbc[3], Float(volume))
+end
 
 function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
   nxyz = mesh.nx*mesh.ny*mesh.nz
-  spin = cuzeros(FloatGPU, 3*nxyz)
-  prespin = cuzeros(FloatGPU,3*nxyz)
-  field = cuzeros(FloatGPU,3*nxyz)
-  energy = cuzeros(FloatGPU,nxyz)
-  Ms = cuzeros(FloatGPU, nxyz)
+  Float = _cuda_using_double.x ? Float64 : Float32
+  spin = cuzeros(Float, 3*nxyz)
+  prespin = cuzeros(Float,3*nxyz)
+  field = cuzeros(Float,3*nxyz)
+  energy = cuzeros(Float,nxyz)
+  Ms = cuzeros(Float, nxyz)
   driver = create_driver_gpu(driver, nxyz)
 
   headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
@@ -24,7 +29,8 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
 end
 
 function set_Ms(sim::MicroSimGPU, init::Any)
-    Ms = zeros(FloatGPU, sim.nxyz)
+    Float = _cuda_using_double.x ? Float64 : Float32
+    Ms = zeros(Float, sim.nxyz)
     init_scalar!(Ms, sim.mesh, init)
     copyto!(sim.Ms, Ms)
     return true
@@ -32,7 +38,8 @@ end
 
 
 function init_m0(sim::MicroSimGPU, m0::Any; norm=true)
-  spin = zeros(FloatGPU, 3*sim.nxyz)
+  Float = _cuda_using_double.x ? Float64 : Float32
+  spin = zeros(Float, 3*sim.nxyz)
   init_vector!(spin, sim.mesh, m0)
   if norm
     normalise(spin, sim.nxyz)
@@ -44,15 +51,16 @@ end
 
 function add_zeeman(sim::MicroSimGPU, H0::Any; name="zeeman")
   nxyz = sim.nxyz
-  field = zeros(FloatGPU, 3*nxyz)
-  energy = zeros(FloatGPU, nxyz)
+  Float = _cuda_using_double.x ? Float64 : Float32
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
   init_vector!(field, sim.mesh, H0)
   b = reshape(field, 3, nxyz)
   Hx = sum(b[1,:])/nxyz
   Hy = sum(b[2,:])/nxyz
   Hz = sum(b[3,:])/nxyz
   field_gpu = CuArray(field)
-  zeeman =  ZeemanGPU(Hx, Hy, Hz, field, field_gpu, energy, FloatGPU(0.0), name)
+  zeeman =  ZeemanGPU(Float64(Hx), Float64(Hy), Float64(Hz), field, field_gpu, energy, Float(0.0), name)
   push!(sim.interactions, zeeman)
 
   push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
@@ -69,9 +77,10 @@ end
 
 function add_exch(sim::MicroSimGPU, A::Float64; name="exch")
   nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  exch = ExchangeGPU(A, field, energy, FloatGPU(0.0), name)
+  Float = _cuda_using_double.x ? Float64 : Float32
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
+  exch = ExchangeGPU(Float(A), field, energy, Float(0.0), name)
 
   push!(sim.interactions, exch)
 
@@ -83,11 +92,12 @@ end
 
 function add_anis(sim::MicroSimGPU, Ku::Float64; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
-  Kus =  cuzeros(FloatGPU, nxyz)
+  Float = _cuda_using_double.x ? Float64 : Float32
+  Kus =  cuzeros(Float, nxyz)
   Kus[:] .= Ku
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  anis =  AnisotropyGPU(Kus, axis, field, energy, FloatGPU(0.0), name)
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
+  anis =  AnisotropyGPU(Kus, axis, field, energy, Float(0.0), name)
   push!(sim.interactions, anis)
 
   push!(sim.saver.headers, string("E_",name))

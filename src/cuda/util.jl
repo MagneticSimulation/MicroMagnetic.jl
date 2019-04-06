@@ -1,4 +1,4 @@
-function init_vector!(v::Array{Float64, 1}, mesh::FDMeshGPU, init::Function)
+function init_vector!(v::Array{T, 1}, mesh::FDMeshGPU, init::Function) where {T<:AbstractFloat}
   nxyz = mesh.nx*mesh.ny*mesh.nz
   dx,dy,dz = mesh.dx, mesh.dy, mesh.dz
   b = reshape(v, 3, nxyz)

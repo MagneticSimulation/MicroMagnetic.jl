@@ -5,7 +5,7 @@ function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Number) where {T<:Abstr
     return nothing
 end
 
-function init_vector!(v::Array{Float64, 1}, mesh::FDMesh, init::Function)
+function init_vector!(v::Array{T, 1}, mesh::FDMesh, init::Function) where {T<:AbstractFloat}
   nxyz = mesh.nx*mesh.ny*mesh.nz
   dx,dy,dz = mesh.dx, mesh.dy, mesh.dz
   b = reshape(v, 3, nxyz)
@@ -20,7 +20,7 @@ function init_vector!(v::Array{Float64, 1}, mesh::FDMesh, init::Function)
   return nothing
 end
 
-function init_vector!(v::Array{Float64, 1}, mesh::CubicMesh, init::Function)
+function init_vector!(v::Array{T, 1}, mesh::CubicMesh, init::Function) where {T<:AbstractFloat}
   nxyz = mesh.nx*mesh.ny*mesh.nz
   b = reshape(v, 3, nxyz)
   for i = 1:mesh.nx
@@ -33,7 +33,7 @@ function init_vector!(v::Array{Float64, 1}, mesh::CubicMesh, init::Function)
   end
 end
 
-function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Tuple{Number,Number,Number})
+function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Tuple{Real,Real,Real}) where {T<:AbstractFloat}
   nxyz = mesh.nx*mesh.ny*mesh.nz
   b = reshape(v, 3, nxyz)
   b[1, :] .= init[1]
@@ -42,7 +42,7 @@ function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Tuple{Number,Numbe
   return nothing
 end
 
-function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Array{Float64, 1})
+function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Array{T, 1}) where {T<:AbstractFloat}
   nxyz = mesh.nx*mesh.ny*mesh.nz
   b = reshape(v, 3, nxyz)
   if length(init) == 3
@@ -57,7 +57,7 @@ function init_vector!(v::Array{Float64, 1}, mesh::Mesh, init::Array{Float64, 1})
   return nothing
 end
 
-function normalise(a::Array{Float64, 1}, N::Int64)
+function normalise(a::Array{T, 1}, N::Int64) where {T<:AbstractFloat}
   for i = 0:N-1
       j = 3*i+1
       length = sqrt(a[j]*a[j]+a[j+1]*a[j+1]+a[j+2]*a[j+2])

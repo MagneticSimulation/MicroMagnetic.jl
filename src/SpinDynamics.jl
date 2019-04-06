@@ -10,7 +10,12 @@ export create_mesh, create_sim,
 	   save_vtk, FDMesh, set_Ms, Sim,
 	   CubicMesh, set_mu_s
 
-const FloatGPU = Float64
+const _cuda_using_double = Ref(false)
+
+function cuda_using_double(flag = true)
+   _cuda_using_double[] = flag
+   return nothing
+end
 
 include("head.jl")
 

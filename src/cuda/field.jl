@@ -15,7 +15,7 @@ function zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
    return nothing
 end
 
-function effective_field(zeeman::ZeemanGPU, sim::MicroSimGPU, spin::CuArray{FloatGPU, 1}, t::Float64)
+function effective_field(zeeman::ZeemanGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   mu0 = 4*pi*1e-7
   nxyz = sim.nxyz
   volume = sim.mesh.volume
@@ -51,7 +51,7 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
           return nothing
       end
       id, idm = 0, 0
-      fx, fy, fz = FloatGPU(0.0), FloatGPU(0.0), FloatGPU(0.0)
+      fx, fy, fz = T(0.0), T(0.0), T(0.0)
       if k>1 || zperiodic
           id = (k==1) ? index - nxy + nxyz : index - nxy
           idm = 3*id
@@ -118,7 +118,7 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   return nothing
 end
 
-function effective_field(exch::ExchangeGPU, sim::MicroSimGPU, spin::CuArray{FloatGPU, 1}, t::Float64)
+function effective_field(exch::ExchangeGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   nxyz = sim.nxyz
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
@@ -140,7 +140,7 @@ function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
         if Ms_local == 0.0
             return nothing
         end
-        Ms_inv::FloatGPU = 2.0/(mu0*Ms_local)
+        Ms_inv::T = 2.0/(mu0*Ms_local)
         @inbounds sa = m[j+1]*axis_x+m[j+2]*axis_y+m[j+3]*axis_z
         @inbounds h[j+1] = Ku[index]*m[j+1]*axis_x*Ms_inv
         @inbounds h[j+2] = Ku[index]*m[j+2]*axis_y*Ms_inv
@@ -151,18 +151,18 @@ function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
 end
 
 
-function effective_field(anis::AnisotropyGPU, sim::MicroSimGPU, spin::CuArray{Float64, 1}, t::Float64)
+function effective_field(anis::AnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
     blocks_n, threads_n = sim.blocks, sim.threads
     axis = anis.axis
     volume = sim.mesh.volume
     @cuda blocks=blocks_n threads=threads_n anisotropy_kernel!(spin, sim.field, sim.energy, anis.Ku,
-                                         FloatGPU(axis[1]), FloatGPU(axis[2]),FloatGPU(axis[3]),
+                                         T(axis[1]), T(axis[2]),T(axis[3]),
                                          sim.Ms, volume, sim.nxyz)
     return nothing
 end
 
 
-function effective_field(sim::MicroSimGPU, spin::CuArray{FloatGPU, 1}, t::Float64)
+function effective_field(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   fill!(sim.driver.field, 0.0)
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)
