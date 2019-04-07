@@ -1,12 +1,12 @@
-using SpinDynamics
+using JuMag
 using Test
 
 #Test mesh
 mesh =  FDMeshGPU(dx=1.1e-9, nx=10, ny=2)
-@test mesh.dx == SpinDynamics.FloatGPU(1.1e-9)
+@test mesh.dx == JuMag.FloatGPU(1.1e-9)
 @test mesh.nx == 10
 #println(mesh.ngbs)
-@test mesh.volume == SpinDynamics.FloatGPU(1.1e-27)
+@test mesh.volume == JuMag.FloatGPU(1.1e-27)
 
 sim = Sim(mesh, driver="LLG")
 
@@ -26,4 +26,4 @@ sim.driver.gamma = 2.21e5
 sim.driver.precession = false
 
 add_exch(sim, 1.3e-11)
-SpinDynamics.effective_field(sim, sim.spin, 0.0)
+JuMag.effective_field(sim, sim.spin, 0.0)

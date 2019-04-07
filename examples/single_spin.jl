@@ -1,4 +1,4 @@
-using SpinDynamics
+using JuMag
 using Printf
 using Test
 
@@ -37,7 +37,7 @@ for i=1:100
   push!(my, sim.spin[2])
   push!(mz, sim.spin[3])
 end
-#SpinDynamics.advance_step(sim, sim.ode)
+#JuMag.advance_step(sim, sim.ode)
 
 #using PlotlyJS
 using Plots

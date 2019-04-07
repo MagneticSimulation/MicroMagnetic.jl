@@ -1,4 +1,4 @@
-using SpinDynamics
+using JuMag
 using Test
 
 mesh = FDMesh(dx=1.0, dy=1.0, dz=1.0, nx=100, ny=100, nz=1, unit_length=1e-9, pbc="xy")

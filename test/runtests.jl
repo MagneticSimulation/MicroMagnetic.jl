@@ -1,4 +1,4 @@
-using SpinDynamics
+using JuMag
 
 include("test_sim.jl")
 

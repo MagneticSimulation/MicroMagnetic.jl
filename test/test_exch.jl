@@ -1,4 +1,4 @@
-using SpinDynamics
+using JuMag
 using Test
 
 Nx = 50
@@ -28,7 +28,7 @@ sim.Ms[:] .= Ms
 init_m0(sim, m0_fun, norm=false)
 add_exch(sim, A)
 
-SpinDynamics.effective_field(sim, sim.spin, 0.0)
+JuMag.effective_field(sim, sim.spin, 0.0)
 
 xs = (1:Nx)*2e-9
 mu0 = 4*pi*1e-7

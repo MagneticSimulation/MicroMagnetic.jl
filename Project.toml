@@ -1,10 +1,11 @@
-name = "SpinDynamics"
-uuid = "3f4b01e0-4ecd-11e9-123b-5d715409f080"
+name = "JuMag"
+uuid = "8b6b6816-cea2-582c-a99f-83810c20db0f"
 authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>"]
 version = "0.1.0"
 
 [deps]
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 

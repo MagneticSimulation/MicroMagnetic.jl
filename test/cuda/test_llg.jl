@@ -1,7 +1,7 @@
-using SpinDynamics
+using JuMag
 using Test
 
-SpinDynamics.cuda_using_double(false)
+JuMag.cuda_using_double(false)
 
 
 function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)

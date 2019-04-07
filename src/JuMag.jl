@@ -1,6 +1,6 @@
 __precompile__()
 
-module SpinDynamics
+module JuMag
 using Printf
 
 export create_mesh, create_sim,
@@ -11,6 +11,7 @@ export create_mesh, create_sim,
 	   CubicMesh, set_mu_s
 
 const _cuda_using_double = Ref(false)
+const _cuda_available = Ref(true)
 
 function cuda_using_double(flag = true)
    _cuda_using_double[] = flag
@@ -32,16 +33,15 @@ include("demag.jl")
 
 include("vtk.jl")
 
-cuda_available = true
 try
 	using CuArrays, CUDAnative, CUDAdrv
     #CuArrays.allowscalar(false) TODO: where should it be?
 catch
-    cuda_available = false
+    _cuda_available[] = false
     @warn "CUDA is not available!"
 end
 
-if cuda_available
+if _cuda_available.x
     include("demag_gpu.jl")
     include("cuda/head.jl")
     include("cuda/driver.jl")
@@ -52,7 +52,6 @@ if cuda_available
     include("cuda/field.jl")
     export add_demag_gpu, FDMeshGPU
 end
-
 
 
 end

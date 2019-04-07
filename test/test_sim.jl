@@ -1,4 +1,4 @@
-using SpinDynamics
+using JuMag
 using Test
 
 #Test mesh

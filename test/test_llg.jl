@@ -1,4 +1,4 @@
-using SpinDynamics
+using JuMag
 using Test
 
 function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
