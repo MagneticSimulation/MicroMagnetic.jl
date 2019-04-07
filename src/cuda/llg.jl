@@ -17,18 +17,25 @@ function llg_rhs_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
         j = 3*index-2
         a = -gamma/(1+alpha*alpha)
         b = alpha*a
-        mh = m[j]*h[j] + m[j+1]*h[j+1] + m[j+2]*h[j+2]
-        h1 = h[j] - mh*m[j]
-        h2 = h[j+1] - mh*m[j+1]
-        h3 = h[j+2] - mh*m[j+2]
-        f1 = -a*h1*precession - b*cross_x(m[j],m[j+1],m[j+2], h1,h2,h3)
-        f2 = -a*h2*precession - b*cross_y(m[j],m[j+1],m[j+2], h1,h2,h3)
-        f3 = -a*h3*precession - b*cross_z(m[j],m[j+1],m[j+2], h1,h2,h3)
+        @inbounds mx = m[j]
+        @inbounds my = m[j+1]
+        @inbounds mz = m[j+2]
+        @inbounds mh = mx*h[j] + my*h[j+1] + mz*h[j+2]
+        @inbounds h1 = h[j] - mh*mx
+        @inbounds h2 = h[j+1] - mh*my
+        @inbounds h3 = h[j+2] - mh*mz
+        f1 = -a*h1*precession - b*cross_x(mx,my,mz, h1,h2,h3)
+        f2 = -a*h2*precession - b*cross_y(mx,my,mz, h1,h2,h3)
+        f3 = -a*h3*precession - b*cross_z(mx,my,mz, h1,h2,h3)
 
-        wf = omega[j]*f1 + omega[j+1]*f2 + omega[j+2]*f3
-        dw_dt[j] = f1 - 0.5*cross_x(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j]
-        dw_dt[j+1] = f2 - 0.5*cross_y(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j+1]
-        dw_dt[j+2] = f3 - 0.5*cross_z(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j+2]
+        @inbounds wx = omega[j]
+        @inbounds wy = omega[j+1]
+        @inbounds wz = omega[j+2]
+
+        wf = wx*f1 + wy*f2 + wz*f3
+        @inbounds dw_dt[j] = f1 - 0.5*cross_x(wx, wy, wz, f1, f2, f3) + 0.25*wf*wx
+        @inbounds dw_dt[j+1] = f2 - 0.5*cross_y(wx, wy, wz, f1, f2, f3) + 0.25*wf*wy
+        @inbounds dw_dt[j+2] = f3 - 0.5*cross_z(wx, wy, wz, f1, f2, f3) + 0.25*wf*wz
     end
     return nothing
 end

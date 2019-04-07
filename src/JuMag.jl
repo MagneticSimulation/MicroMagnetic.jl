@@ -11,7 +11,7 @@ export create_mesh, create_sim,
 	   CubicMesh, set_mu_s
 
 const _cuda_using_double = Ref(false)
-const _cuda_available = Ref(true)
+const _cuda_available = Ref(false)
 
 function cuda_using_double(flag = true)
    _cuda_using_double[] = flag
@@ -30,7 +30,6 @@ include("ode.jl")
 include("fileio.jl")
 include("sim.jl")
 include("demag.jl")
-
 include("vtk.jl")
 
 try
