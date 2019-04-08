@@ -106,6 +106,16 @@ function add_anis(sim::MicroSimGPU, Ku::Float64; axis=(0,0,1), name="anis")
   push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
 end
 
+function add_demag(sim::MicroSimGPU; name="demag")
+  demag = init_demag_gpu(sim)
+  demag.name = name
+  push!(sim.interactions, demag)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
+end
 
 function relax(sim::MicroSimGPU; maxsteps=10000,
 	     stopping_dmdt=0.01, save_m_every = 10, save_vtk_every = -1)  #TODO: merge with CPU function?

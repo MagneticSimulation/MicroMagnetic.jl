@@ -11,7 +11,7 @@ export create_mesh, create_sim,
 	   CubicMesh, set_mu_s
 
 const _cuda_using_double = Ref(false)
-const _cuda_available = Ref(false)
+const _cuda_available = Ref(true)
 
 function cuda_using_double(flag = true)
    _cuda_using_double[] = flag
@@ -33,7 +33,7 @@ include("demag.jl")
 include("vtk.jl")
 
 try
-	using CuArrays, CUDAnative, CUDAdrv
+	using CuArrays, CUDAnative #CUDAdrv
     #CuArrays.allowscalar(false) TODO: where should it be?
 catch
     _cuda_available[] = false
@@ -41,7 +41,6 @@ catch
 end
 
 if _cuda_available.x
-    include("demag_gpu.jl")
     include("cuda/head.jl")
     include("cuda/driver.jl")
     include("cuda/sim.jl")
@@ -49,7 +48,8 @@ if _cuda_available.x
     include("cuda/llg.jl")
     include("cuda/util.jl")
     include("cuda/field.jl")
-    export add_demag_gpu, FDMeshGPU
+	include("cuda/demag.jl")
+    export FDMeshGPU
 end
 
 

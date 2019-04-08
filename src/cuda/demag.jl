@@ -1,45 +1,41 @@
-using CuArrays, CUDAnative, CUDAdrv
-#CuArrays.allowscalar(false)
 using CuArrays.CUFFT
 using FFTW
 using LinearAlgebra
 
 @info "Running CUFFT $(CUFFT.version())"
 
-mutable struct DemagGPU
+mutable struct DemagGPU{T<:AbstractFloat}
   nx_fft::Int64
   ny_fft::Int64
   nz_fft::Int64
-  tensor_xx::CuArray{Float64, 3}
-  tensor_yy::CuArray{Float64, 3}
-  tensor_zz::CuArray{Float64, 3}
-  tensor_xy::CuArray{Float64, 3}
-  tensor_xz::CuArray{Float64, 3}
-  tensor_yz::CuArray{Float64, 3}
-  m_cpu::Array{Float64, 1}
-  m_gpu::CuArray{Float64, 1}  #receive spin from CPU
-  mx_gpu::CuArray{Float64, 3} #input for FFT
-  my_gpu::CuArray{Float64, 3}
-  mz_gpu::CuArray{Float64, 3}
-  Mx::CuArray{Complex{Float64}, 3} #output for FFT
-  My::CuArray{Complex{Float64}, 3}
-  Mz::CuArray{Complex{Float64}, 3}
-  Hx::CuArray{Complex{Float64}, 3}
-  Hy::CuArray{Complex{Float64}, 3}
-  Hz::CuArray{Complex{Float64}, 3}
+  tensor_xx::CuArray{T, 3}
+  tensor_yy::CuArray{T, 3}
+  tensor_zz::CuArray{T, 3}
+  tensor_xy::CuArray{T, 3}
+  tensor_xz::CuArray{T, 3}
+  tensor_yz::CuArray{T, 3}
+  mx::CuArray{T, 3} #input for FFT
+  my::CuArray{T, 3}
+  mz::CuArray{T, 3}
+  Mx::CuArray{Complex{T}, 3} #output for FFT
+  My::CuArray{Complex{T}, 3}
+  Mz::CuArray{Complex{T}, 3}
+  Hx::CuArray{Complex{T}, 3}
+  Hy::CuArray{Complex{T}, 3}
+  Hz::CuArray{Complex{T}, 3}
   m_plan::Any
   h_plan::Any
-  field::Array{Float64, 1}
-  energy::Array{Float64, 1}
+  field::Array{T, 1}
+  energy::Array{T, 1}
   name::String
 end
 
-function init_demag_gpu(sim::MicroSim)
+function init_demag_gpu(sim::MicroSimGPU)
   mesh = sim.mesh
   max_size = max(mesh.dx, mesh.dy, mesh.dz)
-  dx = mesh.dx/max_size
-  dy = mesh.dy/max_size
-  dz = mesh.dz/max_size
+  dx = Float64(mesh.dx/max_size)
+  dy = Float64(mesh.dy/max_size)
+  dz = Float64(mesh.dz/max_size)
 
   nx = mesh.nx
   ny = mesh.ny
@@ -50,16 +46,18 @@ function init_demag_gpu(sim::MicroSim)
   ny_fft = mesh.ny > cn ? 2*mesh.ny : 2*mesh.ny - 1
   nz_fft = mesh.nz > cn ? 2*mesh.nz : 2*mesh.nz - 1
 
-  tensor_xx = cuzeros(Float64, nx_fft, ny_fft, nz_fft)
-  tensor_yy = cuzeros(Float64, nx_fft, ny_fft, nz_fft)
-  tensor_zz = cuzeros(Float64, nx_fft, ny_fft, nz_fft)
-  tensor_xy = cuzeros(Float64, nx_fft, ny_fft, nz_fft)
-  tensor_xz = cuzeros(Float64, nx_fft, ny_fft, nz_fft)
-  tensor_yz = cuzeros(Float64, nx_fft, ny_fft, nz_fft)
+  Float = _cuda_using_double.x ? Float64 : Float32
 
-  numblocks, numthreads = CuArrays.cudims(tensor_xx)
-  @cuda blocks = numblocks threads=numthreads compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz,
-                                            tensor_xy, tensor_xz, tensor_yz, nx, ny, nz, dx, dy, dz)
+  tensor_xx = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+  tensor_yy = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+  tensor_zz = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+  tensor_xy = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+  tensor_xz = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+  tensor_yz = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+
+  blk, thr = CuArrays.cudims(tensor_xx)
+  @cuda blocks=blk threads=thr compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz,
+                               tensor_xy, tensor_xz, tensor_yz, nx, ny, nz, dx, dy, dz)
   synchronize()
   plan = plan_rfft(tensor_xx)
   tensor_xx = real(plan*tensor_xx)
@@ -69,26 +67,24 @@ function init_demag_gpu(sim::MicroSim)
   tensor_xz = real(plan*tensor_xz)
   tensor_yz = real(plan*tensor_yz)
 
-  m_cpu = zeros(Float64, 3*sim.nxyz)
-  m_gpu = cuzeros(Float64, 3*sim.nxyz)
-  mx_gpu = cuzeros(Float64, nx_fft, ny_fft, nz_fft)
-  my_gpu = cuzeros(Float64, nx_fft, ny_fft, nz_fft)
-  mz_gpu = cuzeros(Float64, nx_fft, ny_fft, nz_fft)
+  mx_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+  my_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+  mz_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
   lenx = (nx_fft%2>0) ? nx : nx+1
-  Mx = cuzeros(Complex{Float64}, lenx, ny_fft, nz_fft)
-  My = cuzeros(Complex{Float64}, lenx, ny_fft, nz_fft)
-  Mz = cuzeros(Complex{Float64}, lenx, ny_fft, nz_fft)
-  Hx = cuzeros(Complex{Float64}, lenx, ny_fft, nz_fft)
-  Hy = cuzeros(Complex{Float64}, lenx, ny_fft, nz_fft)
-  Hz = cuzeros(Complex{Float64}, lenx, ny_fft, nz_fft)
+  Mx = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  My = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Mz = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hx = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hy = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hz = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
 
   m_plan = plan_rfft(mx_gpu)
   h_plan = plan_irfft(Hx, nx_fft)
 
-  field = zeros(Float64, 3*sim.nxyz)
-  energy = zeros(Float64, sim.nxyz)
+  field = zeros(Float, 3*sim.nxyz)
+  energy = zeros(Float, sim.nxyz)
   demag = DemagGPU(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
-                tensor_xy, tensor_xz, tensor_yz, m_cpu, m_gpu, mx_gpu, my_gpu, mz_gpu,
+                tensor_xy, tensor_xz, tensor_yz, mx_gpu, my_gpu, mz_gpu,
                 Mx, My, Mz, Hx, Hy, Hz,
                 m_plan, h_plan, field, energy, "DemagGPU")
   return demag
@@ -96,7 +92,8 @@ end
 
 function compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz,
                                  tensor_xy, tensor_xz, tensor_yz,
-                                 nx::Int64, ny::Int64, nz::Int64, dx::Float64, dy::Float64, dz::Float64)
+                                 nx::Int64, ny::Int64, nz::Int64,
+                                 dx::Float64, dy::Float64, dz::Float64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx_fft, ny_fft, nz_fft = size(tensor_xx)
     if 0 < index <= nx_fft*ny_fft*nz_fft
@@ -107,77 +104,78 @@ function compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz,
         x = (i<=nx) ? (i-1)*dx : (i-nx_fft-1)*dx
         y = (j<=ny) ? (j-1)*dy : (j-ny_fft-1)*dy
         z = (k<=nz) ? (k-1)*dz : (k-nz_fft-1)*dz
-        tensor_xx[i,j,k] = demag_tensor_xx_gpu(x,y,z,dx,dy,dz)
-        tensor_yy[i,j,k] = demag_tensor_xx_gpu(y,x,z,dy,dx,dz)
-        tensor_zz[i,j,k] = demag_tensor_xx_gpu(z,y,x,dz,dy,dx)
-        tensor_xy[i,j,k] = demag_tensor_xy_gpu(x,y,z,dx,dy,dz)
-        tensor_xz[i,j,k] = demag_tensor_xy_gpu(x,z,y,dx,dz,dy)
-        tensor_yz[i,j,k] = demag_tensor_xy_gpu(y,z,x,dy,dz,dx)
+        @inbounds tensor_xx[i,j,k] = demag_tensor_xx_gpu(x,y,z,dx,dy,dz)
+        @inbounds tensor_yy[i,j,k] = demag_tensor_xx_gpu(y,x,z,dy,dx,dz)
+        @inbounds tensor_zz[i,j,k] = demag_tensor_xx_gpu(z,y,x,dz,dy,dx)
+        @inbounds tensor_xy[i,j,k] = demag_tensor_xy_gpu(x,y,z,dx,dy,dz)
+        @inbounds tensor_xz[i,j,k] = demag_tensor_xy_gpu(x,z,y,dx,dz,dy)
+        @inbounds tensor_yz[i,j,k] = demag_tensor_xy_gpu(y,z,x,dy,dz,dx)
     end
     return nothing
 end
 
-function distribute_m_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu,  nx::Int64,ny::Int64,nz::Int64)
+function distribute_m_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, Ms, nx::Int64,ny::Int64,nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx_fft, ny_fft, nz_fft = size(mx_gpu)
-    if 0< index <= nx*ny*nz
+    if 0 < index <= nx*ny*nz
         i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
-        mx_gpu[i,j,k] = m_gpu[3*index-2]
-        my_gpu[i,j,k] = m_gpu[3*index-1]
-        mz_gpu[i,j,k] = m_gpu[3*index]
+		p = 3*index-2
+        @inbounds mx_gpu[i,j,k] = m_gpu[p]*Ms[index]
+        @inbounds my_gpu[i,j,k] = m_gpu[p+1]*Ms[index]
+        @inbounds mz_gpu[i,j,k] = m_gpu[p+2]*Ms[index]
     end
     return nothing
 end
 
-
-function collect_h_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, nx::Int64,ny::Int64,nz::Int64)
+function collect_h_kernel!(h, hx, hy, hz, nx::Int64,ny::Int64,nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    nx_fft, ny_fft, nz_fft = size(mx_gpu)
+	mu0 = 4*pi*1e-7
     if 0< index <= nx*ny*nz
         i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
-        m_gpu[3*index-2] = -1.0*mx_gpu[i,j,k]
-        m_gpu[3*index-1] = -1.0*my_gpu[i,j,k]
-        m_gpu[3*index] = -1.0*mz_gpu[i,j,k]
+		p = 3*index-2
+        @inbounds h[p] = -1.0*hx[i,j,k]
+        @inbounds h[p+1] = -1.0*hy[i,j,k]
+        @inbounds h[p+2] = -1.0*hz[i,j,k]
     end
     return nothing
 end
 
-function effective_field(demag::DemagGPU, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
-  nx, ny, nz = sim.mesh.nx, sim.mesh.ny, sim.mesh.nz
-  for i = 1:sim.nxyz
-      j = 3*i
-      demag.m_cpu[j-2]  = spin[j-2]*sim.Ms[i]
-      demag.m_cpu[j-1]  = spin[j-1]*sim.Ms[i]
-      demag.m_cpu[j]  = spin[j]*sim.Ms[i]
-  end
-  copyto!(demag.m_gpu, demag.m_cpu);
-  blocks_n, threads_n = CuArrays.cudims(demag.mx_gpu)
-  @cuda blocks = blocks_n threads=threads_n distribute_m_kernel!(demag.m_gpu, demag.mx_gpu, demag.my_gpu, demag.mz_gpu, nx, ny, nz)
-  synchronize()
-  mul!(demag.Mx, demag.m_plan, demag.mx_gpu)
-  mul!(demag.My, demag.m_plan, demag.my_gpu)
-  mul!(demag.Mz, demag.m_plan, demag.mz_gpu)
+function compute_energy_kernel!(energy::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
+                               Ms::CuDeviceArray{T, 1}, volume::T, nxyz::Int64) where {T<:AbstractFloat}
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if 0< index <= nxyz
+		mu0 = 4*pi*1e-7
+        j = 3*index-2
+        @inbounds energy[index] = -0.5*mu0*Ms[index]*volume*(m[j]*h[j] + m[j+1]*h[j+1] + m[j+2]*h[j+2])
+    end
+    return nothing
+end
 
+function effective_field(demag::DemagGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+  mesh = sim.mesh
+  nx, ny, nz = mesh.nx, sim.mesh.ny, sim.mesh.nz
+
+  blocks_n, threads_n = CuArrays.cudims(demag.mx)
+  @cuda blocks = blocks_n threads=threads_n distribute_m_kernel!(spin, demag.mx, demag.my, demag.mz, sim.Ms, nx, ny, nz)
+
+  #synchronize()
+  mul!(demag.Mx, demag.m_plan, demag.mx)
+  mul!(demag.My, demag.m_plan, demag.my)
+  mul!(demag.Mz, demag.m_plan, demag.mz)
 
   demag.Hx .= demag.tensor_xx.*demag.Mx .+ demag.tensor_xy.*demag.My .+  demag.tensor_xz.*demag.Mz
   demag.Hy .= demag.tensor_xy.*demag.Mx .+ demag.tensor_yy.*demag.My .+  demag.tensor_yz.*demag.Mz
   demag.Hz .= demag.tensor_xz.*demag.Mx .+ demag.tensor_yz.*demag.My .+  demag.tensor_zz.*demag.Mz
-  synchronize()
+  #synchronize()
 
-  mul!(demag.mx_gpu, demag.h_plan, demag.Hx)
-  mul!(demag.my_gpu, demag.h_plan, demag.Hy)
-  mul!(demag.mz_gpu, demag.h_plan, demag.Hz)
+  mul!(demag.mx, demag.h_plan, demag.Hx)
+  mul!(demag.my, demag.h_plan, demag.Hy)
+  mul!(demag.mz, demag.h_plan, demag.Hz)
 
-  @cuda blocks = blocks_n threads=threads_n collect_h_kernel!(demag.m_gpu, demag.mx_gpu, demag.my_gpu, demag.mz_gpu, nx, ny, nz)
-  copyto!(demag.field, demag.m_gpu);
+  @cuda blocks = blocks_n threads=threads_n collect_h_kernel!(sim.field, demag.mx, demag.my, demag.mz, nx, ny, nz)
 
-  mu0 = 4*pi*1e-7
-  volume = sim.mesh.volume
-  field = demag.field
-  for i=1:sim.nxyz
-    j = 3*i
-    demag.energy[i] = -0.5*mu0*volume*sim.Ms[i]*(field[j-2]*spin[j-2] + field[j-1]*spin[j-1] + field[j]*spin[j])
-  end
+  blocks_n, threads_n = CuArrays.cudims(sim.nxyz)
+  @cuda blocks=blocks_n threads=threads_n compute_energy_kernel!(sim.energy, sim.field, sim.field, sim.Ms, mesh.volume, sim.nxyz)
 end
 
 
@@ -249,7 +247,6 @@ function demag_tensor_xx_gpu(x::Float64, y::Float64, z::Float64, dx::Float64, dy
   tensor -= 4.0*newell_f_gpu(x,y+dy,z);
   tensor -= 4.0*newell_f_gpu(x,y,z-dz);
   tensor -= 4.0*newell_f_gpu(x,y,z+dz);
-
 
   tensor +=  2.0*newell_f_gpu(x+dx,y+dy,z);
   tensor +=  2.0*newell_f_gpu(x+dx,y-dy,z);

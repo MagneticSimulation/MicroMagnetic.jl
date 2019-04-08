@@ -145,17 +145,6 @@ function add_demag(sim::MicroSim; name="demag")
 end
 
 
-function add_demag_gpu(sim::MicroSim; name="demag")
-  demag = init_demag_gpu(sim)
-  demag.name = name
-  push!(sim.interactions, demag)
-
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  id = length(sim.interactions)
-  push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
-end
-
 function add_anis(sim::AbstractSim, Ku::Float64; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
   Kus =  zeros(Float64, nxyz)
