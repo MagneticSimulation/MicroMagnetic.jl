@@ -1,8 +1,15 @@
 # JuMag.jl
 
-_Some Julia codes for classical spin dynamics and finite difference micromagnetics._
+_A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
 [![Build Status](https://travis-ci.org/ww1g11/JuMag.jl.svg?branch=master)](https://travis-ci.org/ww1g11/JuMag.jl) [![Coverage Status](https://coveralls.io/repos/github/ww1g11/JuMag.jl/badge.svg?branch=master)](https://coveralls.io/github/ww1g11/JuMag.jl?branch=master)
+
+### Features
+
+- Support classical spin dynamics and micromagnetic simulations.
+- Easily switch between GPU and CPU.
+- Easily switch between single and double using `JuMag.cuda_using_double(false)`
+- ... 
 
 ## Installation
 
