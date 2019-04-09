@@ -15,5 +15,3 @@ coverage:
   allow_failure: true
   only:
   - master
-
-coveralls: true
