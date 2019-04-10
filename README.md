@@ -3,6 +3,9 @@
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
 [![Build Status](https://travis-ci.org/ww1g11/JuMag.jl.svg?branch=master)](https://travis-ci.org/ww1g11/JuMag.jl) [![Coverage Status](https://coveralls.io/repos/github/ww1g11/JuMag.jl/badge.svg?branch=master)](https://coveralls.io/github/ww1g11/JuMag.jl?branch=master)
+[![codecov](https://codecov.io/gl/ww1g11/JuMag.jl/branch/master/graph/badge.svg)](https://codecov.io/gl/ww1g11/JuMag.jl)
+
+
 
 ### Features
 
