@@ -77,3 +77,101 @@ To trigger the simulation we relax the system
 ```julia
 relax(sim, maxsteps=1000)
 ```
+
+Implemented equations
+-----------------------
+
+- Exchange energy
+```math
+E_\mathrm{ex} = \int_{V} A (\nabla \vec{m})^2 \mathrm{d}V
+```
+
+- Bulk DMI energy
+```math
+ E_{\mathrm{dmi}} = \int_V D \vec{m} \cdot (\nabla \times \vec{m}) \, \mathrm{d}V
+```
+
+- Anisotropy
+
+```math
+E_\mathrm{anis} = \int_{V} K_{u} [ 1 - (\vec{m} \cdot \hat{u})^2 ]\, dV
+```
+
+### LLG equation
+
+```math
+\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} + \alpha \vec{m} \times  \frac{\partial \vec{m}}{\partial t}  
+```
+LL form:
+```math
+(1+\alpha^2)\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} - \alpha \gamma \vec{m} \times (\vec{m} \times \vec{H})
+```
+
+### LLG equation with Zhang-Li extension
+```math
+\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} + \alpha \vec{m} \times  \frac{\partial \vec{m}}{\partial t}   + u_0 (\vec{j}_s \cdot \nabla) \vec{m} - \beta u_0 [\vec{m}\times (\vec{j}_s \cdot \nabla)\vec{m}]
+```
+where
+
+```math
+u_0=\frac{p g \mu_B}{2 |e| M_s}=\frac{p g \mu_B a^3}{2 |e| \mu_s}
+```
+and `$\mu_B=|e|\hbar/(2m)$` is the Bohr magneton.
+In LL form
+```math
+(1+\alpha^2)\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} - \alpha \gamma \vec{m} \times (\vec{m} \times \vec{H}) + (1+\alpha\beta) u_0 \vec{\tau} - (\beta-\alpha) u_0 (\vec{m}\times \vec{\tau})
+```
+where ``\vec{\tau}=(\vec{j}_s \cdot \nabla)\vec{m}``
+
+Note that
+```math
+u_0 (\vec{j}_s \cdot \nabla) \vec{m}=  - u_0 \vec{m}\times[\vec{m}\times (\vec{j}_s \cdot \nabla)\vec{m}]
+```
+so this torque is damping-like torque and the last torque is
+field-like torque. Therefore, we rewrite the LLG equation in the form
+
+```math
+\frac{\partial \vec{m}}{\partial t} =
+F(\vec{m})
+\times \vec{m}
+```
+where
+
+```math
+F(\vec{m}) = \frac{1}{(1+\alpha^2)}
+[\gamma \vec{H} + u_0 (\beta-\alpha)\vec{\tau}+\alpha \gamma]+
+\frac{1}{(1+\alpha^2)}\vec{m} \times [\alpha \gamma
+  \vec{H} + u_0 (1+\alpha\beta) \vec{\tau}]
+```
+
+Cayley transformation
+----------------------
+The LLG equation can be cast into
+```math
+\frac{\partial \vec{m}}{\partial t} = \hat{F}(\vec{m}) \cdot \vec{m}
+```
+where the operator ``\hat{}`` is defined as
+```math
+\hat{x} = \left( \begin{matrix}
+  0 & -x_3 & x_2 \\
+  x_3 & 0 & -x_1 \\
+  -x_2 & x_1 & 0
+ \end{matrix} \right)
+```
+
+Using the Cayley transfromation, the LLG equation can be written as
+```math
+\frac{\partial \Omega}{\partial t} = F - \frac{1}{2} [\Omega, F]
+- \frac{1}{4} \Omega F \Omega
+```
+where
+```math
+\Omega = \hat{\omega}
+```
+
+So one has
+```math
+\frac{\partial \vec{\omega}}{\partial t} = \vec{F} - \frac{1}{2}
+(\omega \times \vec{F})
++ \frac{1}{4} (\omega \cdot \vec{F}) \vec{\omega}
+```
