@@ -73,9 +73,9 @@ end
 function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7
   mesh = sim.mesh
-  dx = mesh.dx*mesh.unit_length
-  dy = mesh.dy*mesh.unit_length
-  dz = mesh.dz*mesh.unit_length
+  dx = mesh.dx
+  dy = mesh.dy
+  dz = mesh.dz
   ngbs = mesh.ngbs
   nxyz = sim.nxyz
   field = exch.field
@@ -178,9 +178,9 @@ end
 function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7
   mesh = sim.mesh
-  dx = mesh.dx*mesh.unit_length
-  dy = mesh.dy*mesh.unit_length
-  dz = mesh.dz*mesh.unit_length
+  dx = mesh.dx
+  dy = mesh.dy
+  dz = mesh.dz
   ngbs = mesh.ngbs
   nxyz = sim.nxyz
   field = dmi.field

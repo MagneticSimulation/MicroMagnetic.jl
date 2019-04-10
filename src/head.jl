@@ -12,10 +12,11 @@ struct FDMesh <: Mesh
   ny::Int64
   nz::Int64
   nxyz::Int64
-  unit_length::Float64
   volume::Float64
   ngbs::Array{Int64, 2}
-  pbc::String
+  xperiodic::Bool
+  yperiodic::Bool
+  zperiodic::Bool
 end
 
 struct CubicMesh <: Mesh
@@ -25,7 +26,9 @@ struct CubicMesh <: Mesh
   nz::Int64
   nxyz::Int64
   ngbs::Array{Int64, 2}
-  pbc::String
+  xperiodic::Bool
+  yperiodic::Bool
+  zperiodic::Bool
 end
 
 mutable struct Dopri5

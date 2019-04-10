@@ -18,7 +18,7 @@ Tutorial
 To start a micromagnetic simulation, we first create a FDMesh
 
 ```julia
-mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2.0, nx=100, ny=100)
+mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=100, ny=100)
 ```
 After that, we create a simulation
 

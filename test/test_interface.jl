@@ -1,7 +1,7 @@
 using JuMag
 using Test
 
-mesh = FDMesh(dx=1.0, dy=1.0, dz=1.0, nx=100, ny=100, nz=1, unit_length=1e-9, pbc="xy")
+mesh = FDMesh(dx=1e-9, dy=1e-9, dz=1e-9, nx=100, ny=100, nz=1, pbc="xy")
 
 function circular_Ms(i,j,k,dx,dy,dz)
 	if (i-50.5)^2 + (j-50.5)^2 <= 50^2

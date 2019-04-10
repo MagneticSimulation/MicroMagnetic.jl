@@ -12,7 +12,7 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
 end
 
 #Test mesh
-mesh =  FDMesh(nx=1, dx=1, unit_length=1e-9)
+mesh =  FDMesh(nx=1, dx=1e-9)
 
 sim = Sim(mesh, name="spin")
 
