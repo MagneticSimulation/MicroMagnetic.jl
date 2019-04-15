@@ -8,7 +8,8 @@ export create_mesh, create_sim,
        add_exch, add_anis, add_demag,
 	   run_until, relax,
 	   save_vtk, FDMesh, set_Ms, Sim,
-	   CubicMesh, set_mu_s
+	   CubicMesh, set_mu_s,
+	   set_ux
 
 const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)
@@ -19,6 +20,7 @@ function cuda_using_double(flag = true)
 end
 
 include("head.jl")
+include("util.jl")
 
 include("mesh.jl")
 include("driver.jl")

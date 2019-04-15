@@ -139,7 +139,7 @@ where
 
 ```math
 F(\vec{m}) = \frac{1}{(1+\alpha^2)}
-[\gamma \vec{H} + u_0 (\beta-\alpha)\vec{\tau}+\alpha \gamma]+
+[\gamma \vec{H} + u_0 (\beta-\alpha)\vec{\tau}]+
 \frac{1}{(1+\alpha^2)}\vec{m} \times [\alpha \gamma
   \vec{H} + u_0 (1+\alpha\beta) \vec{\tau}]
 ```

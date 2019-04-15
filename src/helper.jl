@@ -1,8 +1,17 @@
 function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
-    for i =1:mesh.nxyz
+    for i = 1:mesh.nxyz
         v[i] = init
     end
     return nothing
+end
+
+function init_scalar!(v::Array{T, 1}, mesh::Mesh, init_fun::Function) where {T<:AbstractFloat}
+    mesh = sim.mesh
+    for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
+        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        v[id] = init_fun(i, j, k, mesh.dx, mesh.dy, mesh.dz)
+    end
+    return true
 end
 
 function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Function) where {T<:AbstractFloat}

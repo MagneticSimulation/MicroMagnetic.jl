@@ -53,6 +53,10 @@ function set_mu_s(sim::AtomicSim, Ms::Number)
     return true
 end
 
+function set_ux(sim::AbstractSim, init_ux)
+	init_scalar!(sim.driver.ux, sim.mesh, init_ux)
+end
+
 function average_m(sim::AbstractSim)
   b = reshape(sim.spin, 3, sim.nxyz)
   mx,my,mz = 0.0,0.0,0.0
@@ -269,16 +273,4 @@ function run_until(sim::AbstractSim, t_end::Float64)
       sim.saver.t = t_end
       sim.saver.nsteps += 1
       write_data(sim)
-end
-
-
-function llg_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64})
-
-  dw_dt = sim.driver.ode.dw_dt
-  omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
-  effective_field(sim, sim.spin, t)
-  llg_rhs(dw_dt, sim.spin, sim.field, omega, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
-
-  return dw_dt
-
 end

@@ -12,6 +12,7 @@ WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
 
 [targets]
-test = ["Test"]
+test = ["Test", "NPZ"]

@@ -15,6 +15,18 @@ mutable struct LLG <: Driver
   tol::Float64
 end
 
+mutable struct LLG_STT <: Driver
+  alpha::Float64
+  beta::Float64
+  gamma::Float64
+  ode::Dopri5
+  tol::Float64
+  ux::Array{Float64, 1}
+  uy::Array{Float64, 1}
+  uz::Array{Float64, 1}
+  h_stt::Array{Float64, 1}
+end
+
 function create_driver(driver::String, nxyz::Int64) #TODO: FIX ME
     if driver=="SDM"
         gk = zeros(Float64,3*nxyz)
@@ -23,8 +35,16 @@ function create_driver(driver::String, nxyz::Int64) #TODO: FIX ME
 		tol = 1e-6
         dopri5 = init_runge_kutta(nxyz, llg_call_back, tol)
 		return LLG(true, 0.1, 2.21e5, dopri5, tol)
+    elseif driver=="LLG_STT"
+        tol = 1e-6
+		dopri5 = init_runge_kutta(nxyz, llg_stt_call_back, tol)
+        ux = zeros(nxyz)
+        uy = zeros(nxyz)
+        uz = zeros(nxyz)
+        hstt = zeros(3*nxyz)
+        return LLG_STT(0.5, 0.0, 2.21e5, dopri5, tol, ux, uy, uz, hstt)
     else
-       error("Supported drivers: LLG, SDM.")
+       error("Supported drivers: LLG, SDM, LLG_STT")
     end
     return nothing
 end

@@ -11,7 +11,7 @@ end
 
 #Test mesh
 mesh =  FDMeshGPU(dx=2e-9, nx=Nx, ny=1, nz=1, pbc=(true, false, false))
-@test 1.0*mesh.dx == 2e-9
+@test isapprox(mesh.dx, 2e-9, rtol=1e-7)
 @test mesh.nx == Nx
 
 Ms = 8.6e5
