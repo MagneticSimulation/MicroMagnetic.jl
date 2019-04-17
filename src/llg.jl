@@ -65,7 +65,7 @@ function compute_field_stt(m::Array{T, 1}, h_stt::Array{T, 1},
       h_stt[3*i-2] = fx
       h_stt[3*i-1] = fy
       h_stt[3*i	] = fz
-
+	   
   end
 
 end
@@ -109,7 +109,7 @@ function llg_rhs_stt(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Fl
   end
 end
 
-function llg_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64})
+function llg_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64, 1})
 
   dw_dt = sim.driver.ode.dw_dt
   omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
@@ -121,7 +121,7 @@ function llg_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64})
 end
 
 
-function llg_stt_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64})
+function llg_stt_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64, 1})
 
   driver = sim.driver
   dw_dt = driver.ode.dw_dt

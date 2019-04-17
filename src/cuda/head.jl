@@ -51,6 +51,19 @@ mutable struct LLG_GPU{T<:AbstractFloat} <: DriverGPU
   field::CuArray{T, 1}
 end
 
+mutable struct LLG_STT_GPU{T<:AbstractFloat} <: DriverGPU
+  alpha::T
+  beta::T
+  gamma::T
+  ode::Dopri5GPU
+  tol::Float64
+  ux::CuArray{T, 1}
+  uy::CuArray{T, 1}
+  uz::CuArray{T, 1}
+  h_stt::CuArray{T, 1}
+  field::CuArray{T, 1}
+end
+
 mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   mesh::FDMeshGPU
   driver::DriverGPU

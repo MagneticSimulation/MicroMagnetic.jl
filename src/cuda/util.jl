@@ -1,16 +1,82 @@
-function init_vector!(v::Array{T, 1}, mesh::FDMeshGPU, init::Function) where {T<:AbstractFloat}
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  dx,dy,dz = mesh.dx, mesh.dy, mesh.dz
-  b = reshape(v, 3, nxyz)
-  for i = 1:mesh.nx
-    for j = 1:mesh.ny
-      for k = 1:mesh.nz
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        b[:, id] .=  init(i,j,k,dx,dy,dz)
-      end
+@inline function _x_plus_one(i::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, xperiodic::Bool,
+                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
+    if i < nx || xperiodic
+        id = (i==nx) ? index +1 - nx : index +1
+        if Ms[id]>0
+          return id
+        end
     end
-  end
-  return nothing
+    return -1
+end
+
+@inline function _x_minus_one(i::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, xperiodic::Bool,
+                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
+    if i > 1 || xperiodic
+        id =  (i==1) ? index - 1 + nx : index -1
+        if Ms[id]>0
+          return id
+        end
+    end
+    return -1
+end
+
+@inline function _y_plus_one(j::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, yperiodic::Bool,
+                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
+    if j < ny || yperiodic
+        id = (j==ny) ? index + nx - nx*ny : index + nx
+        if Ms[id]>0
+          return id
+        end
+    end
+    return -1
+end
+
+@inline function _y_minus_one(j::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, yperiodic::Bool,
+                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
+    if j > 1 || yperiodic
+        id = (j==1) ? index - nx + nx*ny : index - nx
+        if Ms[id]>0
+          return id
+        end
+    end
+    return -1
+end
+
+@inline function _z_plus_one(k::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, zperiodic::Bool,
+                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
+    if k<nz || zperiodic
+        id = (k==nz) ? index + nx*ny*(1-nz) : index + nx*ny
+        if Ms[id]>0
+          return id
+        end
+	end
+    return -1
+end
+
+@inline function _z_minus_one(k::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, zperiodic::Bool,
+                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
+    if k>1 || zperiodic
+        id = (k==1) ? index + nx*ny*(nz-1) : index - nx*ny
+        if Ms[id]>0
+          return id
+        end
+	end
+    return -1
+end
+
+
+function  init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
+	v[:] .= init
+    return nothing
+end
+
+function init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init_fun::Function) where {T<:AbstractFloat}
+    mesh = sim.mesh
+    for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
+        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        v[id] = init_fun(i, j, k, mesh.dx, mesh.dy, mesh.dz)
+    end
+    return true
 end
 
 function omega_to_spin(omega::CuArray{T, 1}, spin::CuArray{T, 1}, spin_next::CuArray{T, 1}, N::Int64) where {T<:AbstractFloat}
