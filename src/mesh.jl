@@ -5,6 +5,50 @@
   return (k-1) * nx*ny + (j-1) * nx + i
 end
 
+@inline function _x_plus_one(i::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, xperiodic::Bool)::Int64
+    if i < nx || xperiodic
+        return (i==nx) ? index +1 - nx : index +1
+    end
+    return -1
+end
+
+@inline function _x_minus_one(i::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, xperiodic::Bool)::Int64
+    if i > 1 || xperiodic
+        return (i==1) ? index - 1 + nx : index -1
+    end
+    return -1
+end
+
+@inline function _y_plus_one(j::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, yperiodic::Bool)::Int64
+    if j < ny || yperiodic
+        return (j==ny) ? index + nx - nx*ny : index + nx
+    end
+    return -1
+end
+
+@inline function _y_minus_one(j::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, yperiodic::Bool)::Int64
+    if j > 1 || yperiodic
+        return (j==1) ? index - nx + nx*ny : index - nx
+    end
+    return -1
+end
+
+@inline function _z_plus_one(k::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, zperiodic::Bool)::Int64
+    if k<nz || zperiodic
+        return (k==nz) ? index + nx*ny*(1-nz) : index + nx*ny
+	end
+    return -1
+end
+
+@inline function _z_minus_one(k::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, zperiodic::Bool)::Int64
+    if k>1 || zperiodic
+        return (k==1) ? index + nx*ny*(nz-1) : index - nx*ny
+	end
+    return -1
+end
+
+
+
 function indexpbc(i::Int64, j::Int64, k::Int64,
                   nx::Int64, ny::Int64, nz::Int64,
                   xperiodic::Bool, yperiodic::Bool, zperiodic::Bool)
