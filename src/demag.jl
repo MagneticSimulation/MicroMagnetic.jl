@@ -100,6 +100,9 @@ end
 
 function copy_spin_to_m(mx::Array{Float64, 3}, my::Array{Float64, 3}, mz::Array{Float64, 3},
 	                   spin::Array{Float64, 1}, Ms::Array{Float64, 1}, nx::Int64, ny::Int64, nz::Int64)
+  fill!(mx, 0.0)
+  fill!(my, 0.0)
+  fill!(mz, 0.0)
   for k=1:nz, j=1:ny, i=1:nx
 	  p = (k-1) * nx*ny + (j-1) * nx + i
 	  mx[i,j,k] = spin[3*p-2]*Ms[p]
