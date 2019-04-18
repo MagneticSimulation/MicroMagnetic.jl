@@ -59,7 +59,6 @@ mutable struct DataSaver
   results::Array  #function array
 end
 
-
 mutable struct MicroSim <: AbstractSim
   mesh::FDMesh
   driver::Driver

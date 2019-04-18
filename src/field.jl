@@ -86,25 +86,26 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
   az = 2.0 * exch.A / (dz * dz)
   A = (ax, ax, ay, ay, az, az)
 
-  Threads.@threads for i = 1:nxyz
-    if Ms[i] == 0.0
+  Threads.@threads for index = 1:nxyz
+    if Ms[index] == 0.0
       continue
     end
+	i = 3*index - 2
     fx, fy, fz = 0.0, 0.0, 0.0
     for j=1:6
-      id = ngbs[j,i]
+      id = ngbs[j,index]
       if id>0 && Ms[id]>0
-        k = 3*(id-1)
-        fx += A[j]*(spin[k+1]-spin[3*i-2])
-        fy += A[j]*(spin[k+2]-spin[3*i-1])
-        fz += A[j]*(spin[k+3]-spin[3*i])
+        k = 3*id-2
+        fx += A[j]*(spin[k]-spin[i])
+        fy += A[j]*(spin[k+1]-spin[i+1])
+        fz += A[j]*(spin[k+2]-spin[i+2])
       end
     end
-    Ms_inv = 1.0/(Ms[i]*mu0)
-    energy[i] = -0.5*(fx*spin[3*i-2] + fy*spin[3*i-1] + fz*spin[3*i])*mesh.volume
-    field[3*i-2] = fx*Ms_inv
-    field[3*i-1] = fy*Ms_inv
-    field[3*i] = fz*Ms_inv
+    Ms_inv = 1.0/(Ms[index]*mu0)
+    energy[index] = -0.5*(fx*spin[i] + fy*spin[i+1] + fz*spin[i+2])*mesh.volume
+    field[i] = fx*Ms_inv
+    field[i+1] = fy*Ms_inv
+    field[i+2] = fz*Ms_inv
   end
 end
 

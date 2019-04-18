@@ -105,6 +105,7 @@ function add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
   push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  return zeeman
 end
 
 function add_exch(sim::AbstractSim, A::Float64; name="exch")
@@ -122,6 +123,7 @@ function add_exch(sim::AbstractSim, A::Float64; name="exch")
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  return exch
 end
 
 function add_dmi(sim::AbstractSim, D::Float64; name="dmi")
@@ -135,6 +137,7 @@ function add_dmi(sim::AbstractSim, D::Float64; name="dmi")
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  return dmi
 end
 
 function add_demag(sim::MicroSim; name="demag")
@@ -146,6 +149,7 @@ function add_demag(sim::MicroSim; name="demag")
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
+  return demag
 end
 
 
@@ -162,6 +166,7 @@ function add_anis(sim::AbstractSim, Ku::Float64; axis=(0,0,1), name="anis")
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  return anis
 end
 
 function relax(sim::AbstractSim; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1)

@@ -12,13 +12,14 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
 end
 
 #Test mesh
-mesh =  FDMesh(nx=1, dx=1e-9)
+mesh =  FDMesh(nx=1, ny=1, dx=1e-9)
 
 sim = Sim(mesh, name="spin")
 
 set_Ms(sim, 8e5)
-sim.driver.alpha = 0.1
+sim.driver.alpha = 0.05
 sim.driver.gamma = 2.21e5
+sim.driver.ode.tol = 1e-8
 
 add_zeeman(sim, (0, 0, 1e5))
 
@@ -28,14 +29,14 @@ ts = Float64[]
 mx = Float64[]
 my = Float64[]
 mz = Float64[]
-for i=1:30
-  run_until(sim, 1e-11*i)
+for i=1:300
+  run_until(sim, 1e-12*i)
 end
 println(sim.driver.ode.t)
 
 println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
 ts = Array([3e-10])
-mx, my, mz = analytical(0.1, 2.21e5, 1e5, ts)
+mx, my, mz = analytical(0.05, 2.21e5, 1e5, ts)
 println(mx[1]-sim.spin[1])
 println(my[1]-sim.spin[2])
 println(mz[1]-sim.spin[3])

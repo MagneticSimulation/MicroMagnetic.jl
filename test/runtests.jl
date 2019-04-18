@@ -5,6 +5,9 @@ include("test_exch.jl")
 include("test_demag.jl")
 include("test_interface.jl")
 include("test_stt.jl")
+include("test_llg.jl")
+include("test_util.jl")
+
 
 if JuMag._cuda_available.x
   include("cuda/test_sim.jl")

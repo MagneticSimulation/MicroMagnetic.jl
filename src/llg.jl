@@ -2,15 +2,15 @@ function llg_rhs(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float6
                  omega::Array{Float64, 1}, alpha::Float64, gamma::Float64, precession::Bool, N::Int64)
   for i = 0:N-1
     j = 3*i+1
-    a = -gamma/(1+alpha*alpha)
+    a = gamma/(1+alpha*alpha)
     b = alpha*a
     mh = m[j]*h[j] + m[j+1]*h[j+1] + m[j+2]*h[j+2]
     h1 = h[j] - mh*m[j]
     h2 = h[j+1] - mh*m[j+1]
     h3 = h[j+2] - mh*m[j+2]
-    f1 = -a*h1*precession - b*cross_x(m[j],m[j+1],m[j+2], h1,h2,h3)
-    f2 = -a*h2*precession - b*cross_y(m[j],m[j+1],m[j+2], h1,h2,h3)
-    f3 = -a*h3*precession - b*cross_z(m[j],m[j+1],m[j+2], h1,h2,h3)
+    f1 = a*h1*precession + b*cross_x(m[j],m[j+1],m[j+2], h1,h2,h3)
+    f2 = a*h2*precession + b*cross_y(m[j],m[j+1],m[j+2], h1,h2,h3)
+    f3 = a*h3*precession + b*cross_z(m[j],m[j+1],m[j+2], h1,h2,h3)
 
     wf = omega[j]*f1 + omega[j+1]*f2 + omega[j+2]*f3
     dw_dt[j] = f1 - 0.5*cross_x(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j]
@@ -65,7 +65,7 @@ function compute_field_stt(m::Array{T, 1}, h_stt::Array{T, 1},
       h_stt[3*i-2] = fx
       h_stt[3*i-1] = fy
       h_stt[3*i	] = fz
-	   
+
   end
 
 end
