@@ -1,4 +1,4 @@
-function llg_rhs(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float64, 1},
+function llg_rhs_Cay(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float64, 1},
                  omega::Array{Float64, 1}, alpha::Float64, gamma::Float64, precession::Bool, N::Int64)
   for i = 0:N-1
     j = 3*i+1
@@ -16,6 +16,32 @@ function llg_rhs(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float6
     dw_dt[j] = f1 - 0.5*cross_x(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j]
     dw_dt[j+1] = f2 - 0.5*cross_y(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j+1]
     dw_dt[j+2] = f3 - 0.5*cross_z(omega[j], omega[j+1], omega[j+2], f1, f2, f3) + 0.25*wf*omega[j+2]
+  end
+end
+
+function llg_rhs(dm_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float64, 1},
+                 alpha::Float64, gamma::Float64, precession::Bool, N::Int64)
+  for i = 0:N-1
+    j = 3*i+1
+    a = -gamma/(1+alpha*alpha)
+
+	f1,f2,f3 = 0.0,0.0,0.0
+
+	mm = m[j]*m[j] + m[j+1]*m[j+1] + m[j+2]*m[j+2]
+    mh = m[j]*h[j] + m[j+1]*h[j+1] + m[j+2]*h[j+2]
+    h1 = mm*h[j] - mh*m[j]
+    h2 = mm*h[j+1] - mh*m[j+1]
+    h3 = mm*h[j+2] - mh*m[j+2]
+
+    if precession
+		f1 = cross_x(m[j],m[j+1],m[j+2], h1,h2,h3)
+		f2 = cross_y(m[j],m[j+1],m[j+2], h1,h2,h3)
+		f3 = cross_z(m[j],m[j+1],m[j+2], h1,h2,h3)
+	end
+
+	dm_dt[j] = a * (f1 - h1 * alpha);
+    dm_dt[j+1] = a * (f2 - h2 * alpha);
+    dm_dt[j+2] = a * (f3 - h3 * alpha);
   end
 end
 
@@ -109,15 +135,23 @@ function llg_rhs_stt(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Fl
   end
 end
 
-function llg_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64, 1})
+function llg_cay_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64, 1})
 
   dw_dt = sim.driver.ode.dw_dt
   omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
   effective_field(sim, sim.spin, t)
-  llg_rhs(dw_dt, sim.spin, sim.field, omega, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
+  llg_rhs_Cay(dw_dt, sim.spin, sim.field, omega, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
 
   return dw_dt
 
+end
+
+function llg_call_back(sim::AbstractSim, dm_dt::Array{Float64, 1}, spin::Array{Float64, 1}, t::Float64)
+
+  effective_field(sim, spin, t)
+  llg_rhs(dm_dt, spin, sim.field, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
+
+  return nothing
 end
 
 

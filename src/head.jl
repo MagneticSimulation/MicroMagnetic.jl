@@ -3,6 +3,7 @@ abstract type Mesh end
 abstract type AbstractSim end
 abstract type MicroEnergy end
 abstract type Interaction end
+abstract type Integrator end
 
 struct FDMesh <: Mesh
   dx::Float64
@@ -31,7 +32,7 @@ struct CubicMesh <: Mesh
   zperiodic::Bool
 end
 
-mutable struct Dopri5
+mutable struct Dopri5 <: Integrator
    tol::Float64
    t::Float64
    step::Float64

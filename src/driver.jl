@@ -11,8 +11,7 @@ mutable struct LLG <: Driver
   precession::Bool
   alpha::Float64
   gamma::Float64
-  ode::Dopri5
-  tol::Float64
+  ode::Integrator
 end
 
 mutable struct LLG_STT <: Driver
@@ -27,14 +26,19 @@ mutable struct LLG_STT <: Driver
   h_stt::Array{Float64, 1}
 end
 
-function create_driver(driver::String, nxyz::Int64) #TODO: FIX ME
+function create_driver(driver::String, integrator::String, nxyz::Int64) #TODO: FIX ME
     if driver=="SDM"
         gk = zeros(Float64,3*nxyz)
         return EnergyMinimization(gk, 0.0, 1e-4, 1e-14, 0, 0)
     elseif driver=="LLG"
-		tol = 1e-6
-        dopri5 = init_runge_kutta(nxyz, llg_call_back, tol)
-		return LLG(true, 0.1, 2.21e5, dopri5, tol)
+		if integrator == "RungeKutta"
+			rungekutta = RungeKutta(nxyz, llg_call_back, 5e-13)
+			return LLG(true, 0.1, 2.21e5, rungekutta)
+		else
+            tol = 1e-6
+            dopri5 = init_runge_kutta(nxyz, llg_cay_call_back, tol)
+		    return LLG(true, 0.1, 2.21e5, dopri5)
+        end
     elseif driver=="LLG_STT"
         tol = 1e-6
 		dopri5 = init_runge_kutta(nxyz, llg_stt_call_back, tol)

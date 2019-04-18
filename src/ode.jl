@@ -106,6 +106,7 @@ function advance_step(sim::AbstractSim, rk_data::Dopri5)
             step_next = step_next*min(rk_data.facmax, max(rk_data.facmin, factor))
         end
     end
+	omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
 end
 
 function interpolation_dopri5(rk_data::Dopri5, t::Float64)

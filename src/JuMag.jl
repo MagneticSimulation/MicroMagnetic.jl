@@ -25,6 +25,7 @@ include("util.jl")
 include("mesh.jl")
 include("driver.jl")
 include("llg.jl")
+include("runge_kutta.jl")
 
 include("helper.jl")
 include("ode.jl")
