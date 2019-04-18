@@ -51,18 +51,13 @@ function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Tuple{Real,Real,Real}) w
   return nothing
 end
 
-function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Array{T, 1}) where {T<:AbstractFloat}
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  b = reshape(v, 3, nxyz)
-  if length(init) == 3
-    b[1, :] .= init[1]
-    b[2, :] .= init[2]
-    b[3, :] .= init[3]
-  elseif length(init) == length(v)
-    v[:] .= init[:]
-  else
-    error("Init array length must be equal to 3*nx*ny*nz or 3")
-  end
+function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Array{Float64, 1}) where {T<:AbstractFloat}
+  v .= init
+  return nothing
+end
+
+function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Array{Float32, 1}) where {T<:AbstractFloat}
+  v .= init
   return nothing
 end
 

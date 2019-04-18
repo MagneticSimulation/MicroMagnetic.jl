@@ -154,6 +154,10 @@ end
 function effective_field(demag::DemagGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   mesh = sim.mesh
   nx, ny, nz = mesh.nx, sim.mesh.ny, sim.mesh.nz
+  
+  fill!(demag.mx, 0)
+  fill!(demag.my, 0)
+  fill!(demag.mz, 0)
 
   blocks_n, threads_n = CuArrays.cudims(demag.mx)
   @cuda blocks = blocks_n threads=threads_n distribute_m_kernel!(spin, demag.mx, demag.my, demag.mz, sim.Ms, nx, ny, nz)

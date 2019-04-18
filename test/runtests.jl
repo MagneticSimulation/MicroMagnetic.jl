@@ -18,6 +18,6 @@ if JuMag._cuda_available.x
   mesh =  FDMeshGPU(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
   #relax_system(mesh)
   for (beta, u) in [(0, 10), (0.1, 3.2), (0.2, 4.7)]
-    run_dynamics(mesh, beta=beta, u=u)
+    run_dynamics_stt(mesh, beta=beta, u=u)
   end
 end

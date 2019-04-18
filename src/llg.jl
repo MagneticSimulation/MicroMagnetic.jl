@@ -135,14 +135,13 @@ function llg_rhs_stt(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Fl
   end
 end
 
-function llg_cay_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64, 1})
+function llg_cay_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, t::Float64, omega::Array{Float64, 1})
 
-  dw_dt = sim.driver.ode.dw_dt
   omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
   effective_field(sim, sim.spin, t)
   llg_rhs_Cay(dw_dt, sim.spin, sim.field, omega, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
 
-  return dw_dt
+  return nothing
 
 end
 
@@ -155,16 +154,15 @@ function llg_call_back(sim::AbstractSim, dm_dt::Array{Float64, 1}, spin::Array{F
 end
 
 
-function llg_stt_call_back(sim::AbstractSim, t::Float64, omega::Array{Float64, 1})
+function llg_stt_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, t::Float64, omega::Array{Float64, 1})
 
   driver = sim.driver
-  dw_dt = driver.ode.dw_dt
   mesh = sim.mesh
   omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
   effective_field(sim, sim.spin, t)
   compute_field_stt(sim.spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
   llg_rhs_stt(dw_dt, sim.spin, sim.field, driver.h_stt, omega, driver.alpha, driver.beta, driver.gamma, sim.nxyz)
 
-  return dw_dt
+  return nothing
 
 end

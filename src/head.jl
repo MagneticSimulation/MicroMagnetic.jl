@@ -4,6 +4,7 @@ abstract type AbstractSim end
 abstract type MicroEnergy end
 abstract type Interaction end
 abstract type Integrator end
+abstract type AbstractDopri5 <:Integrator end
 
 struct FDMesh <: Mesh
   dx::Float64
@@ -32,7 +33,7 @@ struct CubicMesh <: Mesh
   zperiodic::Bool
 end
 
-mutable struct Dopri5 <: Integrator
+mutable struct Dopri5 <: AbstractDopri5
    tol::Float64
    t::Float64
    step::Float64
@@ -45,7 +46,13 @@ mutable struct Dopri5 <: Integrator
    omega::Array{Float64, 1}
    omega_t::Array{Float64, 1}
    dw_dt::Array{Float64, 1}
-   ks::Array{Float64, 2}
+   k1::Array{Float64, 1}
+   k2::Array{Float64, 1}
+   k3::Array{Float64, 1}
+   k4::Array{Float64, 1}
+   k5::Array{Float64, 1}
+   k6::Array{Float64, 1}
+   k7::Array{Float64, 1}
    rhs_fun::Function
    succeed::Bool
 end

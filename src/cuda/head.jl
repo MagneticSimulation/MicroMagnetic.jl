@@ -18,7 +18,7 @@ struct FDMeshGPU{T <: AbstractFloat} <: MeshGPU
   volume::T
 end
 
-mutable struct Dopri5GPU{T <: AbstractFloat}
+mutable struct Dopri5GPU{T<:AbstractFloat} <: AbstractDopri5
    tol::Float64
    t::Float64
    step::Float64
