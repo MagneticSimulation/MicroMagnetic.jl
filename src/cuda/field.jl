@@ -55,9 +55,11 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       if k>1 || zperiodic
           id = (k==1) ? index - nxy + nxyz : index - nxy
           idm = 3*id
-          @inbounds fx += az*(m[idm-2]- mx)
-          @inbounds fy += az*(m[idm-1]- my)
-          @inbounds fz += az*(m[idm]- mz)
+		  @inbounds if Ms[id]>0
+              @inbounds fx += az*(m[idm-2]- mx)
+              @inbounds fy += az*(m[idm-1]- my)
+              @inbounds fz += az*(m[idm]- mz)
+	      end
       end
 
       if j>1 || yperiodic
@@ -128,6 +130,97 @@ function effective_field(exch::ExchangeGPU, sim::MicroSimGPU, spin::CuArray{T, 1
   return nothing
 end
 
+
+function bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
+                     energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1}, D::T,
+                     dx::T, dy::T, dz::T, nx::Int64, ny::Int64, nz::Int64, volume::T,
+                     xperiodic::Bool, yperiodic::Bool, zperiodic::Bool) where {T<:AbstractFloat}
+
+  index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+
+  nxy = nx * ny
+  nxyz = nxy * nz
+
+  if 0< index <= nxyz
+      i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+
+      indexm = 3*index
+      @inbounds mx = m[indexm-2]
+      @inbounds my = m[indexm-1]
+      @inbounds mz = m[indexm]
+      @inbounds Ms_local = Ms[index]
+
+      if Ms_local == 0.0
+          return nothing
+      end
+      id, idm = 0, 0
+      fx, fy, fz = T(0.0), T(0.0), T(0.0)
+      if k>1 || zperiodic
+          id = (k==1) ? index - nxy + nxyz : index - nxy
+          idm = 3*id - 2
+		  @inbounds fx += (D/dz)*cross_x(T(0),T(0),T(1),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fy += (D/dz)*cross_y(T(0),T(0),T(1),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fz += (D/dz)*cross_z(T(0),T(0),T(1),m[idm],m[idm+1],m[idm+2]);
+      end
+
+      if j>1 || yperiodic
+          id = (j==1) ? index - nx + nxy : index - nx
+		  idm = 3*id - 2
+		  @inbounds fx += (D/dy)*cross_x(T(0),T(1),T(0),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fy += (D/dy)*cross_y(T(0),T(1),T(0),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fz += (D/dy)*cross_z(T(0),T(1),T(0),m[idm],m[idm+1],m[idm+2]);
+      end
+
+      if i>1 || xperiodic
+          id = (i==1) ? index - 1 + nx : index -1
+          idm = 3*id - 2
+		  @inbounds fx += (D/dx)*cross_x(T(1),T(0),T(0),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fy += (D/dx)*cross_y(T(1),T(0),T(0),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fz += (D/dx)*cross_z(T(1),T(0),T(0),m[idm],m[idm+1],m[idm+2]);
+      end
+
+      if i<nx || xperiodic
+          id = (i==nx) ? index +1 - nx : index +1
+          idm = 3*id - 2
+		  @inbounds fx += (D/dx)*cross_x(T(-1),T(0),T(0),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fy += (D/dx)*cross_y(T(-1),T(0),T(0),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fz += (D/dx)*cross_z(T(-1),T(0),T(0),m[idm],m[idm+1],m[idm+2]);
+      end
+
+      if j<ny || yperiodic
+          id = (j==ny) ? index + nx - nxy : index + nx
+          idm = 3*id - 2
+		  @inbounds fx += (D/dy)*cross_x(T(0),T(-1),T(0),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fy += (D/dy)*cross_y(T(0),T(-1),T(0),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fz += (D/dy)*cross_z(T(0),T(-1),T(0),m[idm],m[idm+1],m[idm+2]);
+      end
+
+      if k<nz || zperiodic
+          id = (k==nz) ? index + nxy - nxyz : index + nxy
+		  idm = 3*id - 2
+		  @inbounds fx += (D/dz)*cross_x(T(0),T(0),T(-1),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fy += (D/dz)*cross_y(T(0),T(0),T(-1),m[idm],m[idm+1],m[idm+2]);
+		  @inbounds fz += (D/dz)*cross_z(T(0),T(0),T(-1),m[idm],m[idm+1],m[idm+2]);
+      end
+      Ms_inv = 1.0/(4.0*pi*1e-7*Ms_local)
+      @inbounds energy[index] = - 0.5 * (fx * mx + fy * my + fz * mz)* volume;
+      @inbounds h[indexm - 2] =  fx*Ms_inv;
+      @inbounds h[indexm - 1] =  fy*Ms_inv;
+      @inbounds h[indexm] = fz*Ms_inv;
+  end
+  return nothing
+end
+
+function effective_field(dmi::BulkDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+  nxyz = sim.nxyz
+  mesh = sim.mesh
+  blocks_n, threads_n = sim.blocks, sim.threads
+  @cuda blocks=blocks_n threads=threads_n bulkdmi_kernel!(spin, sim.field, sim.energy, sim.Ms, dmi.D,
+                    mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny, mesh.nz, mesh.volume,
+                    mesh.xperiodic, mesh.yperiodic, mesh.zperiodic)
+  return nothing
+end
+
 function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Ku::CuDeviceArray{T, 1},
                         axis_x::T, axis_y::T, axis_z::T,
@@ -167,6 +260,24 @@ function effective_field(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) wher
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)
     sim.driver.field .+= sim.field
+  end
+  return 0
+end
+
+function compute_interaction_energy(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+  for interaction in sim.interactions
+    effective_field(interaction, sim, spin, t)
+	interaction.total_energy = sum(sim.energy)
+  end
+  return 0
+end
+
+
+function compute_fields_to_gpu(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+  for interaction in sim.interactions
+    effective_field(interaction, sim, spin, t)
+	copyto!(interaction.field, sim.field)
+	copyto!(interaction.energy, sim.energy)
   end
   return 0
 end

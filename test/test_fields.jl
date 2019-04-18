@@ -30,7 +30,7 @@ function test_fields(mesh; Ms=8.0e5, A=1.3e-11, D=4e-3, Ku=-3e4, axis=(0,0,1))
 	println(maximum(abs.(dmi.field-fdmi)))
 	println(maximum(abs.(anis.field-fan)))
 	@test maximum(abs.(exch.field-fe)) < 1e-5
-	@test maximum(abs.(demag.field-fd)) < 1e-3
+	@test maximum(abs.(demag.field-fd)) < 1e-5
 	@test maximum(abs.(dmi.field-fdmi)) < 1e-5
 	@test maximum(abs.(anis.field-fan)) <1e-5
 end

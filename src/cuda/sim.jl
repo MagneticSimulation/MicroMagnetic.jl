@@ -72,6 +72,7 @@ function add_zeeman(sim::MicroSimGPU, H0::Any; name="zeeman")
   push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  return zeeman
 end
 
 
@@ -88,6 +89,23 @@ function add_exch(sim::MicroSimGPU, A::Float64; name="exch")
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  return exch
+end
+
+function add_dmi(sim::MicroSimGPU, D::Float64; name="dmi")
+  nxyz = sim.nxyz
+  Float = _cuda_using_double.x ? Float64 : Float32
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
+  dmi = BulkDMIGPU(Float(D), field, energy, Float(0.0), name)
+
+  push!(sim.interactions, dmi)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  return dmi
 end
 
 function add_anis(sim::MicroSimGPU, Ku::Float64; axis=(0,0,1), name="anis")
@@ -104,6 +122,7 @@ function add_anis(sim::MicroSimGPU, Ku::Float64; axis=(0,0,1), name="anis")
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  return anis
 end
 
 function add_demag(sim::MicroSimGPU; name="demag")
@@ -115,6 +134,7 @@ function add_demag(sim::MicroSimGPU; name="demag")
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::MicroSimGPU->sum(o.interactions[id].energy))
+  return demag
 end
 
 function relax(sim::MicroSimGPU; maxsteps=10000,
