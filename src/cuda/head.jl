@@ -1,4 +1,3 @@
-
 abstract type MeshGPU <: Mesh end
 abstract type AbstractSimGPU <:AbstractSim end
 abstract type DriverGPU end
@@ -42,28 +41,6 @@ mutable struct Dopri5GPU{T<:AbstractFloat} <: AbstractDopri5
    succeed::Bool
 end
 
-mutable struct LLG_GPU{T<:AbstractFloat} <: DriverGPU
-  precession::Bool
-  alpha::T
-  gamma::T
-  ode::Dopri5GPU
-  tol::Float64
-  field::CuArray{T, 1}
-end
-
-mutable struct LLG_STT_GPU{T<:AbstractFloat} <: DriverGPU
-  alpha::T
-  beta::T
-  gamma::T
-  ode::Dopri5GPU
-  tol::Float64
-  ux::CuArray{T, 1}
-  uy::CuArray{T, 1}
-  uz::CuArray{T, 1}
-  h_stt::CuArray{T, 1}
-  field::CuArray{T, 1}
-end
-
 mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   mesh::FDMeshGPU
   driver::DriverGPU
@@ -73,6 +50,7 @@ mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   field::CuArray{T, 1}
   energy::CuArray{T, 1}
   Ms::CuArray{T, 1}
+  total_energy::T
   nxyz::Int64
   blocks::Int64
   threads::Int64

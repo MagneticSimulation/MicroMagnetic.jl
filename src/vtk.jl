@@ -5,10 +5,10 @@ function save_vtk(sim::AbstractSim, fname::String; fields::Array{String, 1} = St
   nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
   xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
   dx, dy, dz = 1.0,1.0,1.0
-  if isa(sim, MicroSim)
-    dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
-  else
+  if isa(sim, CubicMesh)
     dx, dy, dz=mesh.a, mesh.a, mesh.a
+  else
+    dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
   end
   for k = 1:nz+1, j = 1:ny+1, i = 1:nx+1
     xyz[1, i, j, k] = (i-0.5)*dx

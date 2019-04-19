@@ -32,7 +32,7 @@ function relax_system()
 end
 
 function relax_system_sdm()
-  sim = Sim(mesh, driver="SDM", name="sim_sd")
+  sim = Sim(mesh, driver="SD", name="sim_sd")
   set_mu_s(sim, 1.0)
   sim.driver.max_tau = 1.0
 

@@ -264,10 +264,12 @@ function effective_field(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) wher
   return 0
 end
 
-function compute_interaction_energy(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+function compute_system_energy(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+  sim.total_energy = 0
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)
 	interaction.total_energy = sum(sim.energy)
+	sim.total_energy += interaction.total_energy
   end
   return 0
 end

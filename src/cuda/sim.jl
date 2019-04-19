@@ -1,8 +1,11 @@
-function FDMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=10, ny=10, nz=1, pbc=(false, false, false))
+function FDMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=10, ny=10, nz=1, pbc="open")
   nxyz = nx*ny*nz
   volume = dx*dy*dz
   Float = _cuda_using_double.x ? Float64 : Float32
-  return FDMeshGPU(Float(dx), Float(dy), Float(dz), nx, ny, nz, nxyz, pbc[1], pbc[2], pbc[3], Float(volume))
+  xperiodic = 'x' in pbc ? true : false
+  yperiodic = 'y' in pbc ? true : false
+  zperiodic = 'z' in pbc ? true : false
+  return FDMeshGPU(Float(dx), Float(dy), Float(dz), nx, ny, nz, nxyz, xperiodic, yperiodic, zperiodic, Float(volume))
 end
 
 function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
@@ -24,7 +27,8 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
   interactions = []
 
   blocks, threads = CuArrays.cudims(nxyz)
-  return MicroSimGPU(mesh, driver, saver, spin, prespin, field, energy, Ms, nxyz, blocks, threads, name, interactions)
+  return MicroSimGPU(mesh, driver, saver, spin, prespin, field, energy, Ms, Float(0.0),
+                     nxyz, blocks, threads, name, interactions)
 
 end
 
@@ -137,8 +141,39 @@ function add_demag(sim::MicroSimGPU; name="demag")
   return demag
 end
 
-function relax(sim::MicroSimGPU; maxsteps=10000,
-	     stopping_dmdt=0.01, save_m_every = 10, save_vtk_every = -1)  #TODO: merge with CPU function?
+function relax(sim::MicroSimGPU; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1)
+  if isa(sim.driver, EnergyMinimization_GPU)
+    relax(sim, sim.driver, maxsteps=maxsteps, stopping_torque=stopping_torque, save_m_every=save_m_every, save_vtk_every=save_vtk_every)
+  elseif isa(sim.driver, LLG)
+    relax(sim, sim.driver, maxsteps=maxsteps, stopping_dmdt=stopping_dmdt, save_m_every=save_m_every, save_vtk_every=save_vtk_every)
+  end
+  return nothing
+end
+
+function relax(sim::MicroSimGPU, driver::EnergyMinimization_GPU; maxsteps=10000,
+               stopping_torque=0.1, save_m_every = 10, save_vtk_every = -1)
+  for i=1:maxsteps
+    run_step(sim, sim.driver)
+	max_torque = maximum(abs.(driver.gk))
+	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", i, driver.tau, max_torque)
+    if i%save_m_every == 0
+      compute_system_energy(sim, sim.spin, 0.0)
+      write_data(sim)
+    end
+	if save_vtk_every > 0
+		if i%save_vtk_every == 0
+	  	  save_vtk(sim, @sprintf("output_%d", i))
+		end
+	end
+    sim.saver.nsteps += 1
+    if max_torque < stopping_torque
+      @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
+      break
+    end
+  end
+end
+
+function relax(sim::MicroSimGPU, driver::LLG_GPU; maxsteps=10000, stopping_dmdt=0.01, save_m_every = 10, save_vtk_every = -1)  #TODO: merge with CPU function?
   step = 0
   rk_data = sim.driver.ode
   rk_data.step_next = compute_init_step(sim, 1e-13)
@@ -155,6 +190,7 @@ function relax(sim::MicroSimGPU; maxsteps=10000,
     @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
 	               i, step_size, rk_data.t, max_dmdt/dmdt_factor)
     if i%save_m_every == 0
+      compute_system_energy(sim, sim.spin, 0.0)
       write_data(sim)
     end
 	if save_vtk_every > 0

@@ -52,6 +52,7 @@ if _cuda_available.x
     include("cuda/util.jl")
     include("cuda/field.jl")
 	include("cuda/demag.jl")
+    include("cuda/sd.jl")
     export FDMeshGPU
 end
 

@@ -10,7 +10,7 @@ function m0_fun(i,j,k,dx,dy,dz)
 end
 
 #Test mesh
-mesh =  FDMeshGPU(dx=2e-9, nx=Nx, ny=1, nz=1, pbc=(true, false, false))
+mesh =  FDMeshGPU(dx=2e-9, nx=Nx, ny=1, nz=1, pbc="x")
 @test isapprox(mesh.dx, 2e-9, rtol=1e-7)
 @test mesh.nx == Nx
 

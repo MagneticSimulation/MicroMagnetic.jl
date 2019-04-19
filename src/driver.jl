@@ -4,7 +4,6 @@ mutable struct EnergyMinimization <: Driver
   max_tau::Float64
   min_tau::Float64
   steps::Int64
-  nfevals::Int64
 end
 
 mutable struct LLG <: Driver
@@ -29,7 +28,7 @@ end
 function create_driver(driver::String, integrator::String, nxyz::Int64) #TODO: FIX ME
     if driver=="SD" #Steepest Descent
         gk = zeros(Float64,3*nxyz)
-        return EnergyMinimization(gk, 0.0, 1e-4, 1e-14, 0, 0)
+        return EnergyMinimization(gk, 0.0, 1e-4, 1e-14, 0)
     elseif driver=="LLG"
 		if integrator == "RungeKutta"
 			rungekutta = RungeKutta(nxyz, llg_call_back, 5e-13)
