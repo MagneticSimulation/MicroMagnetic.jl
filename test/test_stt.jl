@@ -15,7 +15,7 @@ function init_dw(i,j,k,dx,dy,dz)
 end
 
 function relax_system(mesh)
-	sim = Sim(mesh, name="stt_relax", driver="SDM")
+	sim = Sim(mesh, name="stt_relax", driver="SD")
 	set_Ms(sim, 8.6e5)
 
 	add_exch(sim, 1.3e-11)

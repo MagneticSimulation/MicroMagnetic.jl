@@ -21,11 +21,11 @@ end
 
 include("head.jl")
 include("util.jl")
-
 include("mesh.jl")
 include("driver.jl")
+include("sd.jl")
 include("llg.jl")
-include("runge_kutta.jl")
+include("rk.jl")
 
 include("helper.jl")
 include("ode.jl")

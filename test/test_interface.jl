@@ -1,10 +1,10 @@
 using JuMag
 using Test
 
-mesh = FDMesh(dx=1e-9, dy=1e-9, dz=1e-9, nx=100, ny=100, nz=1, pbc="xy")
+mesh = FDMesh(dx=1e-9, dy=1e-9, dz=1e-9, nx=10, ny=10, nz=1, pbc="xy")
 
 function circular_Ms(i,j,k,dx,dy,dz)
-	if (i-50.5)^2 + (j-50.5)^2 <= 50^2
+	if i^2 + j^2 <= 10^2
 		return 8.6e5
 	end
 	return 0.0
@@ -17,16 +17,18 @@ function m0_fun(i,j,k,dx,dy,dz)
 end
 
 function test_energy_minimization(mesh)
-	sim = Sim(mesh, driver="SDM", name="sim")
+	sim = Sim(mesh, driver="SD", name="sim")
 	@test set_Ms(sim, circular_Ms)
 	@test set_Ms(sim, 8.6e5)
 
 	add_exch(sim, 1.3e-11, name="exch")
-    add_zeeman(sim, (0,0,4e5))
     add_dmi(sim, 4e-3, name="dmi")
+	add_anis(sim, 1e2, axis=(0,0,1))
+    add_zeeman(sim, (0,0,4e5))
+	add_demag(sim)
 
     init_m0(sim, m0_fun)
-    relax(sim, maxsteps=1000, stopping_torque = 0.1, save_vtk_every=-1)
+    relax(sim, maxsteps=100, stopping_torque = 0.1, save_vtk_every=-1)
 end
 
 test_energy_minimization(mesh)
