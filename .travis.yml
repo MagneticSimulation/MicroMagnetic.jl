@@ -9,4 +9,4 @@ julia:
 notifications:
     email: false
 
-coveralls: true
+#coveralls: true

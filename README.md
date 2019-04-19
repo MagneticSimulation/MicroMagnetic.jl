@@ -2,7 +2,8 @@
 
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
-[![Build Status](https://travis-ci.org/ww1g11/JuMag.jl.svg?branch=master)](https://travis-ci.org/ww1g11/JuMag.jl) [![Coverage Status](https://coveralls.io/repos/github/ww1g11/JuMag.jl/badge.svg?branch=master)](https://coveralls.io/github/ww1g11/JuMag.jl?branch=master)
+[![Build Status](https://travis-ci.org/ww1g11/JuMag.jl.svg?branch=master)](https://travis-ci.org/ww1g11/JuMag.jl)
+[![pipeline status](https://gitlab.com/JuliaGPU/JuMag.jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/JuMag.jl/commits/master)
 [![codecov](https://codecov.io/gl/ww1g11/JuMag.jl/branch/master/graph/badge.svg)](https://codecov.io/gl/ww1g11/JuMag.jl)
 
 
@@ -12,7 +13,7 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 - Support classical spin dynamics and micromagnetic simulations.
 - Easily switch between GPU and CPU.
 - Easily switch between single and double using `JuMag.cuda_using_double(false)`
-- ... 
+- ...
 
 ## Installation
 
