@@ -187,6 +187,7 @@ function relax(sim::AbstractSim, driver::EnergyMinimization; maxsteps=10000,
 	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e  |m|_error=%10.6e",
 	               i, driver.tau, max_torque, max_length_error)
     if i%save_m_every == 0
+      compute_system_energy(sim, sim.spin, 0.0) 
       write_data(sim)
     end
 	if save_vtk_every > 0
@@ -218,6 +219,7 @@ function relax(sim::AbstractSim, driver::LLG; maxsteps=10000,
     @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e  |m|_error=%10.6e",
 	               i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor, max_length)
     if i%save_m_every == 0
+	  compute_system_energy(sim, sim.spin, driver.ode.t)
       write_data(sim)
     end
 	if save_vtk_every > 0
@@ -246,6 +248,7 @@ function run_until(sim::AbstractSim, t_end::Float64)
           omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
           sim.saver.t = t_end
           sim.saver.nsteps += 1
+		  compute_system_energy(sim, sim.spin, t_end)
           write_data(sim)
           return
       elseif t_end > rk_data.t - rk_data.step && rk_data.step > 0 && t_end < rk_data.t
@@ -253,6 +256,7 @@ function run_until(sim::AbstractSim, t_end::Float64)
           omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
           sim.saver.t = t_end
           sim.saver.nsteps += 1
+		  compute_system_energy(sim, sim.spin, t_end)
           write_data(sim)
           return
       end
@@ -275,5 +279,6 @@ function run_until(sim::AbstractSim, t_end::Float64)
       omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
       sim.saver.t = t_end
       sim.saver.nsteps += 1
+	  compute_system_energy(sim, sim.spin, t_end)
       write_data(sim)
 end
