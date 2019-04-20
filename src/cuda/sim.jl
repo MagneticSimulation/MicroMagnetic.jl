@@ -162,7 +162,7 @@ function relax(sim::MicroSimGPU, driver::EnergyMinimization_GPU; maxsteps=10000,
     end
 	if save_vtk_every > 0
 		if i%save_vtk_every == 0
-	  	  save_vtk(sim, @sprintf("output_%d", i))
+	  	  save_vtk(sim, @sprintf("%s_%d", sim.name, i))
 		end
 	end
     sim.saver.nsteps += 1

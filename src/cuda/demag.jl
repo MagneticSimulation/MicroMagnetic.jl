@@ -2,8 +2,6 @@ using CuArrays.CUFFT
 using FFTW
 using LinearAlgebra
 
-@info "Running CUFFT $(CUFFT.version())"
-
 mutable struct DemagGPU{T<:AbstractFloat}
   nx_fft::Int64
   ny_fft::Int64
@@ -27,6 +25,7 @@ mutable struct DemagGPU{T<:AbstractFloat}
   h_plan::Any
   field::Array{T, 1}
   energy::Array{T, 1}
+  total_energy::T
   name::String
 end
 
@@ -48,28 +47,27 @@ function init_demag_gpu(sim::MicroSimGPU)
 
   Float = _cuda_using_double.x ? Float64 : Float32
 
-  tensor_xx = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-  tensor_yy = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-  tensor_zz = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-  tensor_xy = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-  tensor_xz = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-  tensor_yz = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-
-  blk, thr = CuArrays.cudims(tensor_xx)
-  @cuda blocks=blk threads=thr compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz,
-                               tensor_xy, tensor_xz, tensor_yz, nx, ny, nz, dx, dy, dz)
-  synchronize()
-  plan = plan_rfft(tensor_xx)
-  tensor_xx = real(plan*tensor_xx)
-  tensor_yy = real(plan*tensor_yy)
-  tensor_zz = real(plan*tensor_zz)
-  tensor_xy = real(plan*tensor_xy)
-  tensor_xz = real(plan*tensor_xz)
-  tensor_yz = real(plan*tensor_yz)
-
   mx_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
   my_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
   mz_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+
+  blk, thr = CuArrays.cudims(mx_gpu)
+  @cuda blocks=blk threads=thr compute_tensors_kernel_xx!(mx_gpu, my_gpu, mz_gpu,
+                                                       nx, ny, nz, dx, dy, dz)
+
+  synchronize()
+  plan = plan_rfft(mx_gpu)
+  tensor_xx = real(plan*mx_gpu)
+  tensor_yy = real(plan*my_gpu)
+  tensor_zz = real(plan*mz_gpu)
+
+  @cuda blocks=blk threads=thr compute_tensors_kernel_xy!(mx_gpu, my_gpu, mz_gpu,
+                                                           nx, ny, nz, dx, dy, dz)
+  synchronize()
+  tensor_xy = real(plan*mx_gpu)
+  tensor_xz = real(plan*my_gpu)
+  tensor_yz = real(plan*mz_gpu)
+
   lenx = (nx_fft%2>0) ? nx : nx+1
   Mx = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
   My = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
@@ -86,12 +84,11 @@ function init_demag_gpu(sim::MicroSimGPU)
   demag = DemagGPU(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
                 tensor_xy, tensor_xz, tensor_yz, mx_gpu, my_gpu, mz_gpu,
                 Mx, My, Mz, Hx, Hy, Hz,
-                m_plan, h_plan, field, energy, "DemagGPU")
+                m_plan, h_plan, field, energy, Float(0), "DemagGPU")
   return demag
 end
 
-function compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz,
-                                 tensor_xy, tensor_xz, tensor_yz,
+function compute_tensors_kernel_xx!(tensor_xx, tensor_yy, tensor_zz,
                                  nx::Int64, ny::Int64, nz::Int64,
                                  dx::Float64, dy::Float64, dz::Float64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -107,6 +104,23 @@ function compute_tensors_kernel!(tensor_xx, tensor_yy, tensor_zz,
         @inbounds tensor_xx[i,j,k] = demag_tensor_xx_gpu(x,y,z,dx,dy,dz)
         @inbounds tensor_yy[i,j,k] = demag_tensor_xx_gpu(y,x,z,dy,dx,dz)
         @inbounds tensor_zz[i,j,k] = demag_tensor_xx_gpu(z,y,x,dz,dy,dx)
+    end
+    return nothing
+end
+
+function compute_tensors_kernel_xy!(tensor_xy, tensor_xz, tensor_yz,
+                                 nx::Int64, ny::Int64, nz::Int64,
+                                 dx::Float64, dy::Float64, dz::Float64)
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    nx_fft, ny_fft, nz_fft = size(tensor_xy)
+    if 0 < index <= nx_fft*ny_fft*nz_fft
+        i,j,k = Tuple(CuArrays.CartesianIndices(tensor_xy)[index])
+        if (nx_fft%2 == 0 && i == nx+1) || (ny_fft%2 == 0 && j == ny+1) || (nz_fft%2 == 0 && k == nz+1)
+          return nothing
+        end
+        x = (i<=nx) ? (i-1)*dx : (i-nx_fft-1)*dx
+        y = (j<=ny) ? (j-1)*dy : (j-ny_fft-1)*dy
+        z = (k<=nz) ? (k-1)*dz : (k-nz_fft-1)*dz
         @inbounds tensor_xy[i,j,k] = demag_tensor_xy_gpu(x,y,z,dx,dy,dz)
         @inbounds tensor_xz[i,j,k] = demag_tensor_xy_gpu(x,z,y,dx,dz,dy)
         @inbounds tensor_yz[i,j,k] = demag_tensor_xy_gpu(y,z,x,dy,dz,dx)
@@ -154,7 +168,7 @@ end
 function effective_field(demag::DemagGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   mesh = sim.mesh
   nx, ny, nz = mesh.nx, sim.mesh.ny, sim.mesh.nz
-  
+
   fill!(demag.mx, 0)
   fill!(demag.my, 0)
   fill!(demag.mz, 0)

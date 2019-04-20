@@ -71,11 +71,10 @@ function  init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init::Number) where {T<:Abs
 end
 
 function init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init_fun::Function) where {T<:AbstractFloat}
-    mesh = sim.mesh
-    for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        v[id] = init_fun(i, j, k, mesh.dx, mesh.dy, mesh.dz)
-    end
+	Float = _cuda_using_double.x ? Float64 : Float32
+	tmp = zeros(Float, sim.nxyz)
+    init_scalar!(tmp, sim.mesh, init)
+    copyto!(v, tmp)
     return true
 end
 

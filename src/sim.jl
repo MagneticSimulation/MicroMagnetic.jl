@@ -187,12 +187,12 @@ function relax(sim::AbstractSim, driver::EnergyMinimization; maxsteps=10000,
 	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e  |m|_error=%10.6e",
 	               i, driver.tau, max_torque, max_length_error)
     if i%save_m_every == 0
-      compute_system_energy(sim, sim.spin, 0.0) 
+      compute_system_energy(sim, sim.spin, 0.0)
       write_data(sim)
     end
 	if save_vtk_every > 0
 		if i%save_vtk_every == 0
-	  	  save_vtk(sim, @sprintf("output_%d", i))
+	  	  save_vtk(sim, @sprintf("%s_%d", sim.name, i))
 		end
 	end
     sim.saver.nsteps += 1
@@ -224,7 +224,7 @@ function relax(sim::AbstractSim, driver::LLG; maxsteps=10000,
     end
 	if save_vtk_every > 0
 		if i%save_vtk_every == 0
-		  save_vtk(sim, @sprintf("output_%d", i))
+		  save_vtk(sim, @sprintf("%s_%d", sim.name, i))
 		end
 	end
     sim.saver.t = rk_data.t

@@ -3,13 +3,12 @@ __precompile__()
 module JuMag
 using Printf
 
-export create_mesh, create_sim,
-       init_m0, add_zeeman, add_dmi,
+export init_m0, add_zeeman, add_dmi,
        add_exch, add_anis, add_demag,
 	   run_until, relax,
 	   save_vtk, FDMesh, set_Ms, Sim,
 	   CubicMesh, set_mu_s,
-	   set_ux
+	   set_ux, save_vtk
 
 const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)
@@ -38,6 +37,8 @@ include("vtk.jl")
 try
 	using CuArrays, CUDAnative #CUDAdrv
     #CuArrays.allowscalar(false) TODO: where should it be?
+	using CuArrays.CUFFT
+	@info "Running CUFFT $(CUFFT.version())"
 catch
     _cuda_available[] = false
     @warn "CUDA is not available!"
