@@ -144,7 +144,7 @@ end
 function relax(sim::MicroSimGPU; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1)
   if isa(sim.driver, EnergyMinimization_GPU)
     relax(sim, sim.driver, maxsteps=maxsteps, stopping_torque=stopping_torque, save_m_every=save_m_every, save_vtk_every=save_vtk_every)
-  elseif isa(sim.driver, LLG)
+elseif isa(sim.driver, LLG_GPU)
     relax(sim, sim.driver, maxsteps=maxsteps, stopping_dmdt=stopping_dmdt, save_m_every=save_m_every, save_vtk_every=save_vtk_every)
   end
   return nothing
@@ -152,10 +152,13 @@ end
 
 function relax(sim::MicroSimGPU, driver::EnergyMinimization_GPU; maxsteps=10000,
                stopping_torque=0.1, save_m_every = 10, save_vtk_every = -1)
+  T = _cuda_using_double.x ? Float64 : Float32
+  gk_abs = cuzeros(T, 3*sim.nxyz)
   for i=1:maxsteps
     run_step(sim, sim.driver)
-	max_torque = maximum(abs.(driver.gk))
-	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", i, driver.tau, max_torque)
+    abs!(gk_abs, driver.gk)  #max_torque = maximum(abs.(driver.gk)) eats gpu memory???
+    max_torque = maximum(gk_abs)
+	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", driver.steps, driver.tau, max_torque)
     if i%save_m_every == 0
       compute_system_energy(sim, sim.spin, 0.0)
       write_data(sim)

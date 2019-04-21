@@ -64,6 +64,40 @@ end
     return -1
 end
 
+#compute a = a + b, which is slightly fast than a .+= b
+function addto(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
+    function __kernel!(a, b)
+        i = (blockIdx().x-1) * blockDim().x + threadIdx().x
+        @inbounds a[i] += b[i]
+        return nothing
+    end
+    blk, thr = CuArrays.cudims(a)
+    @cuda blocks=blk threads=thr __kernel!(a,b)
+    return nothing
+end
+
+# compute the abs of a cuarray
+function abs!(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
+    function __kernel!(a, b)
+        i = (blockIdx().x-1) * blockDim().x + threadIdx().x
+        @inbounds a[i] = CUDAnative.abs(b[i])
+        return nothing
+    end
+    blk, thr = CuArrays.cudims(a)
+    @cuda blocks=blk threads=thr __kernel!(a, b)
+    return nothing
+end
+
+function abs!(a::CuArray{T,1})  where {T<:AbstractFloat}
+    function __kernel!(a)
+        i = (blockIdx().x-1) * blockDim().x + threadIdx().x
+        @inbounds a[i] = CUDAnative.abs(a[i])
+        return nothing
+    end
+    blk, thr = CuArrays.cudims(a)
+    @cuda blocks=blk threads=thr __kernel!(a)
+    return nothing
+end
 
 function  init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
 	v[:] .= init
@@ -138,7 +172,8 @@ function normalise(a::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
        i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
        if 0 < i <= n
            j = 3*i - 2
-           @inbounds length = 1.0/CUDAnative.sqrt(a[j]^2 + a[j+1]^2 + a[j+2]^2)
+		   @inbounds m2 = a[j]*a[j] + a[j+1]*a[j+1] + a[j+2]*a[j+2]
+           @inbounds length = CUDAnative.rsqrt(m2)
            @inbounds a[j] *= length
            @inbounds a[j+1] *= length
            @inbounds a[j+2] *= length

@@ -126,11 +126,11 @@ function add_exch(sim::AbstractSim, A::Float64; name="exch")
   return exch
 end
 
-function add_dmi(sim::AbstractSim, D::Float64; name="dmi")
+function add_dmi(sim::AbstractSim, D::Tuple{Float64, Float64, Float64}; name="dmi")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
-  dmi =  BulkDMI(D, field, energy, name)
+  dmi =  BulkDMI(D[1], D[2], D[3], field, energy, name)
   push!(sim.interactions, dmi)
 
   push!(sim.saver.headers, string("E_",name))
@@ -138,6 +138,10 @@ function add_dmi(sim::AbstractSim, D::Float64; name="dmi")
   id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
   return dmi
+end
+
+function add_dmi(sim::AbstractSim, D::Float64; name="dmi")
+   return add_dmi(sim, (D,D,D), name=name)
 end
 
 function add_demag(sim::MicroSim; name="demag")

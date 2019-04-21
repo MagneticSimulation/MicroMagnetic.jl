@@ -175,7 +175,6 @@ function effective_field(dmi::BulkDMI, sim::AtomicSim, spin::Array{Float64, 1}, 
   end
 end
 
-
 function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7
   mesh = sim.mesh
@@ -187,8 +186,8 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64, 1}, t
   field = dmi.field
   energy = dmi.energy
   Ms = sim.Ms
-  D = dmi.D
-  Ds = (D/dx, D/dx, D/dy, D/dy, D/dz, D/dz)
+  Dx, Dy, Dz = dmi.Dx, dmi.Dy, dmi.Dz
+  Ds = (Dx/dx, Dx/dx, Dy/dy, Dy/dy, Dz/dz, Dz/dz)
   ax = (1.0,-1.0, 0.0, 0.0, 0.0, 0.0)
   ay = (0.0, 0.0, 1.0,-1.0, 0.0, 0.0)
   az = (0.0, 0.0, 0.0, 0.0, 1.0,-1.0)

@@ -111,11 +111,14 @@ mutable struct HeisenbergExchange <: Interaction
 end
 
 mutable struct BulkDMI
-   D::Float64
+   Dx::Float64
+   Dy::Float64
+   Dz::Float64
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String
 end
+
 
 mutable struct Anisotropy
    Ku::Array{Float64, 1}
