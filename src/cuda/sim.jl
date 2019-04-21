@@ -188,7 +188,8 @@ function relax(sim::MicroSimGPU, driver::LLG_GPU; maxsteps=10000, stopping_dmdt=
     advance_step(sim, rk_data)
     step_size = rk_data.step
     omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
-    max_dmdt = compute_dmdt(sim.prespin, sim.spin, sim.nxyz, step_size)
+    compute_dm(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
+	max_dmdt = maximum(rk_data.omega_t)/step_size
     #max_length = error_length_m(sim.spin, sim.nxyz)
     @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
 	               i, step_size, rk_data.t, max_dmdt/dmdt_factor)

@@ -147,9 +147,8 @@ function omega_to_spin(omega::CuArray{T, 1}, spin::CuArray{T, 1}, spin_next::CuA
 end
 
 
-function compute_dmdt(m1::CuArray{T, 1}, m2::CuArray{T, 1}, N::Int64, dt::Float64) where {T<:AbstractFloat}
-  dmdt = cuzeros(T, N)
-  function __kernal!(a, b, c, n::Int64)
+function compute_dm(dm_dt::CuArray{T, 1}, m1::CuArray{T, 1}, m2::CuArray{T, 1}, N::Int64) where {T<:AbstractFloat}
+  function __kernal!(c, a, b, n::Int64)
      i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
      if 0 < i <= n
          j = 3*i - 2
@@ -161,9 +160,8 @@ function compute_dmdt(m1::CuArray{T, 1}, m2::CuArray{T, 1}, N::Int64, dt::Float6
      return nothing
   end
   blk, thr = CuArrays.cudims(N)
-  @cuda blocks=blk threads=thr __kernal!(m1, m2, dmdt, N)
-  max_dmdt = maximum(dmdt)/dt #TODO: (1)how to free dmdt? (2)how to avoid to use maximum?
-  return max_dmdt
+  @cuda blocks=blk threads=thr __kernal!(dm_dt, m1, m2, N)
+  return nothing
 end
 
 

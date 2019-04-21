@@ -69,7 +69,7 @@ function compute_tau(driver::EnergyMinimization_GPU, m_pre::CuArray{T, 1}, m::Cu
     @cuda blocks=blk threads=thr compute_gk_kernel_2!(driver.gk,
                                  driver.ss, driver.sf, driver.ff,
                                  m, m_pre, h, N)
-    sum1 = sum(driver.ss)
+    sum1 = sum(driver.ss) #Is it better to use Float64 for driver.ss?
     sum2 = sum(driver.sf)
     sum3 = sum(driver.ff)
 

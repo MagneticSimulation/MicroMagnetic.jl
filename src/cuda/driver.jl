@@ -40,7 +40,7 @@ function create_driver_gpu(driver::String, nxyz::Int64)
         ss = cuzeros(Float, nxyz)
         sf = cuzeros(Float, nxyz)
         ff = cuzeros(Float, nxyz)
-		return EnergyMinimization_GPU(gk, ss, sf, ff, field, Float(0.0), Float(1e-2), Float(1e-14), 0)
+		return EnergyMinimization_GPU(gk, ss, sf, ff, field, Float(0.0), Float(1e-2), Float(1e-10), 0)
     elseif driver=="LLG"
 		tol = 1e-6
         dopri5 = init_runge_kutta_gpu(nxyz, llg_call_back_gpu, tol)
