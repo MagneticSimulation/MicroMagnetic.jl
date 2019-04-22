@@ -66,36 +66,44 @@ end
 
 #compute a = a + b, which is slightly fast than a .+= b
 function addto(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
-    function __kernel!(a, b)
+    function __kernel!(a, b, n)
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-        @inbounds a[i] += b[i]
+      	if 0 < i <= n
+           @inbounds a[i] += b[i]
+        end
         return nothing
     end
     blk, thr = CuArrays.cudims(a)
-    @cuda blocks=blk threads=thr __kernel!(a,b)
+    @cuda blocks=blk threads=thr __kernel!(a,b, length(a))
     return nothing
 end
 
 # compute the abs of a cuarray
 function abs!(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
-    function __kernel!(a, b)
+    function __kernel!(a, b, n)
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-        @inbounds a[i] = CUDAnative.abs(b[i])
+		if 0<i<=n
+            @inbounds a[i] = CUDAnative.abs(b[i])
+        end
         return nothing
     end
-    blk, thr = CuArrays.cudims(a)
-    @cuda blocks=blk threads=thr __kernel!(a, b)
+	N = length(a)
+    blk, thr = CuArrays.cudims(N)
+    @cuda blocks=blk threads=thr __kernel!(a, b, N)
     return nothing
 end
 
 function abs!(a::CuArray{T,1})  where {T<:AbstractFloat}
-    function __kernel!(a)
+    function __kernel!(a, n)
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-        @inbounds a[i] = CUDAnative.abs(a[i])
+        if 0 < i <= n
+            @inbounds a[i] = CUDAnative.abs(a[i])
+	    end
         return nothing
     end
-    blk, thr = CuArrays.cudims(a)
-    @cuda blocks=blk threads=thr __kernel!(a)
+    N = length(a)
+    blk, thr = CuArrays.cudims(N)
+    @cuda blocks=blk threads=thr __kernel!(a, N)
     return nothing
 end
 
@@ -115,9 +123,9 @@ end
 function omega_to_spin(omega::CuArray{T, 1}, spin::CuArray{T, 1}, spin_next::CuArray{T, 1}, N::Int64) where {T<:AbstractFloat}
   #compute Cay(Omega).m where Cay(Omega) = (I - 1/2 Omega)^-1 (I + 1/2 Omega)
   #where Omega = Skew[w1, w2, w3] = {{0, -w3, w2}, {w3, 0, -w1}, {-w2, w1, 0}}
-  function __kernal!(a, b, c, N::Int64)
+  function __kernal!(a, b, c, n::Int64)
       i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-      if 0 < i <= N
+      if 0 < i <= n
         j = 3*i-2
         @inbounds w1 = a[j]*0.5
         @inbounds w2 = a[j+1]*0.5

@@ -18,46 +18,60 @@ function init_runge_kutta_gpu(nxyz::Int64, rhs_fun, tol::Float64)
 end
 
 #y = c1*k1*step
-function rk__step1__kernel!(y, c1, k1, step)
+function rk__step1__kernel!(y, c1, k1, step, n)
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-	@inbounds y[i] = c1*k1[i]*step
+    if 0<i<=n
+       @inbounds y[i] = c1*k1[i]*step
+    end
 	return nothing
 end
 
 #y = (c1*k1+c2*k2)*step
-function rk__step2__kernel!(y, c1, k1, c2, k2, step)
+function rk__step2__kernel!(y, c1, k1, c2, k2, step, n)
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-	@inbounds y[i] = (c1*k1[i]+c2*k2[i])*step
+    if 0<i<=n
+        @inbounds y[i] = (c1*k1[i]+c2*k2[i])*step
+    end
 	return nothing
 end
 
-function rk__step3__kernel!(y, c1, k1, c2, k2, c3, k3, step)
+function rk__step3__kernel!(y, c1, k1, c2, k2, c3, k3, step, n)
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-	@inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i])*step
+    if 0<i<=n
+        @inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i])*step
+    end
 	return nothing
 end
 
-function rk__step4__kernel!(y, c1, k1, c2, k2, c3, k3, c4, k4, step)
+function rk__step4__kernel!(y, c1, k1, c2, k2, c3, k3, c4, k4, step, n)
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-	@inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i])*step
+    if 0<i<=n
+        @inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i])*step
+    end
 	return nothing
 end
 
-function rk__step5__kernel!(y, c1, k1, c2, k2, c3, k3, c4, k4, c5, k5, step)
+function rk__step5__kernel!(y, c1, k1, c2, k2, c3, k3, c4, k4, c5, k5, step, n)
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-	@inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i]+c5*k5[i])*step
+    if 0<i<=n
+        @inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i]+c5*k5[i])*step
+    end
 	return nothing
 end
 
-function rk__step6__kernel!(y, c1, k1, c2, k2, c3, k3, c4, k4, c5, k5, c6, k6, step)
+function rk__step6__kernel!(y, c1, k1, c2, k2, c3, k3, c4, k4, c5, k5, c6, k6, step, n)
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-	@inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i]+c5*k5[i]+c6*k6[i])*step
+    if 0<i<=n
+        @inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i]+c5*k5[i]+c6*k6[i])*step
+    end
 	return nothing
 end
 
-function rk__step7__kernel!(y, c1, k1, c2, k2, c3, k3, c4, k4, c5, k5, c6, k6, c7, k7, step)
+function rk__step7__kernel!(y, c1, k1, c2, k2, c3, k3, c4, k4, c5, k5, c6, k6, c7, k7, step, n)
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-	@inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i]+c5*k5[i]+c6*k6[i]+c7*k7[i])*step
+    if 0<i<=n
+        @inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i]+c5*k5[i]+c6*k6[i]+c7*k7[i])*step
+    end
 	return nothing
 end
 
@@ -71,39 +85,43 @@ function dopri5_step(sim::MicroSimGPU, step::Float64, t::Float64)
   w = (71/57600, 0, -71/16695, 71/1920, -17253/339200, 22/525, -1/40)
   ode = sim.driver.ode
 
+  N = length(ode.omega)
   blk, thr = CuArrays.cudims(ode.omega)
 
   fill!(ode.omega, 0) # we always have y=0
   ode.rhs_fun(sim, ode.k1, t, ode.omega) #compute k1
 
   @cuda blocks=blk threads=thr rk__step1__kernel!(ode.omega,
-                               b[1], ode.k1, step)
+                               b[1], ode.k1, step, N)
   ode.rhs_fun(sim, ode.k2, t + a[1]*step, ode.omega) #k2
 
   @cuda blocks=blk threads=thr rk__step2__kernel!(ode.omega,
-                               b[2], ode.k1, b[3], ode.k2, step)
+                               b[2], ode.k1, b[3], ode.k2,
+                               step, N)
   ode.rhs_fun(sim, ode.k3, t + a[2]*step, ode.omega) #k3
 
   @cuda blocks=blk threads=thr rk__step3__kernel!(ode.omega,
                                b[4], ode.k1, b[5], ode.k2,
-                               b[6], ode.k3, step)
+                               b[6], ode.k3, step, N)
   ode.rhs_fun(sim, ode.k4, t + a[3]*step, ode.omega) #k4
 
   @cuda blocks=blk threads=thr rk__step4__kernel!(ode.omega,
                                c[1], ode.k1, c[2], ode.k2,
-                               c[3], ode.k3, c[4], ode.k4, step)
+                               c[3], ode.k3, c[4], ode.k4,
+                               step, N)
   ode.rhs_fun(sim, ode.k5, t + a[4]*step, ode.omega) #k5
 
   @cuda blocks=blk threads=thr rk__step5__kernel!(ode.omega,
                                d[1], ode.k1, d[2], ode.k2,
                                d[3], ode.k3, d[4], ode.k4,
-                               d[5], ode.k5, step)
+                               d[5], ode.k5, step, N)
   ode.rhs_fun(sim, ode.k6, t + a[5]*step, ode.omega) #k6
 
   @cuda blocks=blk threads=thr rk__step6__kernel!(ode.omega,
                                v[1], ode.k1, v[2], ode.k2,
                                v[3], ode.k3, v[4], ode.k4,
-                               v[5], ode.k5, v[6], ode.k6, step)
+                               v[5], ode.k5, v[6], ode.k6,
+                               step, N)
   ode.rhs_fun(sim, ode.k7, t + a[6]*step, ode.omega) #k7
 
   ode.nfevals += 7
@@ -112,7 +130,7 @@ function dopri5_step(sim::MicroSimGPU, step::Float64, t::Float64)
                                w[1], ode.k1, w[2], ode.k2,
                                w[3], ode.k3, w[4], ode.k4,
                                w[5], ode.k5, w[6], ode.k6,
-                               w[7], ode.k5, step)
+                               w[7], ode.k5, step, N)
   abs!(error)
   max_error =  maximum(error) + eps()
 
@@ -154,10 +172,12 @@ function interpolation_dopri5(ode::Dopri5GPU, t::Float64)
     b6 = x1*v[6] - x2*55*(29972135 - 7076736*x)/822651844
     b7 = x*x*(x-1) + x2*10*(7414447 - 829305*x)/29380423
 
-    blk, thr = CuArrays.cudims(ode.omega)
+    N = length(ode.omega)
+    blk, thr = CuArrays.cudims(N)
     @cuda blocks=blk threads=thr rk__step6__kernel!(ode.omega_t,
                                  b1, ode.k1, b3, ode.k3,
                                  b4, ode.k4, b5, ode.k5,
-                                 b6, ode.k6, b7, ode.k7, ode.step)
+                                 b6, ode.k6, b7, ode.k7,
+                                 ode.step, N)
     return nothing
 end
