@@ -96,20 +96,23 @@ function add_exch(sim::MicroSimGPU, A::Float64; name="exch")
   return exch
 end
 
-function add_dmi(sim::MicroSimGPU, D::Float64; name="dmi")
+function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
-  dmi = BulkDMIGPU(Float(D), field, energy, Float(0.0), name)
+  dmi = BulkDMIGPU(Float(D[1]), Float(D[2]), Float(D[3]), field, energy, Float(0.0), name)
 
   push!(sim.interactions, dmi)
-
   push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
   return dmi
+end
+
+function add_dmi(sim::MicroSimGPU, D::Real; name="dmi")
+   return add_dmi(sim, (D,D,D), name=name)
 end
 
 function add_anis(sim::MicroSimGPU, Ku::Float64; axis=(0,0,1), name="anis")
