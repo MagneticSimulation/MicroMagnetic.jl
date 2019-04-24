@@ -35,10 +35,10 @@ include("demag.jl")
 include("vtk.jl")
 
 try
-	using CuArrays, CUDAnative #CUDAdrv
+	using CUDAnative, CuArrays
     #CuArrays.allowscalar(false) TODO: where should it be?
-	using CuArrays.CUFFT
-	@info "Running CUFFT $(CUFFT.version())"
+	#using CuArrays.CUFFT
+	#@info "Running CUFFT $(CUFFT.version())"
 catch
     _cuda_available[] = false
     @warn "CUDA is not available!"

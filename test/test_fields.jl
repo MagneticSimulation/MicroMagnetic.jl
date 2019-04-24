@@ -3,7 +3,8 @@ using Test
 using DelimitedFiles
 
 function load_field_data()
-	data = readdlm("test_fields.txt", ' ', Float64, comments=true)
+    filename = joinpath(@__DIR__, "test_fields.txt")
+	data = readdlm(filename, ' ', Float64, comments=true)
 	println(size(data))
 	m0 = data[:,1]
     demag = data[:,2]
