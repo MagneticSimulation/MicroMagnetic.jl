@@ -111,6 +111,24 @@ function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi")
   return dmi
 end
 
+function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi")
+  nxyz = sim.nxyz
+  T = _cuda_using_double.x ? Float64 : Float32
+  Ds = zeros(T, sim.nxyz)
+  init_scalar!(Ds, sim.mesh, Dfun)
+  Ds_gpu = CuArray(Ds)
+  field = zeros(T, 3*nxyz)
+  energy = zeros(T, nxyz)
+  dmi = SpatialBulkDMIGPU(Ds_gpu, field, energy, T(0.0), name)
+
+  push!(sim.interactions, dmi)
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  return dmi
+end
+
 function add_dmi(sim::MicroSimGPU, D::Real; name="dmi")
    return add_dmi(sim, (D,D,D), name=name)
 end

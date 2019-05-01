@@ -242,7 +242,7 @@ function relax(sim::AbstractSim, driver::LLG; maxsteps=10000,
 end
 
 
-function run_until(sim::AbstractSim, t_end::Float64)
+function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
       rk_data = sim.driver.ode
       if t_end < rk_data.t - rk_data.step
           println("Run_until: t_end >= rk_data.t - rk_data.step")
@@ -252,16 +252,20 @@ function run_until(sim::AbstractSim, t_end::Float64)
           omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
           sim.saver.t = t_end
           sim.saver.nsteps += 1
-		  compute_system_energy(sim, sim.spin, t_end)
-          write_data(sim)
+          if save_data
+              compute_system_energy(sim, sim.spin, t_end)
+              write_data(sim)
+		  end
           return
       elseif t_end > rk_data.t - rk_data.step && rk_data.step > 0 && t_end < rk_data.t
           interpolation_dopri5(rk_data, t_end)
           omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
           sim.saver.t = t_end
           sim.saver.nsteps += 1
-		  compute_system_energy(sim, sim.spin, t_end)
-          write_data(sim)
+          if save_data
+              compute_system_energy(sim, sim.spin, t_end)
+              write_data(sim)
+          end
           return
       end
 
@@ -283,6 +287,8 @@ function run_until(sim::AbstractSim, t_end::Float64)
       omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
       sim.saver.t = t_end
       sim.saver.nsteps += 1
-	  compute_system_energy(sim, sim.spin, t_end)
-      write_data(sim)
+	  if save_data
+		  compute_system_energy(sim, sim.spin, t_end)
+		  write_data(sim)
+	  end
 end

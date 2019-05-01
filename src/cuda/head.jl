@@ -76,6 +76,14 @@ mutable struct BulkDMIGPU{T<:AbstractFloat} <: MicroEnergyGPU
    name::String
 end
 
+mutable struct SpatialBulkDMIGPU{T<:AbstractFloat} <: MicroEnergyGPU
+   D::CuArray{T, 1}
+   field::Array{T, 1}
+   energy::Array{T, 1}
+   total_energy::T
+   name::String
+end
+
 mutable struct ZeemanGPU{T<:AbstractFloat} <: MicroEnergyGPU
    Hx::Float64
    Hy::Float64
