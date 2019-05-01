@@ -1,6 +1,6 @@
 coverage:
   ignore:
-    "src/cuda/kernels.jl"
+    - "src/cuda/kernels.jl"
   status:
     patch: false
     project: false
