@@ -157,10 +157,10 @@ function add_demag(sim::MicroSim; name="demag")
 end
 
 
-function add_anis(sim::AbstractSim, Ku::Float64; axis=(0,0,1), name="anis")
+function add_anis(sim::AbstractSim, init_ku::Any; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
   Kus =  zeros(Float64, nxyz)
-  Kus[:] .= Ku
+  init_scalar!(Kus, sim.mesh, init_ku)
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
   anis =  Anisotropy(Kus, axis, field, energy, name)
