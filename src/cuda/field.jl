@@ -50,7 +50,6 @@ function effective_field(anis::AnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T,
     return nothing
 end
 
-
 function effective_field(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   fill!(sim.driver.field, 0.0)
   for interaction in sim.interactions

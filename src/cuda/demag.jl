@@ -193,7 +193,8 @@ function effective_field(demag::DemagGPU, sim::MicroSimGPU, spin::CuArray{T, 1},
   @cuda blocks = blocks_n threads=threads_n collect_h_kernel!(sim.field, demag.mx, demag.my, demag.mz, nx, ny, nz)
 
   blocks_n, threads_n = CuArrays.cudims(sim.nxyz)
-  @cuda blocks=blocks_n threads=threads_n compute_energy_kernel!(sim.energy, sim.field, sim.field, sim.Ms, mesh.volume, sim.nxyz)
+  @cuda blocks=blocks_n threads=threads_n compute_energy_kernel!(sim.energy, spin, sim.field, sim.Ms, mesh.volume, sim.nxyz)
+  return nothing
 end
 
 
@@ -328,5 +329,4 @@ function demag_tensor_xy_gpu(x::Float64, y::Float64, z::Float64, dx::Float64, dy
   tensor -= newell_g_gpu(x-dx,y-dy,z-dz);
 
   return tensor/(4.0*pi*dx*dy*dz)
-
 end

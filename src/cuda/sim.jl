@@ -159,7 +159,7 @@ function add_demag(sim::MicroSimGPU; name="demag")
   push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
   id = length(sim.interactions)
-  push!(sim.saver.results, o::MicroSimGPU->sum(o.interactions[id].energy))
+  push!(sim.saver.results, o::MicroSimGPU->o.interactions[id].total_energy)
   return demag
 end
 
