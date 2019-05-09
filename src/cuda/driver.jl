@@ -30,6 +30,7 @@ mutable struct LLG_STT_GPU{T<:AbstractFloat} <: DriverGPU
   uz::CuArray{T, 1}
   h_stt::CuArray{T, 1}
   field::CuArray{T, 1}
+  ufun::Function
 end
 
 function create_driver_gpu(driver::String, nxyz::Int64)
@@ -56,7 +57,8 @@ function create_driver_gpu(driver::String, nxyz::Int64)
         uz = cuzeros(Float, nxyz)
         hstt = cuzeros(Float, 3*nxyz)
         field = cuzeros(Float, 3*nxyz)
-        return LLG_STT_GPU(Float(0.5), Float(0), Float(2.21e5), dopri5, tol, ux, uy, uz, hstt, field)
+        fun = t::Float64 -> 1.0
+        return LLG_STT_GPU(Float(0.5), Float(0), Float(2.21e5), dopri5, tol, ux, uy, uz, hstt, field, fun)
     else
        error("Supported drivers for GPU: LLG, LLG_STT")
     end
