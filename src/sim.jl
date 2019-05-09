@@ -140,8 +140,25 @@ function add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
   return dmi
 end
 
-function add_dmi(sim::AbstractSim, D::Real; name="dmi")
+function add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
+    if type == "interfacial"
+        return add_dmi_interfacial(sim, D, name=name)
+    end
    return add_dmi(sim, (D,D,D), name=name)
+end
+
+function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
+    nxyz = sim.nxyz
+    field = zeros(Float64, 3*nxyz)
+    energy = zeros(Float64, nxyz)
+    dmi =  InterfacialDMI(Float64(D), field, energy, name)
+    push!(sim.interactions, dmi)
+
+    push!(sim.saver.headers, string("E_",name))
+    push!(sim.saver.units, "J")
+    id = length(sim.interactions)
+    push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+    return dmi
 end
 
 function add_demag(sim::MicroSim; name="demag")

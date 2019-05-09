@@ -22,7 +22,7 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
   units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
   results = [o::AbstractSim -> o.saver.nsteps,
              o::AbstractSim -> o.saver.t,
-             o::AbstractSim -> sum(o.energy), average_m]
+             o::AbstractSim -> o.total_energy, average_m]
   saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
   interactions = []
 
@@ -129,8 +129,26 @@ function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi")
   return dmi
 end
 
-function add_dmi(sim::MicroSimGPU, D::Real; name="dmi")
+function add_dmi(sim::MicroSimGPU, D::Real; name="dmi", type="bulk")
+    if type == "interfacial"
+        return add_dmi_interfacial(sim, D, name=name)
+    end
    return add_dmi(sim, (D,D,D), name=name)
+end
+
+function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi")
+    nxyz = sim.nxyz
+    T = _cuda_using_double.x ? Float64 : Float32
+    field = zeros(T, 3*nxyz)
+    energy = zeros(T, nxyz)
+    dmi =  InterfacialDMIGPU(T(D), field, energy, T(0.0), name)
+    push!(sim.interactions, dmi)
+
+    push!(sim.saver.headers, string("E_",name))
+    push!(sim.saver.units, "J")
+    id = length(sim.interactions)
+    push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+    return dmi
 end
 
 function add_anis(sim::MicroSimGPU, Ku::Any; axis=(0,0,1), name="anis")

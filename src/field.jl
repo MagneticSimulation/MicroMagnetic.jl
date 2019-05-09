@@ -223,6 +223,54 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64, 1}, t
 end
 
 
+function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
+  mu0 = 4*pi*1e-7
+  mesh = sim.mesh
+  dx = mesh.dx
+  dy = mesh.dy
+  dz = mesh.dz
+  ngbs = mesh.ngbs
+  nxyz = sim.nxyz
+  field = dmi.field
+  energy = dmi.energy
+  Ms = sim.Ms
+  D = dmi.D
+  Ds = (D/dx, D/dx, D/dy, D/dy)
+  ax = (0.0, 0.0, -1.0, 1.0) #Dij = D r_ij x z
+  ay = (1.0,-1.0, 0.0, 0.0)
+  az = (0.0, 0.0, 0.0, 0.0)
+
+  Threads.@threads for i = 1:nxyz
+    if Ms[i] == 0.0
+      energy[i] = 0.0
+      field[3*i-2] = 0.0
+      field[3*i-1] = 0.0
+      field[3*i] = 0.0
+      continue
+    end
+    fx = 0.0
+    fy = 0.0
+    fz = 0.0
+
+    for j = 1:4
+      id = ngbs[j,i]
+      if id>0 && Ms[id]>0
+        k = 3*(id-1)+1
+        fx += Ds[j]*cross_x(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
+        fy += Ds[j]*cross_y(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
+        fz += Ds[j]*cross_z(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
+      end
+    end
+
+    Ms_inv = 1.0/(Ms[i]*mu0)
+    energy[i] = -0.5*(fx*spin[3*i-2] + fy*spin[3*i-1] + fz*spin[3*i])*mesh.volume
+    field[3*i-2] = fx*Ms_inv
+    field[3*i-1] = fy*Ms_inv
+    field[3*i] = fz*Ms_inv
+  end
+end
+
+
 function effective_field(sim::AbstractSim, spin::Array{Float64, 1}, t::Float64)
   fill!(sim.field, 0.0)
   fill!(sim.energy, 0.0)

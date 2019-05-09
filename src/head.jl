@@ -119,6 +119,13 @@ mutable struct BulkDMI
    name::String
 end
 
+mutable struct InterfacialDMI
+   D::Float64
+   field::Array{Float64, 1}
+   energy::Array{Float64, 1}
+   name::String
+end
+
 
 mutable struct Anisotropy
    Ku::Array{Float64, 1}
