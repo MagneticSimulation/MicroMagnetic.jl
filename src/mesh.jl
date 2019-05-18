@@ -48,7 +48,6 @@ end
 end
 
 
-
 function indexpbc(i::Int64, j::Int64, k::Int64,
                   nx::Int64, ny::Int64, nz::Int64,
                   xperiodic::Bool, yperiodic::Bool, zperiodic::Bool)
@@ -78,24 +77,42 @@ function indexpbc(i::Int64, j::Int64, k::Int64,
   return index(i,j,k, nx, ny, nz)
 end
 
-function FDMesh(;dx=1.0, dy=1.0, dz=1.0, nx=1, ny=1, nz=1, pbc="open")
-  ngbs = zeros(Int64,6,nx*ny*nz)
+function FDMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=10, ny=10, nz=1, pbc="open")
+  nxyz = nx*ny*nz
+  volume = dx*dy*dz
+  Float = _cuda_using_double.x ? Float64 : Float32
   xperiodic = 'x' in pbc ? true : false
   yperiodic = 'y' in pbc ? true : false
   zperiodic = 'z' in pbc ? true : false
+  return FDMeshGPU(Float(dx), Float(dy), Float(dz), nx, ny, nz, nxyz, xperiodic, yperiodic, zperiodic, Float(volume))
+end
+"""
+    FDMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
 
-  for k = 1:nz, j = 1:ny, i=1:nx
-    id = index(i, j, k, nx, ny, nz)
-    ngbs[1,id] = indexpbc(i-1,j,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
-    ngbs[2,id] = indexpbc(i+1,j,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
-    ngbs[3,id] = indexpbc(i,j-1,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
-    ngbs[4,id] = indexpbc(i,j+1,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
-    ngbs[5,id] = indexpbc(i,j,k-1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
-    ngbs[6,id] = indexpbc(i,j,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
-  end
-  volume = dx*dy*dz
-  nxyz = nx*ny*nz
-  return FDMesh(dx, dy, dz, nx, ny, nz, nxyz, volume, ngbs, xperiodic, yperiodic, zperiodic)
+Create a FDMesh for given parameters. `pbc` could be any combination of "x", "y" and "z".
+"""
+function FDMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
+    if _using_gpu.x
+        return FDMeshGPU(dx=dx, dy=dy, dz=dz, nx=nx, ny=ny, nz=nz, pbc=pbc)
+    end
+
+    ngbs = zeros(Int64,6,nx*ny*nz)
+    xperiodic = 'x' in pbc ? true : false
+    yperiodic = 'y' in pbc ? true : false
+    zperiodic = 'z' in pbc ? true : false
+
+    for k = 1:nz, j = 1:ny, i=1:nx
+        id = index(i, j, k, nx, ny, nz)
+        ngbs[1,id] = indexpbc(i-1,j,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
+        ngbs[2,id] = indexpbc(i+1,j,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
+        ngbs[3,id] = indexpbc(i,j-1,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
+        ngbs[4,id] = indexpbc(i,j+1,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
+        ngbs[5,id] = indexpbc(i,j,k-1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
+        ngbs[6,id] = indexpbc(i,j,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
+    end
+    volume = dx*dy*dz
+    nxyz = nx*ny*nz
+    return FDMesh(dx, dy, dz, nx, ny, nz, nxyz, volume, ngbs, xperiodic, yperiodic, zperiodic)
 end
 
 function CubicMesh(;a=1.0, nx=1, ny=1, nz=1, pbc="open")

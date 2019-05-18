@@ -5,6 +5,7 @@ abstract type MicroEnergy end
 abstract type Interaction end
 abstract type Integrator end
 abstract type AbstractDopri5 <:Integrator end
+abstract type MeshGPU <: Mesh end
 
 struct FDMesh <: Mesh
   dx::Float64
@@ -19,6 +20,20 @@ struct FDMesh <: Mesh
   xperiodic::Bool
   yperiodic::Bool
   zperiodic::Bool
+end
+
+struct FDMeshGPU{T <: AbstractFloat} <: MeshGPU
+  dx::T
+  dy::T
+  dz::T
+  nx::Int64
+  ny::Int64
+  nz::Int64
+  nxyz::Int64
+  xperiodic::Bool
+  yperiodic::Bool
+  zperiodic::Bool
+  volume::T
 end
 
 struct CubicMesh <: Mesh
@@ -94,7 +109,6 @@ mutable struct AtomicSim <: AbstractSim
   name::String
   interactions::Array
 end
-
 
 mutable struct Exchange <: MicroEnergy
    A::Float64

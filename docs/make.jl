@@ -2,14 +2,16 @@ using Documenter
 using JuMag
 
 makedocs(
-    sitename = "JuMag",
+    sitename = "JuMag.jl",
     format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true"
     ),
     modules = [JuMag],
     pages = Any[
         "index.md",
-        "notes.md"
+        "tutorial.md",
+        "notes.md",
+        "functions.md"
         ]
 )
 

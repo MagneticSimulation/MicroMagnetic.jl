@@ -1,3 +1,8 @@
+"""
+    Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5")
+
+Create a simulation instance for given mesh.
+"""
 function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5")
   nxyz = mesh.nx*mesh.ny*mesh.nz
   spin = zeros(Float64,3*nxyz)

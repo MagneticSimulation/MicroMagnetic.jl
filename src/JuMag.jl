@@ -16,9 +16,20 @@ export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamm
 
 const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)
+const _using_gpu = Ref(true)
 
 function cuda_using_double(flag = true)
    _cuda_using_double[] = flag
+   return nothing
+end
+
+function using_gpu(flag = true)
+    if _cuda_available.x == true
+        _using_gpu[] = flag
+    elseif flag == true
+        @warn("The CUDA is not available so GPU will not be used.")
+        _using_gpu[] = false
+    end
    return nothing
 end
 
@@ -46,6 +57,7 @@ try
 	#@info "Running CUFFT $(CUFFT.version())"
 catch
     _cuda_available[] = false
+    _using_gpu[] = false
     @warn "CUDA is not available!"
 end
 
