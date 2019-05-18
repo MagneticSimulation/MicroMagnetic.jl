@@ -12,6 +12,6 @@ makedocs(
         ]
 )
 
-#deploydocs(
-#    repo = "https://github.com/ww1g11/JuMag.jl"
-#)
+deploydocs(
+    repo = "https://github.com/ww1g11/JuMag.jl"
+)
