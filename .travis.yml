@@ -19,6 +19,7 @@ jobs:
       script:
         - export DOCUMENTER_DEBUG="true"
         - julia --color=yes --project=docs/ -e 'using Pkg;
+                                                Pkg.add("Documenter");
                                                 Pkg.instantiate();
                                                 Pkg.develop(PackageSpec(path=pwd()));
                                                 Pkg.build()'
