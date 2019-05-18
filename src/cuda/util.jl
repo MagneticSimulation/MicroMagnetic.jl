@@ -114,8 +114,8 @@ end
 
 function init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init_fun::Function) where {T<:AbstractFloat}
 	Float = _cuda_using_double.x ? Float64 : Float32
-	tmp = zeros(Float, sim.nxyz)
-    init_scalar!(tmp, sim.mesh, init)
+	tmp = zeros(Float, mesh.nxyz)
+    init_scalar!(tmp, mesh, init_fun)
     copyto!(v, tmp)
     return true
 end

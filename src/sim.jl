@@ -57,6 +57,10 @@ function set_ux(sim::AbstractSim, init_ux)
 	init_scalar!(sim.driver.ux, sim.mesh, init_ux)
 end
 
+function set_aj(sim::AbstractSim, init_aj)
+	init_scalar!(sim.driver.aj, sim.mesh, init_aj)
+end
+
 function average_m(sim::AbstractSim)
   b = reshape(sim.spin, 3, sim.nxyz)
   mx,my,mz = 0.0,0.0,0.0

@@ -182,7 +182,50 @@ function compute_skyrmion_number(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) whe
         if id2>0
            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
         end
-		v[id] += volume(mx,my,mz, sx1, sy1, sz1, sx2,sy2,sz2)
-		v[id] /= (8*pi);
-	end
+        v[id] += volume(mx,my,mz, sx1, sy1, sz1, sx2,sy2,sz2)
+        v[id] /= (8*pi);
+    end
+    return nothing
+end
+
+#compute the guiding centre, Dynamics of magnetic vortices,
+#N.Papanicolaou, T.N. Tomaras 360, 425-462, (1991)
+function compute_guiding_centre(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy = mesh.dx, mesh.dy
+    sum, Rx, Ry = 0.0, 0.0, 0.0
+    for k = 1:nz, j = 1:ny, i=1:nx
+        id = index(i, j, k, nx, ny, nz)
+        mx,my,mz = m[3*id-2],m[3*id-1],m[3*id]
+        sx1,sy1,sz1 = T(0),T(0),T(0)
+        sx2,sy2,sz2 = T(0),T(0),T(0)
+        id1 = 3*_x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
+        id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.xperiodic)
+        if id1>0
+           sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+        end
+        if id2>0
+           sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+        end
+        charge = volume(mx,my,mz, sx1, sy1, sz1, sx2,sy2,sz2)
+        sum += charge
+        Rx += i * dx * charge;
+        Ry += j * dy * charge;
+
+		sx1,sy1,sz1 = T(0),T(0),T(0)
+        sx2,sy2,sz2 = T(0),T(0),T(0)
+		id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
+        id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.xperiodic)
+        if id1>0
+           sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+        end
+        if id2>0
+           sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+        end
+        charge = volume(mx,my,mz, sx1, sy1, sz1, sx2,sy2,sz2)
+        sum += charge
+        Rx += i * dx * charge;
+        Ry += j * dy * charge;
+    end
+    return Rx/sum, Ry/sum
 end

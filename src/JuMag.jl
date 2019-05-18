@@ -5,11 +5,12 @@ using Printf
 
 export init_m0, add_zeeman, add_dmi,
        add_exch, add_anis, add_demag,
-	   run_until, relax,
-	   save_vtk, FDMesh, set_Ms, Sim,
-	   CubicMesh, set_mu_s,
-	   set_ux, save_vtk,
-       compute_skyrmion_number
+       run_until, relax,
+       save_vtk, FDMesh, set_Ms, Sim,
+       CubicMesh, set_mu_s,
+       set_ux, save_vtk,
+       compute_skyrmion_number,
+       compute_guiding_centre, set_aj
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma
 
