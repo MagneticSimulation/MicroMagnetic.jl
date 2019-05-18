@@ -8,7 +8,6 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 [![codecov](https://codecov.io/gl/ww1g11/JuMag.jl/branch/master/graph/badge.svg)](https://codecov.io/gl/ww1g11/JuMag.jl)
 
 
-
 ### Features
 
 - Support classical spin dynamics and micromagnetic simulations.
