@@ -12,6 +12,6 @@ makedocs(
         ]
 )
 
-deploydocs(
-    repo = "github.com/JuliaParallel/MPI.jl.git"
-)
+#deploydocs(
+#    repo = "https://github.com/ww1g11/JuMag.jl"
+#)
