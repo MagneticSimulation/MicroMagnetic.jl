@@ -12,6 +12,7 @@ notifications:
 
 jobs:
   include:
+    - stage: "Tests"
     - stage: "Documentation"
       julia: 1.0
       os: linux
