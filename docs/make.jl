@@ -10,6 +10,7 @@ makedocs(
     pages = Any[
         "index.md",
         "tutorial.md",
+        "equations.md",
         "notes.md",
         "functions.md"
         ]

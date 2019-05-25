@@ -16,7 +16,7 @@ export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamm
 
 const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)
-const _using_gpu = Ref(true)
+const _using_gpu = Ref(false)
 
 function cuda_using_double(flag = true)
    _cuda_using_double[] = flag

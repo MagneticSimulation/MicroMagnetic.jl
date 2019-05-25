@@ -26,37 +26,6 @@ and remove that package from deps in `Project.toml`. For example, if `CuArrays` 
 
 may solve the problem.
 
-# Implemented equations
-
-- Exchange energy
-
-  ```math
-  E_\mathrm{ex} = \int_{V} A (\nabla \vec{m})^2 \mathrm{d}V
-  ```
-
-- Bulk DMI energy
-
-  ```math
-  E_{\mathrm{dmi}} = \int_V D \vec{m} \cdot (\nabla \times \vec{m}) \, \mathrm{d}V
-  ```
-
-- Anisotropy
-
-```math
-E_\mathrm{anis} = \int_{V} K_{u} [ 1 - (\vec{m} \cdot \hat{u})^2 ]\, dV
-```
-
-## LLG equation
-
-```math
-\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} + \alpha \vec{m} \times  \frac{\partial \vec{m}}{\partial t}
-```
-
-LL form:
-
-```math
-(1+\alpha^2)\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} - \alpha \gamma \vec{m} \times (\vec{m} \times \vec{H})
-```
 
 ## LLG equation with Zhang-Li extension
 
@@ -70,13 +39,13 @@ where
 u_0=\frac{p g \mu_B}{2 |e| M_s}=\frac{p g \mu_B a^3}{2 |e| \mu_s}
 ```
 
-and `$\mu_B=|e|\hbar/(2m)$` is the Bohr magneton. In LL form
+and ``\mu_B=|e|\hbar/(2m)`` is the Bohr magneton. In LL form
 
 ```math
 (1+\alpha^2)\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} - \alpha \gamma \vec{m} \times (\vec{m} \times \vec{H}) + (1+\alpha\beta) u_0 \vec{\tau} - (\beta-\alpha) u_0 (\vec{m}\times \vec{\tau})
 ```
 
-where `\vec{\tau}=(\vec{j}_s \cdot \nabla)\vec{m}`
+where ``\vec{\tau}=(\vec{j}_s \cdot \nabla)\vec{m}``
 
 Note that
 
