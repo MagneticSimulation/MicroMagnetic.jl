@@ -63,6 +63,7 @@ end
 
 if _cuda_available.x
     include("cuda/head.jl")
+    include("cuda/mesh.jl")
     include("cuda/driver.jl")
     include("cuda/sim.jl")
     include("cuda/ode.jl")
@@ -73,7 +74,7 @@ if _cuda_available.x
 	include("cuda/demag.jl")
     include("cuda/sd.jl")
     include("cuda/vtk.jl")
-    export FDMeshGPU
+    export FDMeshGPU, TriangularMesh
 end
 
 
