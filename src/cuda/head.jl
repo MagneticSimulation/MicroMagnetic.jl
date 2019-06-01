@@ -43,6 +43,7 @@ mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   interactions::Array{Any, 1}
 end
 
+
 mutable struct ExchangeGPU{T<:AbstractFloat} <: MicroEnergyGPU
    A::T
    field::Array{T, 1}

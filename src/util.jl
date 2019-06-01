@@ -14,6 +14,7 @@ end
     return (-x3*y2 + x2*y3, x3*y1 - x1*y3, -x2*y1 + x1*y2)
 end
 
+#compute a.(bxc) = b.(cxa) = c.(axb)
 @inline function volume(Sx::T, Sy::T, Sz::T, Six::T, Siy::T, Siz::T, Sjx::T, Sjy::T, Sjz::T) where {T<:AbstractFloat}
     tx = Sx * (-Siz * Sjy + Siy * Sjz);
     ty = Sy * (Siz * Sjx - Six * Sjz);

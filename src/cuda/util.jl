@@ -64,7 +64,7 @@ end
     return -1
 end
 
-#compute a = a + b, which is slightly fast than a .+= b
+#compute a = a + b, which is slightly faster than a .+= b
 function addto(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
     function __kernel!(a, b, n)
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x

@@ -10,17 +10,6 @@ mutable struct EnergyMinimization_GPU{T<:AbstractFloat} <: DriverGPU
   steps::Int64
 end
 
-mutable struct Monte_Carlo{T<:AbstractFloat} <: DriverGPU
-  gk::CuArray{T, 1}
-  ss::CuArray{T, 1}
-  sf::CuArray{T, 1}
-  ff::CuArray{T, 1}
-  field::CuArray{T, 1}
-  tau::T
-  max_tau::T
-  min_tau::T
-  steps::Int64
-end
 
 mutable struct LLG_GPU{T<:AbstractFloat} <: DriverGPU
   precession::Bool
