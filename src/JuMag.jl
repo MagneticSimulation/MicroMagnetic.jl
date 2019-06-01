@@ -3,7 +3,9 @@ __precompile__()
 module JuMag
 using Printf
 
-export init_m0, add_zeeman, add_dmi,
+export init_m0,
+       add_zeeman,
+       add_dmi,
        add_exch, add_anis, add_demag,
        run_until, relax,
        save_vtk, FDMesh, set_Ms, Sim,

@@ -9,6 +9,22 @@ function effective_field(zee::Zeeman, sim::MicroSim, spin::Array{Float64, 1}, t:
   end
 end
 
+function effective_field(zee::TimeZeeman, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
+  mu0 = 4*pi*1e-7
+  nxyz = sim.nxyz
+  field = zee.field
+  b = reshape(field, 3, nxyz)
+  b0 = reshape(zee.init_field, 3, nxyz)
+  volume = sim.mesh.volume
+  b[1, :] = b0[1, :]*zee.fun_x(t)
+  b[2, :] = b0[2, :]*zee.fun_y(t)
+  b[3, :] = b0[3, :]*zee.fun_z(t)
+  for i = 1:nxyz
+    j = 3*(i-1)
+    zee.energy[i] = -mu0*sim.Ms[i]*volume*(spin[j+1]*field[j+1] + spin[j+2]*field[j+2] + spin[j+3]*field[j+3])
+  end
+end
+
 function effective_field(zee::Zeeman, sim::AtomicSim, spin::Array{Float64, 1}, t::Float64)
   nxyz = sim.nxyz
   field = zee.field

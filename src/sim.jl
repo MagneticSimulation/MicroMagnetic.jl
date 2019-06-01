@@ -98,18 +98,41 @@ function add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
   init_vector!(field, sim.mesh, H0)
-  b = reshape(field, 3, nxyz)
-  Hx = sum(b[1,:])/nxyz
-  Hy = sum(b[2,:])/nxyz
-  Hz = sum(b[3,:])/nxyz
-  zeeman =  Zeeman(Hx, Hy, Hz, field, energy, name)
+
+  zeeman =  Zeeman(field, energy, name)
   push!(sim.interactions, zeeman)
 
-  push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
-  push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
-  id = length(sim.interactions)
-  fun = o::AbstractSim ->  (o.interactions[id].Hx, o.interactions[id].Hy, o.interactions[id].Hz)
-  push!(sim.saver.results, fun)
+  if isa(H0, Tuple)
+      push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
+      push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
+      id = length(sim.interactions)
+      fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
+      push!(sim.saver.results, fun)
+  end
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  return zeeman
+end
+
+function add_zeeman(sim::AbstractSim, H0::Any, funs::Tuple{Function,Function,Function}; name="timezeeman")
+  nxyz = sim.nxyz
+  init_field = zeros(Float64, 3*nxyz)
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  init_vector!(init_field, sim.mesh, H0)
+
+  zeeman =  TimeZeeman(funs[1], funs[2], funs[3], init_field, field, energy, name)
+  push!(sim.interactions, zeeman)
+
+  if isa(H0, Tuple)
+      push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
+      push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
+      id = length(sim.interactions)
+      fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
+      push!(sim.saver.results, fun)
+  end
 
   push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")

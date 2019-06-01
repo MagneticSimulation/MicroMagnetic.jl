@@ -150,9 +150,16 @@ mutable struct Anisotropy
 end
 
 mutable struct Zeeman
-   Hx::Float64
-   Hy::Float64
-   Hz::Float64
+   field::Array{Float64, 1}
+   energy::Array{Float64, 1}
+   name::String
+end
+
+mutable struct TimeZeeman
+   fun_x::Function
+   fun_y::Function
+   fun_z::Function
+   init_field::Array{Float64, 1}
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String

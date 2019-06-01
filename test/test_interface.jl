@@ -16,16 +16,21 @@ function m0_fun(i,j,k,dx,dy,dz)
   return sin(2*pi*x/L), sin(2*pi*x/L+1.2), sin(2*pi*x/L+2.3)
 end
 
-function test_energy_minimization(mesh)
-	sim = Sim(mesh, driver="SD", name="sim")
-	@test set_Ms(sim, circular_Ms)
-	@test set_Ms(sim, 8.6e5)
+function time_fun(t)
+    return sin(t)
+end
 
-	add_exch(sim, 1.3e-11, name="exch")
+function test_energy_minimization(mesh)
+    sim = Sim(mesh, driver="SD", name="sim")
+    @test set_Ms(sim, circular_Ms)
+    @test set_Ms(sim, 8.6e5)
+
+    add_exch(sim, 1.3e-11, name="exch")
     add_dmi(sim, 4e-3, name="dmi")
-	add_anis(sim, 1e2, axis=(0,0,1))
-    add_zeeman(sim, (0,0,4e5))
-	add_demag(sim)
+    add_anis(sim, 1e2, axis=(0,0,1))
+    add_zeeman(sim, (1,2,4e5))
+    add_zeeman(sim, (100,200,4e5), (time_fun, time_fun, time_fun))
+    add_demag(sim)
 
     init_m0(sim, m0_fun)
     relax(sim, maxsteps=100, stopping_torque = 0.1, save_vtk_every=-1)
