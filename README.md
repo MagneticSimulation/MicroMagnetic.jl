@@ -20,13 +20,8 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 Requirements:
 
 - Julia 1.0 (or above) (<http://julialang.org/downloads/>)
-- FFTW
-- WriteVTK
-
-To enable the GPU support, packages related to CUDA are needed as well:
-
-- CuArrays (optional for GPU support)
-- CUDAnative (optional for GPU support)
+- Some packages such as FFTW, WriteVTK and NPZ
+- CUDA-related packages such as CuArrays and CUDAnative (optional for GPU support)
 
 In [Julia](http://julialang.org), packages can be easily installed using
 
@@ -34,11 +29,18 @@ In [Julia](http://julialang.org), packages can be easily installed using
 using Pkg;
 Pkg.add("FFTW")
 ```
-
-To install [JuMag.jl](https://github.com/ww1g11/JuMag.jl), download it and append the parent path of JuMag.jl to `JULIA_LOAD_PATH`
+or
 
 ```
-export JULIA_LOAD_PATH=/parent/path/of/JuMag:$JULIA_LOAD_PATH
+julia> ]
+(v1.1) pkg> add FFTW
+```
+
+We don't have to install these packages for now, since the packages will be installed automatically when we install JuMag.
+To install [JuMag.jl](https://github.com/ww1g11/JuMag.jl), simply using
+
+```
+(v1.1) pkg> add https://github.com/ww1g11/JuMag.jl
 ```
 
 Now we will see similar messages if we type `using JuMag`
@@ -50,4 +52,18 @@ julia> using JuMag
 └ @ JuMag ~/Softwares/JuMag.jl/src/JuMag.jl:41
 ```
 
-Please note in this case `JULIA_LOAD_PATH` is set to `~/Softwares`.
+### Note:
+
+If your internet is very slow to install Julia packages, it is possible to solve the issue by using the Pkg mirrors
+
+```
+(v1.1) pkg> add PkgMirrors
+julia> using PkgMirrors
+julia> PkgMirrors.availables()
+2-element Array{String,1}:
+ "ZJU" 
+ "USTC"
+julia> PkgMirrors.setmirror("USTC")
+[ Info: PkgMirror USTC activated.
+PkgMirrors.Types.PkgMirror("USTC", "https://mirrors.ustc.edu.cn/julia")
+```
