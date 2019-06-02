@@ -21,3 +21,8 @@ end
     tz = Sz * (-Siy * Sjx + Six * Sjy);
     return tx + ty + tz;
 end
+
+function abs!(a::Array{T,1}, b::Array{T,1})  where {T<:AbstractFloat}
+    a .= abs.(b)
+    return nothing
+end

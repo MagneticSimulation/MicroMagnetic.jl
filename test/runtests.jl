@@ -3,10 +3,12 @@ using JuMag
 include("test_mesh.jl")
 include("test_exch.jl")
 include("test_demag.jl")
+include("test_zeeman.jl")
 include("test_interface.jl")
 include("test_fields.jl")
 include("test_stt.jl")
 include("test_llg.jl")
+include("test_relax.jl")
 include("test_util.jl")
 
 if JuMag._cuda_available.x
@@ -22,5 +24,7 @@ if JuMag._cuda_available.x
   for (beta, u) in [(0, 10), (0.1, 3.2), (0.2, 4.7)]
     run_dynamics_stt(mesh, beta=beta, u=u)
   end
+  relax_system_SD(mesh)
+  relax_system_LLG(mesh)
 
 end

@@ -29,7 +29,6 @@ function test_energy_minimization(mesh)
     add_dmi(sim, 4e-3, name="dmi")
     add_anis(sim, 1e2, axis=(0,0,1))
     add_zeeman(sim, (1,2,4e5))
-    add_zeeman(sim, (100,200,4e5), (time_fun, time_fun, time_fun))
     add_demag(sim)
 
     init_m0(sim, m0_fun)

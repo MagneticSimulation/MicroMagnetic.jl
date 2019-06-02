@@ -222,72 +222,113 @@ function add_anis(sim::AbstractSim, init_ku::Any; axis=(0,0,1), name="anis")
   return anis
 end
 
-function relax(sim::AbstractSim; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1)
-  if isa(sim.driver, EnergyMinimization)
-    relax(sim, sim.driver, maxsteps=maxsteps, stopping_torque=stopping_torque, save_m_every=save_m_every, save_vtk_every=save_vtk_every)
-  elseif isa(sim.driver, LLG)
-    relax(sim, sim.driver, maxsteps=maxsteps, stopping_dmdt=stopping_dmdt, save_m_every=save_m_every, save_vtk_every=save_vtk_every)
+function relax(sim::AbstractSim; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks")
+  is_relax_llg = false
+  if _using_gpu.x && isa(sim.driver, LLG_GPU)
+        is_relax_llg = true
+  end
+
+  if isa(sim.driver, LLG)
+      is_relax_llg = true
+  end
+
+  if !isdir(vtk_folder)
+      mkdir(vtk_folder)
+  end
+
+  if is_relax_llg
+      relax_llg(sim, maxsteps, stopping_dmdt, save_m_every, save_vtk_every, vtk_folder)
+  else
+      relax_energy(sim, maxsteps, stopping_torque, save_m_every, save_vtk_every, vtk_folder)
   end
   return nothing
 end
 
-function relax(sim::AbstractSim, driver::EnergyMinimization; maxsteps=10000,
-               stopping_torque=0.1, save_m_every = 10, save_vtk_every = -1)
-  for i=1:maxsteps
-    run_step(sim, sim.driver)
-	max_torque = maximum(abs.(driver.gk))
-    max_length_error = error_length_m(sim.spin, sim.nxyz)
-	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e  |m|_error=%10.6e",
-	               i, driver.tau, max_torque, max_length_error)
+
+function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float64,
+                     save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String)
+
+  if _using_gpu.x && isa(sim, MicroSimGPU)
+      T = _cuda_using_double.x ? Float64 : Float32
+      gk_abs = cuzeros(T, 3*sim.nxyz)
+  else
+      gk_abs = zeros(Float64,3*sim.nxyz)
+  end
+
+  driver = sim.driver
+  for i=0:maxsteps-1
+    run_step(sim, driver)
+    abs!(gk_abs, driver.gk)  #max_torque = maximum(abs.(driver.gk)) eats gpu memory???
+    max_torque = maximum(gk_abs)
+	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", i, driver.tau, max_torque)
     if i%save_m_every == 0
       compute_system_energy(sim, sim.spin, 0.0)
       write_data(sim)
     end
-	if save_vtk_every > 0
-		if i%save_vtk_every == 0
-	  	  save_vtk(sim, @sprintf("%s_%d", sim.name, i))
-		end
-	end
+    if save_vtk_every > 0
+        if i%save_vtk_every == 0
+            save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+        end
+    end
     sim.saver.nsteps += 1
     if max_torque < stopping_torque
       @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
+      compute_system_energy(sim, sim.spin, 0.0)
+      write_data(sim)
+      if save_vtk_every > 0
+          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+      end
       break
     end
   end
+  return nothing
 end
 
-function relax(sim::AbstractSim, driver::LLG; maxsteps=10000,
-	     stopping_dmdt=0.01, save_m_every = 10, save_vtk_every = -1)
+function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
+         save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String)
   step = 0
   rk_data = sim.driver.ode
-  #rk_data.step_next = compute_init_step(sim, 1e-13)
+
   dmdt_factor = 1.0
-  if isa(sim, MicroSim)
+  if isa(sim, MicroSim) || (_using_gpu.x && isa(sim, MicroSimGPU))
     dmdt_factor = (2 * pi / 360) * 1e9
   end
-  for i=1:maxsteps
+  for i=0:maxsteps-1
     advance_step(sim, rk_data)
-    max_dmdt = compute_dmdt(sim.prespin, sim.spin, sim.nxyz, rk_data.step)
-    max_length = error_length_m(sim.spin, sim.nxyz)
-    @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e  |m|_error=%10.6e",
-	               i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor, max_length)
+    step_size = rk_data.step
+    #omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
+    max_dmdt = 0.0
+    if _using_gpu.x
+        compute_dm(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
+        max_dmdt = maximum(rk_data.omega_t)/step_size
+    else
+        max_dmdt = compute_dmdt(sim.prespin, sim.spin, sim.nxyz, step_size)
+    end
+
+    @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
+                   i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor)
     if i%save_m_every == 0
-	  compute_system_energy(sim, sim.spin, driver.ode.t)
+      compute_system_energy(sim, sim.spin, sim.driver.ode.t)
       write_data(sim)
     end
-	if save_vtk_every > 0
-		if i%save_vtk_every == 0
-		  save_vtk(sim, @sprintf("%s_%d", sim.name, i))
-		end
-	end
+    if save_vtk_every > 0
+        if i%save_vtk_every == 0
+            save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+        end
+    end
     sim.saver.t = rk_data.t
     sim.saver.nsteps += 1
     if max_dmdt < stopping_dmdt*dmdt_factor
       @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
+      compute_system_energy(sim, sim.spin, sim.driver.ode.t)
+      write_data(sim)
+      if save_vtk_every > 0
+          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+      end
       break
     end
   end
-
+  return nothing
 end
 
 
@@ -336,8 +377,9 @@ function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
       omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
       sim.saver.t = t_end
       sim.saver.nsteps += 1
-	  if save_data
-		  compute_system_energy(sim, sim.spin, t_end)
-		  write_data(sim)
-	  end
+      if save_data
+          compute_system_energy(sim, sim.spin, t_end)
+          write_data(sim)
+      end
+      return nothing
 end
