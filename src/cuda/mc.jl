@@ -29,7 +29,7 @@ J, D and Ku in units of Joule
 H in units of Tesla.
 
 """
-function MonteCarlo(mesh::TriangularMesh; mu_s=1.0*mu_B, J=1*meV, D=0, Ku=0, H=(0,0,0), T=10, name="dyn")
+function MonteCarlo(mesh::TriangularMesh; mu_s=1.0*mu_B, J=1*meV, D=0, Ku=0, H=(0,0,0), T=10, bulk_dmi=false, name="dyn")
   nxy = mesh.nx*mesh.ny
   Float = _cuda_using_double.x ? Float64 : Float32
   spin = cuzeros(Float, 3*nxy)
@@ -44,7 +44,7 @@ function MonteCarlo(mesh::TriangularMesh; mu_s=1.0*mu_B, J=1*meV, D=0, Ku=0, H=(
              o::AbstractSim -> o.total_energy, average_m]
   saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
 
-  return MonteCarlo(mesh, mu_s, J/k_B, D/k_B, false, Ku/k_B, Float64(T),
+  return MonteCarlo(mesh, mu_s, J/k_B, D/k_B, bulk_dmi, Ku/k_B, Float64(T),
                     H[1]*mu_s/k_B, H[2]*mu_s/k_B, H[3]*mu_s/k_B,
                     saver, spin, nextspin, rnd, energy, Float(0.0), nxy, 0, name)
 end

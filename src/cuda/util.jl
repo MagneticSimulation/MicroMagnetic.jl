@@ -197,3 +197,41 @@ function average_m(sim::AbstractSimGPU)
   b = reshape(sim.spin, 3, sim.nxyz)
   return Tuple(sum(b, dims=2)./sim.nxyz)  #FIXME: using non-zero N in general case?
 end
+
+function compute_skyrmion_number(v::Array{T, 1}, m::Array{T, 1}, mesh::TriangularMesh) where {T<:AbstractFloat}
+    nx,ny = mesh.nx, mesh.ny
+    ngbs = Array(mesh.ngbs)
+    for j = 1:ny, i=1:nx
+        id = index(i, j, nx, ny)
+        v[id] = T(0)
+        mx,my,mz = m[3*id-2],m[3*id-1],m[3*id]
+        sx1,sy1,sz1 = T(0),T(0),T(0)
+        sx2,sy2,sz2 = T(0),T(0),T(0)
+
+        id1 = 3*ngbs[1, id]
+        id2 = 3*ngbs[2, id]
+        if id1>0 && id2>0
+                sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+                sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+                v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+        end
+
+        id1 = 3*ngbs[4, id]
+        id2 = 3*ngbs[5, id]
+        if id1>0 && id2>0
+                sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+                sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+                v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+        end
+        v[id] /= (4*pi);
+    end
+    return nothing
+end
+
+
+function compute_skyrmion_number(m::Array{T, 1}, mesh::TriangularMesh) where {T<:AbstractFloat}
+    nx,ny = mesh.nx, mesh.ny
+    v = zeros(T, nx*ny)
+    compute_skyrmion_number(v, m, mesh)
+    return sum(v)
+end

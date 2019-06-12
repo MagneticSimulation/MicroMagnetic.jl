@@ -22,6 +22,13 @@ end
     return tx + ty + tz;
 end
 
+#compute the angle defined in equation (1) in paper [PRB 93, 174403 (2016)] or equation (3) in [New J. Phys. 20 (2018) 103014]
+@inline function Berg_Omega(ux::T, uy::T, uz::T, vx::T, vy::T, vz::T, wx::T, wy::T, wz::T) where {T<:AbstractFloat}
+    b = volume(ux, uy, uz, vx, vy, vz, wx, wy, wz)
+    a = 1.0 + (ux*vx + uy*vy + uz*vz) + (ux*wx + uy*wy + uz*wz) + (vx*wx + vy*wy + vz*wz)
+    return 2*atan(b, a)
+end
+
 function abs!(a::Array{T,1}, b::Array{T,1})  where {T<:AbstractFloat}
     a .= abs.(b)
     return nothing

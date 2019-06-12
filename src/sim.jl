@@ -261,20 +261,20 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
     abs!(gk_abs, driver.gk)  #max_torque = maximum(abs.(driver.gk)) eats gpu memory???
     max_torque = maximum(gk_abs)
 	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", i, driver.tau, max_torque)
-    if i%save_m_every == 0
-      compute_system_energy(sim, sim.spin, 0.0)
+    if save_m_every>0 && i%save_m_every == 0
+      compute_system_energy(sim, sim.spin, sim.driver.ode.t)
       write_data(sim)
     end
-    if save_vtk_every > 0
-        if i%save_vtk_every == 0
-            save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
-        end
+    if save_vtk_every > 0 && i%save_vtk_every == 0
+        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
     end
     sim.saver.nsteps += 1
     if max_torque < stopping_torque
       @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
-      compute_system_energy(sim, sim.spin, 0.0)
-      write_data(sim)
+      if save_m_every>0
+          compute_system_energy(sim, sim.spin, 0.0)
+          write_data(sim)
+      end
       if save_vtk_every > 0
           save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
       end
@@ -307,21 +307,21 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
 
     @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
                    i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor)
-    if i%save_m_every == 0
+    if save_m_every>0 && i%save_m_every == 0
       compute_system_energy(sim, sim.spin, sim.driver.ode.t)
       write_data(sim)
     end
-    if save_vtk_every > 0
-        if i%save_vtk_every == 0
-            save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
-        end
+    if save_vtk_every > 0 && i%save_vtk_every == 0
+        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
     end
     sim.saver.t = rk_data.t
     sim.saver.nsteps += 1
     if max_dmdt < stopping_dmdt*dmdt_factor
       @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
-      compute_system_energy(sim, sim.spin, sim.driver.ode.t)
-      write_data(sim)
+      if save_m_every>0
+          compute_system_energy(sim, sim.spin, sim.driver.ode.t)
+          write_data(sim)
+      end
       if save_vtk_every > 0
           save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
       end
