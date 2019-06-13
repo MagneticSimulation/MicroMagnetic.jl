@@ -262,7 +262,7 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
     max_torque = maximum(gk_abs)
 	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", i, driver.tau, max_torque)
     if save_m_every>0 && i%save_m_every == 0
-      compute_system_energy(sim, sim.spin, sim.driver.ode.t)
+      compute_system_energy(sim, sim.spin, 0.0)
       write_data(sim)
     end
     if save_vtk_every > 0 && i%save_vtk_every == 0
