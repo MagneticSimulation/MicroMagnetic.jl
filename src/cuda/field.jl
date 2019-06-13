@@ -4,7 +4,18 @@ function effective_field(zeeman::ZeemanGPU, sim::MicroSimGPU, spin::CuArray{T, 1
   nxyz = sim.nxyz
   volume = sim.mesh.volume
   blocks_n, threads_n = sim.blocks, sim.threads
-  @cuda blocks=blocks_n threads=threads_n zeeman_kernel!(spin, sim.field, zeeman.field_gpu, sim.energy, sim.Ms, volume, nxyz)
+  @cuda blocks=blocks_n threads=threads_n zeeman_kernel!(spin, sim.field, zeeman.cufield, sim.energy, sim.Ms, volume, nxyz)
+  return nothing
+end
+
+function effective_field(zeeman::TimeZeemanGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+  nxyz = sim.nxyz
+  volume = sim.mesh.volume
+  blocks_n, threads_n = sim.blocks, sim.threads
+  fx = T(zeeman.fun_x(t))
+  fy = T(zeeman.fun_y(t))
+  fz = T(zeeman.fun_z(t))
+  @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, sim.energy, sim.Ms, volume, fx, fy, fz, nxyz)
   return nothing
 end
 

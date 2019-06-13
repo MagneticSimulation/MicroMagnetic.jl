@@ -19,6 +19,7 @@ if JuMag._cuda_available.x
   include("cuda/test_fields.jl")
 
   #test stt
+
   mesh =  FDMeshGPU(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
   relax_system(mesh)
   for (beta, u) in [(0, 10), (0.1, 3.2), (0.2, 4.7)]
@@ -26,5 +27,8 @@ if JuMag._cuda_available.x
   end
   relax_system_SD(mesh)
   relax_system_LLG(mesh)
+
+  JuMag.cuda_using_double()
+  test_zeeman(gpu=true)
 
 end

@@ -15,6 +15,22 @@ function zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
    return nothing
 end
 
+
+function time_zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
+                        h_static::CuDeviceArray{T, 1}, energy::CuDeviceArray{T, 1},
+                        Ms::CuDeviceArray{T, 1}, volume::T, fx::T, fy::T, fz::T, nxyz::Int64) where {T<:AbstractFloat}
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if index <= nxyz
+        mu0 = 4*pi*1e-7
+        j = 3*(index-1)
+        @inbounds h[j+1] = h_static[j+1]*fx
+        @inbounds h[j+2] = h_static[j+2]*fy
+        @inbounds h[j+3] = h_static[j+3]*fz
+        @inbounds energy[index] = -mu0*Ms[index]*volume*(m[j+1]*h[j+1] + m[j+2]*h[j+2] + m[j+3]*h[j+3])
+    end
+   return nothing
+end
+
 function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                      energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1}, A::T,
                      dx::T, dy::T, dz::T, nx::Int64, ny::Int64, nz::Int64, volume::T,

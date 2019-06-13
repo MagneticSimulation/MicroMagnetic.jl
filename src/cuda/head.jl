@@ -79,11 +79,19 @@ mutable struct SpatialBulkDMIGPU{T<:AbstractFloat} <: MicroEnergyGPU
 end
 
 mutable struct ZeemanGPU{T<:AbstractFloat} <: MicroEnergyGPU
-   Hx::Float64
-   Hy::Float64
-   Hz::Float64
    field::Array{T, 1}
-   field_gpu::CuArray{T, 1}
+   energy::Array{T, 1}
+   cufield::CuArray{T, 1}
+   total_energy::T
+   name::String
+end
+
+mutable struct TimeZeemanGPU{T<:AbstractFloat} <: MicroEnergyGPU
+   fun_x::Function
+   fun_y::Function
+   fun_z::Function
+   init_field::CuArray{T, 1}
+   field::Array{T, 1}
    energy::Array{T, 1}
    total_energy::T
    name::String
