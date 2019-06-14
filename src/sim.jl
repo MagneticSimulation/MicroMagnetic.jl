@@ -26,19 +26,8 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5")
   end
 end
 
-function set_Ms(sim::MicroSim, fun_Ms::Function)
-    mesh = sim.mesh
-    for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        sim.Ms[id] = fun_Ms(i, j, k, mesh.dx, mesh.dy, mesh.dz)
-    end
-    return true
-end
-
-function set_Ms(sim::MicroSim, Ms::Number)
-    for i =1:sim.nxyz
-        sim.Ms[i] = Ms
-    end
+function set_Ms(sim::MicroSim, init::Any)
+    init_scalar!(sim.Ms, sim.mesh, init)
     return true
 end
 
@@ -85,10 +74,32 @@ function average_m(sim::AbstractSim)
   return (mx/n, my/n, mz/n)
 end
 
-function init_m0(sim::AbstractSim, m0::Any; norm=true)
+function init_m0(sim::AtomicSim, m0::Any; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
   if norm
     normalise(sim.prespin, sim.nxyz)
+  end
+  for i = 1:sim.nxyz
+      if sim.mu_s[i] == 0.0
+          sim.prespin[3*i-2] = 0
+          sim.prespin[3*i-1] = 0
+          sim.prespin[3*i] = 0
+      end
+  end
+  sim.spin[:] .= sim.prespin[:]
+end
+
+function init_m0(sim::MicroSim, m0::Any; norm=true)
+  init_vector!(sim.prespin, sim.mesh, m0)
+  if norm
+    normalise(sim.prespin, sim.nxyz)
+  end
+  for i = 1:sim.nxyz
+      if sim.Ms[i] == 0.0
+          sim.prespin[3*i-2] = 0
+          sim.prespin[3*i-1] = 0
+          sim.prespin[3*i] = 0
+      end
   end
   sim.spin[:] .= sim.prespin[:]
 end
@@ -222,7 +233,7 @@ function add_anis(sim::AbstractSim, init_ku::Any; axis=(0,0,1), name="anis")
   return anis
 end
 
-function relax(sim::AbstractSim; maxsteps=10000, init_step = 1e-13, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks")
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks")
   is_relax_llg = false
   if _using_gpu.x && isa(sim.driver, LLG_GPU)
         is_relax_llg = true

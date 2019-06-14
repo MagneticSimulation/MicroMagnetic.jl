@@ -38,6 +38,14 @@ function init_m0(sim::MicroSimGPU, m0::Any; norm=true)
   if norm
     normalise(spin, sim.nxyz)
   end
+  Ms = Array(sim.Ms)
+  for i = 1:sim.nxyz
+      if abs(Ms[i]) < eps(Float)
+          spin[3*i-2] = 0
+          spin[3*i-1] = 0
+          spin[3*i] = 0
+      end
+  end
   copyto!(sim.spin, spin)
   copyto!(sim.prespin, sim.spin)
   return true

@@ -5,6 +5,11 @@ function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Number) where {T<:Abstr
     return nothing
 end
 
+function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Array{T, 1}) where {T<:AbstractFloat}
+    v .= init
+    return nothing
+end
+
 function init_scalar!(v::Array{T, 1}, mesh::Mesh, init_fun::Function) where {T<:AbstractFloat}
     mesh = mesh
     for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx

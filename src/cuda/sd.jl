@@ -4,7 +4,7 @@
 
 function compute_gk_kernel_1!(gk::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}, nxyz::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= nxyz
+    if 0 <index <= nxyz
         j = 3*index - 2
         @inbounds fx,fy,fz = cross_product(m[j],m[j+1],m[j+2], h[j],h[j+1],h[j+2])
         @inbounds gx,gy,gz = cross_product(m[j],m[j+1],m[j+2], fx,fy,fz)
@@ -41,7 +41,7 @@ end
 
 function run_step_kernel!(gk::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}, tau::T, N::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= N
+    if 0<index <= N
         j = 3*index - 2
         @inbounds fx,fy,fz = cross_product(m[j],m[j+1],m[j+2],h[j],h[j+1],h[j+2])
         factor = 0.25*(fx*fx+fy*fy+fz*fz)*tau^2
@@ -61,8 +61,8 @@ function compute_tau(driver::EnergyMinimization_GPU, m_pre::CuArray{T, 1}, m::Cu
   if driver.steps == 0
       blk, thr = CuArrays.cudims(N)
       @cuda blocks=blk threads=thr compute_gk_kernel_1!(driver.gk, m, h, N)
-    driver.tau  = driver.min_tau
-	return nothing
+      driver.tau  = driver.min_tau
+      return nothing
   end
 
     blk, thr = CuArrays.cudims(N)
@@ -73,8 +73,8 @@ function compute_tau(driver::EnergyMinimization_GPU, m_pre::CuArray{T, 1}, m::Cu
     sum2 = sum(driver.sf)
     sum3 = sum(driver.ff)
 
-    tau1 = sum2!=0.0 ? sum1/sum2 : driver.min_tau
-    tau2 = sum3!=0.0 ? sum2/sum3 : driver.min_tau
+    tau1 = sum2 != T(0) ? sum1/sum2 : driver.min_tau
+    tau2 = sum3 != T(0) ? sum2/sum3 : driver.min_tau
 
 	driver.tau = driver.steps%2 == 0 ? tau2 : tau1
     if driver.tau > driver.max_tau

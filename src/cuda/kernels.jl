@@ -44,7 +44,7 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   ay = 2 * A / (dy * dy)
   az = 2 * A / (dz * dz)
 
-  if 0< index <= nxyz
+  if 0 < index <= nxyz
       i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
@@ -53,7 +53,11 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       @inbounds mz = m[indexm]
       @inbounds Ms_local = Ms[index]
 
-      if Ms_local == 0.0
+      if Ms_local == T(0)
+          @inbounds energy[index] = 0
+          @inbounds h[indexm - 2] = 0
+          @inbounds h[indexm - 1] = 0
+          @inbounds h[indexm] = 0
           return nothing
       end
       id, idm = 0, 0
@@ -61,20 +65,20 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       if k>1 || zperiodic
           id = (k==1) ? index - nxy + nxyz : index - nxy
           idm = 3*id
-		  @inbounds if Ms[id]>0
-              @inbounds fx += az*(m[idm-2]- mx)
-              @inbounds fy += az*(m[idm-1]- my)
-              @inbounds fz += az*(m[idm]- mz)
-	      end
+          @inbounds if Ms[id]>0
+              @inbounds fx += az*(m[idm-2] - mx)
+              @inbounds fy += az*(m[idm-1] - my)
+              @inbounds fz += az*(m[idm] - mz)
+          end
       end
 
       if j>1 || yperiodic
           id = (j==1) ? index - nx + nxy : index - nx
           idm = 3*id
           @inbounds if Ms[id]>0
-              @inbounds fx += ay*(m[idm-2]- mx)
-              @inbounds fy += ay*(m[idm-1]- my)
-              @inbounds fz += ay*(m[idm]- mz)
+              @inbounds fx += ay*(m[idm-2] - mx)
+              @inbounds fy += ay*(m[idm-1] - my)
+              @inbounds fz += ay*(m[idm] - mz)
          end
       end
 
@@ -82,9 +86,9 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
           id = (i==1) ? index - 1 + nx : index -1
           idm = 3*id
           @inbounds if Ms[id]>0
-              @inbounds fx += ax*(m[idm-2]- mx)
-              @inbounds fy += ax*(m[idm-1]- my)
-              @inbounds fz += ax*(m[idm]- mz)
+              @inbounds fx += ax*(m[idm-2] - mx)
+              @inbounds fy += ax*(m[idm-1] - my)
+              @inbounds fz += ax*(m[idm] - mz)
           end
       end
 
@@ -147,7 +151,11 @@ function bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       @inbounds mz = m[indexm]
       @inbounds Ms_local = Ms[index]
 
-      if Ms_local == 0.0
+      if Ms_local == T(0)
+          @inbounds energy[index] = 0
+          @inbounds h[indexm - 2] = 0
+          @inbounds h[indexm - 1] = 0
+          @inbounds h[indexm] = 0
           return nothing
       end
       id, idm = 0, 0
@@ -228,7 +236,11 @@ function interfacial_dmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       @inbounds mz = m[indexm]
       @inbounds Ms_local = Ms[index]
 
-      if Ms_local == 0.0
+      if Ms_local == T(0)
+          @inbounds energy[index] = 0
+          @inbounds h[indexm - 2] = 0
+          @inbounds h[indexm - 1] = 0
+          @inbounds h[indexm] = 0
           return nothing
       end
       id, idm = 0, 0
@@ -297,7 +309,11 @@ function spatial_bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       @inbounds Ms_local = Ms[index]
       @inbounds D = Ds[index]
 
-      if Ms_local == 0.0
+      if Ms_local == T(0)
+          @inbounds energy[index] = 0
+          @inbounds h[indexm - 2] = 0
+          @inbounds h[indexm - 1] = 0
+          @inbounds h[indexm] = 0
           return nothing
       end
       id, idm = 0, 0
