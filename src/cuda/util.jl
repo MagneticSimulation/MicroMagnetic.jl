@@ -179,10 +179,12 @@ function normalise(a::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
        if 0 < i <= n
            j = 3*i - 2
 		   @inbounds m2 = a[j]*a[j] + a[j+1]*a[j+1] + a[j+2]*a[j+2]
-           @inbounds length = CUDAnative.rsqrt(m2)
-           @inbounds a[j] *= length
-           @inbounds a[j+1] *= length
-           @inbounds a[j+2] *= length
+           if m2>0
+               @inbounds length = CUDAnative.rsqrt(m2)
+               @inbounds a[j] *= length
+               @inbounds a[j+1] *= length
+               @inbounds a[j+2] *= length
+           end
        end
        return nothing
     end
