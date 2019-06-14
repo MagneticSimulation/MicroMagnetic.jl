@@ -54,9 +54,5 @@ function test_fields(mesh; A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0,0,1), gp
     @test (abs((sum(anis.energy)-energy[5])/energy[5]))<1e-15
 end
 
-#mesh =  FDMesh(nx=20, ny=5, nz=3, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
-#test_fields(mesh)
-
-JuMag.cuda_using_double(true)
-mesh =  FDMeshGPU(nx=20, ny=5, nz=3, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
-test_fields(mesh, gpu=true)
+mesh =  FDMesh(nx=20, ny=5, nz=3, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
+test_fields(mesh)

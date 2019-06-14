@@ -9,11 +9,12 @@ mesh =  FDMeshGPU(dx=1.1e-9, nx=10, ny=2)
 @test isapprox(mesh.volume*1.0, 1.1e-27, rtol=1e-7)
 
 sim = Sim(mesh, driver="LLG")
+set_Ms(sim, 1.0)
 
 @test sim.nxyz == 20
 
 init_m0(sim, (1.0, 1.0, 0))
-
+println(sim.spin)
 spin = Array(sim.spin)
 
 @test isapprox(spin[1],0.5*2^0.5)
