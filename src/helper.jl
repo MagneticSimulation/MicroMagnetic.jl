@@ -61,7 +61,7 @@ function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Array{Float64, 1}) where
   return nothing
 end
 
-function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Array{Float32, 1}) where {T<:AbstractFloat}
+function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Array{Number, 1}) where {T<:AbstractFloat}
   v .= init
   return nothing
 end
