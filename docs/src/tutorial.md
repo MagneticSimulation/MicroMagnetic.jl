@@ -1,6 +1,7 @@
 # Tutorial
 
 ## An example -- vortex
+
 To start a micromagnetic simulation, we first create a FDMesh
 
 ```julia
@@ -54,7 +55,7 @@ function init_fun(i,j,k,dx,dy,dz)
   if r<5
     return (0,0,1)
   end
-  return (x/r, -y/r, 0)
+  return (y/r, -x/r, 0)
 end
 ```
 
@@ -72,14 +73,53 @@ relax(sim, maxsteps=1000)
 
 ## How to enable GPU
 
-In JuMag, there are two methods to switch on the GPU calculation, using
-
-```julia
-JuMag.using_gpu(true)
-```
-
-or alternatively, using FDMeshGPU when creating the FDMesh
+Using FDMeshGPU instead of FDMesh to switch on the GPU calculation,
 
 ```julia
 mesh = FDMeshGPU(dx=2e-9, dy=2e-9, dz=2e-9, nx=100, ny=100)
+```
+
+The script to use GPU to obtain the vortex structure is shown below:
+
+```julia
+using JuMag
+using Printf
+using NPZ
+
+JuMag.cuda_using_double(true)
+mesh =  FDMeshGPU(dx=2e-9, dy=2e-9, dz=5e-9, nx=100, ny=100, nz=4)
+
+function circular_Ms(i,j,k,dx,dy,dz)
+    x = i-50.5
+    y = j-50.5
+    r = (x^2+y^2)^0.5
+    if (i-50.5)^2 + (j-50.5)^2 <= 50^2
+        return 8e5
+    end
+    return 0.0
+end
+
+function init_fun(i,j,k,dx,dy,dz)
+  x = i-50.5
+  y = j-50.5
+  r = (x^2+y^2)^0.5
+  if r<5
+    return (0,0,1)
+  end
+  return (y/r, -x/r, 0)
+end
+
+function relax_system()
+  sim = Sim(mesh, driver="SD", name="sim")
+  set_Ms(sim, circular_Ms)
+
+  add_exch(sim, 1.3e-11, name="exch")
+  add_demag(sim)
+
+  init_m0(sim, init_fun)
+  relax(sim, maxsteps=2000, stopping_torque=1.0, save_vtk_every = 100, save_m_every=-1)
+  npzwrite("m0.npy", sim.spin)
+end
+
+relax_system()
 ```

@@ -2,7 +2,6 @@ using JuMag
 using Printf
 using NPZ
 
-JuMag.using_gpu()
 JuMag.cuda_using_double(true)
 mesh =  FDMeshGPU(dx=2e-9, dy=2e-9, dz=5e-9, nx=100, ny=100, nz=4)
 #mesh = FDMesh(dx=2e-9, dy=2e-9, dz=3e-9, nx=100, ny=100, nz=4)
