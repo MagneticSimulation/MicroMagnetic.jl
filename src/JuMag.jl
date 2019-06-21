@@ -73,6 +73,7 @@ if _cuda_available.x
     include("cuda/util.jl")
     include("cuda/kernels.jl")
     include("cuda/field.jl")
+    include("cuda/demag_kernel.jl")
     include("cuda/demag.jl")
     include("cuda/sd.jl")
     include("cuda/mc.jl")
