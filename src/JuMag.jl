@@ -79,7 +79,7 @@ if _cuda_available.x
     include("cuda/mc.jl")
     include("cuda/mc_kernel.jl")
     include("cuda/vtk.jl")
-    export FDMeshGPU, CubicMeshGPU, TriangularMesh, MonteCarlo, run_sim
+    export FDMeshGPU, CubicMeshGPU, TriangularMesh, MonteCarlo, run_sim, add_demag_gpu
 end
 
 

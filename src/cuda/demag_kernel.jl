@@ -188,9 +188,20 @@ function distribute_m_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, Ms, nx::Int64,ny::I
     return nothing
 end
 
+function distribute_m_kernel_II!(m_gpu, mx_gpu, my_gpu, mz_gpu, nx::Int64,ny::Int64,nz::Int64)
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    nx_fft, ny_fft, nz_fft = size(mx_gpu)
+    if 0 < index <= nx*ny*nz
+        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        mx_gpu[i,j,k] = m_gpu[3*index-2]
+        my_gpu[i,j,k] = m_gpu[3*index-1]
+        mz_gpu[i,j,k] = m_gpu[3*index]
+    end
+    return nothing
+end
+
 function collect_h_kernel!(h, hx, hy, hz, nx::Int64,ny::Int64,nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-	mu0 = 4*pi*1e-7
     if 0< index <= nx*ny*nz
         i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
 		p = 3*index-2
@@ -200,6 +211,7 @@ function collect_h_kernel!(h, hx, hy, hz, nx::Int64,ny::Int64,nz::Int64)
     end
     return nothing
 end
+
 
 function compute_energy_kernel!(energy::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                                Ms::CuDeviceArray{T, 1}, volume::T, nxyz::Int64) where {T<:AbstractFloat}

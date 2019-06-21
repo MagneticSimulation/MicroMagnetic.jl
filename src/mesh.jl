@@ -95,9 +95,9 @@ end
 Create a FDMesh for given parameters. `pbc` could be any combination of "x", "y" and "z".
 """
 function FDMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
-    if _using_gpu.x
-        return FDMeshGPU(dx=dx, dy=dy, dz=dz, nx=nx, ny=ny, nz=nz, pbc=pbc)
-    end
+    #if _using_gpu.x
+    #    return FDMeshGPU(dx=dx, dy=dy, dz=dz, nx=nx, ny=ny, nz=nz, pbc=pbc)
+    #end
 
     ngbs = zeros(Int64,6,nx*ny*nz)
     xperiodic = 'x' in pbc ? true : false

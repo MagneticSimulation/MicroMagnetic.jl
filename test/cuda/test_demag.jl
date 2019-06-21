@@ -52,3 +52,14 @@ expected = [ -40715.4448514, -221564.08111452, -258491.42796693,   -3885.3038712
  -284272.52665316,  -40715.4448514,  -221564.08111452, -258491.42796693];
 @test isapprox(Array(sim.field), expected, rtol=1e-6)
 #println(Array(sim.field)-expected)
+
+
+mesh =  FDMesh(dx=2, dy=1, dz=1, nx=12, ny=1, nz=1)
+Ms = 8.6e5
+sim = Sim(mesh)
+set_Ms(sim, Ms)
+
+init_m0(sim, (0.5,0.6,0.7))
+demag=add_demag_gpu(sim)
+JuMag.effective_field(sim, sim.spin, 0.0)
+@test isapprox(demag.field, expected, rtol=1e-6)
