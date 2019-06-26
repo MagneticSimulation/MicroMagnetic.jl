@@ -107,7 +107,7 @@ function run_single_step_triangular(sim::MonteCarlo, bias::Int64)
   blk, thr = CuArrays.cudims(sim.nxyz)
   @cuda blocks=blk threads=thr run_step_triangular_kernel!(sim.spin, sim.nextspin,
                                sim.rnd, sim.energy, sim.mesh.ngbs,
-                               F(sim.J), F(sim.D), sim.bulk_dmi, F(sim.Ku),
+                               F(sim.J), F(sim.J1), F(sim.D), F(sim.D1), sim.bulk_dmi, F(sim.Ku),
                                F(sim.Hx), F(sim.Hy), F(sim.Hz), F(sim.T),
                                sim.mesh.nx, sim.mesh.ny, bias)
   return nothing
@@ -153,7 +153,8 @@ function compute_triangular_energy(sim::MonteCarlo)
     blk, thr = CuArrays.cudims(sim.nxyz)
     @cuda blocks=blk threads=thr total_energy_triangular_kernel!(sim.spin, sim.energy,
                                  sim.mesh.ngbs,
-                                 F(sim.J), F(sim.D), sim.bulk_dmi, F(sim.Ku),
+                                 F(sim.J), F(sim.J1), F(sim.D), F(sim.D1),
+                                 sim.bulk_dmi, F(sim.Ku),
                                  F(sim.Hx), F(sim.Hy), F(sim.Hz),
                                  sim.mesh.nxyz)
     return sum(sim.energy)*k_B

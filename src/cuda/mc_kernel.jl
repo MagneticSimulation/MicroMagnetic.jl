@@ -16,7 +16,7 @@ end
 
 function run_step_triangular_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1},
                               energy::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},
-                              J::T, D::T, bulk_dmi::Bool, Ku::T, Hx::T, Hy::T, Hz::T, temp::T,
+                              J::T, lambda::T, D::T, Dz::T, bulk_dmi::Bool, Ku::T, Hx::T, Hy::T, Hz::T, temp::T,
                               nx::Int64, ny::Int64, bias::Int64) where {T<:AbstractFloat}
 
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -49,11 +49,11 @@ function run_step_triangular_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArr
                 @inbounds sx = m[k]
                 @inbounds sy = m[k+1]
                 @inbounds sz = m[k+2]
-                delta_E -= J*(dmx*sx + dmy*sy + dmz*sz) #exchange
+                delta_E -= J*(dmx*sx + dmy*sy + dmz*sz) + lambda*dmz*sz #exchange
 
                 Dx = bulk_dmi ? D*Rx[j] : -D*Ry[j]
                 Dy = bulk_dmi ? D*Ry[j] : D*Rx[j]
-                delta_E += volume(dmx, dmy, dmz, sx, sy, sz, Dx, Dy, T(0)) #DMI
+                delta_E += volume(dmx, dmy, dmz, sx, sy, sz, Dx, Dy, Dz) #DMI
             end
         end
         if delta_E < 0
@@ -155,7 +155,7 @@ end
 
 
 function total_energy_triangular_kernel!(m::CuDeviceArray{T, 1}, energy::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},
-                              J::T, D::T, bulk_dmi::Bool, Ku::T, Hx::T, Hy::T, Hz::T,
+                              J::T, lambda::T, D::T, Dz::T, bulk_dmi::Bool, Ku::T, Hx::T, Hy::T, Hz::T,
                               nxy::Int64) where {T<:AbstractFloat}
 
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -182,11 +182,11 @@ function total_energy_triangular_kernel!(m::CuDeviceArray{T, 1}, energy::CuDevic
                 @inbounds sx = m[k]
                 @inbounds sy = m[k+1]
                 @inbounds sz = m[k+2]
-                E -= 0.5*J*(mx*sx + my*sy + mz*sz) #exchange
+                E -= 0.5*J*(mx*sx + my*sy + mz*sz) + 0.5*lambda*mz*sz #exchange
 
                 Dx = bulk_dmi ? D*Rx[j] : -D*Ry[j]
                 Dy = bulk_dmi ? D*Ry[j] : D*Rx[j]
-                E += 0.5*volume(mx, my, mz, sx, sy, sz, Dx, Dy, T(0)) #DMI
+                E += 0.5*volume(mx, my, mz, sx, sy, sz, Dx, Dy, Dz) #DMI
             end
         end
 

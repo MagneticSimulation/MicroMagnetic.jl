@@ -45,3 +45,19 @@ For the driver `LLG_STT_CPP` the implemented equations is
 ```
 
 The simulation related to spin transfer torques (in-plane and current-perpendicular-to-plane) and the spin orbit torques can use the `LLG_STT_CPP` driver.
+
+
+## Monte Carlo Simulation
+
+For triangular mesh (2D), the system energy reads
+
+```math
+H= \sum_{\langle i, j\rangle}  \vec{D}_{i j} \cdot\left(\vec{S}_{i} \times \vec{S}_{j}\right)
+-J \sum_{\langle i, j\rangle} \vec{S}_{i} \cdot \vec{S}_{j}- \lambda \sum_{\langle i, j\rangle} S_{i}^{z} S_{j}^{z}
+-K \sum_{i}\left(S_{i}^{z}\right)^{2}
+```
+where
+
+```math
+\vec{D}_{i j} = D \hat{r}_{ij} \times \hat{z} + D_z \hat{z}
+```
