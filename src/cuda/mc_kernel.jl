@@ -53,7 +53,7 @@ function run_step_triangular_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArr
 
                 Dx = bulk_dmi ? D*Rx[j] : -D*Ry[j]
                 Dy = bulk_dmi ? D*Ry[j] : D*Rx[j]
-                delta_E += volume(dmx, dmy, dmz, sx, sy, sz, Dx, Dy, Dz) #DMI
+                delta_E += volume(dmx, dmy, dmz, sx, sy, sz, Dx, Dy, Dz*(-1)^j) #DMI
             end
         end
         if delta_E < 0
@@ -186,7 +186,7 @@ function total_energy_triangular_kernel!(m::CuDeviceArray{T, 1}, energy::CuDevic
 
                 Dx = bulk_dmi ? D*Rx[j] : -D*Ry[j]
                 Dy = bulk_dmi ? D*Ry[j] : D*Rx[j]
-                E += 0.5*volume(mx, my, mz, sx, sy, sz, Dx, Dy, Dz) #DMI
+                E += 0.5*volume(mx, my, mz, sx, sy, sz, Dx, Dy, Dz*(-1)^j) #DMI
             end
         end
 
