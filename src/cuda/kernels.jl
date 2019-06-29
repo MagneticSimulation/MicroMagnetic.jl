@@ -395,3 +395,49 @@ function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
     end
    return nothing
 end
+
+
+function exchange_kernel_rkky!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
+                        energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
+                        sigma::T, nx::Int64, ny::Int64, nz::Int64) where {T<:AbstractFloat}
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if index <= nx*ny*nz
+        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        if k!=1
+            return nothing
+        end
+
+        id1 = (j-1) * nx + i
+        id2 = (nz-1) * nx*ny + (j-1) * nx + i
+
+        k1 = 3*id1-2
+        k2 = 3*id2-2
+        @inbounds mbx = m[k1]
+        @inbounds mby = m[k1+1]
+        @inbounds mbz = m[k1+2]
+
+        @inbounds mtx = m[k2]
+        @inbounds mty = m[k2+1]
+        @inbounds mtz = m[k2+2]
+
+        mu0 = 4*pi*1e-7
+
+        @inbounds Ms1 =  Ms[id1]
+        @inbounds Ms2 =  Ms[id2]
+        if Ms1> 0 && Ms2 > 0
+            Ms_inv = 1.0/(Ms1*mu0)
+            @inbounds h[k1] = sigma*Ms_inv*mtx
+            @inbounds h[k1+1] = sigma*Ms_inv*mty
+            @inbounds h[k1+2] = sigma*Ms_inv*mtz
+            @inbounds energy[id1] = -0.5*sigma*(1-mtx*mbx-mty*mby-mtz*mbz)
+
+            Ms_inv = 1.0/(Ms2*mu0)
+            @inbounds h[k2] = sigma*Ms_inv*mbx
+            @inbounds h[k2+1] = sigma*Ms_inv*mby
+            @inbounds h[k2+2] = sigma*Ms_inv*mbz
+            @inbounds energy[id2] = energy[id1]
+        end
+
+    end
+   return nothing
+end

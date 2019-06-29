@@ -185,7 +185,7 @@ function total_energy_triangular_kernel!(m::CuDeviceArray{T, 1}, energy::CuDevic
                 @inbounds sz = m[k+2]
                 E -= 0.5*J*(mx*sx + my*sy + mz*sz) + 0.5*lambda*mz*sz #exchange
 
-                Dx = bulk_dmi ? D*Rx[j] : -D*Ry[j]
+                Dx = bulk_dmi ? D*Rx[j] : -D*Ry[j]  #\hat{z} \times r_ij
                 Dy = bulk_dmi ? D*Ry[j] : D*Rx[j]
                 Dzt = j%2 == 0 ? Dz : -1*Dz
                 E += 0.5*volume(mx, my, mz, sx, sy, sz, Dx, Dy, Dzt) #DMI

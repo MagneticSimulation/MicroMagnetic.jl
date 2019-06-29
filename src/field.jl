@@ -125,6 +125,46 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
   end
 end
 
+
+function effective_field(exch::ExchangeRKKY, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
+  mu0 = 4.0*pi*1e-7
+  mesh = sim.mesh
+  field = exch.field
+  energy = exch.energy
+  Ms = sim.Ms
+  sigma = exch.sigma/exch.Delta
+  nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+  for i=1:nx, j=1:ny
+      id1 = (j-1) * nx + i
+      id2 = (nz-1) * nx*ny + (j-1) * nx + i
+      k1 = 3*id1-2
+      k2 = 3*id2-2
+      mbx = spin[k1]
+      mby = spin[k1+1]
+      mbz = spin[k1+2]
+
+      mtx = spin[k2]
+      mty = spin[k2+1]
+      mtz = spin[k2+2]
+
+      if Ms[id1] > 0 && Ms[id2] > 0
+          Ms_inv = 1.0/(Ms[id1]*mu0)
+          field[k1] = sigma*Ms_inv*mtx
+          field[k1+1] = sigma*Ms_inv*mty
+          field[k1+2] = sigma*Ms_inv*mtz
+          energy[id1] = -0.5*sigma*(1-mtx*mbx-mty*mby-mtz*mbz)
+
+          Ms_inv = 1.0/(Ms[id2]*mu0)
+          field[k2] = sigma*Ms_inv*mbx
+          field[k2+1] = sigma*Ms_inv*mby
+          field[k2+2] = sigma*Ms_inv*mbz
+          energy[id2] = energy[id1]
+      end
+
+  end
+
+end
+
 function effective_field(exch::HeisenbergExchange, sim::AtomicSim, spin::Array{Float64, 1}, t::Float64)
   ngbs = sim.mesh.ngbs
   nxyz = sim.nxyz

@@ -169,6 +169,22 @@ function add_exch(sim::AbstractSim, A::Float64; name="exch")
   return exch
 end
 
+
+function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="rkky")
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  exch = ExchangeRKKY(sigma, Delta, field, energy, name)
+
+  push!(sim.interactions, exch)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  return exch
+end
+
 function add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)

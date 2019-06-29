@@ -59,5 +59,5 @@ H= \sum_{\langle i, j\rangle}  \vec{D}_{i j} \cdot\left(\vec{S}_{i} \times \vec{
 where
 
 ```math
-\vec{D}_{i j} = D \hat{r}_{ij} \times \hat{z} + D_z^j \hat{z}
+\vec{D}_{i j} = D \hat{z} \times \hat{r}_{ij}  + D_z^{j} \hat{z}
 ```

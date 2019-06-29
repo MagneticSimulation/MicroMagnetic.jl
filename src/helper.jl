@@ -164,26 +164,22 @@ function compute_skyrmion_number(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) whe
         sx1,sy1,sz1 = T(0),T(0),T(0)
         sx2,sy2,sz2 = T(0),T(0),T(0)
         id1 = 3*_x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.xperiodic)
-        if id1>0
-           sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+        id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
+        v[id] = 0
+        if id1>0 && id2>0
+            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+            v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
-        if id2>0
-           sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+
+        id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
+        id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
+        if id1>0 && id2>0
+            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+            v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
-        v[id] = volume(mx,my,mz, sx1, sy1, sz1, sx2,sy2,sz2)
-		sx1,sy1,sz1 = T(0),T(0),T(0)
-        sx2,sy2,sz2 = T(0),T(0),T(0)
-		id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.xperiodic)
-        if id1>0
-           sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
-        end
-        if id2>0
-           sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-        end
-        v[id] += volume(mx,my,mz, sx1, sy1, sz1, sx2,sy2,sz2)
-        v[id] /= (8*pi);
+        v[id] /= (4*pi);
     end
     return nothing
 end
@@ -200,29 +196,22 @@ function compute_guiding_centre(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFl
         sx1,sy1,sz1 = T(0),T(0),T(0)
         sx2,sy2,sz2 = T(0),T(0),T(0)
         id1 = 3*_x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.xperiodic)
-        if id1>0
-           sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+        id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
+        charge = 0
+        if id1>0 && id2>0
+            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+            charge += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
-        if id2>0
-           sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-        end
-        charge = volume(mx,my,mz, sx1, sy1, sz1, sx2,sy2,sz2)
-        sum += charge
-        Rx += i * dx * charge;
-        Ry += j * dy * charge;
 
-		sx1,sy1,sz1 = T(0),T(0),T(0)
-        sx2,sy2,sz2 = T(0),T(0),T(0)
-		id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.xperiodic)
-        if id1>0
-           sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+        id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
+        id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
+        if id1>0 && id2>0
+            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+            charge += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
-        if id2>0
-           sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-        end
-        charge = volume(mx,my,mz, sx1, sy1, sz1, sx2,sy2,sz2)
+
         sum += charge
         Rx += i * dx * charge;
         Ry += j * dy * charge;

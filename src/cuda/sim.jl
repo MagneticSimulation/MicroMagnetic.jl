@@ -117,6 +117,23 @@ function add_exch(sim::MicroSimGPU, A::Float64; name="exch")
   return exch
 end
 
+function add_exch_rkky(sim::MicroSimGPU, sigma::Float64, Delta::Float64; name="rkky")
+  nxyz = sim.nxyz
+  Float = _cuda_using_double.x ? Float64 : Float32
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
+  exch = ExchangeRKKYGPU(Float(sigma), Float(Delta), field, energy, Float(0.0), name)
+
+  push!(sim.interactions, exch)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  return exch
+end
+
+
 function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32

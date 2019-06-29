@@ -52,6 +52,15 @@ mutable struct ExchangeGPU{T<:AbstractFloat} <: MicroEnergyGPU
    name::String
 end
 
+mutable struct ExchangeRKKYGPU{T<:AbstractFloat} <: MicroEnergyGPU
+   sigma::T
+   Delta::T
+   field::Array{T, 1}
+   energy::Array{T, 1}
+   total_energy::T
+   name::String
+end
+
 mutable struct BulkDMIGPU{T<:AbstractFloat} <: MicroEnergyGPU
    Dx::T
    Dy::T
