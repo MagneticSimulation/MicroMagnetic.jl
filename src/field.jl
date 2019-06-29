@@ -152,7 +152,7 @@ function effective_field(exch::ExchangeRKKY, sim::MicroSim, spin::Array{Float64,
           field[k1] = sigma*Ms_inv*mtx
           field[k1+1] = sigma*Ms_inv*mty
           field[k1+2] = sigma*Ms_inv*mtz
-          energy[id1] = -0.5*sigma*(1-mtx*mbx-mty*mby-mtz*mbz)
+          energy[id1] = 0.5*sigma*(1-mtx*mbx-mty*mby-mtz*mbz)
 
           Ms_inv = 1.0/(Ms[id2]*mu0)
           field[k2] = sigma*Ms_inv*mbx

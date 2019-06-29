@@ -403,6 +403,11 @@ function exchange_kernel_rkky!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if index <= nx*ny*nz
         i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        @inbounds energy[index] = 0
+        @inbounds h[3*index-2] = 0
+        @inbounds h[3*index-1] = 0
+        @inbounds h[3*index] = 0
+
         if k!=1
             return nothing
         end
@@ -429,7 +434,7 @@ function exchange_kernel_rkky!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
             @inbounds h[k1] = sigma*Ms_inv*mtx
             @inbounds h[k1+1] = sigma*Ms_inv*mty
             @inbounds h[k1+2] = sigma*Ms_inv*mtz
-            @inbounds energy[id1] = -0.5*sigma*(1-mtx*mbx-mty*mby-mtz*mbz)
+            @inbounds energy[id1] = 0.5*sigma*(1-mtx*mbx-mty*mby-mtz*mbz)
 
             Ms_inv = 1.0/(Ms2*mu0)
             @inbounds h[k2] = sigma*Ms_inv*mbx
