@@ -28,9 +28,9 @@ function relax_system()
   #println(sim.spin)
   v = zeros(Float64, sim.nxyz)
   compute_skyrmion_number(v, sim.spin, mesh)
-  Rx, Ry = compute_guiding_centre(sim.spin, mesh)
-  println(sum(v)," ", Rx, " ", Ry)
-  return sum(v), Rx, Ry
+  Rxs, Rys = compute_guiding_centre(sim.spin, mesh)
+  println(sum(v)," ", Rxs, " ", Rxs)
+  return sum(v), Rxs[1], Rys[1]
   #npzwrite("m0.npy", sim.spin)
   #save_vtk(sim, "skx", fields=["exch", "dmi"])
 end

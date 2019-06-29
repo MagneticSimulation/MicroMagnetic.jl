@@ -189,32 +189,41 @@ end
 function compute_guiding_centre(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy = mesh.dx, mesh.dy
-    sum, Rx, Ry = 0.0, 0.0, 0.0
-    for k = 1:nz, j = 1:ny, i=1:nx
-        id = index(i, j, k, nx, ny, nz)
-        mx,my,mz = m[3*id-2],m[3*id-1],m[3*id]
-        sx1,sy1,sz1 = T(0),T(0),T(0)
-        sx2,sy2,sz2 = T(0),T(0),T(0)
-        id1 = 3*_x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
-        charge = 0
-        if id1>0 && id2>0
-            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
-            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            charge += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
-        end
+    Rxs = zeros(nz)
+    Rys = zeros(nz)
+    for k = 1:nz
+        sum, Rx, Ry = 0.0, 0.0, 0.0
+        for j = 1:ny, i=1:nx
+            id = index(i, j, k, nx, ny, nz)
+            mx,my,mz = m[3*id-2],m[3*id-1],m[3*id]
+            sx1,sy1,sz1 = T(0),T(0),T(0)
+            sx2,sy2,sz2 = T(0),T(0),T(0)
+            id1 = 3*_x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
+            id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
+            charge = 0
+            if id1>0 && id2>0
+                sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+                sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+                charge += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+            end
 
-        id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
-        if id1>0 && id2>0
-            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
-            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            charge += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
-        end
+            id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
+            id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
+            if id1>0 && id2>0
+                sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+                sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+                charge += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+            end
 
-        sum += charge
-        Rx += i * dx * charge;
-        Ry += j * dy * charge;
+            sum += charge
+            Rx += i * dx * charge;
+            Ry += j * dy * charge;
+        end
+        if sum == 0.0
+            sum = 1.0
+        end
+        Rxs[k] = Rx/sum
+        Rys[k] = Ry/sum
     end
-    return Rx/sum, Ry/sum
+    return Rxs, Rys
 end
