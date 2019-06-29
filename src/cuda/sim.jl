@@ -97,7 +97,8 @@ function add_zeeman(sim::MicroSimGPU, H0::Any, funs::Tuple{Function,Function,Fun
 
   push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
-  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
   return zeeman
 end
 

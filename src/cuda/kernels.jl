@@ -384,6 +384,10 @@ function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
         j = 3*(index-1)
         @inbounds Ms_local = Ms[index]
         if Ms_local == 0.0
+            @inbounds energy[index] = 0
+            @inbounds h[j+1] = 0
+            @inbounds h[j+2] = 0
+            @inbounds h[j+3] = 0
             return nothing
         end
         Ms_inv::T = 2.0/(mu0*Ms_local)
