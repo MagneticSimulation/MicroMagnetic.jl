@@ -264,9 +264,9 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_to
   end
 
   if is_relax_llg
-      relax_llg(sim, maxsteps, stopping_dmdt, save_m_every, save_vtk_every, vtk_folder)
+      relax_llg(sim, maxsteps, Float64(stopping_dmdt), save_m_every, save_vtk_every, vtk_folder)
   else
-      relax_energy(sim, maxsteps, stopping_torque, save_m_every, save_vtk_every, vtk_folder)
+      relax_energy(sim, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder)
   end
   return nothing
 end

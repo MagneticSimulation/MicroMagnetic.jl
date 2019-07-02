@@ -31,6 +31,9 @@ function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Function) where {T<:Abst
       end
     end
   end
+  if NaN in v
+      error("NaN is given by the input function.")
+  end
   return nothing
 end
 
