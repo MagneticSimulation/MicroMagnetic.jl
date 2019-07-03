@@ -13,15 +13,3 @@ notifications:
 jobs:
   include:
     - stage: "Tests"
-    - stage: "Documentation"
-      julia: 1.0
-      os: linux
-      script:
-        - export DOCUMENTER_DEBUG="true"
-        - julia --color=yes --project=docs/ -e 'using Pkg;
-                                                Pkg.add("Documenter");
-                                                Pkg.instantiate();
-                                                Pkg.develop(PackageSpec(path=pwd()));
-                                                Pkg.build()'
-        - julia --color=yes --project=docs/ docs/make.jl
-      after_success: skip

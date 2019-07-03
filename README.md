@@ -2,7 +2,7 @@
 
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
-[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://ww1g11.github.io/JuMag.jl/latest/)
+[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://ww1g11.github.io/JuMagDocs.jl/latest/)
 [![Build Status](https://travis-ci.org/ww1g11/JuMag.jl.svg?branch=master)](https://travis-ci.org/ww1g11/JuMag.jl)
 [![pipeline status](https://gitlab.com/JuliaGPU/JuMag.jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/JuMag.jl/commits/master)
 [![codecov](https://codecov.io/gl/ww1g11/JuMag.jl/branch/master/graph/badge.svg)](https://codecov.io/gl/ww1g11/JuMag.jl)
@@ -61,7 +61,7 @@ If your internet is very slow to install Julia packages, it is possible to solve
 julia> using PkgMirrors
 julia> PkgMirrors.availables()
 2-element Array{String,1}:
- "ZJU" 
+ "ZJU"
  "USTC"
 julia> PkgMirrors.setmirror("USTC")
 [ Info: PkgMirror USTC activated.
