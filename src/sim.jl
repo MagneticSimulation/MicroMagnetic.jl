@@ -127,6 +127,14 @@ function add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
   return zeeman
 end
 
+function update_zeeman(z::Zeeman, H0::Tuple )
+  b = reshape(z.field, 3, Int(length(z.field)/3))
+  b[1, :] .= H0[1]
+  b[2, :] .= H0[2]
+  b[3, :] .= H0[3]
+  return z
+end
+
 function add_zeeman(sim::AbstractSim, H0::Any, funs::Tuple{Function,Function,Function}; name="timezeeman")
   nxyz = sim.nxyz
   init_field = zeros(Float64, 3*nxyz)
@@ -283,7 +291,7 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
   end
 
   driver = sim.driver
-  for i=0:maxsteps-1
+  for i=1:maxsteps
     run_step(sim, driver)
     abs!(gk_abs, driver.gk)  #max_torque = maximum(abs.(driver.gk)) eats gpu memory???
     max_torque = maximum(gk_abs)
@@ -320,7 +328,7 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
   if isa(sim, MicroSim) || (_using_gpu.x && isa(sim, MicroSimGPU))
     dmdt_factor = (2 * pi / 360) * 1e9
   end
-  for i=0:maxsteps-1
+  for i=1:maxsteps
     advance_step(sim, rk_data)
     step_size = rk_data.step
     #omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
