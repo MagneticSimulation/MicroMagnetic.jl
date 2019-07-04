@@ -76,12 +76,13 @@ function add_zeeman(sim::MicroSimGPU, H0::Any; name="zeeman")
   return zeeman
 end
 
-function update_zeeman(z::ZeemanGPU, H0::Tuple )
-  b = reshape(z.field, 3,  Int(length(z.field)/3))
+function update_zeeman(z::ZeemanGPU, H0::Tuple)
+  b = reshape(z.field, 3, div(length(z.field),3))
   b[1, :] .= H0[1]
   b[2, :] .= H0[2]
   b[3, :] .= H0[3]
-  return z
+  copyto!(z.cufield, z.field)
+  return nothing
 end
 
 function add_zeeman(sim::MicroSimGPU, H0::Any, funs::Tuple{Function,Function,Function}; name="timezeeman")
