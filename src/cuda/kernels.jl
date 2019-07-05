@@ -392,9 +392,9 @@ function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
         end
         Ms_inv::T = 2.0/(mu0*Ms_local)
         @inbounds sa = m[j+1]*axis_x+m[j+2]*axis_y+m[j+3]*axis_z
-        @inbounds h[j+1] = Ku[index]*m[j+1]*axis_x*Ms_inv
-        @inbounds h[j+2] = Ku[index]*m[j+2]*axis_y*Ms_inv
-        @inbounds h[j+3] = Ku[index]*m[j+3]*axis_z*Ms_inv
+        @inbounds h[j+1] = Ku[index]*sa*axis_x*Ms_inv
+        @inbounds h[j+2] = Ku[index]*sa*axis_y*Ms_inv
+        @inbounds h[j+3] = Ku[index]*sa*axis_z*Ms_inv
         @inbounds energy[index] = Ku[index]*(1.0-sa*sa)*volume
     end
    return nothing

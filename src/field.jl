@@ -55,9 +55,9 @@ function effective_field(anis::Anisotropy, sim::MicroSim, spin::Array{Float64, 1
     k = 3*(i-1)
     sa = spin[k+1]*axis[1]+spin[k+2]*axis[2]+spin[k+3]*axis[3]
     Ms_inv = 1.0/(Ms[i]*mu0)
-    field[k+1] = 2*Ku[i]*spin[k+1]*axis[1]*Ms_inv
-    field[k+2] = 2*Ku[i]*spin[k+2]*axis[2]*Ms_inv
-    field[k+3] = 2*Ku[i]*spin[k+3]*axis[3]*Ms_inv
+    field[k+1] = 2*Ku[i]*sa*axis[1]*Ms_inv
+    field[k+2] = 2*Ku[i]*sa*axis[2]*Ms_inv
+    field[k+3] = 2*Ku[i]*sa*axis[3]*Ms_inv
     energy[i] = Ku[i]*(1.0-sa*sa)*mesh.volume
   end
 

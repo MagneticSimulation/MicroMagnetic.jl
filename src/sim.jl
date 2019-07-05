@@ -26,6 +26,9 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5")
   end
 end
 
+"""
+Set the magnetization of the simulation eara,which can be a constant or a function with parameters of (i,j,k,dx,dy,dz)
+"""
 function set_Ms(sim::MicroSim, init::Any)
     init_scalar!(sim.Ms, sim.mesh, init)
     return true
@@ -247,7 +250,9 @@ function add_anis(sim::AbstractSim, init_ku::Any; axis=(0,0,1), name="anis")
   init_scalar!(Kus, sim.mesh, init_ku)
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
-  anis =  Anisotropy(Kus, axis, field, energy, name)
+  lt=sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
+  naxis=(axis[1]^2/lt,axis[2]^2/lt,axis[3]^2/lt)
+  anis =  Anisotropy(Kus, naxis, field, energy, name)
   push!(sim.interactions, anis)
 
   push!(sim.saver.headers, string("E_",name))
