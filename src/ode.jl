@@ -71,8 +71,9 @@ function compute_init_step(sim::AbstractSim, dt::Float64)
   rk_data.rhs_fun(sim, rk_data.dw_dt, rk_data.t, rk_data.omega)
   r_step = maximum(abs.(rk_data.dw_dt)/(rk_data.safety*rk_data.tol^0.2))
   rk_data.nfevals += 1
-  if abs_step*r_step > 1
-    abs_step_tmp = 1.0/r_step
+  #FIXME: how to obtain a reasonable init step?
+  if abs_step*r_step > 0.001
+    abs_step_tmp = 0.001/r_step
   end
   return min(abs_step, abs_step_tmp)
 end
