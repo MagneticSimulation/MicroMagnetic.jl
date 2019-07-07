@@ -15,7 +15,7 @@ export init_m0,
        compute_skyrmion_number,
        compute_guiding_centre, set_aj
 
-export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma
+export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma,mT
 
 const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)

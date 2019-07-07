@@ -36,10 +36,11 @@ function compute_tau(driver::EnergyMinimization, m_pre::Array{Float64, 1}, m::Ar
     end
     tau1 = sum2!=0.0 ? sum1/sum2 : driver.min_tau
     tau2 = sum3!=0.0 ? sum2/sum3 : driver.min_tau
+    #println(@sprintf("tau1=%g  tau2=%g", tau1, tau2))
 
-	driver.tau = driver.steps%2 == 0 ? tau2 : tau1
+	driver.tau = driver.steps%2 == 0 ? abs(tau2) : abs(tau1)
     if driver.tau > driver.max_tau
-        driver.tau = sign(driver.tau)*driver.max_tau
+        driver.tau = driver.max_tau
     end
 
   return nothing

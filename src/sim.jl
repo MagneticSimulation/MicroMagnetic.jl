@@ -27,7 +27,8 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5")
 end
 
 """
-Set the magnetization of the simulation eara,which can be a constant or a function with parameters of (i,j,k,dx,dy,dz)
+set_Ms(sim::MicroSim, init::Any)
+Set the magnetization of the simulation eara, which can be a constant or a function with parameters of (i,j,k,dx,dy,dz)
 """
 function set_Ms(sim::MicroSim, init::Any)
     init_scalar!(sim.Ms, sim.mesh, init)
@@ -77,6 +78,14 @@ function average_m(sim::AbstractSim)
   return (mx/n, my/n, mz/n)
 end
 
+"""
+init_m0(sim::MicroSim, m0::Any; norm=true)
+
+init_m0(sim::AtomicSim, m0::Any; norm=true)
+
+Set the initial vectors of the magnetization, which can be a constant or a function with parameters of (i,j,k,dx,dy,dz)
+"""
+
 function init_m0(sim::AtomicSim, m0::Any; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
   if norm
@@ -106,6 +115,12 @@ function init_m0(sim::MicroSim, m0::Any; norm=true)
   end
   sim.spin[:] .= sim.prespin[:]
 end
+"""
+add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
+
+Add fixed zeeman energy to the simulation,H0 should be tuple with 3 components
+"""
+
 
 function add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
   nxyz = sim.nxyz
@@ -130,7 +145,11 @@ function add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
   return zeeman
 end
 
-function update_zeeman(z::Zeeman, H0::Tuple )
+"""
+update_zeeman(z::Zeeman, H0::Tuple)
+If you have add_zeeman, and want to change the field, use
+"""
+function update_zeeman(z::Zeeman, H0::Tuple)
   b = reshape(z.field, 3, Int(length(z.field)/3))
   b[1, :] .= H0[1]
   b[2, :] .= H0[2]

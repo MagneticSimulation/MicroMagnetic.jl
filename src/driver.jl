@@ -28,7 +28,7 @@ end
 function create_driver(driver::String, integrator::String, nxyz::Int64) #TODO: FIX ME
     if driver=="SD" #Steepest Descent
         gk = zeros(Float64,3*nxyz)
-        return EnergyMinimization(gk, 0.0, 1e-4, 1e-10, 0)
+        return EnergyMinimization(gk, 0.0, 1e-4, 1e-12, 0)
     elseif driver=="LLG"
 		if integrator == "RungeKutta"
 			rungekutta = RungeKutta(nxyz, llg_call_back, 5e-13)

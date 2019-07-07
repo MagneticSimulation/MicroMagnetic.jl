@@ -10,3 +10,4 @@ const h_bar = 1.05457172647e-34
 const gamma = g_e * mu_B / h_bar
 const mu_s_1 = g_e * mu_B * 1.0  # for S=1, 1.856952823077189e-23
 const h_bar_gamma = h_bar * gamma
+const mT = 0.001 / (4*pi*1e-7)

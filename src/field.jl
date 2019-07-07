@@ -78,9 +78,9 @@ function effective_field(anis::Anisotropy, sim::AtomicSim, spin::Array{Float64, 
     k = 3*(i-1)
     sa = spin[k+1]*axis[1]+spin[k+2]*axis[2]+spin[k+3]*axis[3]
     mu_s_inv = 1.0/mu_s[i]
-    field[k+1] = 2*Ku[i]*spin[k+1]*axis[1]*mu_s_inv
-    field[k+2] = 2*Ku[i]*spin[k+2]*axis[2]*mu_s_inv
-    field[k+3] = 2*Ku[i]*spin[k+3]*axis[3]*mu_s_inv
+    field[k+1] = 2*Ku[i]*sa*axis[1]*mu_s_inv
+    field[k+2] = 2*Ku[i]*sa*axis[2]*mu_s_inv
+    field[k+3] = 2*Ku[i]*sa*axis[3]*mu_s_inv
     energy[i] = Ku[i]*(1.0-sa*sa)
   end
 
