@@ -201,12 +201,14 @@ function add_zeeman(sim::AbstractSim, H0::Any, funs::Tuple{Function,Function,Fun
   return zeeman
 end
 
-function add_exch(sim::AbstractSim, A::Float64; name="exch")
+function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
+  Spatial_A = zeros(Float64, nxyz)
+  init_scalar!(Spatial_A , sim.mesh, A)
   if isa(sim, MicroSim)
-    exch = Exchange(A, field, energy, name)
+    exch = Exchange(Spatial_A , field, energy, name)
   else
 	exch = HeisenbergExchange(A, field, energy, name)
   end

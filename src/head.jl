@@ -114,7 +114,7 @@ mutable struct AtomicSim <: AbstractSim
 end
 
 mutable struct Exchange <: MicroEnergy
-   A::Float64
+   A::Array{Float64, 1}
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String

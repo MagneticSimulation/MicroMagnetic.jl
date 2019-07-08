@@ -12,7 +12,6 @@ include("test_relax.jl")
 include("test_util.jl")
 
 if JuMag._cuda_available.x
-   JuMag.using_gpu()
    JuMag.cuda_using_double()
   include("cuda/test_sim.jl")
   include("cuda/test_exch.jl")

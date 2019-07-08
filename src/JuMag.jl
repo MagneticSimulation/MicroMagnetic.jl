@@ -11,7 +11,8 @@ export init_m0,
        run_until, relax,
        save_vtk, FDMesh, set_Ms, Sim,
        CubicMesh, set_mu_s,
-       set_ux, save_vtk,
+       set_ux, write_data,
+       compute_system_energy,
        compute_skyrmion_number,
        compute_guiding_centre, set_aj
 

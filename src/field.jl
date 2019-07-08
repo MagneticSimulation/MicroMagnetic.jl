@@ -96,25 +96,26 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
   nxyz = sim.nxyz
   field = exch.field
   energy = exch.energy
+  A = exch.A
   Ms = sim.Ms
-  ax = 2.0 * exch.A / (dx * dx)
-  ay = 2.0 * exch.A / (dy * dy)
-  az = 2.0 * exch.A / (dz * dz)
-  A = (ax, ax, ay, ay, az, az)
+  ax = 2.0  / (dx * dx)
+  ay = 2.0  / (dy * dy)
+  az = 2.0  / (dz * dz)
+  nabla = (ax, ax, ay, ay, az, az)
 
-  Threads.@threads for index = 1:nxyz
+  for index = 1:nxyz
     if Ms[index] == 0.0
       continue
     end
-	i = 3*index - 2
+	  i = 3*index - 2
     fx, fy, fz = 0.0, 0.0, 0.0
     for j=1:6
       id = ngbs[j,index]
       if id>0 && Ms[id]>0
         k = 3*id-2
-        fx += A[j]*(spin[k]-spin[i])
-        fy += A[j]*(spin[k+1]-spin[i+1])
-        fz += A[j]*(spin[k+2]-spin[i+2])
+        fx += A[index]*nabla[j]*(spin[k]-spin[i])
+        fy += A[index]*nabla[j]*(spin[k+1]-spin[i+1])
+        fz += A[index]*nabla[j]*(spin[k+2]-spin[i+2])
       end
     end
     Ms_inv = 1.0/(Ms[index]*mu0)
