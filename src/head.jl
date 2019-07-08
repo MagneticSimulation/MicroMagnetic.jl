@@ -7,6 +7,9 @@ abstract type Integrator end
 abstract type AbstractDopri5 <:Integrator end
 abstract type MeshGPU <: Mesh end
 
+NumberOrArrayOrFunction = Union{Number, Array, Function}
+TupleOrArrayOrFunction = Union{Tuple, Array, Function}
+
 struct FDMesh <: Mesh
   dx::Float64
   dy::Float64

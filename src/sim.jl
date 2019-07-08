@@ -27,11 +27,31 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5")
 end
 
 """
-set_Ms(sim::MicroSim, init::Any)
-Set the magnetization of the simulation eara, which can be a constant or a function with parameters of (i,j,k,dx,dy,dz)
+    set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
+
+Set the saturation magnetization of the studied system. As can be guessed from the type union `NumberOrArrayOrFunction`,
+Ms could be a number or an array or a function. If Ms is an array, its length should be equal to
+the size of the system. If Ms is a function, it should take six parameters in the form
+`(i,j,k,dx,dy,dz)` where `i,j,k` are the indices of the mesh cells and `dx,dy,dz` are the cellsizes.
+For example,
+
+```julia
+   set_Ms(sim, 8.6e5)
+```
+or
+```julia
+function circular_Ms(i,j,k,dx,dy,dz)
+    if (i-50.5)^2 + (j-50.5)^2 <= 50^2
+        return 8.6e5
+    end
+    return 0.0
+end
+set_Ms(sim, circular_Ms)
+```
+
 """
-function set_Ms(sim::MicroSim, init::Any)
-    init_scalar!(sim.Ms, sim.mesh, init)
+function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
+    init_scalar!(sim.Ms, sim.mesh, Ms)
     return true
 end
 
@@ -78,13 +98,7 @@ function average_m(sim::AbstractSim)
   return (mx/n, my/n, mz/n)
 end
 
-"""
-init_m0(sim::MicroSim, m0::Any; norm=true)
 
-init_m0(sim::AtomicSim, m0::Any; norm=true)
-
-Set the initial vectors of the magnetization, which can be a constant or a function with parameters of (i,j,k,dx,dy,dz)
-"""
 
 function init_m0(sim::AtomicSim, m0::Any; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
@@ -101,7 +115,13 @@ function init_m0(sim::AtomicSim, m0::Any; norm=true)
   sim.spin[:] .= sim.prespin[:]
 end
 
-function init_m0(sim::MicroSim, m0::Any; norm=true)
+"""
+    init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
+
+Set the initial magnetization of the system, the input `m0` could be a Tuple with length 3
+or an array with length 3*N where N is the system size or a function with six parameters `(i,j,k,dx,dy,dz)`.
+"""
+function init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
   if norm
     normalise(sim.prespin, sim.nxyz)
@@ -115,13 +135,12 @@ function init_m0(sim::MicroSim, m0::Any; norm=true)
   end
   sim.spin[:] .= sim.prespin[:]
 end
+
 """
-add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
+    add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
 
 Add fixed zeeman energy to the simulation,H0 should be tuple with 3 components
 """
-
-
 function add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -146,7 +165,8 @@ function add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
 end
 
 """
-update_zeeman(z::Zeeman, H0::Tuple)
+    update_zeeman(z::Zeeman, H0::Tuple)
+
 If you have add_zeeman, and want to change the field, use
 """
 function update_zeeman(z::Zeeman, H0::Tuple)

@@ -26,16 +26,6 @@ function cuda_using_double(flag = true)
    return nothing
 end
 
-function using_gpu(flag = true)
-    if _cuda_available.x == true
-        _using_gpu[] = flag
-    elseif flag == true
-        @warn("The CUDA is not available so GPU will not be used.")
-        _using_gpu[] = false
-    end
-   return nothing
-end
-
 include("const.jl")
 include("head.jl")
 include("util.jl")
@@ -44,10 +34,8 @@ include("driver.jl")
 include("sd.jl")
 include("llg.jl")
 include("rk.jl")
-
 include("helper.jl")
 include("ode.jl")
-
 include("fileio.jl")
 include("sim.jl")
 include("demag.jl")
