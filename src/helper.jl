@@ -80,7 +80,7 @@ end
 
 function error_length_m(a::Array{Float64, 1}, N::Int64)
   maxlength = 0.0
-  minlength = 100.0
+  minlength = 1.0
   for i = 0:N-1
     j = 3*i+1
     length = sqrt(a[j]*a[j]+a[j+1]*a[j+1]+a[j+2]*a[j+2])

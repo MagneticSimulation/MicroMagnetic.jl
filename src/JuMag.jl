@@ -14,7 +14,8 @@ export init_m0,
        set_ux, write_data,
        compute_system_energy,
        compute_skyrmion_number,
-       compute_guiding_centre, set_aj
+       compute_guiding_centre, set_aj,
+       Neb,init_image,normalise
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT
 
@@ -41,6 +42,7 @@ include("fileio.jl")
 include("sim.jl")
 include("demag.jl")
 include("vtk.jl")
+include("neb.jl")
 
 try
 	using CUDAnative, CuArrays
