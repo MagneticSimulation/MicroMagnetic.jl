@@ -5,7 +5,7 @@ function save_vtk(sim::AbstractSim, fname::String; fields::Array{String, 1} = St
   nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
   xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
   dx, dy, dz = 1.0,1.0,1.0
-  if isa(sim, CubicMesh)
+  if isa(mesh, CubicMesh)
     dx, dy, dz=mesh.a, mesh.a, mesh.a
   else
     dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
