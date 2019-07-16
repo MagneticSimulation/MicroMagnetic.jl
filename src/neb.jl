@@ -249,7 +249,13 @@ function effective_field(neb::NEB,  t::Float64)
     else
       t[:,n] = normalized(images[:,n-1]-images[:,n],nxyz)
     end
-    neb.field[:,n] = neb.field[:,n] - neb.field[:,n]*t[:,n]'*t[:,n]
+    for i = 1:nxyz
+      j = 3*i-2
+      f = neb.field[j,n]*t[j,n]+neb.field[j+1,n]*t[j+1,n]+neb.field[j+2,n]*t[j+2,n]
+      neb.field[j,n] = neb.field[j,n] - f*t[j,n]
+      neb.field[j+1,n] = neb.field[j+1,n] - f*t[j+1,n]
+      neb.field[j+2,n] = neb.field[j+2,n] - f*t[j+2,n]
+    end
   end
   return 0
 end
