@@ -19,8 +19,9 @@ mutable struct NEB
   field::Array{Float64, 2}
   energy::Array{Float64, 2}
   saver::NEBSaver
+  k::Float64
 end
-function Neb(sim::AbstractSim,init_m::Any, intervals::Any;name="NEB", driver = "NEB_SD")
+function Neb(sim::AbstractSim,init_m::Any, intervals::Any;name="NEB", k=1.0e5, driver = "NEB_SD")
   nxyz = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
   N = sum(intervals)+length(intervals)+1
   images = zeros(Float64,3*sim.nxyz,N)
@@ -36,14 +37,14 @@ function Neb(sim::AbstractSim,init_m::Any, intervals::Any;name="NEB", driver = "
   results = Any[o::NEB -> o.driver.steps]
   saver = NEBSaver(string(name, ".txt"), 0, false, headers, units, results)
   #interactions = []
-  neb = NEB(N,sim,init_m,intervals,driver,images,pre_images,name,field,energy,saver)
+  neb = NEB(N,sim,init_m,intervals,driver,images,pre_images,name,field,energy,saver,k)
   init_images(neb)
   return neb
 end
 function create_neb_driver(driver::String, nxyz::Int64,N::Int64) #TODO: FIX ME
   if driver=="NEB_SD"
       gk = zeros(Float64,3*nxyz,N)
-  return NEB_SD(gk, 0.0, 1e-4, 1e-14, 0)
+  return NEB_SD(gk, 0.0, 1e-9, 1e-14, 0)
   else
     println("NEB_SD supported!")
   end
@@ -69,13 +70,21 @@ function rotating_oprate(m1::Array{Float64,1},m2::Array{Float64,1},theta::Float6
     end
   end
   normalise(m,1)
-  op=[cos(theta)+(1-cos(theta))*m[1]^2 (1-cos(theta))*m[1]*m[2]-sin(theta)*m[3] (1-cos(theta))*m[1]*m[3]+sin(theta)*m[2];(1-cos(theta))*m[2]*m[3]+sin(theta)*m[3] cos(theta)+(1-cos(theta))*m[2]*m[2] (1-cos(theta))*m[2]*m[3]-sin(theta)*m[1];(1-cos(theta))*m[1]*m[3]-sin(theta)*m[2] (1-cos(theta))*m[2]*m[3]+sin(theta)*m[1] cos(theta)+(1-cos(theta)*m[3]*m[3])]
+  a11 = cos(theta)+(1-cos(theta))*m[1]^2
+  a12 = (1-cos(theta))*m[1]*m[2]-sin(theta)*m[3]
+  a13 = (1-cos(theta))*m[1]*m[3]+sin(theta)*m[2]
+  a21 = (1-cos(theta))*m[2]*m[1]+sin(theta)*m[3]
+  a22 = cos(theta)+(1-cos(theta))*m[2]*m[2]
+  a23 = (1-cos(theta))*m[2]*m[3]-sin(theta)*m[1]
+  a31 = (1-cos(theta))*m[1]*m[3]-sin(theta)*m[2]
+  a32 = (1-cos(theta))*m[2]*m[3]+sin(theta)*m[1]
+  a33 = cos(theta)+(1-cos(theta)*m[3]*m[3])
+  op=[a11 a12 a13; a21 a22 a23; a31 a32 a33]
+
   return op*m1
 end
 function interpolate_m(m1::Array{Float64,1}, m2::Array{Float64,1}, n::Int)
   nxyz=Int(length(m1)/3)
-  normalise(m1,nxyz)
-  normalise(m2,nxyz)
   m = zeros(3*nxyz,n+1)
   b1=reshape(m1,3,nxyz)
   b2=reshape(m2,3,nxyz)
@@ -104,6 +113,8 @@ function init_images(neb::NEB)
       m2=zeros(3*nxyz)
       init_vector!(m1, sim.mesh, pics[i])
       init_vector!(m2, sim.mesh, pics[i+1])
+      normalise(m1,nxyz)
+      normalise(m2,nxyz)
       M=interpolate_m(m1,m2,Int(intervals[i]))
       for j=1:intervals[i]+1
           m[:,n]=M[:,j]
@@ -112,6 +123,7 @@ function init_images(neb::NEB)
     end
     m3=zeros(3*nxyz)
     init_vector!(m3, sim.mesh, pics[length(pics)])
+    normalise(m3,nxyz)
     m[:,N]=m3[:]
   else
     println("Input error!")
@@ -163,7 +175,7 @@ function compute_tau(driver::NEB_SD, pre_images::Array{Float64, 2}, images::Arra
      sum_1,sum_2,sum_3 = sum(sum1)/N,sum(sum2)/N,sum(sum3)/N
      tau1 = sum_2!=0.0 ? sum_1/sum_2 : driver.min_tau
      tau2 = sum_3!=0.0 ? sum_2/sum_3 : driver.min_tau
-	   driver.tau = driver.steps%2 == 0 ? abs(tau2) : abs(tau1)
+     driver.tau = driver.steps%2 == 0 ? abs(tau2) : abs(tau1)
      if driver.tau > driver.max_tau
         driver.tau = driver.max_tau
      end
@@ -220,6 +232,10 @@ function normalized(a::Array{T, 1}, N::Int64) where {T<:AbstractFloat}
     end
    return a
 end
+function model(a::Array{Float64,1})
+  return sqrt(sum(a'*a))
+end
+
 function effective_field(neb::NEB,  t::Float64)
   sim = neb.sim
   nxyz = sim.nxyz
@@ -242,12 +258,18 @@ function effective_field(neb::NEB,  t::Float64)
     E1 = sum(neb.energy[:,n-1])
     E2 = sum(neb.energy[:,n])
     E3 = sum(neb.energy[:,n+1])
+    dEmax = max(abs(E3-E2),abs(E2-E1))
+    dEmin = min(abs(E3-E2),abs(E2-E1))
+    tip = images[:,n+1]-images[:,n]
+    tim = images[:,n]-images[:,n-1]
     if (E1>E2)&&(E2>E3)
-      t[:,n] = normalized((images[:,n-1]-images[:,n]),nxyz)
+      t[:,n] = normalized(tim,nxyz)
     elseif (E3>E2)&&(E2>E1)
-      t[:,n] = normalized(images[:,n+1]-images[:,n],nxyz)
+      t[:,n] = normalized(tip,nxyz)
+    elseif E3>E1
+      t[:,n] = normalized(dEmax*tip+dEmin*tim,nxyz)
     else
-      t[:,n] = normalized(images[:,n-1]-images[:,n],nxyz)
+      t[:,n] = normalized(dEmin*tip+dEmax*tim,nxyz)
     end
     for i = 1:nxyz
       j = 3*i-2
@@ -256,6 +278,7 @@ function effective_field(neb::NEB,  t::Float64)
       neb.field[j+1,n] = neb.field[j+1,n] - f*t[j+1,n]
       neb.field[j+2,n] = neb.field[j+2,n] - f*t[j+2,n]
     end
+    neb.field[:,n] .+= neb.k*(model(tip)-model(tim))*t[:,n]
   end
   return 0
 end
@@ -293,11 +316,11 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
   gk_abs = zeros(Float64,3*sim.nxyz)
   driver = neb.driver
   maxtorque=zeros(N)
-  if save_m_every>0  
+  if save_m_every>0
     compute_system_energy(neb,  0.0)
     write_data(neb)
   end
-  if save_vtk_every > 0 
+  if save_vtk_every > 0
     save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, 0)))
   end
   for i=1:maxsteps
