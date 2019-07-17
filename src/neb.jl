@@ -44,7 +44,7 @@ end
 function create_neb_driver(driver::String, nxyz::Int64,N::Int64) #TODO: FIX ME
   if driver=="NEB_SD"
       gk = zeros(Float64,3*nxyz,N)
-  return NEB_SD(gk, 0.0, 1e-9, 1e-14, 0)
+  return NEB_SD(gk, 0.0, 1e-5, 1e-14, 0)
   else
     println("NEB_SD supported!")
   end
@@ -175,7 +175,7 @@ function compute_tau(driver::NEB_SD, pre_images::Array{Float64, 2}, images::Arra
      sum_1,sum_2,sum_3 = sum(sum1)/N,sum(sum2)/N,sum(sum3)/N
      tau1 = sum_2!=0.0 ? sum_1/sum_2 : driver.min_tau
      tau2 = sum_3!=0.0 ? sum_2/sum_3 : driver.min_tau
-     driver.tau = driver.steps%2 == 0 ? abs(tau2) : abs(tau1)
+     driver.tau = driver.steps%2 == 0 ? (tau2) : (tau1)
      if driver.tau > driver.max_tau
         driver.tau = driver.max_tau
      end
@@ -188,7 +188,7 @@ function run_step(neb::NEB)
   pre_images = neb.pre_images
   sim = neb.sim
   nxyz = sim.nxyz
-  effective_field(neb, 0.0)
+  effective_field(neb)
   compute_tau(driver, pre_images, images, neb.field, nxyz, N)
   neb.pre_images[:] =  neb.images[:]
   h = neb.field
@@ -233,10 +233,10 @@ function normalized(a::Array{T, 1}, N::Int64) where {T<:AbstractFloat}
    return a
 end
 function model(a::Array{Float64,1})
-  return sqrt(sum(a'*a))
+  return sqrt(a'*a)
 end
 
-function effective_field(neb::NEB,  t::Float64)
+function effective_field(neb::NEB)
   sim = neb.sim
   nxyz = sim.nxyz
   images = neb.images
@@ -245,7 +245,7 @@ function effective_field(neb::NEB,  t::Float64)
   fill!(neb.energy, 0.0)
   for n = 1:neb.N
   for interaction in sim.interactions
-    effective_field(interaction, sim, images[:,n], t)
+    effective_field(interaction, sim, images[:,n], 0.0)
     neb.field[:,n] .+= interaction.field[:]
     neb.energy[:,n] .+= interaction.energy[:]
   end
@@ -263,21 +263,18 @@ function effective_field(neb::NEB,  t::Float64)
     tip = images[:,n+1]-images[:,n]
     tim = images[:,n]-images[:,n-1]
     if (E1>E2)&&(E2>E3)
-      t[:,n] = normalized(tim,nxyz)
+      t[:,n] = tim
     elseif (E3>E2)&&(E2>E1)
-      t[:,n] = normalized(tip,nxyz)
+      t[:,n] = tip
     elseif E3>E1
-      t[:,n] = normalized(dEmax*tip+dEmin*tim,nxyz)
+      t[:,n] =dEmax*tip+dEmin*tim
     else
-      t[:,n] = normalized(dEmin*tip+dEmax*tim,nxyz)
+      t[:,n] =dEmin*tip+dEmax*tim
     end
-    for i = 1:nxyz
-      j = 3*i-2
-      f = neb.field[j,n]*t[j,n]+neb.field[j+1,n]*t[j+1,n]+neb.field[j+2,n]*t[j+2,n]
-      neb.field[j,n] = neb.field[j,n] - f*t[j,n]
-      neb.field[j+1,n] = neb.field[j+1,n] - f*t[j+1,n]
-      neb.field[j+2,n] = neb.field[j+2,n] - f*t[j+2,n]
-    end
+    norm_t = model(t[:,n])
+    t[:,n] = t[:,n]/norm_t
+    f = neb.field[:,n]'*t[:,n]
+    neb.field[:,n] .-= f*t[:,n]
     neb.field[:,n] .+= neb.k*(model(tip)-model(tim))*t[:,n]
   end
   return 0
