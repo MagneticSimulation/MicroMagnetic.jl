@@ -258,14 +258,14 @@ function search_tau(neb::NEB)
     driver.gk[j+1,n] = gy
     driver.gk[j+2,n] = gz
   end
-  tau1 = 1e-13
-  dtau = 1e-14
-  tau = 0.0
-  tau2 = 0.0
+  tau1 = driver.min_tau
+  dtau = 0.1*driver.min_tau
+  tau = driver.min_tau
+  tau2 = driver.min_tau
   driver.tau = tau1
   neb.images = update_images(driver,images,h0,nxyz,N)
 
-  effective_field(neb)                              ###
+  effective_field(neb)
 
   gk1 =compute_gk(neb.images,neb.field,nxyz,N)
   gk1_norm = compute_norm_gk(gk1,N)
@@ -276,7 +276,7 @@ function search_tau(neb::NEB)
     effective_field(neb)
     gk2 =compute_gk(neb.images,neb.field,nxyz,N)
     gk2_norm = compute_norm_gk(gk2,N)
-    if gk1_norm>gk2_norm
+    if gk1_norm>=gk2_norm
       dtau = 2*dtau
       tau = tau1
       gk1_norm = gk2_norm
@@ -313,9 +313,11 @@ function search_tau(neb::NEB)
     end
   end
   driver.tau = a
-  neb.field = h0
-  neb.images = images
+  neb.field[:] = h0[:]
+  neb.images[:] = images[:]
 end
+
+
 function run_step(neb::NEB)
   driver = neb.driver
   N = neb.N
@@ -326,6 +328,8 @@ function run_step(neb::NEB)
   effective_field(neb)
   if driver.steps == 0
     search_tau(neb)
+    #driver.tau = 1e-12
+    #compute_tau(driver, pre_images, images, neb.field, nxyz, N)
   else
     compute_tau(driver, pre_images, images, neb.field, nxyz, N)
   end
@@ -410,6 +414,11 @@ function effective_field(neb::NEB)
     else
       t[:,n] =dEmin*tip+dEmax*tim
     end
+    for i = 1:nxyz
+      j = 3*i - 2
+      fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], t[j,n],t[j+1,n],t[j+2,n])
+      t[j,n],t[j+1,n],t[j+2,n] = cross_product(fx,fy,fz, images[j,n],images[j+1,n],images[j+2,n])
+    end
     norm_t = model(t[:,n])
     t[:,n] = t[:,n]/norm_t
     f = neb.field[:,n]'*t[:,n]
@@ -424,10 +433,10 @@ function compute_system_energy(neb::NEB,  t::Float64)
   #sim.total_energy = 0
   fill!(neb.energy, 0.0)
   for n = 1:neb.N
-  for interaction in sim.interactions
-    effective_field(interaction, sim, images[:,n], t)
-	neb.energy[:,n] .+= interaction.energy[:]
-  end
+    for interaction in sim.interactions
+      effective_field(interaction, sim, images[:,n], t)
+	    neb.energy[:,n] .+= interaction.energy[:]
+    end
   end
   return 0
 end
@@ -469,8 +478,10 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
         abs!(gk_abs, driver.gk[:,n])  #max_torque = maximum(abs.(driver.gk)) eats gpu memory???
         maxtorque[n] = maximum(gk_abs)
       end
+
       max_torque = maximum(maxtorque)
       @info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", i, driver.tau, max_torque)
+ 
       if save_m_every>0 && i%save_m_every == 0
         compute_system_energy(neb,  0.0)
         write_data(neb)
