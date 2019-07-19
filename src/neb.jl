@@ -175,7 +175,7 @@ function compute_tau(driver::NEB_SD, pre_images::Array{Float64, 2}, images::Arra
      sum_1,sum_2,sum_3 = sum(sum1)/N,sum(sum2)/N,sum(sum3)/N
      tau1 = sum_2!=0.0 ? sum_1/sum_2 : driver.min_tau
      tau2 = sum_3!=0.0 ? sum_2/sum_3 : driver.min_tau
-     driver.tau = driver.steps%2 == 0 ? (tau2) : (tau1)
+     driver.tau = driver.steps%2 == 0 ? abs(tau2) : abs(tau1)
      if driver.tau > driver.max_tau
         driver.tau = driver.max_tau
      end
@@ -263,10 +263,10 @@ function search_tau(neb::NEB)
   tau = 0.0
   tau2 = 0.0
   driver.tau = tau1
-  neb.images = update_images(driver,images,h0,nxyz,N) 
- 
+  neb.images = update_images(driver,images,h0,nxyz,N)
+
   effective_field(neb)                              ###
-  
+
   gk1 =compute_gk(neb.images,neb.field,nxyz,N)
   gk1_norm = compute_norm_gk(gk1,N)
   for i = 0:100
@@ -292,7 +292,7 @@ function search_tau(neb::NEB)
   for j=1:10
     tau1 = a + 1/3*(b-a)
     driver.tau = tau1
-    neb.images = update_images(driver,images,h0,nxyz,N) 
+    neb.images = update_images(driver,images,h0,nxyz,N)
     effective_field(neb)
     gk1 =compute_gk(neb.images,neb.field,nxyz,N)
     gk1_norm = compute_norm_gk(gk1,N)
@@ -305,13 +305,16 @@ function search_tau(neb::NEB)
     gk2_norm = compute_norm_gk(gk2,N)
     if gk1_norm<gk2_norm
       a = tau1
-    else 
+    else
       b = tau2
     end
     if b-a<1e-14
       break
     end
-  end 
+  end
+  driver.tau = a
+  neb.field = h0
+  neb.images = images
 end
 function run_step(neb::NEB)
   driver = neb.driver
@@ -347,10 +350,10 @@ function run_step(neb::NEB)
     end
   end
   for n=1:N
-  max_length_error = error_length_m(neb.images[:,n], sim.nxyz)
-  if max_length_error > 1e-15
-    neb.images[:,n] = normalized(neb.images[:,n], sim.nxyz)                                 #fix me
-  end
+    max_length_error = error_length_m(neb.images[:,n], sim.nxyz)
+    if max_length_error > 1e-15
+      neb.images[:,n] = normalized(neb.images[:,n], sim.nxyz)
+    end
   end
   driver.steps += 1
   return  nothing
@@ -476,14 +479,14 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
         save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
       end
       if max_torque < stopping_torque
-      @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
-      if save_m_every>0
-        compute_system_energy(neb, 0.0)
-        write_data(neb)
-      end
-      if save_vtk_every > 0
-        save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
-      end
+        @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
+        if save_m_every>0
+         compute_system_energy(neb, 0.0)
+          write_data(neb)
+        end
+        if save_vtk_every > 0
+          save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
+        end
       break
       end
   end
