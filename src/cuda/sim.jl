@@ -111,12 +111,14 @@ function add_zeeman(sim::MicroSimGPU, H0::Any, funs::Tuple{Function,Function,Fun
   return zeeman
 end
 
-function add_exch(sim::MicroSimGPU, A::Float64; name="exch")
+function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
-  exch = ExchangeGPU(Float(A), field, energy, Float(0.0), name)
+  Spatial_A = cuzeros(Float, nxyz)
+  init_scalar!(Spatial_A , sim.mesh, A)
+  exch = ExchangeGPU(Spatial_A, field, energy, Float(0.0), name)
 
   push!(sim.interactions, exch)
 

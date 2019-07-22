@@ -45,7 +45,7 @@ end
 
 
 mutable struct ExchangeGPU{T<:AbstractFloat} <: MicroEnergyGPU
-   A::T
+   A::CuArray{T, 1}
    field::Array{T, 1}
    energy::Array{T, 1}
    total_energy::T

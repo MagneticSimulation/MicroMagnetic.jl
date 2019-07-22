@@ -32,7 +32,7 @@ function time_zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
 end
 
 function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
-                     energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1}, A::T,
+                     energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1}, A::CuDeviceArray{T, 1},
                      dx::T, dy::T, dz::T, nx::Int64, ny::Int64, nz::Int64, volume::T,
                      xperiodic::Bool, yperiodic::Bool, zperiodic::Bool) where {T<:AbstractFloat}
 
@@ -40,9 +40,9 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
 
   nxy = nx * ny
   nxyz = nxy * nz
-  ax = 2 * A / (dx * dx)
-  ay = 2 * A / (dy * dy)
-  az = 2 * A / (dz * dz)
+  ax = 2 / (dx * dx)
+  ay = 2 / (dy * dy)
+  az = 2 / (dz * dz)
 
   if 0 < index <= nxyz
       i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
@@ -52,6 +52,7 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       @inbounds my = m[indexm-1]
       @inbounds mz = m[indexm]
       @inbounds Ms_local = Ms[index]
+      @inbounds exch = A[index]
 
       if Ms_local == T(0)
           @inbounds energy[index] = 0
@@ -66,9 +67,9 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
           id = (k==1) ? index - nxy + nxyz : index - nxy
           idm = 3*id
           @inbounds if Ms[id]>0
-              @inbounds fx += az*(m[idm-2] - mx)
-              @inbounds fy += az*(m[idm-1] - my)
-              @inbounds fz += az*(m[idm] - mz)
+              @inbounds fx += az*exch*(m[idm-2] - mx)
+              @inbounds fy += az*exch*(m[idm-1] - my)
+              @inbounds fz += az*exch*(m[idm] - mz)
           end
       end
 
@@ -76,9 +77,9 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
           id = (j==1) ? index - nx + nxy : index - nx
           idm = 3*id
           @inbounds if Ms[id]>0
-              @inbounds fx += ay*(m[idm-2] - mx)
-              @inbounds fy += ay*(m[idm-1] - my)
-              @inbounds fz += ay*(m[idm] - mz)
+              @inbounds fx += ay*exch*(m[idm-2] - mx)
+              @inbounds fy += ay*exch*(m[idm-1] - my)
+              @inbounds fz += ay*exch*(m[idm] - mz)
          end
       end
 
@@ -86,9 +87,9 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
           id = (i==1) ? index - 1 + nx : index -1
           idm = 3*id
           @inbounds if Ms[id]>0
-              @inbounds fx += ax*(m[idm-2] - mx)
-              @inbounds fy += ax*(m[idm-1] - my)
-              @inbounds fz += ax*(m[idm] - mz)
+              @inbounds fx += ax*exch*(m[idm-2] - mx)
+              @inbounds fy += ax*exch*(m[idm-1] - my)
+              @inbounds fz += ax*exch*(m[idm] - mz)
           end
       end
 
@@ -96,9 +97,9 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
           id = (i==nx) ? index +1 - nx : index +1
           idm = 3*id
           @inbounds if Ms[id]>0
-              @inbounds fx += ax*(m[idm-2]- mx)
-              @inbounds fy += ax*(m[idm-1]- my)
-              @inbounds fz += ax*(m[idm]- mz)
+              @inbounds fx += ax*exch*(m[idm-2]- mx)
+              @inbounds fy += ax*exch*(m[idm-1]- my)
+              @inbounds fz += ax*exch*(m[idm]- mz)
           end
       end
 
@@ -106,9 +107,9 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
           id = (j==ny) ? index + nx - nxy : index + nx
           idm = 3*id
           @inbounds if Ms[id]>0
-              @inbounds fx += ay*(m[idm-2]- mx)
-              @inbounds fy += ay*(m[idm-1]- my)
-              @inbounds fz += ay*(m[idm]- mz)
+              @inbounds fx += ay*exch*(m[idm-2]- mx)
+              @inbounds fy += ay*exch*(m[idm-1]- my)
+              @inbounds fz += ay*exch*(m[idm]- mz)
           end
       end
 
@@ -116,9 +117,9 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
           id = (k==nz) ? index + nxy - nxyz : index + nxy
           idm = 3*id
           @inbounds if Ms[id]>0
-              @inbounds fx += az*(m[idm-2]- mx)
-              @inbounds fy += az*(m[idm-1]- my)
-              @inbounds fz += az*(m[idm]- mz)
+              @inbounds fx += az*exch*(m[idm-2]- mx)
+              @inbounds fy += az*exch*(m[idm-1]- my)
+              @inbounds fz += az*exch*(m[idm]- mz)
           end
       end
       Ms_inv = 1.0/(4.0*pi*1e-7*Ms_local)
