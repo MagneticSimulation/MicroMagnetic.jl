@@ -167,9 +167,7 @@ mutable struct Zeeman
 end
 
 mutable struct TimeZeeman
-   fun_x::Function
-   fun_y::Function
-   fun_z::Function
+   time_fun::Function
    init_field::Array{Float64, 1}
    field::Array{Float64, 1}
    energy::Array{Float64, 1}

@@ -1,16 +1,8 @@
 using JuMag
 using Test
 
-function fun_x(t)
-    return sin(1e9*t)
-end
-
-function fun_y(t)
-    return cos(1e9*t)
-end
-
-function fun_z(t)
-    return 1.0
+function time_fun(t)
+    return (sin(1e9*t), cos(1e9*t), 1)
 end
 
 function test_zeeman(;gpu=false)
@@ -29,7 +21,7 @@ function test_zeeman(;gpu=false)
     set_Ms(sim, 8.6e5)
 
     z1 = add_zeeman(sim, (1,2,2e3))
-    z2 = add_zeeman(sim, (1e3,1e4,1e5), (fun_x, fun_y, fun_z))
+    z2 = add_zeeman(sim, (1e3,1e4,1e5), time_fun)
 
     if gpu
         JuMag.compute_fields_to_gpu(sim, sim.spin, 1.23e-11)

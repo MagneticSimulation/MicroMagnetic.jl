@@ -31,7 +31,7 @@ function set_Ms(sim::MicroSimGPU, init::Any)
 end
 
 
-function init_m0(sim::MicroSimGPU, m0::Any; norm=true)
+function init_m0(sim::MicroSimGPU, m0::TupleOrArrayOrFunction; norm=true)
   Float = _cuda_using_double.x ? Float64 : Float32
   spin = zeros(Float, 3*sim.nxyz)
   init_vector!(spin, sim.mesh, m0)
@@ -51,7 +51,7 @@ function init_m0(sim::MicroSimGPU, m0::Any; norm=true)
   return true
 end
 
-function add_zeeman(sim::MicroSimGPU, H0::Any; name="zeeman")
+function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction; name="zeeman")
   nxyz = sim.nxyz
   T = _cuda_using_double.x ? Float64 : Float32
   field = zeros(T, 3*nxyz)
@@ -85,7 +85,7 @@ function update_zeeman(z::ZeemanGPU, H0::Tuple)
   return nothing
 end
 
-function add_zeeman(sim::MicroSimGPU, H0::Any, funs::Tuple{Function,Function,Function}; name="timezeeman")
+function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
   nxyz = sim.nxyz
   T = _cuda_using_double.x ? Float64 : Float32
   field = zeros(T, 3*nxyz)
@@ -93,7 +93,7 @@ function add_zeeman(sim::MicroSimGPU, H0::Any, funs::Tuple{Function,Function,Fun
   init_vector!(field, sim.mesh, H0)
   init_field = CuArray(field)
 
-  zeeman =  TimeZeemanGPU(funs[1], funs[2], funs[3], init_field, field, energy, T(0), name)
+  zeeman =  TimeZeemanGPU(ft, init_field, field, energy, T(0), name)
   push!(sim.interactions, zeeman)
 
   if isa(H0, Tuple)

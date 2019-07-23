@@ -96,9 +96,7 @@ mutable struct ZeemanGPU{T<:AbstractFloat} <: MicroEnergyGPU
 end
 
 mutable struct TimeZeemanGPU{T<:AbstractFloat} <: MicroEnergyGPU
-   fun_x::Function
-   fun_y::Function
-   fun_z::Function
+   time_fun::Function
    init_field::CuArray{T, 1}
    field::Array{T, 1}
    energy::Array{T, 1}

@@ -100,7 +100,7 @@ end
 
 
 
-function init_m0(sim::AtomicSim, m0::Any; norm=true)
+function init_m0(sim::AtomicSim, m0::TupleOrArrayOrFunction; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
   if norm
     normalise(sim.prespin, sim.nxyz)
@@ -137,11 +137,11 @@ function init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
 end
 
 """
-    add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
+    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 
-Add fixed zeeman energy to the simulation,H0 should be tuple with 3 components
+Add a static Zeeman energy to the simulation.
 """
-function add_zeeman(sim::AbstractSim, H0::Any; name="zeeman")
+function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -167,7 +167,12 @@ end
 """
     update_zeeman(z::Zeeman, H0::Tuple)
 
-If you have add_zeeman, and want to change the field, use
+Set the external field of Zeeman z to H0 where H0 is a tuple.
+For example,
+```julia
+   ze = add_zeeman(sim, (0,0,0)) #create a zeeman energy with field (0,0,0) A/m
+   update_zeeman(ze, (0,0,1e5)) #change the field to (0,0,1e5) A/m
+```
 """
 function update_zeeman(z::Zeeman, H0::Tuple)
   b = reshape(z.field, 3, Int(length(z.field)/3))
@@ -177,14 +182,38 @@ function update_zeeman(z::Zeeman, H0::Tuple)
   return z
 end
 
-function add_zeeman(sim::AbstractSim, H0::Any, funs::Tuple{Function,Function,Function}; name="timezeeman")
+"""
+    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
+
+Add a time varying zeeman to system. The input `H0` could be
+
+ - A tuple with length 3, for example, `(0,0,1e2)`.
+ - An array with length `3N` where N is the number of total spins.
+ - A function with six parameters `(i,j,k,dx,dy,dz)` and return a tuple, for example,
+   ```julia
+    function linear_Hz(i, j, k, dx, dy, dz)
+       nx = 100
+       Hz = i/nx*1000
+       return (0, 0, Hz)
+    end
+   ```
+
+The input `ft` is a function of time `t` and its return value should be a tuple. For example,
+
+```julia
+  function time_fun(t)
+    return (sin(t), cos(t), 0)
+  end
+```
+"""
+function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
   nxyz = sim.nxyz
   init_field = zeros(Float64, 3*nxyz)
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
   init_vector!(init_field, sim.mesh, H0)
 
-  zeeman =  TimeZeeman(funs[1], funs[2], funs[3], init_field, field, energy, name)
+  zeeman =  TimeZeeman(ft, init_field, field, energy, name)
   push!(sim.interactions, zeeman)
 
   if isa(H0, Tuple)

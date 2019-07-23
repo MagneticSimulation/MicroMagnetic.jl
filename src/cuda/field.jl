@@ -12,10 +12,8 @@ function effective_field(zeeman::TimeZeemanGPU, sim::MicroSimGPU, spin::CuArray{
   nxyz = sim.nxyz
   volume = sim.mesh.volume
   blocks_n, threads_n = sim.blocks, sim.threads
-  fx = T(zeeman.fun_x(t))
-  fy = T(zeeman.fun_y(t))
-  fz = T(zeeman.fun_z(t))
-  @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, sim.energy, sim.Ms, volume, fx, fy, fz, nxyz)
+  tx, ty, tz = zeeman.time_fun(t)
+  @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, sim.energy, sim.Ms, volume, T(tx), T(ty), T(tz), nxyz)
   return nothing
 end
 
