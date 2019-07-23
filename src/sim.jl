@@ -98,8 +98,6 @@ function average_m(sim::AbstractSim)
   return (mx/n, my/n, mz/n)
 end
 
-
-
 function init_m0(sim::AtomicSim, m0::TupleOrArrayOrFunction; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
   if norm
@@ -301,8 +299,8 @@ function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
     return dmi
 end
 
-function add_demag(sim::MicroSim; name="demag")
-  demag = init_demag(sim)
+function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
+  demag = init_demag(sim, Nx, Ny, Nz)
   demag.name = name
   push!(sim.interactions, demag)
 

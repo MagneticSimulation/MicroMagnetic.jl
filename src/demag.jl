@@ -27,7 +27,7 @@ mutable struct Demag
   name::String
 end
 
-function init_demag(sim::MicroSim)
+function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
   mesh = sim.mesh
   max_size = max(mesh.dx, mesh.dy, mesh.dz)
   dx = mesh.dx/max_size
@@ -49,22 +49,20 @@ function init_demag(sim::MicroSim)
   tensor_xy = zeros(nx_fft, ny_fft, nz_fft)
   tensor_xz = zeros(nx_fft, ny_fft, nz_fft)
   tensor_yz = zeros(nx_fft, ny_fft, nz_fft)
-  for i = 1:nx_fft
-    for j = 1:ny_fft
-      for k = 1:nz_fft
-        if (nx_fft%2 == 0 && i == nx+1) || (ny_fft%2 == 0 && j == ny+1) || (nz_fft%2 == 0 && k == nz+1)
-          continue
-        end
-        x = (i<=nx) ? (i-1)*dx : (i-nx_fft-1)*dx
-        y = (j<=ny) ? (j-1)*dy : (j-ny_fft-1)*dy
-        z = (k<=nz) ? (k-1)*dz : (k-nz_fft-1)*dz
-        tensor_xx[i,j,k] = demag_tensor_xx(x,y,z,dx,dy,dz)
-        tensor_yy[i,j,k] = demag_tensor_xx(y,x,z,dy,dx,dz)
-        tensor_zz[i,j,k] = demag_tensor_xx(z,y,x,dz,dy,dx)
-        tensor_xy[i,j,k] = demag_tensor_xy(x,y,z,dx,dy,dz)
-        tensor_xz[i,j,k] = demag_tensor_xy(x,z,y,dx,dz,dy)
-        tensor_yz[i,j,k] = demag_tensor_xy(y,z,x,dy,dz,dx)
-      end
+  for i = 1:nx_fft, j = 1:ny_fft, k = 1:nz_fft
+    if (nx_fft%2 == 0 && i == nx+1) || (ny_fft%2 == 0 && j == ny+1) || (nz_fft%2 == 0 && k == nz+1)
+        continue
+    end
+    for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+        x = (i<=nx) ? (i-1+p*nx)*dx : (i-nx_fft-1-p*nx)*dx
+        y = (j<=ny) ? (j-1+q*ny)*dy : (j-ny_fft-1-q*ny)*dy
+        z = (k<=nz) ? (k-1+s*nz)*dz : (k-nz_fft-1-s*nz)*dz
+        tensor_xx[i,j,k] += demag_tensor_xx(x,y,z,dx,dy,dz)
+        tensor_yy[i,j,k] += demag_tensor_xx(y,x,z,dy,dx,dz)
+        tensor_zz[i,j,k] += demag_tensor_xx(z,y,x,dz,dy,dx)
+        tensor_xy[i,j,k] += demag_tensor_xy(x,y,z,dx,dy,dz)
+        tensor_xz[i,j,k] += demag_tensor_xy(x,z,y,dx,dz,dy)
+        tensor_yz[i,j,k] += demag_tensor_xy(y,z,x,dy,dz,dx)
     end
   end
 
