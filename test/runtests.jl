@@ -3,6 +3,7 @@ using JuMag
 include("test_mesh.jl")
 include("test_exch.jl")
 include("test_demag.jl")
+include("test_demag_pbc.jl")
 include("test_zeeman.jl")
 include("test_interface.jl")
 include("test_fields.jl")
