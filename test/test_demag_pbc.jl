@@ -29,18 +29,18 @@ function test_field_macro(;using_gpu=false)
     @test isapprox(f1[2], -0.5, atol=1e-6)
     @test isapprox(f1[3], -0.5, atol=1e-6)
 
-    f2 = compute_field_macro(mesh1, 200, 200, 0)
+    f2 = compute_field_macro(mesh1, 500, 500, 0)
     println(f2)
-    @test isapprox(f2[1], 0, atol=1e-2)
-    @test isapprox(f2[2], 0, atol=1e-2)
-    @test isapprox(f2[3], -1, atol=1e-2)
+    @test isapprox(f2[1], 0, atol=1e-3)
+    @test isapprox(f2[2], 0, atol=1e-3)
+    @test isapprox(f2[3], -1, atol=1e-3)
 
     f3 = compute_field_macro(mesh1, 31, 31, 0)
     f4 = compute_field_macro(mesh2, 10, 10, 0)
     field = reshape(f4, 3, 3, 3, 1)
     f3b = field[:, 2, 2, 1]
     println(f3, f3b)
-    @test isapprox(f3, f3b, atol=1e-14)
+    @test isapprox(f3, f3b, atol=1e-11)
 
 end
 

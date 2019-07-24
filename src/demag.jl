@@ -27,6 +27,7 @@ mutable struct Demag
   name::String
 end
 
+
 function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
   mesh = sim.mesh
   max_size = max(mesh.dx, mesh.dy, mesh.dz)
@@ -43,35 +44,32 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
   ny_fft = mesh.ny > cn ? 2*mesh.ny : 2*mesh.ny - 1
   nz_fft = mesh.nz > cn ? 2*mesh.nz : 2*mesh.nz - 1
 
-  tensor_xx = zeros(nx_fft, ny_fft, nz_fft)
-  tensor_yy = zeros(nx_fft, ny_fft, nz_fft)
-  tensor_zz = zeros(nx_fft, ny_fft, nz_fft)
-  tensor_xy = zeros(nx_fft, ny_fft, nz_fft)
-  tensor_xz = zeros(nx_fft, ny_fft, nz_fft)
-  tensor_yz = zeros(nx_fft, ny_fft, nz_fft)
-  for i = 1:nx_fft, j = 1:ny_fft, k = 1:nz_fft
-    if (nx_fft%2 == 0 && i == nx+1) || (ny_fft%2 == 0 && j == ny+1) || (nz_fft%2 == 0 && k == nz+1)
-        continue
-    end
-    for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
-        x = (i<=nx) ? (i-1+p*nx)*dx : (i-nx_fft-1-p*nx)*dx
-        y = (j<=ny) ? (j-1+q*ny)*dy : (j-ny_fft-1-q*ny)*dy
-        z = (k<=nz) ? (k-1+s*nz)*dz : (k-nz_fft-1-s*nz)*dz
-        tensor_xx[i,j,k] += demag_tensor_xx(x,y,z,dx,dy,dz)
-        tensor_yy[i,j,k] += demag_tensor_xx(y,x,z,dy,dx,dz)
-        tensor_zz[i,j,k] += demag_tensor_xx(z,y,x,dz,dy,dx)
-        tensor_xy[i,j,k] += demag_tensor_xy(x,y,z,dx,dy,dz)
-        tensor_xz[i,j,k] += demag_tensor_xy(x,z,y,dx,dz,dy)
-        tensor_yz[i,j,k] += demag_tensor_xy(y,z,x,dy,dz,dx)
-    end
-  end
+  tensor = zeros(nx, ny, nz)
+  long_tensor = zeros(nx_fft, ny_fft, nz_fft)
 
-  tensor_xx = real(FFTW.rfft(tensor_xx)) #tensors xx, xy, .. should be pure real
-  tensor_yy = real(FFTW.rfft(tensor_yy))
-  tensor_zz = real(FFTW.rfft(tensor_zz))
-  tensor_xy = real(FFTW.rfft(tensor_xy))
-  tensor_xz = real(FFTW.rfft(tensor_xz))
-  tensor_yz = real(FFTW.rfft(tensor_yz))
+  compute_demag_tensor_xx(tensor, nx, ny, nz, Nx, Ny, Nz, dx, dy, dz)
+  fill_demag_tensors(long_tensor, tensor)
+  tensor_xx = real(FFTW.rfft(long_tensor)) #tensors xx, xy, .. should be pure real
+
+  compute_demag_tensor_yy(tensor, nx, ny, nz, Nx, Ny, Nz, dx, dy, dz)
+  fill_demag_tensors(long_tensor, tensor)
+  tensor_yy = real(FFTW.rfft(long_tensor))
+
+  compute_demag_tensor_zz(tensor, nx, ny, nz, Nx, Ny, Nz, dx, dy, dz)
+  fill_demag_tensors(long_tensor, tensor)
+  tensor_zz = real(FFTW.rfft(long_tensor))
+
+  compute_demag_tensor_xy(tensor, nx, ny, nz, Nx, Ny, Nz, dx, dy, dz)
+  fill_demag_tensors_off_diag(long_tensor, tensor, true, true, false)
+  tensor_xy = real(FFTW.rfft(long_tensor))
+
+  compute_demag_tensor_xz(tensor, nx, ny, nz, Nx, Ny, Nz, dx, dy, dz)
+  fill_demag_tensors_off_diag(long_tensor, tensor, true, false, true)
+  tensor_xz = real(FFTW.rfft(long_tensor))
+
+  compute_demag_tensor_yz(tensor, nx, ny, nz, Nx, Ny, Nz, dx, dy, dz)
+  fill_demag_tensors_off_diag(long_tensor, tensor, false, true, true)
+  tensor_yz = real(FFTW.rfft(long_tensor))
 
   mx = zeros(nx_fft, ny_fft, nz_fft)
   my = zeros(nx_fft, ny_fft, nz_fft)
@@ -281,4 +279,107 @@ function demag_tensor_xy(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Fl
 
   return tensor/(4.0*pi*dx*dy*dz)
 
+end
+
+function fill_demag_tensors(long_tensor::Array{T,3}, tensor::Array{T,3}) where {T<:Float64}
+    lnx, lny, lnz = size(long_tensor)
+    nx, ny, nz = size(tensor)
+    for i=1:lnx, j=1:lny, k=1:lnz
+        if (lnx%2 == 0 && i == nx+1) || (lny%2 == 0 && j == ny+1) || (lnz%2 == 0 && k == nz+1)
+          continue
+        end
+        x = (i<=nx) ? i : lnx - i + 2
+        y = (j<=ny) ? j : lny - j + 2
+        z = (k<=nz) ? k : lnz - k + 2
+        long_tensor[i,j,k] = tensor[x,y,z]
+    end
+end
+
+function fill_demag_tensors_off_diag(long_tensor::Array{T,3}, tensor::Array{T,3}, tx::Bool, ty::Bool, tz::Bool) where {T<:Float64}
+    lnx, lny, lnz = size(long_tensor)
+    nx, ny, nz = size(tensor)
+    for i=1:lnx, j=1:lny, k=1:lnz
+        if (lnx%2 == 0 && i == nx+1) || (lny%2 == 0 && j == ny+1) || (lnz%2 == 0 && k == nz+1)
+          continue
+        end
+        x = (i<=nx) ? i : lnx - i + 2
+        y = (j<=ny) ? j : lny - j + 2
+        z = (k<=nz) ? k : lnz - k + 2
+        sx = tx && (i>nx) ? -1 : 1
+        sy = ty && (j>ny) ? -1 : 1
+        sz = tz && (k>nz) ? -1 : 1
+        long_tensor[i,j,k] = sx*sy*sz*tensor[x,y,z]
+    end
+end
+
+function compute_demag_tensor_xx(tensor::Array{T,3}, nx::I, ny::I, nz::I, Nx::I, Ny::I, Nz::I, dx::T, dy::T, dz::T) where {T<:Float64, I<:Int}
+    for i = 1:nx, j=1:ny, k=1:nz
+        tensor[i,j,k] = 0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+            x = (i-1 + p*nx)*dx
+            y = (j-1 + q*ny)*dy
+            z = (k-1 + s*nz)*dz
+            tensor[i,j,k] += demag_tensor_xx(x,y,z,dx,dy,dz)
+        end
+    end
+end
+
+function compute_demag_tensor_yy(tensor::Array{T,3}, nx::I, ny::I, nz::I, Nx::I, Ny::I, Nz::I, dx::T, dy::T, dz::T) where {T<:Float64, I<:Int}
+    for i = 1:nx, j=1:ny, k=1:nz
+        tensor[i,j,k] = 0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+            x = (i-1 + p*nx)*dx
+            y = (j-1 + q*ny)*dy
+            z = (k-1 + s*nz)*dz
+            tensor[i,j,k] += demag_tensor_xx(y,x,z,dy,dx,dz)
+        end
+    end
+end
+
+function compute_demag_tensor_zz(tensor::Array{T,3}, nx::I, ny::I, nz::I, Nx::I, Ny::I, Nz::I, dx::T, dy::T, dz::T) where {T<:Float64, I<:Int}
+    for i = 1:nx, j=1:ny, k=1:nz
+        tensor[i,j,k] = 0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+            x = (i-1 + p*nx)*dx
+            y = (j-1 + q*ny)*dy
+            z = (k-1 + s*nz)*dz
+            tensor[i,j,k] += demag_tensor_xx(z,y,x,dz,dy,dx)
+        end
+    end
+end
+
+function compute_demag_tensor_xy(tensor::Array{T,3}, nx::I, ny::I, nz::I, Nx::I, Ny::I, Nz::I, dx::T, dy::T, dz::T) where {T<:Float64, I<:Int}
+    for i = 1:nx, j=1:ny, k=1:nz
+        tensor[i,j,k] = 0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+            x = (i-1 + p*nx)*dx
+            y = (j-1 + q*ny)*dy
+            z = (k-1 + s*nz)*dz
+            tensor[i,j,k] += demag_tensor_xy(x,y,z,dx,dy,dz)
+        end
+    end
+end
+
+function compute_demag_tensor_xz(tensor::Array{T,3}, nx::I, ny::I, nz::I, Nx::I, Ny::I, Nz::I, dx::T, dy::T, dz::T) where {T<:Float64, I<:Int}
+    for i = 1:nx, j=1:ny, k=1:nz
+        tensor[i,j,k] = 0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+            x = (i-1 + p*nx)*dx
+            y = (j-1 + q*ny)*dy
+            z = (k-1 + s*nz)*dz
+            tensor[i,j,k] += demag_tensor_xy(x,z,y,dx,dz,dy)
+        end
+    end
+end
+
+function compute_demag_tensor_yz(tensor::Array{T,3}, nx::I, ny::I, nz::I, Nx::I, Ny::I, Nz::I, dx::T, dy::T, dz::T) where {T<:Float64, I<:Int}
+    for i = 1:nx, j=1:ny, k=1:nz
+        tensor[i,j,k] = 0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+            x = (i-1 + p*nx)*dx
+            y = (j-1 + q*ny)*dy
+            z = (k-1 + s*nz)*dz
+            tensor[i,j,k] += demag_tensor_xy(y,z,x,dy,dz,dx)
+        end
+    end
 end
