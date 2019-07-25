@@ -228,6 +228,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; 
   return zeeman
 end
 
+
 function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -299,6 +300,12 @@ function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
     return dmi
 end
 
+"""
+    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
+
+Add Demag to the system. ``N_x``, ``N_y`` and ``N_z`` can be used to describe the macro boundary conditions which means that
+the given mesh is repeated ``2N_x+1``, ``2N_y+1`` and ``2N_z+1`` times in ``x``, ``y`` and ``z`` direction, respectively.
+"""
 function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
   demag = init_demag(sim, Nx, Ny, Nz)
   demag.name = name
