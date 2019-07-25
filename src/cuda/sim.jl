@@ -221,6 +221,19 @@ function add_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   return anis
 end
 
+function update_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; name = "anis")
+  nxyz = sim.nxyz
+  Kus =  zeros(Float64, nxyz)
+  init_scalar!(Kus, sim.mesh, Ku)
+  Kus =  CuArray(Kus)
+  for i in sim.interactions
+    if i.name == name
+      i.Ku[:] = Kus[:]
+      return nothing
+    end
+  end
+end
+
 function add_demag(sim::MicroSimGPU; name="demag")
   demag = init_demag_gpu(sim)
   demag.name = name

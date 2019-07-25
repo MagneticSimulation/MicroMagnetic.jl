@@ -1,7 +1,7 @@
 using WriteVTK
 using NPZ
 
-function save(sim::MicroSimGPU, fname::String;vtk::Bool = false,npy::Bool = false)
+function save(sim::MicroSimGPU, fname::String;vtk::Bool = false, npy::Bool = false, vtk_folder::String="vtks")
   if vtk
     if !isdir(vtk_folder)
       mkdir(vtk_folder)

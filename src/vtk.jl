@@ -14,7 +14,7 @@ save(sim, sim.name, vtk = true, npy= true)
 
 """
 
-function save(sim::AbstractSim, fname::String; vtk::Bool = false,npy::Bool = false,vtk_folder = "vtks")
+function save(sim::AbstractSim, fname::String; vtk::Bool = false,npy::Bool = false,vtk_folder::String = "vtks")
 
   if vtk
     if !isdir(vtk_folder)

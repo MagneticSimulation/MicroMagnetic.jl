@@ -384,6 +384,30 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
   return anis
 end
+"""
+    update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
+Replace the value of Anisotropy with Ku
+Example:
+
+```julia
+mesh = FDMesh(nx=200, ny=200, nz=12, dx=5e-9, dy=5e-9, dz=5e-9)
+sim = Sim(mesh)
+add_anis(sim,3e4,axis = (0,0,1))
+update_anis(sim, 5e4)
+````
+
+"""
+function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
+  nxyz = sim.nxyz
+  Kus =  zeros(Float64, nxyz)
+  init_scalar!(Kus, sim.mesh, Ku)
+  for i in sim.interactions
+    if i.name == name
+      i.Ku[:] = Kus[:]
+      return nothing
+    end
+  end
+end
 
 """
     relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks")
