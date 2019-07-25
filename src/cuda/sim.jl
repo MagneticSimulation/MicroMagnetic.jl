@@ -201,7 +201,7 @@ function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi")
     return dmi
 end
 
-function add_anis(sim::MicroSimGPU, Ku::Any; axis=(0,0,1), name="anis")
+function add_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   Kus = zeros(Float, sim.nxyz)
@@ -209,8 +209,8 @@ function add_anis(sim::MicroSimGPU, Ku::Any; axis=(0,0,1), name="anis")
   Kus =  CuArray(Kus)
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
-  lt=sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
-  naxis=(axis[1]^2/lt,axis[2]^2/lt,axis[3]^2/lt)
+  lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
+  naxis = (axis[1]^2/lt,axis[2]^2/lt,axis[3]^2/lt)
   anis = AnisotropyGPU(Kus, naxis, field, energy, Float(0.0), name)
   push!(sim.interactions, anis)
 

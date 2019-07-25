@@ -16,10 +16,6 @@ function m0_fun(i,j,k,dx,dy,dz)
   return sin(2*pi*x/L), sin(2*pi*x/L+1.2), sin(2*pi*x/L+2.3)
 end
 
-function time_fun(t)
-    return sin(t)
-end
-
 function test_energy_minimization(mesh)
     sim = Sim(mesh, driver="SD", name="sim")
     @test set_Ms(sim, circular_Ms)
