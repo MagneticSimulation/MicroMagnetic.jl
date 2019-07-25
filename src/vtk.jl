@@ -1,4 +1,34 @@
 using WriteVTK
+using NPZ
+
+"""
+    save(sim::AbstractSim, fname::String; vtk::Bool = false, npy::Bool = false, vtk_folder = "vtks")
+
+If vtk = true, save spins to dir ~/vtks/ in vtk format;
+If npy = true, save spins to current directory in npy format;
+
+Example:
+```julia
+save(sim, sim.name, vtk = true, npy= true)
+```
+
+"""
+
+function save(sim::AbstractSim, fname::String; vtk::Bool = false,npy::Bool = false,vtk_folder = "vtks")
+
+  if vtk
+    if !isdir(vtk_folder)
+      mkdir(vtk_folder)
+    end
+    save_vtk(sim, joinpath(vtk_folder, fname))
+  end
+
+  if npy
+    name = @sprintf("%s.npy", fname)
+    npzwrite(name,sim.spin)
+  end
+end
+
 
 function save_vtk(sim::AbstractSim, fname::String; fields::Array{String, 1} = String[])
   mesh = sim.mesh

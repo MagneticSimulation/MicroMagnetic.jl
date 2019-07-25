@@ -1,4 +1,26 @@
 using WriteVTK
+using NPZ
+
+function save(sim::MicroSimGPU, fname::String;vtk::Bool = false,npy::Bool = false)
+  if vtk
+    if !isdir(vtk_folder)
+      mkdir(vtk_folder)
+    end
+    save_vtk(sim, joinpath(vtk_folder, fname))
+  end
+  if npy
+    save_npy(sim,fname)
+  end
+end
+
+function save_npy(sim::MicroSimGPU,name::String)
+  name = @sprintf("%s.npy", name)
+  mesh = sim.mesh
+  nxyz = mesh.nx*mesh.ny*mesh.nz
+  spin = zeros(3*nxyz)
+  copy!(spin, sim.spin)
+  npzwrite(name, spin)
+end
 
 function save_vtk(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} = String[])
   mesh = sim.mesh
