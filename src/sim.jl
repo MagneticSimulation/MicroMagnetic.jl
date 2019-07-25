@@ -29,11 +29,7 @@ end
 """
     set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
 
-Set the saturation magnetization of the studied system. As can be guessed from the type union `NumberOrArrayOrFunction`,
-Ms could be a number or an array or a function. If Ms is an array, its length should be equal to
-the size of the system. If Ms is a function, it should take six parameters in the form
-`(i,j,k,dx,dy,dz)` where `i,j,k` are the indices of the mesh cells and `dx,dy,dz` are the cellsizes.
-For example,
+Set the saturation magnetization Ms of the studied system. For example,
 
 ```julia
    set_Ms(sim, 8.6e5)
@@ -116,8 +112,23 @@ end
 """
     init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
 
-Set the initial magnetization of the system, the input `m0` could be a Tuple with length 3
-or an array with length 3*N where N is the system size or a function with six parameters `(i,j,k,dx,dy,dz)`.
+Set the initial magnetization of the system. If `norm=false` the magnetization array will be not normalised.
+Examples:
+
+```julia
+   init_m0(sim, (1,1,1))
+```
+or
+```julia
+   init_m0(sim, (1,1,1), norm=false)
+```
+or
+```julia
+   function uniform_m0(i,j,k,dx,dy,dz)
+       return (0,0,1)
+   end
+   init_m0(sim, uniform_m0)
+```
 """
 function init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
@@ -183,25 +194,27 @@ end
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
 
-Add a time varying zeeman to system. The input `H0` could be
+Add a time varying zeeman to system.
 
- - A tuple with length 3, for example, `(0,0,1e2)`.
- - An array with length `3N` where N is the number of total spins.
- - A function with six parameters `(i,j,k,dx,dy,dz)` and return a tuple, for example,
-   ```julia
-    function linear_Hz(i, j, k, dx, dy, dz)
-       nx = 100
-       Hz = i/nx*1000
-       return (0, 0, Hz)
-    end
-   ```
+The input `ft` is a function of time `t` and its return value should be a tuple with length 3.
 
-The input `ft` is a function of time `t` and its return value should be a tuple. For example,
+Example:
 
 ```julia
   function time_fun(t)
-    return (sin(t), cos(t), 0)
+    w = 2*pi*2.0e9
+    return (sin(w*t), cos(w*t), 0)
   end
+
+  function spatial_H(i, j, k, dx, dy, dz)
+    H = 1e3
+    if i<=2
+        return (H, H, 0)
+    end
+    return (0, 0, 0)
+  end
+
+  add_zeeman(sim, spatial_H, time_fun)
 ```
 """
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
@@ -228,7 +241,11 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; 
   return zeeman
 end
 
+"""
+    add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
 
+Add exchange energy to the system.
+"""
 function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -265,6 +282,15 @@ function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="r
   return exch
 end
 
+"""
+    add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
+
+Add DMI to the system. Example:
+
+```julia
+   add_dmi(sim, (1e-3, 1e-3, 0))
+```
+"""
 function add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -279,6 +305,20 @@ function add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
   return dmi
 end
 
+"""
+    add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
+
+Add DMI to the system. `type` could be "bulk" or "interfacial"
+Examples:
+
+```julia
+   add_dmi(sim, 1e-3, type="interfacial")
+```
+or
+```julia
+   add_dmi(sim, 1e-3, type="bulk")
+```
+"""
 function add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
     if type == "interfacial"
         return add_dmi_interfacial(sim, D, name=name)
@@ -303,8 +343,8 @@ end
 """
     add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
 
-Add Demag to the system. ``N_x``, ``N_y`` and ``N_z`` can be used to describe the macro boundary conditions which means that
-the given mesh is repeated ``2N_x+1``, ``2N_y+1`` and ``2N_z+1`` times in ``x``, ``y`` and ``z`` direction, respectively.
+Add Demag to the system. `Nx`, `Ny` and `Nz` can be used to describe the macro boundary conditions which means that
+the given mesh is repeated `2Nx+1`, `2Ny+1 and `2Nz+1` times in `x`, `y` and `z` direction, respectively.
 """
 function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
   demag = init_demag(sim, Nx, Ny, Nz)
@@ -318,15 +358,23 @@ function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
   return demag
 end
 
+"""
+    add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
 
-function add_anis(sim::AbstractSim, init_ku::Any; axis=(0,0,1), name="anis")
+Add Anisotropy to the system, where the energy density is given by
+
+```math
+E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
+```
+"""
+function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
   Kus =  zeros(Float64, nxyz)
-  init_scalar!(Kus, sim.mesh, init_ku)
+  init_scalar!(Kus, sim.mesh, Ku)
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
-  lt=sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
-  naxis=(axis[1]^2/lt,axis[2]^2/lt,axis[3]^2/lt)
+  lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
+  naxis = (axis[1]^2/lt, axis[2]^2/lt, axis[3]^2/lt)
   anis =  Anisotropy(Kus, naxis, field, energy, name)
   push!(sim.interactions, anis)
 
@@ -337,6 +385,11 @@ function add_anis(sim::AbstractSim, init_ku::Any; axis=(0,0,1), name="anis")
   return anis
 end
 
+"""
+    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks")
+
+Relax the system using `LLG` or `SD` driver. The stop condition is determined by either `stopping_dmdt`(for `LLG`) or `stopping_torque`(for `SD`).
+"""
 function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks")
   is_relax_llg = false
   if _using_gpu.x && isa(sim.driver, LLG_GPU)
