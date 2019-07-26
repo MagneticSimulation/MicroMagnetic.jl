@@ -29,7 +29,7 @@ mutable struct DemagGPU{T<:AbstractFloat}
   name::String
 end
 
-function init_demag_gpu(sim::MicroSimGPU)
+function init_demag_gpu(sim::MicroSimGPU, Nx::Int, Ny::Int, Nz::Int)
   mesh = sim.mesh
   max_size = max(mesh.dx, mesh.dy, mesh.dz)
   dx = Float64(mesh.dx/max_size)
@@ -53,7 +53,8 @@ function init_demag_gpu(sim::MicroSimGPU)
 
   blk, thr = CuArrays.cudims(mx_gpu)
   @cuda blocks=blk threads=thr compute_tensors_kernel_xx!(mx_gpu, my_gpu, mz_gpu,
-                                                       nx, ny, nz, dx, dy, dz)
+                                                          nx, ny, nz, dx, dy, dz,
+                                                          Nx, Ny, Nz)
 
   #synchronize()
   plan = plan_rfft(mx_gpu)
@@ -62,7 +63,8 @@ function init_demag_gpu(sim::MicroSimGPU)
   tensor_zz = real(plan*mz_gpu)
 
   @cuda blocks=blk threads=thr compute_tensors_kernel_xy!(mx_gpu, my_gpu, mz_gpu,
-                                                           nx, ny, nz, dx, dy, dz)
+                                                          nx, ny, nz, dx, dy, dz,
+                                                          Nx, Ny, Nz)
   #synchronize()
   tensor_xy = real(plan*mx_gpu)
   tensor_xz = real(plan*my_gpu)
@@ -116,7 +118,7 @@ mutable struct DemagGPUII{T<:AbstractFloat}
 end
 
 #simply make a copy for now
-function init_demag_gpu_II(sim::MicroSim)
+function init_demag_gpu_II(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
   mesh = sim.mesh
   max_size = max(mesh.dx, mesh.dy, mesh.dz)
   dx = Float64(mesh.dx/max_size)
@@ -140,7 +142,8 @@ function init_demag_gpu_II(sim::MicroSim)
 
   blk, thr = CuArrays.cudims(mx_gpu)
   @cuda blocks=blk threads=thr compute_tensors_kernel_xx!(mx_gpu, my_gpu, mz_gpu,
-                                                       nx, ny, nz, dx, dy, dz)
+                                                          nx, ny, nz, dx, dy, dz,
+                                                          Nx, Ny, Nz)
 
   #synchronize()
   plan = plan_rfft(mx_gpu)
@@ -149,7 +152,8 @@ function init_demag_gpu_II(sim::MicroSim)
   tensor_zz = real(plan*mz_gpu)
 
   @cuda blocks=blk threads=thr compute_tensors_kernel_xy!(mx_gpu, my_gpu, mz_gpu,
-                                                           nx, ny, nz, dx, dy, dz)
+                                                          nx, ny, nz, dx, dy, dz,
+                                                          Nx, Ny, Nz)
   #synchronize()
   tensor_xy = real(plan*mx_gpu)
   tensor_xz = real(plan*my_gpu)

@@ -234,8 +234,8 @@ function update_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; name = "anis
   end
 end
 
-function add_demag(sim::MicroSimGPU; name="demag")
-  demag = init_demag_gpu(sim)
+function add_demag(sim::MicroSimGPU; name="demag", Nx=0, Ny=0, Nz=0)
+  demag = init_demag_gpu(sim, Nx, Ny, Nz)
   demag.name = name
   push!(sim.interactions, demag)
 
@@ -246,8 +246,8 @@ function add_demag(sim::MicroSimGPU; name="demag")
   return demag
 end
 
-function add_demag_gpu(sim::MicroSim; name="demag")
-  demag = init_demag_gpu_II(sim)
+function add_demag_gpu(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
+  demag = init_demag_gpu_II(sim, Nx, Ny, Nz)
   demag.name = name
   push!(sim.interactions, demag)
 

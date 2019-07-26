@@ -137,7 +137,8 @@ end
 
 function compute_tensors_kernel_xx!(tensor_xx, tensor_yy, tensor_zz,
                                  nx::Int64, ny::Int64, nz::Int64,
-                                 dx::Float64, dy::Float64, dz::Float64)
+                                 dx::Float64, dy::Float64, dz::Float64,
+                                 Nx::Int64, Ny::Int64, Nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx_fft, ny_fft, nz_fft = size(tensor_xx)
     if 0 < index <= nx_fft*ny_fft*nz_fft
@@ -145,19 +146,22 @@ function compute_tensors_kernel_xx!(tensor_xx, tensor_yy, tensor_zz,
         if (nx_fft%2 == 0 && i == nx+1) || (ny_fft%2 == 0 && j == ny+1) || (nz_fft%2 == 0 && k == nz+1)
           return nothing
         end
-        x = (i<=nx) ? (i-1)*dx : (i-nx_fft-1)*dx
-        y = (j<=ny) ? (j-1)*dy : (j-ny_fft-1)*dy
-        z = (k<=nz) ? (k-1)*dz : (k-nz_fft-1)*dz
-        @inbounds tensor_xx[i,j,k] = demag_tensor_xx_gpu(x,y,z,dx,dy,dz)
-        @inbounds tensor_yy[i,j,k] = demag_tensor_xx_gpu(y,x,z,dy,dx,dz)
-        @inbounds tensor_zz[i,j,k] = demag_tensor_xx_gpu(z,y,x,dz,dy,dx)
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+            x = (i<=nx) ? (i-1+p*nx)*dx : (i-nx_fft-1-p*nx)*dx
+            y = (j<=ny) ? (j-1+q*ny)*dy : (j-ny_fft-1-q*ny)*dy
+            z = (k<=nz) ? (k-1+s*nz)*dz : (k-nz_fft-1-s*nz)*dz
+            @inbounds tensor_xx[i,j,k] = demag_tensor_xx_gpu(x,y,z,dx,dy,dz)
+            @inbounds tensor_yy[i,j,k] = demag_tensor_xx_gpu(y,x,z,dy,dx,dz)
+            @inbounds tensor_zz[i,j,k] = demag_tensor_xx_gpu(z,y,x,dz,dy,dx)
+        end
     end
     return nothing
 end
 
 function compute_tensors_kernel_xy!(tensor_xy, tensor_xz, tensor_yz,
                                  nx::Int64, ny::Int64, nz::Int64,
-                                 dx::Float64, dy::Float64, dz::Float64)
+                                 dx::Float64, dy::Float64, dz::Float64,
+                                 Nx::Int64, Ny::Int64, Nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx_fft, ny_fft, nz_fft = size(tensor_xy)
     if 0 < index <= nx_fft*ny_fft*nz_fft
@@ -165,12 +169,14 @@ function compute_tensors_kernel_xy!(tensor_xy, tensor_xz, tensor_yz,
         if (nx_fft%2 == 0 && i == nx+1) || (ny_fft%2 == 0 && j == ny+1) || (nz_fft%2 == 0 && k == nz+1)
           return nothing
         end
-        x = (i<=nx) ? (i-1)*dx : (i-nx_fft-1)*dx
-        y = (j<=ny) ? (j-1)*dy : (j-ny_fft-1)*dy
-        z = (k<=nz) ? (k-1)*dz : (k-nz_fft-1)*dz
-        @inbounds tensor_xy[i,j,k] = demag_tensor_xy_gpu(x,y,z,dx,dy,dz)
-        @inbounds tensor_xz[i,j,k] = demag_tensor_xy_gpu(x,z,y,dx,dz,dy)
-        @inbounds tensor_yz[i,j,k] = demag_tensor_xy_gpu(y,z,x,dy,dz,dx)
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+            x = (i<=nx) ? (i-1+p*nx)*dx : (i-nx_fft-1-p*nx)*dx
+            y = (j<=ny) ? (j-1+q*ny)*dy : (j-ny_fft-1-q*ny)*dy
+            z = (k<=nz) ? (k-1+s*nz)*dz : (k-nz_fft-1-s*nz)*dz
+            @inbounds tensor_xy[i,j,k] = demag_tensor_xy_gpu(x,y,z,dx,dy,dz)
+            @inbounds tensor_xz[i,j,k] = demag_tensor_xy_gpu(x,z,y,dx,dz,dy)
+            @inbounds tensor_yz[i,j,k] = demag_tensor_xy_gpu(y,z,x,dy,dz,dx)
+        end
     end
     return nothing
 end
