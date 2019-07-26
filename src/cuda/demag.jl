@@ -47,9 +47,9 @@ function init_demag_gpu(sim::MicroSimGPU, Nx::Int, Ny::Int, Nz::Int)
 
   Float = _cuda_using_double.x ? Float64 : Float32
 
-  mx_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-  my_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-  mz_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+  mx_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
+  my_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
+  mz_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
 
   blk, thr = CuArrays.cudims(mx_gpu)
   @cuda blocks=blk threads=thr compute_tensors_kernel_xx!(mx_gpu, my_gpu, mz_gpu,
@@ -71,12 +71,12 @@ function init_demag_gpu(sim::MicroSimGPU, Nx::Int, Ny::Int, Nz::Int)
   tensor_yz = real(plan*mz_gpu)
 
   lenx = (nx_fft%2>0) ? nx : nx+1
-  Mx = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  My = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Mz = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hx = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hy = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hz = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Mx = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  My = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Mz = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hx = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hy = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hz = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
 
   m_plan = plan_rfft(mx_gpu)
   h_plan = plan_irfft(Hx, nx_fft)
@@ -136,9 +136,9 @@ function init_demag_gpu_II(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
 
   Float = _cuda_using_double.x ? Float64 : Float32
 
-  mx_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-  my_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
-  mz_gpu = cuzeros(Float, nx_fft, ny_fft, nz_fft)
+  mx_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
+  my_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
+  mz_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
 
   blk, thr = CuArrays.cudims(mx_gpu)
   @cuda blocks=blk threads=thr compute_tensors_kernel_xx!(mx_gpu, my_gpu, mz_gpu,
@@ -160,19 +160,19 @@ function init_demag_gpu_II(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
   tensor_yz = real(plan*mz_gpu)
 
   lenx = (nx_fft%2>0) ? nx : nx+1
-  Mx = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  My = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Mz = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hx = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hy = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hz = cuzeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Mx = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  My = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Mz = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hx = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hy = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hz = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
 
   m_plan = plan_rfft(mx_gpu)
   h_plan = plan_irfft(Hx, nx_fft)
 
   field = zeros(Float, 3*sim.nxyz)
   energy = zeros(Float, sim.nxyz)
-  spin = cuzeros(Float, 3*sim.nxyz)
+  spin = CuArrays.zeros(Float, 3*sim.nxyz)
   demag = DemagGPUII(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
                 tensor_xy, tensor_xz, tensor_yz, spin, mx_gpu, my_gpu, mz_gpu,
                 Mx, My, Mz, Hx, Hy, Hz,

@@ -442,7 +442,7 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
 
   if _using_gpu.x && isa(sim, MicroSimGPU)
       T = _cuda_using_double.x ? Float64 : Float32
-      gk_abs = cuzeros(T, 3*sim.nxyz)
+      gk_abs = CuArrays.zeros(T, 3*sim.nxyz)
   else
       gk_abs = zeros(Float64,3*sim.nxyz)
   end

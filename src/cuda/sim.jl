@@ -1,11 +1,11 @@
 function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
   nxyz = mesh.nx*mesh.ny*mesh.nz
   Float = _cuda_using_double.x ? Float64 : Float32
-  spin = cuzeros(Float, 3*nxyz)
-  prespin = cuzeros(Float,3*nxyz)
-  field = cuzeros(Float,3*nxyz)
-  energy = cuzeros(Float,nxyz)
-  Ms = cuzeros(Float, nxyz)
+  spin = CuArrays.zeros(Float, 3*nxyz)
+  prespin = CuArrays.zeros(Float,3*nxyz)
+  field = CuArrays.zeros(Float,3*nxyz)
+  energy = CuArrays.zeros(Float,nxyz)
+  Ms = CuArrays.zeros(Float, nxyz)
   driver = create_driver_gpu(driver, nxyz)
 
   headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
@@ -116,7 +116,7 @@ function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch")
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
-  Spatial_A = cuzeros(Float, nxyz)
+  Spatial_A = CuArrays.zeros(Float, nxyz)
   init_scalar!(Spatial_A , sim.mesh, A)
   exch = ExchangeGPU(Spatial_A, field, energy, Float(0.0), name)
 

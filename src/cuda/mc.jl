@@ -34,10 +34,10 @@ H in units of Tesla.
 function MonteCarlo(mesh::Mesh; mu_s=1.0*mu_B, J=1*meV, J1=0, D=0, D1=0, Ku=0, H=(0,0,0), T=10, bulk_dmi=false, name="dyn")
   nxy = mesh.nx*mesh.ny*mesh.nz
   Float = _cuda_using_double.x ? Float64 : Float32
-  spin = cuzeros(Float, 3*nxy)
-  nextspin = cuzeros(Float,3*nxy)
-  rnd = cuzeros(Float,3*nxy)
-  energy = cuzeros(Float,nxy)
+  spin = CuArrays.zeros(Float, 3*nxy)
+  nextspin = CuArrays.zeros(Float,3*nxy)
+  rnd = CuArrays.zeros(Float,3*nxy)
+  energy = CuArrays.zeros(Float,nxy)
   if !(isa(mesh, TriangularMesh) || isa(mesh, CubicMeshGPU))
       error("MonteCarlo only support TriangularMesh or CubicMeshGPU, but input mesh is ", typeof(mesh))
   end

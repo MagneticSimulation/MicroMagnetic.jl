@@ -1,15 +1,15 @@
 function init_runge_kutta_gpu(nxyz::Int64, rhs_fun, tol::Float64)
   Float = _cuda_using_double.x ? Float64 : Float32
-  omega = cuzeros(Float,3*nxyz)
-  omega_t = cuzeros(Float,3*nxyz)
-  dw_dt = cuzeros(Float,3*nxyz)
-  k1 = cuzeros(Float,3*nxyz)
-  k2 = cuzeros(Float,3*nxyz)
-  k3 = cuzeros(Float,3*nxyz)
-  k4 = cuzeros(Float,3*nxyz)
-  k5 = cuzeros(Float,3*nxyz)
-  k6 = cuzeros(Float,3*nxyz)
-  k7 = cuzeros(Float,3*nxyz)
+  omega = CuArrays.zeros(Float,3*nxyz)
+  omega_t = CuArrays.zeros(Float,3*nxyz)
+  dw_dt = CuArrays.zeros(Float,3*nxyz)
+  k1 = CuArrays.zeros(Float,3*nxyz)
+  k2 = CuArrays.zeros(Float,3*nxyz)
+  k3 = CuArrays.zeros(Float,3*nxyz)
+  k4 = CuArrays.zeros(Float,3*nxyz)
+  k5 = CuArrays.zeros(Float,3*nxyz)
+  k6 = CuArrays.zeros(Float,3*nxyz)
+  k7 = CuArrays.zeros(Float,3*nxyz)
   facmax = 5.0
   facmin = 0.2
   safety = 0.824
