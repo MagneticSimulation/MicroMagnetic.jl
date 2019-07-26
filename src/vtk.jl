@@ -4,16 +4,16 @@ using NPZ
 """
     save(sim::AbstractSim, fname::String; vtk::Bool = false, npy::Bool = false, vtk_folder = "vtks")
 
-If vtk = true, save spins to dir ~/vtks/ in vtk format;
+If vtk = true, save spins to dir ./vtks/ in vtk format;
 If npy = true, save spins to current directory in npy format;
 
 Example:
+
 ```julia
-save(sim, sim.name, vtk = true, npy= true)
+  save(sim, sim.name, vtk = true, npy= true)
 ```
 
 """
-
 function save(sim::AbstractSim, fname::String; vtk::Bool = false,npy::Bool = false,vtk_folder::String = "vtks")
 
   if vtk
@@ -26,6 +26,20 @@ function save(sim::AbstractSim, fname::String; vtk::Bool = false,npy::Bool = fal
   if npy
     name = @sprintf("%s.npy", fname)
     npzwrite(name,sim.spin)
+  end
+end
+
+
+function save_m(sim::AbstractSim, fname::String; vtk::Bool=false, npy::Bool=false, vtk_folder::String="vtks", npy_folder::String="npys")
+  if vtk
+    !isdir(vtk_folder) && mkdir(vtk_folder)
+    save_vtk(sim, joinpath(vtk_folder, fname))
+  end
+
+  if npy
+    !isdir(npy_folder) && mkdir(npy_folder)
+    name = @sprintf("%s.npy", fname)
+    npzwrite(name, sim.spin)
   end
 end
 
