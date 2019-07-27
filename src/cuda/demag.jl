@@ -50,24 +50,36 @@ function init_demag_gpu(sim::MicroSimGPU, Nx::Int, Ny::Int, Nz::Int)
   mx_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
   my_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
   mz_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
-
-  blk, thr = CuArrays.cudims(mx_gpu)
-  @cuda blocks=blk threads=thr compute_tensors_kernel_xx!(mx_gpu, my_gpu, mz_gpu,
-                                                          nx, ny, nz, dx, dy, dz,
-                                                          Nx, Ny, Nz)
-
-  #synchronize()
   plan = plan_rfft(mx_gpu)
-  tensor_xx = real(plan*mx_gpu)
-  tensor_yy = real(plan*my_gpu)
-  tensor_zz = real(plan*mz_gpu)
 
-  @cuda blocks=blk threads=thr compute_tensors_kernel_xy!(mx_gpu, my_gpu, mz_gpu,
-                                                          nx, ny, nz, dx, dy, dz,
-                                                          Nx, Ny, Nz)
-  #synchronize()
+  tensor = CuArrays.zeros(Float, nx, ny, nz)
+
+  blk1, thr1 = CuArrays.cudims(tensor)
+  blk2, thr2 = CuArrays.cudims(mx_gpu)
+
+  #Nxx
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xx!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(mx_gpu, tensor, false, false, false)
+  tensor_xx = real(plan*mx_gpu)
+  #Nyy
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_yy!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(my_gpu, tensor, false, false, false)
+  tensor_yy = real(plan*my_gpu)
+  #Nzz
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_zz!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(mz_gpu, tensor, false, false, false)
+  tensor_zz = real(plan*mz_gpu)
+  #Nxy
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xy!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(mx_gpu, tensor, true, true, false)
   tensor_xy = real(plan*mx_gpu)
+  #Nxz
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xz!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(my_gpu, tensor, true, false, true)
   tensor_xz = real(plan*my_gpu)
+  #Nxz
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xz!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(mz_gpu, tensor, false, true, true)
   tensor_yz = real(plan*mz_gpu)
 
   lenx = (nx_fft%2>0) ? nx : nx+1
@@ -140,23 +152,34 @@ function init_demag_gpu_II(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
   my_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
   mz_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
 
-  blk, thr = CuArrays.cudims(mx_gpu)
-  @cuda blocks=blk threads=thr compute_tensors_kernel_xx!(mx_gpu, my_gpu, mz_gpu,
-                                                          nx, ny, nz, dx, dy, dz,
-                                                          Nx, Ny, Nz)
+  tensor = CuArrays.zeros(Float, nx, ny, nz)
 
-  #synchronize()
-  plan = plan_rfft(mx_gpu)
+  blk1, thr1 = CuArrays.cudims(tensor)
+  blk2, thr2 = CuArrays.cudims(mx_gpu)
+
+  #Nxx
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xx!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(mx_gpu, tensor, false, false, false)
   tensor_xx = real(plan*mx_gpu)
+  #Nyy
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_yy!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(my_gpu, tensor, false, false, false)
   tensor_yy = real(plan*my_gpu)
+  #Nzz
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_zz!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(mz_gpu, tensor, false, false, false)
   tensor_zz = real(plan*mz_gpu)
-
-  @cuda blocks=blk threads=thr compute_tensors_kernel_xy!(mx_gpu, my_gpu, mz_gpu,
-                                                          nx, ny, nz, dx, dy, dz,
-                                                          Nx, Ny, Nz)
-  #synchronize()
+  #Nxy
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xy!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(mx_gpu, tensor, true, true, false)
   tensor_xy = real(plan*mx_gpu)
+  #Nxz
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xz!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(my_gpu, tensor, true, false, true)
   tensor_xz = real(plan*my_gpu)
+  #Nxz
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xz!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(mz_gpu, tensor, false, true, true)
   tensor_yz = real(plan*mz_gpu)
 
   lenx = (nx_fft%2>0) ? nx : nx+1

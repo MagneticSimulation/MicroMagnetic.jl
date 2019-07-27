@@ -94,9 +94,15 @@ function demag_tensor_xx_gpu(x::Float64, y::Float64, z::Float64, dx::Float64, dy
   tensor -= newell_f_gpu(x-dx,y-dy,z-dz);
 
   return tensor/(4.0*pi*dx*dy*dz)
-
 end
 
+function demag_tensor_yy_gpu(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Float64, dz::Float64)
+    return demag_tensor_xx_gpu(y,x,z,dy,dx,dz);
+end
+
+function demag_tensor_zz_gpu(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Float64, dz::Float64)
+    return demag_tensor_xx_gpu(z,y,x,dz,dy,dx);
+end
 
 function demag_tensor_xy_gpu(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Float64, dz::Float64)
 
@@ -135,48 +141,138 @@ function demag_tensor_xy_gpu(x::Float64, y::Float64, z::Float64, dx::Float64, dy
   return tensor/(4.0*pi*dx*dy*dz)
 end
 
-function compute_tensors_kernel_xx!(tensor_xx, tensor_yy, tensor_zz,
-                                 nx::Int64, ny::Int64, nz::Int64,
-                                 dx::Float64, dy::Float64, dz::Float64,
+function demag_tensor_xz_gpu(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Float64, dz::Float64)
+    return demag_tensor_xy_gpu(x,z,y,dx,dz,dy);
+end
+
+function demag_tensor_yz_gpu(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Float64, dz::Float64)
+    return demag_tensor_xy_gpu(y,z,x,dy,dz,dx)
+end
+
+function compute_tensors_kernel_xx!(tensor, dx::Float64, dy::Float64, dz::Float64,
                                  Nx::Int64, Ny::Int64, Nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    nx_fft, ny_fft, nz_fft = size(tensor_xx)
-    if 0 < index <= nx_fft*ny_fft*nz_fft
-        i,j,k = Tuple(CuArrays.CartesianIndices(tensor_xx)[index])
-        if (nx_fft%2 == 0 && i == nx+1) || (ny_fft%2 == 0 && j == ny+1) || (nz_fft%2 == 0 && k == nz+1)
-          return nothing
-        end
+    nx, ny, nz = size(tensor)
+    if 0 < index <= nx*ny*nz
+        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        sum = 0.0
         for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
-            x = (i<=nx) ? (i-1+p*nx)*dx : (i-nx_fft-1-p*nx)*dx
-            y = (j<=ny) ? (j-1+q*ny)*dy : (j-ny_fft-1-q*ny)*dy
-            z = (k<=nz) ? (k-1+s*nz)*dz : (k-nz_fft-1-s*nz)*dz
-            @inbounds tensor_xx[i,j,k] = demag_tensor_xx_gpu(x,y,z,dx,dy,dz)
-            @inbounds tensor_yy[i,j,k] = demag_tensor_xx_gpu(y,x,z,dy,dx,dz)
-            @inbounds tensor_zz[i,j,k] = demag_tensor_xx_gpu(z,y,x,dz,dy,dx)
+                x = (i-1 + p*nx)*dx
+                y = (j-1 + q*ny)*dy
+                z = (k-1 + s*nz)*dz
+                sum += demag_tensor_xx_gpu(x,y,z,dx,dy,dz)
         end
+        @inbounds tensor[i,j,k] = sum
     end
     return nothing
 end
 
-function compute_tensors_kernel_xy!(tensor_xy, tensor_xz, tensor_yz,
-                                 nx::Int64, ny::Int64, nz::Int64,
-                                 dx::Float64, dy::Float64, dz::Float64,
+function compute_tensors_kernel_yy!(tensor, dx::Float64, dy::Float64, dz::Float64,
                                  Nx::Int64, Ny::Int64, Nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    nx_fft, ny_fft, nz_fft = size(tensor_xy)
-    if 0 < index <= nx_fft*ny_fft*nz_fft
-        i,j,k = Tuple(CuArrays.CartesianIndices(tensor_xy)[index])
-        if (nx_fft%2 == 0 && i == nx+1) || (ny_fft%2 == 0 && j == ny+1) || (nz_fft%2 == 0 && k == nz+1)
+    nx, ny, nz = size(tensor)
+    if 0 < index <= nx*ny*nz
+        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        sum = 0.0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+                x = (i-1 + p*nx)*dx
+                y = (j-1 + q*ny)*dy
+                z = (k-1 + s*nz)*dz
+                sum += demag_tensor_yy_gpu(x,y,z,dx,dy,dz)
+        end
+        @inbounds tensor[i,j,k] = sum
+    end
+    return nothing
+end
+
+function compute_tensors_kernel_zz!(tensor, dx::Float64, dy::Float64, dz::Float64,
+                                 Nx::Int64, Ny::Int64, Nz::Int64)
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    nx, ny, nz = size(tensor)
+    if 0 < index <= nx*ny*nz
+        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        sum = 0.0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+                x = (i-1 + p*nx)*dx
+                y = (j-1 + q*ny)*dy
+                z = (k-1 + s*nz)*dz
+                sum += demag_tensor_zz_gpu(x,y,z,dx,dy,dz)
+        end
+        @inbounds tensor[i,j,k] = sum
+    end
+    return nothing
+end
+
+function compute_tensors_kernel_xy!(tensor, dx::Float64, dy::Float64, dz::Float64,
+                                 Nx::Int64, Ny::Int64, Nz::Int64)
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    nx, ny, nz = size(tensor)
+    if 0 < index <= nx*ny*nz
+        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        sum = 0.0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+                x = (i-1 + p*nx)*dx
+                y = (j-1 + q*ny)*dy
+                z = (k-1 + s*nz)*dz
+                sum += demag_tensor_xy_gpu(x,y,z,dx,dy,dz)
+        end
+        @inbounds tensor[i,j,k] = sum
+    end
+    return nothing
+end
+
+function compute_tensors_kernel_xz!(tensor, dx::Float64, dy::Float64, dz::Float64,
+                                 Nx::Int64, Ny::Int64, Nz::Int64)
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    nx, ny, nz = size(tensor)
+    if 0 < index <= nx*ny*nz
+        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        sum = 0.0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+                x = (i-1 + p*nx)*dx
+                y = (j-1 + q*ny)*dy
+                z = (k-1 + s*nz)*dz
+                sum += demag_tensor_xz_gpu(x,y,z,dx,dy,dz)
+        end
+        @inbounds tensor[i,j,k] = sum
+    end
+    return nothing
+end
+
+function compute_tensors_kernel_yz!(tensor, dx::Float64, dy::Float64, dz::Float64,
+                                 Nx::Int64, Ny::Int64, Nz::Int64)
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    nx, ny, nz = size(tensor)
+    if 0 < index <= nx*ny*nz
+        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        sum = 0.0
+        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
+                x = (i-1 + p*nx)*dx
+                y = (j-1 + q*ny)*dy
+                z = (k-1 + s*nz)*dz
+                sum += demag_tensor_yz_gpu(x,y,z,dx,dy,dz)
+        end
+        @inbounds tensor[i,j,k] = sum
+    end
+    return nothing
+end
+
+function fill_tensors_kernel!(long_tensor, tensor, tx::Bool, ty::Bool, tz::Bool)
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    lnx, lny, lnz = size(long_tensor)
+    nx, ny, nz = size(tensor)
+    if 0 < index <= lnx*lny*lnz
+        i,j,k = Tuple(CuArrays.CartesianIndices(long_tensor)[index])
+        if (lnx%2 == 0 && i == nx+1) || (lny%2 == 0 && j == ny+1) || (lnz%2 == 0 && k == nz+1)
           return nothing
         end
-        for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
-            x = (i<=nx) ? (i-1+p*nx)*dx : (i-nx_fft-1-p*nx)*dx
-            y = (j<=ny) ? (j-1+q*ny)*dy : (j-ny_fft-1-q*ny)*dy
-            z = (k<=nz) ? (k-1+s*nz)*dz : (k-nz_fft-1-s*nz)*dz
-            @inbounds tensor_xy[i,j,k] = demag_tensor_xy_gpu(x,y,z,dx,dy,dz)
-            @inbounds tensor_xz[i,j,k] = demag_tensor_xy_gpu(x,z,y,dx,dz,dy)
-            @inbounds tensor_yz[i,j,k] = demag_tensor_xy_gpu(y,z,x,dy,dz,dx)
-        end
+        x = (i<=nx) ? i : lnx - i + 2
+        y = (j<=ny) ? j : lny - j + 2
+        z = (k<=nz) ? k : lnz - k + 2
+        sx = tx && (i>nx) ? -1 : 1
+        sy = ty && (j>ny) ? -1 : 1
+        sz = tz && (k>nz) ? -1 : 1
+        @inbounds long_tensor[i,j,k] = sx*sy*sz*tensor[x,y,z]
     end
     return nothing
 end

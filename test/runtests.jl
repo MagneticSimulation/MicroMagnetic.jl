@@ -14,7 +14,6 @@ include("test_util.jl")
 
 if JuMag._cuda_available.x
   JuMag.cuda_using_double()
-  test_field_macro(using_gpu=false)
   include("cuda/test_sim.jl")
   include("cuda/test_exch.jl")
   include("cuda/test_demag.jl")
