@@ -13,21 +13,21 @@ function load_field_data()
 	exch = data[1:N-1,4]
 	dmi = data[1:N-1,5]
     dmi_int = data[1:N-1,6]
-	anis = data[1:N-1,7]
-	#The last row is enery
-	return Ms, m0, demag, exch, dmi, dmi_int, anis, data[N, 3:7]
+    anis = data[1:N-1,7]
+    #The last row is enery
+    return Ms, m0, demag, exch, dmi, dmi_int, anis, data[N, 3:7]
 end
 
 function test_fields(mesh; A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0,0,1), gpu=false)
     Ms, m0, fd, fe, fdmi, fdmi2, fan, energy = load_field_data()
     sim = Sim(mesh)
     set_Ms(sim, Ms)
-	init_m0(sim, m0, norm=false)
-	exch = add_exch(sim, A)
-	demag = add_demag(sim)
-	dmi = add_dmi(sim, D)
+    init_m0(sim, m0, norm=false)
+    exch = add_exch(sim, A)
+    demag = add_demag(sim)
+    dmi = add_dmi(sim, D)
     dmi2 = add_dmi(sim, DI, type="interfacial")
-	anis = add_anis(sim, Ku, axis=(0,0,1))
+    anis = add_anis(sim, Ku, axis=(0,0,1))
     if gpu
         JuMag.compute_fields_to_gpu(sim, sim.spin, 0.0)
         JuMag.compute_fields_to_gpu(sim, sim.spin, 0.0)
@@ -54,5 +54,15 @@ function test_fields(mesh; A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0,0,1), gp
     @test (abs((sum(anis.energy)-energy[5])/energy[5]))<1e-15
 end
 
-mesh =  FDMesh(nx=20, ny=5, nz=3, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
-test_fields(mesh)
+@testset "Test Fields" begin
+    mesh =  FDMesh(nx=20, ny=5, nz=3, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
+    test_fields(mesh)
+end
+
+if JuMag._cuda_available.x
+  JuMag.cuda_using_double()
+  @testset "Test Fields GPU" begin
+      mesh =  FDMeshGPU(nx=20, ny=5, nz=3, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
+      test_fields(mesh, gpu=true)
+  end
+end

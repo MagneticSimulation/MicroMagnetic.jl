@@ -95,10 +95,6 @@ end
 Create a FDMesh for given parameters. `pbc` could be any combination of "x", "y" and "z".
 """
 function FDMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
-    #if _using_gpu.x
-    #    return FDMeshGPU(dx=dx, dy=dy, dz=dz, nx=nx, ny=ny, nz=nz, pbc=pbc)
-    #end
-
     ngbs = zeros(Int64,6,nx*ny*nz)
     xperiodic = 'x' in pbc ? true : false
     yperiodic = 'y' in pbc ? true : false
@@ -115,6 +111,7 @@ function FDMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     end
     volume = dx*dy*dz
     nxyz = nx*ny*nz
+    _using_gpu[] = false; #we need to review.
     return FDMesh(dx, dy, dz, nx, ny, nz, nxyz, volume, ngbs, xperiodic, yperiodic, zperiodic)
 end
 

@@ -78,7 +78,7 @@ function init_demag_gpu(sim::MicroSimGPU, Nx::Int, Ny::Int, Nz::Int)
   @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(my_gpu, tensor, true, false, true)
   tensor_xz = real(plan*my_gpu)
   #Nxz
-  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xz!(tensor, dx, dy, dz, Nx, Ny, Nz)
+  @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_yz!(tensor, dx, dy, dz, Nx, Ny, Nz)
   @cuda blocks=blk2 threads=thr2 fill_tensors_kernel!(mz_gpu, tensor, false, true, true)
   tensor_yz = real(plan*mz_gpu)
 
@@ -151,6 +151,7 @@ function init_demag_gpu_II(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
   mx_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
   my_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
   mz_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
+  plan = plan_rfft(mx_gpu)
 
   tensor = CuArrays.zeros(Float, nx, ny, nz)
 
