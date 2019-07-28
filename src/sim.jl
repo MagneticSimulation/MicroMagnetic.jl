@@ -410,11 +410,17 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
 end
 
 """
-    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks")
+    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
 
 Relax the system using `LLG` or `SD` driver. The stop condition is determined by either `stopping_dmdt`(for `LLG`) or `stopping_torque`(for `SD`).
+Fields can be stored in vtks by:
+
+```julia
+relax(sim,save_vtk_every = 10,fields = ["demag","exch","anis"])
+```
+
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks")
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
   is_relax_llg = false
   if _using_gpu.x && isa(sim.driver, LLG_GPU)
         is_relax_llg = true
@@ -429,16 +435,16 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_to
   end
 
   if is_relax_llg
-      relax_llg(sim, maxsteps, Float64(stopping_dmdt), save_m_every, save_vtk_every, vtk_folder)
+      relax_llg(sim, maxsteps, Float64(stopping_dmdt), save_m_every, save_vtk_every, vtk_folder, fields)
   else
-      relax_energy(sim, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder)
+      relax_energy(sim, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder, fields)
   end
   return nothing
 end
 
 
 function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float64,
-                     save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String)
+                     save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String, fields::Array{String, 1} = String[])
 
   if _using_gpu.x && isa(sim, MicroSimGPU)
       T = _cuda_using_double.x ? Float64 : Float32
@@ -458,7 +464,7 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
       write_data(sim)
     end
     if save_vtk_every > 0 && i%save_vtk_every == 0
-        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)),fields = fields)
     end
     sim.saver.nsteps += 1
     if max_torque < stopping_torque
@@ -468,7 +474,7 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
           write_data(sim)
       end
       if save_vtk_every > 0
-          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)),fields = fields)
       end
       break
     end
@@ -477,7 +483,7 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
 end
 
 function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
-         save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String)
+         save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String, fields::Array{String, 1} = String[])
   step = 0
   rk_data = sim.driver.ode
 
@@ -504,7 +510,7 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
       write_data(sim)
     end
     if save_vtk_every > 0 && i%save_vtk_every == 0
-        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
     end
     sim.saver.t = rk_data.t
     sim.saver.nsteps += 1
@@ -515,7 +521,7 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
           write_data(sim)
       end
       if save_vtk_every > 0
-          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
       end
       break
     end

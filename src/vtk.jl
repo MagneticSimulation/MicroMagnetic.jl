@@ -14,20 +14,6 @@ Example:
 ```
 
 """
-function save(sim::AbstractSim, fname::String; vtk::Bool = false,npy::Bool = false,vtk_folder::String = "vtks")
-
-  if vtk
-    if !isdir(vtk_folder)
-      mkdir(vtk_folder)
-    end
-    save_vtk(sim, joinpath(vtk_folder, fname))
-  end
-
-  if npy
-    name = @sprintf("%s.npy", fname)
-    npzwrite(name,sim.spin)
-  end
-end
 
 
 function save_m(sim::AbstractSim, fname::String; vtk::Bool=false, npy::Bool=false, vtk_folder::String="vtks", npy_folder::String="npys")
@@ -39,7 +25,7 @@ function save_m(sim::AbstractSim, fname::String; vtk::Bool=false, npy::Bool=fals
   if npy
     !isdir(npy_folder) && mkdir(npy_folder)
     name = @sprintf("%s.npy", fname)
-    npzwrite(name, sim.spin)
+    npzwrite(name, joinpath(npy_folder,sim.spin))
   end
 end
 

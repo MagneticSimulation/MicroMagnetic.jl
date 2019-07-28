@@ -1,24 +1,24 @@
 using WriteVTK
 using NPZ
 
-function save(sim::MicroSimGPU, fname::String;vtk::Bool = false, npy::Bool = false, vtk_folder::String="vtks")
+function save_m(sim::MicroSimGPU, fname::String;vtk::Bool = false, npy::Bool = false, vtk_folder::String="vtks",npy_folder::String="npys")
   if vtk
-    if !isdir(vtk_folder)
-      mkdir(vtk_folder)
-    end
-    save_vtk(sim, joinpath(vtk_folder, fname))
+      !isdir(vtk_folder) && mkdir(vtk_folder)
+      save_vtk(sim, joinpath(vtk_folder, fname))
   end
   if npy
-    save_npy(sim,fname)
+    !isdir(npy_folder) && mkdir(npy_folder)
+    save_npy(sim,joinpath(npy_folder,fname))
   end
 end
 
 function save_npy(sim::MicroSimGPU,name::String)
+  T = _cuda_using_double.x ? Float64 : Float32
   name = @sprintf("%s.npy", name)
   mesh = sim.mesh
   nxyz = mesh.nx*mesh.ny*mesh.nz
-  spin = zeros(3*nxyz)
-  copy!(spin, sim.spin)
+  spin = zeros(T, 3*nxyz)
+  copyto!(spin, sim.spin)
   npzwrite(name, spin)
 end
 
@@ -48,6 +48,7 @@ function save_vtk(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} =
   vtk_cell_data(vtk, b , "m")
 
   if length(fields) > 0
+    compute_fields_to_gpu(sim,sim.spin,0.0)
     fields = Set(fields)
     for i in sim.interactions
       if i.name in fields
