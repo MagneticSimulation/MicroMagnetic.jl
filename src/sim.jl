@@ -174,21 +174,27 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 end
 
 """
-    update_zeeman(z::Zeeman, H0::Tuple)
+    update_zeeman(sim::AbstractSim, H0::Tuple; name="zeeman")
 
-Set the external field of Zeeman z to H0 where H0 is a tuple.
+Set the external field of Zeeman z to H0 where H0 is TupleOrArrayOrFunction.
 For example,
 ```julia
-   ze = add_zeeman(sim, (0,0,0)) #create a zeeman energy with field (0,0,0) A/m
-   update_zeeman(ze, (0,0,1e5)) #change the field to (0,0,1e5) A/m
+   add_zeeman(sim, (0,0,0)) #create a zeeman energy with field (0,0,0) A/m
+   update_zeeman(sim, (0,0,1e5)) #change the field to (0,0,1e5) A/m
 ```
+
 """
-function update_zeeman(z::Zeeman, H0::Tuple)
-  b = reshape(z.field, 3, Int(length(z.field)/3))
-  b[1, :] .= H0[1]
-  b[2, :] .= H0[2]
-  b[3, :] .= H0[3]
-  return z
+function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  init_vector!(field, sim.mesh, H0)
+
+  for i in sim.interactions
+    if i.name == name
+      i.field[:] = field[:]
+      return nothing
+    end
+  end
 end
 
 """

@@ -72,17 +72,26 @@ function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction; name="zeeman")
 
   push!(sim.saver.headers, string("E_",name))
   push!(sim.saver.units, "J")
+  id = length(sim.interactions)
   push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
   return zeeman
 end
 
-function update_zeeman(z::ZeemanGPU, H0::Tuple)
-  b = reshape(z.field, 3, div(length(z.field),3))
-  b[1, :] .= H0[1]
-  b[2, :] .= H0[2]
-  b[3, :] .= H0[3]
-  copyto!(z.cufield, z.field)
-  return nothing
+function update_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction;name = "zeeman")
+  nxyz = sim.nxyz
+  T = _cuda_using_double.x ? Float64 : Float32
+  field = zeros(T, 3*nxyz)
+  init_vector!(field, sim.mesh, H0)
+
+  field_gpu = CuArray(field)
+
+  for i in sim.interactions
+    if i.name == name
+      i.field[:] = field[:]
+      i.cufield[:] = field_gpu[:]
+      return nothing
+    end
+  end
 end
 
 function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
