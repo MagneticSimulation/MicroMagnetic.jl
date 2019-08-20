@@ -80,9 +80,9 @@ function write_OVF2_Data(io::IOStream, sim::AbstractSim, dataformat::String)
     if dataformat == "text"
         hdr(io, "Begin", "Data " * dataformat)
         write_OVF2_Text(io, sim)
-    elseif dataformat == "Binary4"
-        hdr(io, "Begin", "Data " * dataformat)
-        write_OVF2_Binary4(io, sim)
+    elseif dataformat == "Binary"
+        hdr(io, "Begin", "Data " * dataformat * " 4")
+        write_OVF2_Binary(io, sim)
     else
         @info "Data format error!"
     end
@@ -96,6 +96,22 @@ function write_OVF2_Text(io::IOStream, sim::AbstractSim)
 
     for k = 1:nz, j = 1:ny, i = 1:nx
         write(io, string(b[1, i, j, k], " ", b[2, i, j, k], " ", b[3, i, j, k], "\n"))
+    end
+
+end
+
+function write_OVF2_Binary(io::IOStream, sim::AbstractSim)
+    mesh = sim.mesh
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+
+    b = reshape(sim.spin, (3, nx, ny, nz))
+
+    write(io, Float32(1234567.0))   ##OOMMF requires this number to be first to check the format
+
+    for k = 1:nz, j = 1:ny, i = 1:nx
+        write(io, Float32(b[1, i, j, k]))
+        write(io, Float32(b[2, i, j, k]))
+        write(io, Float32(b[3, i, j, k]))
     end
 
 end
