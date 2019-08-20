@@ -83,7 +83,6 @@ function write_OVF2_Data(io::IOStream, sim::AbstractSim, dataformat::String)
     elseif dataformat == "Binary4"
         hdr(io, "Begin", "Data " * dataformat)
         write_OVF2_Binary4(io, sim)
-        hdr(io, "End", "segment")
     else
         @info "Data format error!"
     end
@@ -92,14 +91,6 @@ end
 function write_OVF2_Text(io::IOStream, sim::AbstractSim)
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
-    xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
-    dx, dy, dz = 1.0,1.0,1.0
-
-    if isa(mesh, CubicMesh)
-      dx, dy, dz=mesh.a, mesh.a, mesh.a
-    else
-      dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
-    end 
 
     b = reshape(sim.spin, (3, nx, ny, nz))
 
