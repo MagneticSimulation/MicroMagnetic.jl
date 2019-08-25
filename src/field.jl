@@ -127,6 +127,64 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
   end
 end
 
+function effective_field(exch::Vector_Exchange, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
+  mu0 = 4.0*pi*1e-7
+  mesh = sim.mesh
+  dx = mesh.dx
+  dy = mesh.dy
+  dz = mesh.dz
+  ngbs = mesh.ngbs
+  nxyz = sim.nxyz
+  field = exch.field
+  energy = exch.energy
+  A = exch.A
+  Ms = sim.Ms
+  ax = 2.0  / (dx * dx)
+  ay = 2.0  / (dy * dy)
+  az = 2.0  / (dz * dz)
+  nabla = (ax, ax, ay, ay, az, az)
+
+  for index = 1:nxyz
+    if Ms[index] == 0.0
+      continue
+    end
+	  i = 3*index - 2
+    fx, fy, fz = 0.0, 0.0, 0.0
+    for j=1:2
+      id = ngbs[j,index]
+      if id>0 && Ms[id]>0
+        k = 3*id-2
+        fx += A[i]*nabla[j]*(spin[k]-spin[i])
+        fy += A[i]*nabla[j]*(spin[k+1]-spin[i+1])
+        fz += A[i]*nabla[j]*(spin[k+2]-spin[i+2])
+      end
+    end
+    for j=3:4
+      id = ngbs[j,index]
+      if id>0 && Ms[id]>0
+        k = 3*id-2
+        fx += A[i+1]*nabla[j]*(spin[k]-spin[i])
+        fy += A[i+1]*nabla[j]*(spin[k+1]-spin[i+1])
+        fz += A[i+1]*nabla[j]*(spin[k+2]-spin[i+2])
+      end
+    end
+    for j=5:6
+      id = ngbs[j,index]
+      if id>0 && Ms[id]>0
+        k = 3*id-2
+        fx += A[i+2]*nabla[j]*(spin[k]-spin[i])
+        fy += A[i+2]*nabla[j]*(spin[k+1]-spin[i+1])
+        fz += A[i+2]*nabla[j]*(spin[k+2]-spin[i+2])
+      end
+    end
+    Ms_inv = 1.0/(Ms[index]*mu0)
+    energy[index] = -0.5*(fx*spin[i] + fy*spin[i+1] + fz*spin[i+2])*mesh.volume
+    field[i] = fx*Ms_inv
+    field[i+1] = fy*Ms_inv
+    field[i+2] = fz*Ms_inv
+  end
+end
+
 
 function effective_field(exch::ExchangeRKKY, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7

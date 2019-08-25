@@ -100,6 +100,7 @@ function write_OVF2_Text(io::IOStream, sim::AbstractSim)
 
 end
 
+
 function write_OVF2_Binary(io::IOStream, sim::AbstractSim)
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz

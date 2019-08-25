@@ -252,6 +252,22 @@ end
 
 Add exchange energy to the system.
 """
+function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch_vector")
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  Spatial_A = zeros(Float64, 3*nxyz)
+  init_vector!(Spatial_A , sim.mesh, A)
+  exch = Vector_Exchange(Spatial_A , field, energy, name)
+  push!(sim.interactions, exch)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  return exch
+end
+
 function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -271,6 +287,8 @@ function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
   return exch
 end
+
+
 
 
 function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="rkky")
@@ -426,7 +444,7 @@ relax(sim,save_vtk_every = 10,fields = ["demag","exch","anis"])
 ```
 
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_ovf_every=-1, ovf_folder="ovfs",save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
   is_relax_llg = false
   if _using_gpu.x && isa(sim.driver, LLG_GPU)
         is_relax_llg = true
@@ -440,17 +458,21 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_to
       mkdir(vtk_folder)
   end
 
+  if !isdir(ovf_folder)
+    mkdir(ovf_folder)
+end
+
   if is_relax_llg
-      relax_llg(sim, maxsteps, Float64(stopping_dmdt), save_m_every, save_vtk_every, vtk_folder, fields)
+      relax_llg(sim, maxsteps, Float64(stopping_dmdt), save_m_every, save_ovf_every, ovf_folder, save_vtk_every, vtk_folder, fields)
   else
-      relax_energy(sim, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder, fields)
+      relax_energy(sim, maxsteps, Float64(stopping_torque), save_m_every, save_ovf_every, ovf_folder, save_vtk_every, vtk_folder, fields)
   end
   return nothing
 end
 
 
 function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float64,
-                     save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String, fields::Array{String, 1} = String[])
+                     save_m_every::Int64, save_ovf_every::Int64, ovf_folder::String, save_vtk_every::Int64, vtk_folder::String, fields::Array{String, 1} = String[])
 
   if _using_gpu.x && isa(sim, MicroSimGPU)
       T = _cuda_using_double.x ? Float64 : Float32
@@ -472,6 +494,9 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
     if save_vtk_every > 0 && i%save_vtk_every == 0
         save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)),fields = fields)
     end
+    if save_ovf_every > 0 && i%save_ovf_every == 0
+      save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)))
+    end
     sim.saver.nsteps += 1
     if max_torque < stopping_torque
       @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
@@ -482,6 +507,9 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
       if save_vtk_every > 0
           save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)),fields = fields)
       end
+      if save_ovf_every > 0
+        save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)))
+      end
       break
     end
   end
@@ -489,7 +517,7 @@ function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float6
 end
 
 function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
-         save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String, fields::Array{String, 1} = String[])
+         save_m_every::Int64, save_ovf_every::Int64, ovf_folder::String, save_vtk_every::Int64, vtk_folder::String, fields::Array{String, 1} = String[])
   step = 0
   rk_data = sim.driver.ode
 
@@ -518,6 +546,9 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
     if save_vtk_every > 0 && i%save_vtk_every == 0
         save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
     end
+    if save_ovf_every > 0 && i%save_ovf_every == 0
+      save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)))
+    end
     sim.saver.t = rk_data.t
     sim.saver.nsteps += 1
     if max_dmdt < stopping_dmdt*dmdt_factor
@@ -528,6 +559,9 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
       end
       if save_vtk_every > 0
           save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+      end
+      if save_ovf_every > 0
+        save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)))
       end
       break
     end

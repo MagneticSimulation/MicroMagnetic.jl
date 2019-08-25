@@ -158,6 +158,13 @@ mutable struct Exchange <: MicroEnergy
    name::String
 end
 
+mutable struct Vector_Exchange <: MicroEnergy
+   A::Array{Float64, 1}
+   field::Array{Float64, 1}
+   energy::Array{Float64, 1}
+   name::String
+end
+
 mutable struct ExchangeRKKY <: MicroEnergy
    sigma::Float64
    Delta::Float64

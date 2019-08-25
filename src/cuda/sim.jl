@@ -138,6 +138,23 @@ function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch")
   return exch
 end
 
+function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch_vector")
+  nxyz = sim.nxyz
+  Float = _cuda_using_double.x ? Float64 : Float32
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  Spatial_A = CuArrays.zeros(Float, 3*nxyz)
+  init_vector!(Spatial_A , sim.mesh, A)
+  exch = Vector_ExchangeGPU(Spatial_A , field, energy, name)
+  push!(sim.interactions, exch)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  return exch
+end
+
 function add_exch_rkky(sim::MicroSimGPU, sigma::Float64, Delta::Float64; name="rkky")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
