@@ -145,7 +145,7 @@ function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch
   energy = zeros(Float64, nxyz)
   Spatial_A = CuArrays.zeros(Float, 3*nxyz)
   init_vector!(Spatial_A , sim.mesh, A)
-  exch = Vector_ExchangeGPU(Spatial_A , field, energy, name)
+  exch = Vector_ExchangeGPU(Spatial_A , field, energy, Float(0.0), name)
   push!(sim.interactions, exch)
 
   push!(sim.saver.headers, string("E_",name))

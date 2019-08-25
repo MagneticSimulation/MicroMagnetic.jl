@@ -82,12 +82,12 @@ end
 function abs!(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
     function __kernel!(a, b, n)
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x
-		if 0<i<=n
+        if 0<i<=n
             @inbounds a[i] = CUDAnative.abs(b[i])
         end
         return nothing
     end
-	N = length(a)
+    N = length(a)
     blk, thr = CuArrays.cudims(N)
     @cuda blocks=blk threads=thr __kernel!(a, b, N)
     return nothing
@@ -98,7 +98,7 @@ function abs!(a::CuArray{T,1})  where {T<:AbstractFloat}
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x
         if 0 < i <= n
             @inbounds a[i] = CUDAnative.abs(a[i])
-	    end
+        end
         return nothing
     end
     N = length(a)
@@ -108,14 +108,22 @@ function abs!(a::CuArray{T,1})  where {T<:AbstractFloat}
 end
 
 function  init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
-	v[:] .= init
+    v[:] .= init
     return nothing
 end
 
 function init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init_fun::Function) where {T<:AbstractFloat}
-	Float = _cuda_using_double.x ? Float64 : Float32
-	tmp = zeros(Float, mesh.nxyz)
+    Float = _cuda_using_double.x ? Float64 : Float32
+    tmp = zeros(Float, mesh.nxyz)
     init_scalar!(tmp, mesh, init_fun)
+    copyto!(v, tmp)
+    return true
+end
+
+function init_vector!(v::CuArray{T, 1}, mesh::Mesh, init::Any) where {T<:AbstractFloat}
+    F = _cuda_using_double.x ? Float64 : Float32
+    tmp = zeros(F, 3*mesh.nxyz)
+    init_vector!(tmp, mesh, init)
     copyto!(v, tmp)
     return true
 end
