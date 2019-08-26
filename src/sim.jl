@@ -248,10 +248,15 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; 
 end
 
 """
-    add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
+    add_exc_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch")
 
-Add exchange energy to the system.
+Add a vector form exchange energy to the system. The exchange constant of 3 directions can be different.
+For example:
+```julia
+add_exc_vector(sim, (2e-12,5e-12,0))
+```
 """
+
 function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch_vector")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -267,6 +272,12 @@ function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch
   push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
   return exch
 end
+
+"""
+    add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
+
+Add exchange energy to the system.
+"""
 
 function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   nxyz = sim.nxyz

@@ -141,8 +141,8 @@ end
 function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch_vector")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
   Spatial_A = CuArrays.zeros(Float, 3*nxyz)
   init_vector!(Spatial_A , sim.mesh, A)
   exch = Vector_ExchangeGPU(Spatial_A , field, energy, Float(0.0), name)

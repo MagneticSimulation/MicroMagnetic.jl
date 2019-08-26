@@ -16,7 +16,7 @@ export init_m0,
        compute_system_energy,
        compute_skyrmion_number,
        compute_guiding_centre, set_aj,
-       Neb,interpolate_m,save_ovf
+       Neb,interpolate_m,save_ovf,read_ovf
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT
 
@@ -73,6 +73,7 @@ if _cuda_available.x
     include("cuda/mc.jl")
     include("cuda/mc_kernel.jl")
     include("cuda/vtk.jl")
+    include("cuda/ovf2.jl")
     export FDMeshGPU, CubicMeshGPU, TriangularMesh, MonteCarlo, run_sim, add_demag_gpu
 end
 
