@@ -67,7 +67,7 @@ function read_OVF2_Binary4(io::IOStream, sim::MicroSimGPU)
     copyto!(sim.spin, spin)
 end
 
-function read_OVF2_Binary8(io::IOStream, sim::AbstractSim)
+function read_OVF2_Binary8(io::IOStream, sim::MicroSimGPU)
     Float = _cuda_using_double.x ? Float64 : Float32
     nxyz = sim.nxyz
     spin = zeros(Float, 3*nxyz)
