@@ -9,7 +9,7 @@ For example:
 ```
 
 """
-function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "binary8")
+function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "binary")
     io = open(fname * ".ovf", "w")
     write_OVF2_Header(io, sim)
     write_OVF2_Data(io, sim, dataformat)
@@ -83,7 +83,7 @@ function write_OVF2_Data(io::IOStream, sim::AbstractSim, dataformat::String)
     elseif dataformat == "binary4"
         hdr(io, "Begin", "Data "  * "Binary 4")
         write_OVF2_Binary4(io, sim)
-    elseif dataformat == "binary8"
+    elseif dataformat == "binary8" || dataformat == "binary"
         hdr(io, "Begin", "Data "  * "Binary 8")
         write_OVF2_Binary8(io, sim)
     else
