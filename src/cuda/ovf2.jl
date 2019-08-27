@@ -10,7 +10,7 @@ function write_OVF2_Data(io::IOStream, sim::MicroSimGPU, dataformat::String)
 end
 
 function write_OVF2_Text(io::IOStream, sim::MicroSimGPU)
-    Float = _cuda_using_double ? Float64 : Float32
+    Float = _cuda_using_double.x ? Float64 : Float32
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     nxyz = nx*ny*nz
@@ -27,8 +27,8 @@ function write_OVF2_Text(io::IOStream, sim::MicroSimGPU)
 end
 
 function write_OVF2_Binary(io::IOStream, sim::MicroSimGPU)
-    Float = _cuda_using_double ? Float64 : Float32
-    binary = _cuda_using_double ? "Binary 8" : "Binary 4"
+    Float = _cuda_using_double.x ? Float64 : Float32
+    binary = _cuda_using_double.x ? "Binary 8" : "Binary 4"
     hdr(io, "Begin", "Data "  * binary)
     
     mesh = sim.mesh
@@ -39,7 +39,7 @@ function write_OVF2_Binary(io::IOStream, sim::MicroSimGPU)
     copyto!(spin, sim.spin)
 
     b = reshape(spin, (3, nx, ny, nz))
-    checknumber = _cuda_using_double ? Float(123456789012345.0) : Float(1234567.0)
+    checknumber = _cuda_using_double.x ? Float(123456789012345.0) : Float(1234567.0)
 
     write(io, checknumber)   ##OOMMF requires this number to be first to check the format
 
