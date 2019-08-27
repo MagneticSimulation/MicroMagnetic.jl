@@ -51,3 +51,33 @@ function write_OVF2_Binary(io::IOStream, sim::MicroSimGPU)
 
 end
 
+
+function read_OVF2_Binary4(io::IOStream, sim::MicroSimGPU)
+    Float = _cuda_using_double.x ? Float64 : Float32
+    nxyz = sim.nxyz
+    spin = zeros(Float, 3*nxyz)
+    if read(io,Float32) == 1234567.0
+      for i = 1:3*nxyz
+        spin[i] = Float(read(io,Float32))
+      end
+    else
+        @info "Data format error!"
+    end
+
+    copyto!(sim.spin, spin)
+end
+
+function read_OVF2_Binary8(io::IOStream, sim::AbstractSim)
+    Float = _cuda_using_double.x ? Float64 : Float32
+    nxyz = sim.nxyz
+    spin = zeros(Float, 3*nxyz)
+    if read(io,Float64) == 123456789012345.0
+      for i = 1:3*nxyz
+        sim.spin[i] = Float(read(io,Float64))
+      end
+    else
+        @info "Data format error!"
+    end
+
+    copyto!(sim.spin, spin)
+end

@@ -144,16 +144,17 @@ function read_ovf(fname::String, sim::AbstractSim)
 
     io = open(fname * ".ovf", "r")
     n = countlines(io)
+    seek(io,0)
     for i = 1:n
         f = readline(io)
-        if  f[1:11] == "Begin: Data"
-            if f[13:end] == "Binary 8"
+        if startswith(f, "# Begin: Data") 
+            if f[15:end] == "Binary 8"
                 read_OVF2_Binary8(io,sim)
                 return nothing
-            elseif  f[13:end] == "Binary 4"
+            elseif  f[15:end] == "Binary 4"
                 read_OVF2_Binary4(io,sim)
                 return nothing
-            elseif  f[13:end] == "text"
+            elseif  f[15:end] == "text"
                 read_OVF2_Text(io,sim)
                 return nothing
             else
@@ -164,7 +165,7 @@ function read_ovf(fname::String, sim::AbstractSim)
     end
 end
 
-function read_OVF2_Binary8(io::IOStream, sim::AbstractSim)
+function read_OVF2_Binary4(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
     if read(io,Float32) == 1234567.0
       for i = 1:3*nxyz
@@ -175,7 +176,7 @@ function read_OVF2_Binary8(io::IOStream, sim::AbstractSim)
     end
 end
 
-function read_OVF2_Binary4(io::IOStream, sim::AbstractSim)
+function read_OVF2_Binary8(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
     if read(io,Float32) == 123456789012345.0
       for i = 1:3*nxyz
@@ -189,7 +190,7 @@ end
 function read_OVF2_Text(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
     for i = 1:3*nxyz
-      sim.spin[i] = Float32(read(io,Float32))
+      sim.spin[i] = Float32(read(io,Float64))
     end
 end
     

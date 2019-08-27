@@ -467,11 +467,11 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_to
       is_relax_llg = true
   end
 
-  if !isdir(vtk_folder)
+  if !isdir(vtk_folder) && save_vtk_every>0
       mkdir(vtk_folder)
   end
 
-  if !isdir(ovf_folder)
+  if !isdir(ovf_folder)&& save_ovf_every>0
     mkdir(ovf_folder)
 end
 
