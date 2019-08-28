@@ -181,12 +181,12 @@ end
 
 function read_OVF2_Binary8(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
-    if read(io,Float32) == 123456789012345.0
+    if read(io, Float64) == 123456789012345.0
       for i = 1:3*nxyz
         sim.spin[i] = Float64(read(io,Float64))
       end
     else
-        @info "Data format error!"
+        @info "Data format error! ppp"
     end
 end
 
