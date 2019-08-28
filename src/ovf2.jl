@@ -32,14 +32,14 @@ function write_OVF2_Header(io::IOStream, sim::AbstractSim)
       dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
     end
 
-	write(io, "# OOMMF OVF 2.0\n")
-	hdr(io, "Segment count", "1")
-	hdr(io, "Begin", "Segment")
-	hdr(io, "Begin", "Header")
+    write(io, "# OOMMF OVF 2.0\n")
+    hdr(io, "Segment count", "1")
+    hdr(io, "Begin", "Segment")
+    hdr(io, "Begin", "Header")
 
-	hdr(io, "Title", sim.name)
-	hdr(io, "meshtype", "rectangular")
-	hdr(io, "meshunit", "m")
+    hdr(io, "Title", sim.name)
+    hdr(io, "meshtype", "rectangular")
+    hdr(io, "meshunit", "m")
 
 	hdr(io, "xmin", 0)
 	hdr(io, "ymin", 0)
@@ -64,28 +64,31 @@ function write_OVF2_Header(io::IOStream, sim::AbstractSim)
 	##fmt.Fprintln(io, "# Desc: Stage simulation time: ", meta.TimeStep, " s") // TODO
 	hdr(io, "Desc",string("Total simulation time: ", sim.saver.t, " s"))
 
-	hdr(io, "xbase", dx/2)
-	hdr(io, "ybase", dy/2)
-	hdr(io, "zbase", dz/2)
-	hdr(io, "xnodes", nx)
-	hdr(io, "ynodes", ny)
-	hdr(io, "znodes", nz)
-	hdr(io, "xstepsize", dx)
-	hdr(io, "ystepsize", dy)
-	hdr(io, "zstepsize", dz)
-	hdr(io, "End", "Header")
+    hdr(io, "xbase", dx/2)
+    hdr(io, "ybase", dy/2)
+    hdr(io, "zbase", dz/2)
+    hdr(io, "xnodes", nx)
+    hdr(io, "ynodes", ny)
+    hdr(io, "znodes", nz)
+    hdr(io, "xstepsize", dx)
+    hdr(io, "ystepsize", dy)
+    hdr(io, "zstepsize", dz)
+    hdr(io, "End", "Header")
 end
 
 function write_OVF2_Data(io::IOStream, sim::AbstractSim, dataformat::String)
     if dataformat == "text"
         hdr(io, "Begin", "Data " * dataformat)
         write_OVF2_Text(io, sim)
+        hdr(io, "End", "Data " * dataformat)
     elseif dataformat == "binary4"
-        hdr(io, "Begin", "Data "  * "Binary 4")
+        hdr(io, "Begin", "Data Binary 4")
         write_OVF2_Binary4(io, sim)
+        hdr(io, "End", "Data Binary 4")
     elseif dataformat == "binary8" || dataformat == "binary"
-        hdr(io, "Begin", "Data "  * "Binary 8")
+        hdr(io, "Begin", "Data Binary 8")
         write_OVF2_Binary8(io, sim)
+        hdr(io, "End", "Data Binary 8")
     else
         @info "Data format error!"
     end
@@ -147,7 +150,7 @@ function read_ovf(fname::String, sim::AbstractSim)
     seek(io,0)
     for i = 1:n
         f = readline(io)
-        if startswith(f, "# Begin: Data") 
+        if startswith(f, "# Begin: Data")
             if f[15:end] == "Binary 8"
                 read_OVF2_Binary8(io,sim)
                 return nothing
@@ -169,7 +172,7 @@ function read_OVF2_Binary4(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
     if read(io,Float32) == 1234567.0
       for i = 1:3*nxyz
-        sim.spin[i] = Float32(read(io,Float32))
+        sim.spin[i] = Float32(read(io, Float32))
       end
     else
         @info "Data format error!"
@@ -193,5 +196,3 @@ function read_OVF2_Text(io::IOStream, sim::AbstractSim)
       sim.spin[i] = Float32(read(io,Float64))
     end
 end
-    
-

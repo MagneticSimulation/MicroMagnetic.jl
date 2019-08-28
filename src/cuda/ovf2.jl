@@ -30,7 +30,7 @@ function write_OVF2_Binary(io::IOStream, sim::MicroSimGPU)
     Float = _cuda_using_double.x ? Float64 : Float32
     binary = _cuda_using_double.x ? "Binary 8" : "Binary 4"
     hdr(io, "Begin", "Data "  * binary)
-    
+
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     nxyz = nx*ny*nz
@@ -48,6 +48,7 @@ function write_OVF2_Binary(io::IOStream, sim::MicroSimGPU)
         write(io, Float(b[2, i, j, k]))
         write(io, Float(b[3, i, j, k]))
     end
+    hdr(io, "End", "Data " * binary)
 
 end
 
