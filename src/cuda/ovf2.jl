@@ -73,7 +73,7 @@ function read_OVF2_Binary8(io::IOStream, sim::MicroSimGPU)
     spin = zeros(Float, 3*nxyz)
     if read(io,Float64) == 123456789012345.0
       for i = 1:3*nxyz
-        sim.spin[i] = Float(read(io,Float64))
+        spin[i] = Float(read(io,Float64))
       end
     else
         @info "Data format error!"

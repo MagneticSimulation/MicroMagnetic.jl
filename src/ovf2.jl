@@ -169,7 +169,7 @@ function read_OVF2_Binary4(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
     if read(io,Float32) == 1234567.0
       for i = 1:3*nxyz
-        sim.spin[i] = read(io,Float32)
+        sim.spin[i] = Float32(read(io,Float32))
       end
     else
         @info "Data format error!"
@@ -180,7 +180,7 @@ function read_OVF2_Binary8(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
     if read(io,Float32) == 123456789012345.0
       for i = 1:3*nxyz
-        sim.spin[i] = read(io,Float64)
+        sim.spin[i] = Float64(read(io,Float64))
       end
     else
         @info "Data format error!"
