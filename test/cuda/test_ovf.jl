@@ -22,24 +22,36 @@ println(sim.spin)
 @test sim.spin[1] == 0.6
 @test sim.spin[2] == 0.8
 @test sim.spin[3] == 0.0
+@test sim.prespin[1] == 0.6
+@test sim.prespin[2] == 0.8
+@test sim.prespin[3] == 0.0
 
 read_ovf("test_ovf32",sim)
 println(sim.spin)
-@test sim.spin[1] == Float32(0.6)
-@test sim.spin[2] == Float32(0.8)
-@test sim.spin[3] == Float32(0.0)
+@test sim.spin[1] == 0.6
+@test sim.spin[2] == 0.8
+@test sim.spin[3] == 0.0
+@test sim.prespin[1] == 0.6
+@test sim.prespin[2] == 0.8
+@test sim.prespin[3] == 0.0
 
 JuMag.cuda_using_double(false)
 sim = Sim(mesh, name = "test_ovf4")
 set_Ms(sim, 8.0e5)
 read_ovf("test_ovf",sim)
 println(sim.spin)
-@test sim.spin[1] == Float32(0.6)
-@test sim.spin[2] == Float32(0.8)
-@test sim.spin[3] == Float32(0.0)
+@test sim.spin[1] == 0.6
+@test sim.spin[2] == 0.8
+@test sim.spin[3] == 0.0
+@test sim.prespin[1] == 0.6
+@test sim.prespin[2] == 0.8
+@test sim.prespin[3] == 0.0
 
 read_ovf("test_ovf32",sim)
 println(sim.spin)
-@test sim.spin[1] == Float32(0.6)
-@test sim.spin[2] == Float32(0.8)
-@test sim.spin[3] == Float32(0.0)
+@test sim.spin[1] == 0.6
+@test sim.spin[2] == 0.8
+@test sim.spin[3] == 0.0
+@test sim.prespin[1] == 0.6
+@test sim.prespin[2] == 0.8
+@test sim.prespin[3] == 0.0

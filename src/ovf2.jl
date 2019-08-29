@@ -180,29 +180,41 @@ end
 
 function read_OVF2_Binary4(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
+    spin = zeros(Float64, 3*nxyz)
     if read(io,Float32) == 1234567.0
       for i = 1:3*nxyz
-        sim.spin[i] = Float64(read(io, Float32))
+        spin[i] = Float64(read(io, Float32))
       end
     else
         @info "Data format error!"
     end
+
+    copyto!(sim.prespin, spin)
+    copyto!(sim.spin, spin)
 end
 
 function read_OVF2_Binary8(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
+    spin = zeros(Float64, 3*nxyz)
     if read(io, Float64) == 123456789012345.0
       for i = 1:3*nxyz
-        sim.spin[i] = Float64(read(io,Float64))
+        spin[i] = read(io,Float64)
       end
     else
         @info "Data format error! ppp"
     end
+
+    copyto!(sim.prespin, spin)
+    copyto!(sim.spin, spin)
 end
 
 function read_OVF2_Text(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
+    spin = zeros(Float64, 3*nxyz)
     for i = 1:3*nxyz
-      sim.spin[i] = Float64(read(io,Float64))
+      spin[i] = Float64(read(io,Float64))
     end
+
+    copyto!(sim.prespin, spin)
+    copyto!(sim.spin, spin)
 end

@@ -65,6 +65,7 @@ function read_OVF2_Binary4(io::IOStream, sim::MicroSimGPU)
     else
         @info "Data format error!"
     end
+    copyto!(sim.prespin, spin)
     copyto!(sim.spin, spin)
 end
 
@@ -79,5 +80,6 @@ function read_OVF2_Binary8(io::IOStream, sim::MicroSimGPU)
     else
         @info "Data format error in read_OVF2_Binary8"
     end
+    copyto!(sim.prespin, spin)
     copyto!(sim.spin, spin)
 end

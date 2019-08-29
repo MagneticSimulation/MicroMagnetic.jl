@@ -15,3 +15,6 @@ println(sim.spin)
 @test sim.spin[1] == 0.6
 @test sim.spin[2] == 0.8
 @test sim.spin[3] == 0.0
+@test sim.prespin[1] == 0.6
+@test sim.prespin[2] == 0.8
+@test sim.prespin[3] == 0.0
