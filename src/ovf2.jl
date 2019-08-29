@@ -14,6 +14,7 @@ function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "binary"
     write_OVF2_Header(io, sim)
     write_OVF2_Data(io, sim, dataformat)
     hdr(io, "End", "Segment")
+    close(io)
 end
 
 function hdr(io::IOStream, string1::Any, string2::Any)
@@ -84,10 +85,12 @@ function write_OVF2_Data(io::IOStream, sim::AbstractSim, dataformat::String)
     elseif dataformat == "binary4"
         hdr(io, "Begin", "Data Binary 4")
         write_OVF2_Binary4(io, sim)
+        write(io, "\n")
         hdr(io, "End", "Data Binary 4")
     elseif dataformat == "binary8" || dataformat == "binary"
         hdr(io, "Begin", "Data Binary 8")
         write_OVF2_Binary8(io, sim)
+        write(io, "\n")
         hdr(io, "End", "Data Binary 8")
     else
         @info "Data format error!"
@@ -109,15 +112,18 @@ end
 function write_OVF2_Binary4(io::IOStream, sim::AbstractSim)
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    nxyz = nx*ny*nz
+    spin = zeros(Float32, 3*nxyz)
+    copyto!(spin, sim.spin)
 
-    b = reshape(sim.spin, (3, nx, ny, nz))
+    b = reshape(spin, (3, nx, ny, nz))
 
     write(io, Float32(1234567.0))   ##OOMMF requires this number to be first to check the format
 
     for k = 1:nz, j = 1:ny, i = 1:nx
-        write(io, Float32(b[1, i, j, k]))
-        write(io, Float32(b[2, i, j, k]))
-        write(io, Float32(b[3, i, j, k]))
+        write(io, b[1, i, j, k])
+        write(io, b[2, i, j, k])
+        write(io, b[3, i, j, k])
     end
 
 end
@@ -153,12 +159,15 @@ function read_ovf(fname::String, sim::AbstractSim)
         if startswith(f, "# Begin: Data")
             if f[15:end] == "Binary 8"
                 read_OVF2_Binary8(io,sim)
+                close(io)
                 return nothing
             elseif  f[15:end] == "Binary 4"
                 read_OVF2_Binary4(io,sim)
+                close(io)
                 return nothing
             elseif  f[15:end] == "text"
                 read_OVF2_Text(io,sim)
+                close(io)
                 return nothing
             else
                 @info "Data format error!"
@@ -166,13 +175,14 @@ function read_ovf(fname::String, sim::AbstractSim)
             end
         end
     end
+
 end
 
 function read_OVF2_Binary4(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
     if read(io,Float32) == 1234567.0
       for i = 1:3*nxyz
-        sim.spin[i] = Float32(read(io, Float32))
+        sim.spin[i] = Float64(read(io, Float32))
       end
     else
         @info "Data format error!"
@@ -193,6 +203,6 @@ end
 function read_OVF2_Text(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
     for i = 1:3*nxyz
-      sim.spin[i] = Float32(read(io,Float64))
+      sim.spin[i] = Float64(read(io,Float64))
     end
 end
