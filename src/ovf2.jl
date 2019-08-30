@@ -144,11 +144,12 @@ function write_OVF2_Binary8(io::IOStream, sim::AbstractSim)
 
 end
 """
-read_ovf(fname, sim)
+read_ovf(sim. fname)
 Initialize sim with an ovf file named of "fname.ovf".
+
 """
 
-function read_ovf(fname::String, sim::AbstractSim)
+function read_ovf(sim::AbstractSim,fname::String)
     nxyz = sim.nxyz
 
     io = open(fname * ".ovf", "r")
