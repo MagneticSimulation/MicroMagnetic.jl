@@ -24,7 +24,10 @@ function relax_system()
   relax(sim, maxsteps=200, stopping_torque=0.1, save_vtk_every = 10)
   #println(sim.spin)
   npzwrite("m0.npy", sim.spin)
+
   #save_vtk(sim, "skx", fields=["exch", "dmi"])
 end
 
 relax_system()
+m = npzread("m0.npy")
+println(compute_skyrmion_number(m, mesh))

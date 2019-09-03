@@ -187,6 +187,13 @@ function compute_skyrmion_number(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) whe
     return nothing
 end
 
+function compute_skyrmion_number(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    v = zeros(T, 3*ny*ny*nz)
+    compute_skyrmion_number(v, m, mesh)
+    return sum(v)
+end
+
 #compute the guiding centre, Dynamics of magnetic vortices,
 #N.Papanicolaou, T.N. Tomaras 360, 425-462, (1991)
 function compute_guiding_centre(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
