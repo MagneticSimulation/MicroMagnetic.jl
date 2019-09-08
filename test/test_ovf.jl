@@ -10,7 +10,7 @@ save_ovf(sim, "test_ovf", dataformat = "binary")
 JuMag.cuda_using_double(true)
 sim = Sim(mesh, name = "test_ovf3")
 set_Ms(sim, 8.0e5)
-read_ovf("test_ovf",sim)
+read_ovf(sim, "test_ovf")
 println(sim.spin)
 @test sim.spin[1] == 0.6
 @test sim.spin[2] == 0.8
