@@ -34,5 +34,4 @@ if JuMag._cuda_available.x
   test_zeeman(gpu=true)
   mesh =  FDMeshGPU(nx=20, ny=5, nz=3, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
   test_fields(mesh, gpu=true)
-  test_anis(gpu=true)
 end

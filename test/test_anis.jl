@@ -27,3 +27,10 @@ function test_anis(;gpu=false)
     @test isapprox(anis.field[3], 1/(JuMag.mu_0*Ms)*4*Kc*0^3)
     @test isapprox(anis.energy[1], -Kc*(0.6^4+0.8^4)*1e-27)
 end
+
+test_anis()
+
+if JuMag._cuda_available.x
+    JuMag.cuda_using_double()
+    test_anis(gpu=true)
+end

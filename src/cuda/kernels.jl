@@ -520,10 +520,13 @@ function cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}
             return nothing
         end
         Ms_inv::T = 4.0*Kc/(mu0*Ms_local)
-        @inbounds h[j+1] = Ms_inv*m[j+1]^3
-        @inbounds h[j+2] = Ms_inv*m[j+2]^3
-        @inbounds h[j+3] = Ms_inv*m[j+3]^3
-        @inbounds energy[index] = Kc*(m[j+1]^4+m[j+2]^4+m[j+3]^4)*volume
+        @inbounds mx2 = m[j+1]*m[j+1]
+        @inbounds my2 = m[j+2]*m[j+2]
+        @inbounds mz2 = m[j+3]*m[j+3]
+        @inbounds h[j+1] = Ms_inv*mx2*m[j+1]
+        @inbounds h[j+2] = Ms_inv*my2*m[j+2]
+        @inbounds h[j+3] = Ms_inv*mz2*m[j+3]
+        @inbounds energy[index] = -Kc*(mx2*mx2+my2*my2+mz2*mz2)*volume
     end
    return nothing
 end
