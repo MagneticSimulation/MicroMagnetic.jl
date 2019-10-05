@@ -120,3 +120,11 @@ mutable struct AnisotropyGPU{T<:AbstractFloat} <: MicroEnergyGPU
    total_energy::T
    name::String
 end
+
+mutable struct CubicAnisotropyGPU{T<:AbstractFloat} <: MicroEnergyGPU
+   Kc::T
+   field::Array{T, 1}
+   energy::Array{T, 1}
+   total_energy::T
+   name::String
+end

@@ -504,6 +504,30 @@ function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
 end
 
 
+function cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
+                        energy::CuDeviceArray{T, 1}, Kc::T,
+                        Ms::CuDeviceArray{T, 1}, volume::T, nxyz::Int64) where {T<:AbstractFloat}
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if index <= nxyz
+        mu0 = 4*pi*1e-7
+        j = 3*(index-1)
+        @inbounds Ms_local = Ms[index]
+        if Ms_local == 0.0
+            @inbounds energy[index] = 0
+            @inbounds h[j+1] = 0
+            @inbounds h[j+2] = 0
+            @inbounds h[j+3] = 0
+            return nothing
+        end
+        Ms_inv::T = 4.0*Kc/(mu0*Ms_local)
+        @inbounds h[j+1] = Ms_inv*m[j+1]^3
+        @inbounds h[j+2] = Ms_inv*m[j+2]^3
+        @inbounds h[j+3] = Ms_inv*m[j+3]^3
+        @inbounds energy[index] = Kc*(m[j+1]^4+m[j+2]^4+m[j+3]^4)*volume
+    end
+   return nothing
+end
+
 function exchange_kernel_rkky!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
                         sigma::T, nx::Int64, ny::Int64, nz::Int64) where {T<:AbstractFloat}

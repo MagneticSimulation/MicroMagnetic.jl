@@ -64,6 +64,33 @@ function effective_field(anis::Anisotropy, sim::MicroSim, spin::Array{Float64, 1
 
 end
 
+function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
+  mu0 = 4.0*pi*1e-7
+  mesh = sim.mesh
+  nxyz = sim.nxyz
+  field = anis.field
+  energy = anis.energy
+  Ms = sim.Ms
+  Kc = anis.Kc
+  for i = 1:nxyz
+    if Ms[i] == 0.0
+      energy[i] = 0.0
+      field[3*i-2] = 0.0
+      field[3*i-1] = 0.0
+      field[3*i] = 0.0
+      continue
+    end
+    k = 3*(i-1)
+    mx = spin[k+1]
+    Ms_inv = 4*Kc/(Ms[i]*mu0)
+    field[k+1] = Ms_inv*spin[k+1]^3
+    field[k+2] = Ms_inv*spin[k+2]^3
+    field[k+3] = Ms_inv*spin[k+3]^3
+    energy[i] = -Kc*(spin[k+1]^4+spin[k+2]^4+spin[k+3]^4)*mesh.volume
+  end
+
+end
+
 function effective_field(anis::Anisotropy, sim::AtomicSim, spin::Array{Float64, 1}, t::Float64)
   mesh = sim.mesh
   nxyz = sim.nxyz

@@ -88,6 +88,14 @@ function effective_field(anis::AnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T,
     return nothing
 end
 
+function effective_field(anis::CubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+    blocks_n, threads_n = sim.blocks, sim.threads
+    volume = sim.mesh.volume
+    @cuda blocks=blocks_n threads=threads_n cubic_anisotropy_kernel!(spin, sim.field, sim.energy, anis.Kc,
+                                         sim.Ms, volume, sim.nxyz)
+    return nothing
+end
+
 function effective_field(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   fill!(sim.driver.field, 0.0)
   for interaction in sim.interactions

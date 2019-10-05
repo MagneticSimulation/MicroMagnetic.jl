@@ -256,7 +256,6 @@ For example:
 add_exc_vector(sim, (2e-12,5e-12,0))
 ```
 """
-
 function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch_vector")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -278,7 +277,6 @@ end
 
 Add exchange energy to the system.
 """
-
 function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -430,7 +428,6 @@ sim = Sim(mesh)
 add_anis(sim,3e4,axis = (0,0,1))
 update_anis(sim, 5e4)
 ````
-
 """
 function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
   nxyz = sim.nxyz
@@ -442,6 +439,20 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
       return nothing
     end
   end
+end
+
+function add_cubic_anis(sim::AbstractSim, Kc::Float64; name="cubic")
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  anis =  CubicAnisotropy(Kc, field, energy, name)
+  push!(sim.interactions, anis)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  return anis
 end
 
 """

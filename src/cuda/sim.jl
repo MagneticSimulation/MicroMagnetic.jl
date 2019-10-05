@@ -247,6 +247,21 @@ function add_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   return anis
 end
 
+function add_cubic_anis(sim::MicroSimGPU, Kc::Float64; name="cubic")
+  nxyz = sim.nxyz
+  Float = _cuda_using_double.x ? Float64 : Float32
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
+  anis = CubicAnisotropyGPU(Float(Kc), field, energy, Float(0.0), name)
+  push!(sim.interactions, anis)
+
+  push!(sim.saver.headers, string("E_",name))
+  push!(sim.saver.units, "J")
+  id = length(sim.interactions)
+  push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  return anis
+end
+
 function update_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; name = "anis")
   nxyz = sim.nxyz
   Kus =  zeros(Float64, nxyz)
