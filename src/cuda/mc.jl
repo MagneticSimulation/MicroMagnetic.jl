@@ -9,6 +9,7 @@ mutable struct MonteCarlo{TF<:AbstractFloat} <:AbstractSimGPU
   D1::Float64
   bulk_dmi::Bool
   Ku::Float64
+  Kc::Float64
   T::Float64
   Hx::Float64
   Hy::Float64
@@ -27,11 +28,11 @@ end
 """
 Create a MonteCarlo simulation.
 
-J, D and Ku in units of Joule
+J, D, Ku and Kc in units of Joule
 H in units of Tesla.
 
 """
-function MonteCarlo(mesh::Mesh; mu_s=1.0*mu_B, J=1*meV, J1=0, D=0, D1=0, Ku=0, H=(0,0,0), T=10, bulk_dmi=false, name="dyn")
+function MonteCarlo(mesh::Mesh; mu_s=1.0*mu_B, J=1*meV, J1=0, D=0, D1=0, Ku=0, Kc=0, H=(0,0,0), T=10, bulk_dmi=false, name="dyn")
   nxy = mesh.nx*mesh.ny*mesh.nz
   Float = _cuda_using_double.x ? Float64 : Float32
   spin = CuArrays.zeros(Float, 3*nxy)
@@ -49,7 +50,7 @@ function MonteCarlo(mesh::Mesh; mu_s=1.0*mu_B, J=1*meV, J1=0, D=0, D1=0, Ku=0, H
              o::AbstractSim -> o.total_energy, average_m]
   saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
 
-  return MonteCarlo(mesh, mu_s, J/k_B, J1/k_B, D/k_B, D1/k_B, bulk_dmi, Ku/k_B, Float64(T),
+  return MonteCarlo(mesh, mu_s, J/k_B, J1/k_B, D/k_B, D1/k_B, bulk_dmi, Ku/k_B, Kc/k_B, Float64(T),
                     H[1]*mu_s/k_B, H[2]*mu_s/k_B, H[3]*mu_s/k_B,
                     saver, spin, nextspin, rnd, energy, Float(0.0), nxy, 0, name)
 end
@@ -119,7 +120,8 @@ function run_single_step_cubic(sim::MonteCarlo, bias::Int64)
   mesh = sim.mesh
   @cuda blocks=blk threads=thr run_step_cubic_kernel!(sim.spin, sim.nextspin,
                                sim.rnd, sim.energy, mesh.ngbs, mesh.nngbs,
-                               F(sim.J), F(sim.J1), F(sim.D), F(sim.D1), sim.bulk_dmi, F(sim.Ku),
+                               F(sim.J), F(sim.J1), F(sim.D), F(sim.D1), sim.bulk_dmi,
+                               F(sim.Ku), F(sim.Kc),
                                F(sim.Hx), F(sim.Hy), F(sim.Hz), F(sim.T),
                                mesh.nx, mesh.ny, mesh.nz, bias)
   return nothing

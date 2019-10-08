@@ -79,7 +79,7 @@ end
 function run_step_cubic_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1},
                               energy::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},
                               nngbs::CuDeviceArray{Int32, 2}, J::T, J1::T, D::T, D1::T, bulk_dmi::Bool,
-                              Ku::T, Hx::T, Hy::T, Hz::T, temp::T,
+                              Ku::T, Kc::T, Hx::T, Hy::T, Hz::T, temp::T,
                               nx::Int64, ny::Int64, nz::Int64, bias::Int64) where {T<:AbstractFloat}
 
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -105,6 +105,9 @@ function run_step_cubic_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T,
 
         delta_E = -(dmx*Hx+dmy*Hy+dmz*Hz) #zeeman
         @inbounds delta_E += Ku*(m[i+2]*m[i+2] - next_m[i+2]*next_m[i+2]) #Anisotropy
+        @inbounds delta_E += Kc*(CUDAnative.pow(m[i+2],4) - CUDAnative.pow(next_m[i+2],4)) #Cubic Anisotropy for z
+        @inbounds delta_E += Kc*(CUDAnative.pow(m[i+1],4) - CUDAnative.pow(next_m[i+1],4)) #Cubic Anisotropy for y
+        @inbounds delta_E += Kc*(CUDAnative.pow(m[i],4) - CUDAnative.pow(next_m[i],4)) #Cubic Anisotropy for x
 
         for j = 1:6
             id = ngbs[j, index]
