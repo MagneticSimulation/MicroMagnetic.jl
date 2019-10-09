@@ -1,4 +1,4 @@
-function write_OVF2_Data(io::IOStream, sim::MicroSimGPU, dataformat::String)
+function write_OVF2_Data(io::IOStream, sim::AbstractSimGPU, dataformat::String)
     if dataformat == "text"
         hdr(io, "Begin", "Data " * dataformat)
         write_OVF2_Text(io, sim)
@@ -9,7 +9,7 @@ function write_OVF2_Data(io::IOStream, sim::MicroSimGPU, dataformat::String)
     end
 end
 
-function write_OVF2_Text(io::IOStream, sim::MicroSimGPU)
+function write_OVF2_Text(io::IOStream, sim::AbstractSimGPU)
     Float = _cuda_using_double.x ? Float64 : Float32
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
@@ -26,7 +26,7 @@ function write_OVF2_Text(io::IOStream, sim::MicroSimGPU)
 
 end
 
-function write_OVF2_Binary(io::IOStream, sim::MicroSimGPU)
+function write_OVF2_Binary(io::IOStream, sim::AbstractSimGPU)
     Float = _cuda_using_double.x ? Float64 : Float32
     binary = _cuda_using_double.x ? "Binary 8" : "Binary 4"
     hdr(io, "Begin", "Data "  * binary)
@@ -54,7 +54,7 @@ function write_OVF2_Binary(io::IOStream, sim::MicroSimGPU)
 end
 
 
-function read_OVF2_Binary4(io::IOStream, sim::MicroSimGPU)
+function read_OVF2_Binary4(io::IOStream, sim::AbstractSimGPU)
     Float = _cuda_using_double.x ? Float64 : Float32
     nxyz = sim.nxyz
     spin = zeros(Float, 3*nxyz)
@@ -69,7 +69,7 @@ function read_OVF2_Binary4(io::IOStream, sim::MicroSimGPU)
     copyto!(sim.spin, spin)
 end
 
-function read_OVF2_Binary8(io::IOStream, sim::MicroSimGPU)
+function read_OVF2_Binary8(io::IOStream, sim::AbstractSimGPU)
     Float = _cuda_using_double.x ? Float64 : Float32
     nxyz = sim.nxyz
     spin = zeros(Float, 3*nxyz)

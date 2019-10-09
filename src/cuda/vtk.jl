@@ -1,7 +1,7 @@
 using WriteVTK
 using NPZ
 
-function save_m(sim::MicroSimGPU, fname::String;vtk::Bool = false, npy::Bool = false, vtk_folder::String="vtks",npy_folder::String="npys")
+function save_m(sim::AbstractSimGPU, fname::String;vtk::Bool = false, npy::Bool = false, vtk_folder::String="vtks",npy_folder::String="npys")
   if vtk
       !isdir(vtk_folder) && mkdir(vtk_folder)
       save_vtk(sim, joinpath(vtk_folder, fname))
@@ -12,7 +12,7 @@ function save_m(sim::MicroSimGPU, fname::String;vtk::Bool = false, npy::Bool = f
   end
 end
 
-function save_npy(sim::MicroSimGPU,name::String)
+function save_npy(sim::AbstractSimGPU,name::String)
   T = _cuda_using_double.x ? Float64 : Float32
   name = @sprintf("%s.npy", name)
   mesh = sim.mesh
