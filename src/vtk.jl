@@ -2,20 +2,17 @@ using WriteVTK
 using NPZ
 
 """
-    save(sim::AbstractSim, fname::String; vtk::Bool = false, npy::Bool = false, vtk_folder = "vtks")
+    save_m(sim::AbstractSim, fname::String; vtk::Bool = false, npy::Bool = false, vtk_folder = "vtks")
 
-If vtk = true, save spins to dir ./vtks/ in vtk format;
-If npy = true, save spins to current directory in npy format;
+    If vtk = true, save spins to dir ./vtks/ in vtk format;
+    If npy = true, save spins to current directory in npy format;
 
-Example:
+    Example:
 
-```julia
-  save(sim, sim.name, vtk = true, npy= true)
-```
-
+    ```julia
+        save_m(sim, sim.name, vtk = true, npy= true)
+    ```
 """
-
-
 function save_m(sim::AbstractSim, fname::String; vtk::Bool=false, npy::Bool=false, vtk_folder::String="vtks", npy_folder::String="npys")
   if vtk
     !isdir(vtk_folder) && mkdir(vtk_folder)
@@ -29,7 +26,15 @@ function save_m(sim::AbstractSim, fname::String; vtk::Bool=false, npy::Bool=fals
   end
 end
 
+"""
+    save_vtk(sim::AbstractSim, fname::String; fields::Array{String, 1} = String[])
 
+Save magnetization or other fields to vtk.
+
+```julia
+    save_vtk(sim, "m")
+```
+"""
 function save_vtk(sim::AbstractSim, fname::String; fields::Array{String, 1} = String[])
   mesh = sim.mesh
   nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
@@ -59,4 +64,12 @@ function save_vtk(sim::AbstractSim, fname::String; fields::Array{String, 1} = St
     end
   end
   vtk_save(vtk)
+end
+
+
+function ovf2vtk(mesh, ovf_name, vtk_name)
+    sim = Sim(mesh, driver="SD")
+    read_ovf(sim, ovf_name)
+    save_vtk(sim, vtk_name)
+    return nothing
 end

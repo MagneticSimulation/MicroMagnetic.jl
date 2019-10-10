@@ -1,13 +1,13 @@
 """
   save_ovf(sim::AbstractSim, fname::String; dataformat::String = "text")
 
-Save spins in format of ovf, which can be viewed by Muview. Dataformat can be "text" or "Binary4"
+Save spins in format of ovf, which can be viewed by Muview. Dataformat could be "text", "binary4" or "binary8".
+
 For example:
 
-```julia
-   save_ovf(sim, "m0")
-```
-
+    ```julia
+        save_ovf(sim, "m0")
+    ```
 """
 function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "binary")
     io = open(fname * ".ovf", "w")
@@ -143,13 +143,13 @@ function write_OVF2_Binary8(io::IOStream, sim::AbstractSim)
     end
 
 end
-"""
-read_ovf(sim. fname)
-Initialize sim with an ovf file named of "fname.ovf".
 
 """
+    read_ovf(sim, fname)
 
-function read_ovf(sim::AbstractSim,fname::String)
+    Initialize sim with an ovf file named of "fname.ovf".
+"""
+function read_ovf(sim::AbstractSim, fname::String)
     nxyz = sim.nxyz
 
     io = open(fname * ".ovf", "r")
@@ -176,7 +176,6 @@ function read_ovf(sim::AbstractSim,fname::String)
             end
         end
     end
-
 end
 
 function read_OVF2_Binary4(io::IOStream, sim::AbstractSim)
@@ -212,10 +211,16 @@ end
 function read_OVF2_Text(io::IOStream, sim::AbstractSim)
     nxyz = sim.nxyz
     spin = zeros(Float64, 3*nxyz)
-    for i = 1:3*nxyz
-      spin[i] = Float64(read(io,Float64))
+    i = 0
+    for line in eachline(io)
+        if startswith(line, "#")
+            break
+        end
+        for s in split(line)
+            i += 1
+            spin[i] = parse(Float64, s)
+        end
     end
-
     copyto!(sim.prespin, spin)
     copyto!(sim.spin, spin)
 end
