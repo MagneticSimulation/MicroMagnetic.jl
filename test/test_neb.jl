@@ -19,9 +19,9 @@ function init_m(i,j,k,dx,dy,dz)
     return (1,0,0)
 end
 
-creat_sim()
+sim=creat_sim()
 
 neb = Neb(sim, [ (0,1,1), (-1,0,0)], 6;name="haha")
-println(neb.image)
+println(neb.images)
 
 #relax(neb)

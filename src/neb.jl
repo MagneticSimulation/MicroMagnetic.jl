@@ -1,3 +1,4 @@
+using Printf
 abstract type NEBDriver end
 mutable struct NEBSaver
   name::String
@@ -440,22 +441,25 @@ function compute_system_energy(neb::NEB,  t::Float64)
   end
   return 0
 end
-function relax(neb::NEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks")
+function relax(neb::NEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks",save_ovf_every=-1, ovf_folder="ovfs")
 
   if isa(neb.driver, NEB_SD)
       is_relax_NEB = true
   end
 
-  if !isdir(vtk_folder)
+  if save_vtk_every>0 && !isdir(vtk_folder)
       mkdir(vtk_folder)
+  end
+  if save_ovf_every>0 && !isdir(ovf_folder)
+    mkdir(ovf_folder)
   end
 
   if is_relax_NEB
-      relax_NEB(neb, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder)
+      relax_NEB(neb, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder,save_ovf_every, ovf_folder)
   end
   return nothing
 end
-function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String)
+function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String,save_ovf_every::Int64,ovf_folder::String)
   N = neb.N
   sim = neb.sim
   gk_abs = zeros(Float64,3*sim.nxyz)
@@ -467,6 +471,9 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
   end
   if save_vtk_every > 0
     save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, 0)))
+  end
+  if save_ovf_every > 0
+    save_ovf(neb, joinpath(ovf_folder, @sprintf("%s_%d", neb.name, 0)))
   end
   for i=1:maxsteps
       run_step(neb)
@@ -489,6 +496,9 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
       if save_vtk_every > 0 && i%save_vtk_every == 0
         save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
       end
+      if save_ovf_every > 0 && i%save_ovf_every == 0
+        save_ovf(neb, joinpath(ovf_folder, @sprintf("%s_%d", neb.name, i)))
+      end
       if max_torque < stopping_torque
         @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
         if save_m_every>0
@@ -497,6 +507,9 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
         end
         if save_vtk_every > 0
           save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
+        end
+        if save_ovf_every > 0
+          save_ovf(neb, joinpath(ovf_folder, @sprintf("%s_%d", neb.name, i)))
         end
       break
       end
@@ -561,5 +574,13 @@ function save_vtk(neb::NEB, fname::String; fields::Array{String, 1} = String[])
     end
   end
   vtk_save(vtk)
+  end
+end
+function save_ovf(neb::NEB,name::String)
+  sim = neb.sim
+  for n=1:neb.N
+    sim.spin[:]=neb.images[:,n]
+    fname=@sprintf("%s_n_%d",name,n)
+    save_ovf(sim,fname)
   end
 end
