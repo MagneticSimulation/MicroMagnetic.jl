@@ -245,12 +245,14 @@ function compute_gk(images::Array{Float64,2},h::Array{Float64,2},nxyz::Int64,N::
 end
 
 function search_tau(neb::NEB)
-  h0 = neb.field
-  images = neb.images
   sim = neb.sim
   nxyz = sim.nxyz
   N = neb.N
   driver = neb.driver
+  images=zeros(N,3*nxyz)
+  h0=zeros(N,3*nxyz)
+  images[:] = neb.images[:]
+  h0[:] = neb.field[:]
   for n=1:N, i=0:nxyz-1  #compute gk[] for step 0
     j = 3*i+1
     fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], h0[j,n],h0[j+1,n],h0[j+2,n])
@@ -326,6 +328,7 @@ function run_step(neb::NEB)
   pre_images = neb.pre_images
   sim = neb.sim
   nxyz = sim.nxyz
+  images=zeros(N,3*nxyz)
   effective_field(neb)
   if driver.steps == 0
     search_tau(neb)
