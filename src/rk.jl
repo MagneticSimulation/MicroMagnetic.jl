@@ -19,7 +19,6 @@ function RungeKutta(nxyz::Int64, rhs_fun, step::Float64)
   return RungeKutta(0.0, step, 0, k1, k2, k3, k4, rhs_fun)
 end
 
-
 function advance_step(sim::AbstractSim, rk_data::RungeKutta)
     h = rk_data.step
 	k1 =  rk_data.k1

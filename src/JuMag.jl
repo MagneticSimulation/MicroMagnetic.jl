@@ -9,7 +9,7 @@ export init_m0,
        add_exch, add_anis, add_cubic_anis,
        add_demag, add_exch_rkky,
        update_zeeman,update_anis,add_exch_vector,
-       run_until, relax,
+       run_until, advance_step, relax,
        save_vtk, save_m,
        FDMesh, set_Ms, Sim,
        CubicMesh, set_mu_s,
@@ -38,6 +38,7 @@ include("driver.jl")
 include("sd.jl")
 include("llg.jl")
 include("rk.jl")
+include("dopri5.jl")
 include("helper.jl")
 include("ode.jl")
 include("fileio.jl")
