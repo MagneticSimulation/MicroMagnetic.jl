@@ -81,7 +81,7 @@ end
 function advance_step(sim::AbstractSim, rk_data::AbstractDopri5)
 
     if rk_data.succeed
-        #omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
+        omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
         if rk_data.nsteps%10 == 0
           normalise(sim.spin, sim.nxyz)
         end

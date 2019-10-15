@@ -51,7 +51,7 @@ mutable struct LLG_STT_CPP_GPU{T<:AbstractFloat} <: DriverGPU
   ufun::Function
 end
 
-function create_driver_gpu(driver::String, nxyz::Int64)
+function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
     if driver == "SD"
         Float = _cuda_using_double.x ? Float64 : Float32
 		gk = CuArrays.zeros(Float,3*nxyz)

@@ -1,4 +1,4 @@
-function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
+function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Default")
   nxyz = mesh.nx*mesh.ny*mesh.nz
   Float = _cuda_using_double.x ? Float64 : Float32
   spin = CuArrays.zeros(Float, 3*nxyz)
@@ -6,7 +6,7 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn")
   field = CuArrays.zeros(Float,3*nxyz)
   energy = CuArrays.zeros(Float,nxyz)
   Ms = CuArrays.zeros(Float, nxyz)
-  driver = create_driver_gpu(driver, nxyz)
+  driver = create_driver_gpu(driver, integrator, nxyz)
 
   headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
   units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]

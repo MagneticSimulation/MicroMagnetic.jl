@@ -1,6 +1,10 @@
 #implement the  Runge-Kutta method with adaptive stepsize using Dormand–Prince pair
 #https://en.wikipedia.org/wiki/List_of_Runge%E2%80%93Kutta_methods#Dormand%E2%80%93Prince
 
+#To use this integrator, one needs to provide:
+#   - A simulation instance with field "spin" and "prespins"
+#   - A call back function
+
 mutable struct DormandPrince <: Integrator
     tol::Float64
     t::Float64
@@ -11,8 +15,7 @@ mutable struct DormandPrince <: Integrator
     safety::Float64
     nsteps::Int64
     nfevals::Int64
-    spin::Array{Float64, 1}
-    dm_dt::Array{Float64, 1}
+    errors::Array{Float64, 1}
     k1::Array{Float64, 1}
     k2::Array{Float64, 1}
     k3::Array{Float64, 1}
@@ -25,8 +28,7 @@ mutable struct DormandPrince <: Integrator
 end
 
 function DormandPrince(nxyz::Int64, rhs_fun, tol::Float64)
-  dm_dt = zeros(Float64,3*nxyz)
-  spin = zeros(Float64,3*nxyz)
+  errors = zeros(Float64,3*nxyz)
   k1 = zeros(Float64, 3*nxyz)
   k2 = zeros(Float64, 3*nxyz)
   k3 = zeros(Float64, 3*nxyz)
@@ -37,7 +39,7 @@ function DormandPrince(nxyz::Int64, rhs_fun, tol::Float64)
   facmax = 5.0
   facmin = 0.2
   safety = 0.824
-  return DormandPrince(tol, 0.0, 0, 0, facmax, facmin, safety, 0, 0, spin, dm_dt,
+  return DormandPrince(tol, 0.0, 0, 0, facmax, facmin, safety, 0, 0, errors,
                 k1, k2, k3, k4, k5, k6, k7, rhs_fun, false)
 end
 
@@ -78,10 +80,9 @@ function dopri5_step_inner(sim::AbstractSim, step::Float64, t::Float64)
   ode.rhs_fun(sim, k7, y_next, t + a[6]*step) #k7
 
   ode.nfevals += 7
-  error = ode.spin #we make use of ode.spin to store the error temporary
-  error .= (w[1].*k1 + w[2].*k2 .+ w[3].*k3 .+ w[4].*k4 .+ w[5].*k5 + w[6].*k6 + w[7].*k7).*step
+  ode.errors .= (w[1].*k1 + w[2].*k2 .+ w[3].*k3 .+ w[4].*k4 .+ w[5].*k5 + w[6].*k6 + w[7].*k7).*step
 
-  max_error =  maximum(abs.(error)) + eps()
+  max_error =  maximum(abs.(ode.errors)) + eps()
 
   return max_error
 end
@@ -91,8 +92,8 @@ function compute_init_step_DP(sim::AbstractSim, dt::Float64)
   abs_step = dt
   abs_step_tmp = dt
   integrator = sim.driver.ode
-  integrator.rhs_fun(sim, integrator.dm_dt, sim.spin, integrator.t)
-  r_step = maximum(abs.(integrator.dm_dt)/(integrator.safety*integrator.tol^0.2))
+  integrator.rhs_fun(sim, integrator.errors, sim.spin, integrator.t)
+  r_step = maximum(abs.(integrator.errors)/(integrator.safety*integrator.tol^0.2))
   integrator.nfevals += 1
   #FIXME: how to obtain a reasonable init step?
   if abs_step*r_step > 0.001
@@ -130,5 +131,4 @@ function advance_step(sim::AbstractSim, integrator::DormandPrince)
             step_next = step_next*min(integrator.facmax, max(integrator.facmin, factor))
         end
     end
-    #normalise(sim.spin, sim.nxyz)
 end

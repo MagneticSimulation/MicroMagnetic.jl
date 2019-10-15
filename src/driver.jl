@@ -25,7 +25,7 @@ mutable struct LLG_STT <: Driver
   h_stt::Array{Float64, 1}
 end
 
-function create_driver(driver::String, integrator::String, nxyz::Int64) #TODO: FIX ME
+function create_driver(driver::String, integrator::String, nxyz::Int64)
     if driver=="SD" #Steepest Descent
         gk = zeros(Float64,3*nxyz)
         return EnergyMinimization(gk, 0.0, 1e-4, 1e-12, 0)
