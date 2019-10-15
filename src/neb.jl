@@ -1,5 +1,7 @@
 using Printf
+abstract type AbstractNEB <:AbstractSim end
 abstract type NEBDriver end
+
 mutable struct NEBSaver
   name::String
   nsteps::Int64
@@ -8,7 +10,16 @@ mutable struct NEBSaver
   units::Array #string or tuple<string> array
   results::Array  #function array
 end
-mutable struct NEB
+
+mutable struct NEB_SD <: NEBDriver
+  gk::Array{Float64, 2}
+  tau::Float64
+  max_tau::Float64
+  min_tau::Float64
+  steps::Int64
+end
+
+mutable struct NEB <: AbstractNEB
   N::Int64
   sim::AbstractSim
   init_m::Any
@@ -22,6 +33,8 @@ mutable struct NEB
   saver::NEBSaver
   k::Float64
 end
+
+
 function Neb(sim::AbstractSim,init_m::Any, intervals::Any;name="NEB", k=1.0e5, driver = "NEB_SD")
   nxyz = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
   N = sum(intervals)+length(intervals)+1
@@ -42,21 +55,20 @@ function Neb(sim::AbstractSim,init_m::Any, intervals::Any;name="NEB", k=1.0e5, d
   init_images(neb)
   return neb
 end
-function create_neb_driver(driver::String, nxyz::Int64,N::Int64) #TODO: FIX ME
+
+function create_neb_driver(driver::String, nxyz::Int64, N::Int64) #TODO: FIX ME
   if driver=="NEB_SD"
       gk = zeros(Float64,3*nxyz,N)
-  return NEB_SD(gk, 0.0, 1e-5, 1e-14, 0)
+      return NEB_SD(gk, 0.0, 1e-5, 1e-14, 0)
+  elseif driver == "NEB_LLG"
+      tol = 1e-4
+      dopri5 = DormandPrince(nxyz*N, neb_llg_call_back, tol)
+      return NEB_LLG_Driver(dopri5)
   else
-    println("NEB_SD supported!")
+    error("Only Driver NEB_SD or NEB_LLG are supported!")
   end
 end
-mutable struct NEB_SD <: NEBDriver
-  gk::Array{Float64, 2}
-  tau::Float64
-  max_tau::Float64
-  min_tau::Float64
-  steps::Int64
-end
+
 @inline function cross_product(a::Array{T,1}, b::Array{T,1}) where {T<:AbstractFloat}
   x1=a[1];x2=a[2];x3=a[3];y1=b[1];y2=b[2];y3=b[3]
   return [-x3*y2 + x2*y3, x3*y1 - x1*y3, -x2*y1 + x1*y2]
@@ -431,7 +443,8 @@ function effective_field(neb::NEB)
   end
   return 0
 end
-function compute_system_energy(neb::NEB,  t::Float64)
+
+function compute_system_energy(neb::AbstractNEB,  t::Float64)
   sim = neb.sim
   images = neb.images
   #sim.total_energy = 0
@@ -444,8 +457,9 @@ function compute_system_energy(neb::NEB,  t::Float64)
   end
   return 0
 end
-function relax(neb::NEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks",save_ovf_every=-1, ovf_folder="ovfs")
+function relax(neb::AbstractNEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks",save_ovf_every=-1, ovf_folder="ovfs")
 
+  is_relax_NEB = false
   if isa(neb.driver, NEB_SD)
       is_relax_NEB = true
   end
@@ -459,9 +473,13 @@ function relax(neb::NEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1
 
   if is_relax_NEB
       relax_NEB(neb, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder,save_ovf_every, ovf_folder)
+  else
+      relax_NEB_LLG(neb, maxsteps, Float64(stopping_dmdt), save_m_every, save_vtk_every, vtk_folder,save_ovf_every, ovf_folder)
   end
   return nothing
 end
+
+
 function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String,save_ovf_every::Int64,ovf_folder::String)
   N = neb.N
   sim = neb.sim
@@ -491,7 +509,7 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
 
       max_torque = maximum(maxtorque)
       @info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", i, driver.tau, max_torque)
- 
+
       if save_m_every>0 && i%save_m_every == 0
         compute_system_energy(neb,  0.0)
         write_data(neb)
@@ -519,7 +537,9 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
   end
 return nothing
 end
-function write_data(neb::NEB)
+
+
+function write_data(neb::AbstractNEB)
   sim = neb.sim
   saver = neb.saver
   if !saver.header_saved
@@ -545,7 +565,8 @@ function write_data(neb::NEB)
   write(io, "\n")
   close(io);
 end
-function save_vtk(neb::NEB, fname::String; fields::Array{String, 1} = String[])
+
+function save_vtk(neb::AbstractNEB, fname::String; fields::Array{String, 1} = String[])
   sim = neb.sim
   mesh = sim.mesh
   nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
@@ -579,7 +600,8 @@ function save_vtk(neb::NEB, fname::String; fields::Array{String, 1} = String[])
   vtk_save(vtk)
   end
 end
-function save_ovf(neb::NEB,name::String)
+
+function save_ovf(neb::AbstractNEB, name::String)
   sim = neb.sim
   for n=1:neb.N
     sim.spin[:]=neb.images[:,n]

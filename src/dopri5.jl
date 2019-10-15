@@ -2,7 +2,7 @@
 #https://en.wikipedia.org/wiki/List_of_Runge%E2%80%93Kutta_methods#Dormand%E2%80%93Prince
 
 #To use this integrator, one needs to provide:
-#   - A simulation instance with field "spin" and "prespins"
+#   - A simulation instance with field "spin" and "prespin"
 #   - A call back function
 
 mutable struct DormandPrince <: Integrator
@@ -58,6 +58,7 @@ function dopri5_step_inner(sim::AbstractSim, step::Float64, t::Float64)
   y_next = sim.spin
   y_current = sim.prespin
   y_next .= y_current
+  #println("From integrator: y_next", y_next)
   ode.rhs_fun(sim, k1, y_next, t) #compute k1, TODO: copy k7 directly to k1
 
   y_next .= y_current .+ b[1].*k1.*step
@@ -109,14 +110,14 @@ function advance_step(sim::AbstractSim, integrator::DormandPrince)
     sim.prespin .= sim.spin
 
     if integrator.step_next <= 0
-        integrator.step_next = compute_init_step_DP(sim, 1.0)
+        integrator.step_next = compute_init_step_DP(sim, 1e-12)
     end
 
     step_next = integrator.step_next
 
     while true
         max_error = dopri5_step_inner(sim, step_next, t)/integrator.tol
-
+        
         integrator.succeed = (max_error <= 1)
 
         if integrator.succeed
