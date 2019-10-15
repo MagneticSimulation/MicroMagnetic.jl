@@ -10,13 +10,18 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5")
   field = zeros(Float64,3*nxyz)
   energy = zeros(Float64,nxyz)
   Ms = zeros(Float64,nxyz)
-  driver = create_driver(driver, integrator, nxyz)
 
-  headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
-  units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
+  headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
+  units = ["<>", "<J>",("<>", "<>", "<>")]
   results = [o::AbstractSim -> o.saver.nsteps,
-             o::AbstractSim -> o.saver.t,
-             o::AbstractSim -> sum(o.energy), average_m]
+             o::AbstractSim -> sum(o.energy),
+             average_m]
+  if driver == "LLG"
+      insert!(headers, 2, "time")
+      insert!(units, 2, "<s>")
+      insert!(results, 2, o::AbstractSim -> o.saver.t)
+  end
+  driver = create_driver(driver, integrator, nxyz)
   saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
   interactions = []
   if isa(mesh, FDMesh)
@@ -464,7 +469,7 @@ Spins can be stored in ovfs or vtks. ovf format can be chosen in "binary"(float6
 Fields can be stored in vtks by:
 
 ```julia
-relax(sim,save_vtk_every = 10,fields = ["demag","exch","anis"])
+relax(sim,save_vtk_every = 10, fields = ["demag", "exch", "anis"])
 ```
 
 """
