@@ -12,7 +12,7 @@ mutable struct NEB <: AbstractSim
   prespin::Array{Float64, 1} #A pointer to pre_images
   name::String
   field::Array{Float64, 2}
-  energy::Array{Float64, 2}
+  energy::Array{Float64, 1}
   saver::DataSaver
   spring_constant::Float64
 end
@@ -23,11 +23,10 @@ function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_c
   N = sum(intervals)+length(intervals)+1
   images = zeros(Float64,3*sim.nxyz,N)
   pre_images = zeros(Float64,3*sim.nxyz,N)
-  energy = zeros(Float64,nxyz,N)
+  energy = zeros(Float64, N)
   Ms = zeros(Float64,nxyz)
   driver = create_neb_driver(driver, nxyz, N)
   field = zeros(Float64,3*nxyz, N)
-  energy = zeros(nxyz,N)
 
   headers = ["steps"]
   units = ["<>"]
@@ -39,6 +38,7 @@ function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_c
   neb = NEB(N, sim.nxyz*N, sim, init_m, driver, images, pre_images, spins, prespins,
              name, field, energy, saver, spring_constant)
   init_images(neb, intervals)
+  compute_system_energy(neb, 0.0)
   return neb
 end
 
@@ -131,12 +131,13 @@ function init_images(neb::NEB, intervals::Any)
     println("Input error!")
   end
   neb.pre_images[:]=m[:]
+  normalise(neb.prespin, neb.nxyz)
   neb.images[:]=neb.pre_images[:]
   for n = 1:N
     name = @sprintf("E_total_%g",n)
     push!(neb.saver.headers,name)
     push!(neb.saver.units, "J")
-    fun =  o::NEB -> sum(o.energy[:,n])
+    fun =  o::NEB -> o.energy[n]
     push!(neb.saver.results, fun)
   end
 end
@@ -153,24 +154,20 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
   N = neb.N
   fill!(neb.field, 0.0)
   fill!(neb.energy, 0.0)
-  for n = 1:neb.N
-      for interaction in sim.interactions
-          effective_field(interaction, sim, images[:,n], 0.0)
-          neb.field[:,n] .+= interaction.field[:]
-          if (n==1)||(n==neb.N)
-            neb.field[:,n] .= 0
-          end
-          neb.energy[:,n] .+= interaction.energy[:]
+  for n = 2:neb.N-1
+      effective_field(sim, images[:,n], 0.0)
+      neb.field[:,n] .= sim.field
+      neb.energy[n] = sum(sim.energy)
   end
-  end
+
   t = zeros(3*nxyz,N)
   for n = 1:neb.N
     if (n==1)||(n==neb.N)
       continue
     end
-    E1 = sum(neb.energy[:,n-1])
-    E2 = sum(neb.energy[:,n])
-    E3 = sum(neb.energy[:,n+1])
+    E1 = neb.energy[n-1]
+    E2 = neb.energy[n]
+    E3 = neb.energy[n+1]
     dEmax = max(abs(E3-E2),abs(E2-E1))
     dEmin = min(abs(E3-E2),abs(E2-E1))
     tip = images[:,n+1]-images[:,n]
@@ -204,10 +201,8 @@ function compute_system_energy(neb::NEB,  t::Float64)
   #sim.total_energy = 0
   fill!(neb.energy, 0.0)
   for n = 1:neb.N
-    for interaction in sim.interactions
-      effective_field(interaction, sim, images[:,n], t)
-	    neb.energy[:,n] .+= interaction.energy[:]
-    end
+      effective_field(sim, images[:,n], 0.0)
+      neb.energy[n] = sum(sim.energy)
   end
   return 0
 end
