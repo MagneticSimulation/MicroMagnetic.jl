@@ -15,6 +15,7 @@ mutable struct NEB <: AbstractSim
   energy::Array{Float64, 1}
   saver::DataSaver
   spring_constant::Float64
+  gpu::Bool
 end
 
 
@@ -35,8 +36,9 @@ function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_c
 
   spins = reshape(images, 3*sim.nxyz*N)
   prespins = reshape(pre_images, 3*sim.nxyz*N)
+  gpu = isa(sim, MicroSimGPU) ? true : false  #FIXME
   neb = NEB(N, sim.nxyz*N, sim, init_m, driver, images, pre_images, spins, prespins,
-             name, field, energy, saver, spring_constant)
+             name, field, energy, saver, spring_constant, gpu)
   init_images(neb, intervals)
   compute_system_energy(neb, 0.0)
   return neb
@@ -154,14 +156,32 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
   N = neb.N
   fill!(neb.field, 0.0)
   fill!(neb.energy, 0.0)
-  for n = 2:neb.N-1
-      effective_field(sim, images[:,n], 0.0)
-      neb.field[:,n] .= sim.field
-      neb.energy[n] = sum(sim.energy)
-  end
+
+  if neb.gpu
+      for n = 2:neb.N-1
+          copyto!(sim.spin, images[:,n])
+          fill!(sim.prespin, 0.0) #we use prespin to store field
+          sim.total_energy = 0
+          for interaction in sim.interactions
+              effective_field(interaction, sim, sim.spin, t)
+              sim.prespin .+= sim.field
+              interaction.total_energy = sum(sim.energy)
+              sim.total_energy += interaction.total_energy
+          end
+          copyto!(neb.field[:, n], sim.prespin)
+          neb.energy[n] = sim.total_energy
+      end
+
+  else
+      for n = 2:neb.N-1
+          effective_field(sim, images[:,n], 0.0)
+          neb.field[:,n] .= sim.field
+          neb.energy[n] = sum(sim.energy)
+      end
+ end
 
   t = zeros(3*nxyz,N)
-  for n = 1:neb.N
+  Threads.@threads  for n = 1:neb.N
     if (n==1)||(n==neb.N)
       continue
     end
@@ -200,9 +220,22 @@ function compute_system_energy(neb::NEB,  t::Float64)
   images = neb.images
   #sim.total_energy = 0
   fill!(neb.energy, 0.0)
-  for n = 1:neb.N
-      effective_field(sim, images[:,n], 0.0)
-      neb.energy[n] = sum(sim.energy)
+  if neb.gpu
+      for n = 1:neb.N
+          copyto!(sim.spin, images[:,n])
+          sim.total_energy = 0
+          for interaction in sim.interactions
+              effective_field(interaction, sim, sim.spin, t)
+              interaction.total_energy = sum(sim.energy)
+              sim.total_energy += interaction.total_energy
+          end
+          neb.energy[n] = sim.total_energy
+      end
+  else
+      for n = 1:neb.N
+          effective_field(sim, images[:,n], 0.0)
+          neb.energy[n] = sum(sim.energy)
+      end
   end
   return 0
 end

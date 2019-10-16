@@ -1,3 +1,5 @@
+using Dates
+
 mutable struct NEB_LLG_Driver <: NEBDriver
     nsteps::Int64
     ode::Integrator
@@ -39,8 +41,8 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
 
         step_size = rk_data.step
         max_dmdt = compute_dmdt(neb.prespin, neb.spin, neb.nxyz, step_size)
-        @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
-                     i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor)
+        @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e  time=%s",
+                     i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor, Dates.now())
 
         if save_m_every>0 && i%save_m_every == 0
             compute_system_energy(neb,  0.0)
