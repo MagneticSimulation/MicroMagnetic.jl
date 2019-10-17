@@ -1,3 +1,16 @@
+mutable struct OVF2
+    xnodes::Int64
+    ynodes::Int64
+    znodes::Int64
+    xstepsize::Float64
+    ystepsize::Float64
+    zstepsize::Float64
+    data_type::String
+    data::Array{Float64, 1}
+    OVF2() = new()
+end
+
+
 """
   save_ovf(sim::AbstractSim, fname::String; dataformat::String = "text")
 
@@ -150,66 +163,44 @@ end
     Initialize sim with an ovf file named of "fname.ovf".
 """
 function read_ovf(sim::AbstractSim, fname::String)
-    nxyz = sim.nxyz
-
-    io = open(fname * ".ovf", "r")
-    n = countlines(io)
-    seek(io,0)
-    for i = 1:n
-        f = readline(io)
-        if startswith(f, "# Begin: Data")
-            if f[15:end] == "Binary 8"
-                read_OVF2_Binary8(io,sim)
-                close(io)
-                return nothing
-            elseif  f[15:end] == "Binary 4"
-                read_OVF2_Binary4(io,sim)
-                close(io)
-                return nothing
-            elseif  f[15:end] == "text"
-                read_OVF2_Text(io,sim)
-                close(io)
-                return nothing
-            else
-                @info "Data format error!"
-                return nothing
-            end
-        end
+    ovf  = read_ovf(fname)
+    nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
+    if nxyz != sim.nxyz
+        error("The ovf does not match the sim.mesh")
     end
+    copyto!(sim.prespin, ovf.data)
+    copyto!(sim.spin, ovf.data)
 end
 
-function read_OVF2_Binary4(io::IOStream, sim::AbstractSim)
-    nxyz = sim.nxyz
+function read_OVF2_Binary4(io::IOStream, ovf::OVF2)
+    ovf.data_type = "Binary 4"
+    nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
     spin = zeros(Float64, 3*nxyz)
     if read(io,Float32) == 1234567.0
       for i = 1:3*nxyz
         spin[i] = Float64(read(io, Float32))
       end
-    else
-        @info "Data format error!"
     end
-
-    copyto!(sim.prespin, spin)
-    copyto!(sim.spin, spin)
+    ovf.data = spin
+    return nothing
 end
 
-function read_OVF2_Binary8(io::IOStream, sim::AbstractSim)
-    nxyz = sim.nxyz
+function read_OVF2_Binary8(io::IOStream, ovf::OVF2)
+    ovf.data_type = "Binary 8"
+    nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
     spin = zeros(Float64, 3*nxyz)
     if read(io, Float64) == 123456789012345.0
       for i = 1:3*nxyz
-        spin[i] = read(io,Float64)
+        spin[i] = read(io, Float64)
       end
-    else
-        @info "Data format error! ppp"
     end
-
-    copyto!(sim.prespin, spin)
-    copyto!(sim.spin, spin)
+    ovf.data = spin
+    return nothing
 end
 
-function read_OVF2_Text(io::IOStream, sim::AbstractSim)
-    nxyz = sim.nxyz
+function read_OVF2_Text(io::IOStream, ovf::OVF2)
+    ovf.data_type = "text"
+    nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
     spin = zeros(Float64, 3*nxyz)
     i = 0
     for line in eachline(io)
@@ -221,6 +212,55 @@ function read_OVF2_Text(io::IOStream, sim::AbstractSim)
             spin[i] = parse(Float64, s)
         end
     end
-    copyto!(sim.prespin, spin)
-    copyto!(sim.spin, spin)
+    ovf.data = spin
+    return nothing
+end
+
+
+"""
+    read_ovf(fname)
+
+    Load ovf file as OVF2 Type, where spin is stored in OVF2.data
+"""
+function read_ovf(fname::String)
+    if !endswith(fname, ".ovf")
+        fname = fname*".ovf"
+    end
+
+    ovf = OVF2()
+
+    io = open(fname, "r")
+    if !startswith(readline(io), "# OOMMF OVF 2")
+        error("Input is not a OVF2 file.")
+    end
+
+    for line in eachline(io)
+        if startswith(line, "# xnodes:")
+            ovf.xnodes = parse(Int64, line[10:end])
+        elseif startswith(line, "# ynodes:")
+            ovf.ynodes = parse(Int64, line[10:end])
+        elseif startswith(line, "# znodes:")
+            ovf.znodes = parse(Int64, line[10:end])
+        elseif startswith(line, "# xstepsize:")
+            ovf.xstepsize = parse(Float64, line[13:end])
+        elseif startswith(line, "# ystepsize:")
+            ovf.ystepsize = parse(Float64, line[13:end])
+        elseif startswith(line, "# zstepsize:")
+            ovf.zstepsize = parse(Float64, line[13:end])
+        elseif startswith(line, "# Begin: Data")
+            if line[15:end] == "Binary 8"
+                read_OVF2_Binary8(io, ovf)
+                close(io)
+            elseif  line[15:end] == "Binary 4"
+                read_OVF2_Binary4(io, ovf)
+                close(io)
+            elseif line[15:end] == "text"
+                read_OVF2_Text(io, ovf)
+                close(io)
+            else
+                error("Data format error!")
+            end
+        end
+    end
+    return ovf
 end
