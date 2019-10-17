@@ -65,10 +65,14 @@ end
 function rotating_oprate(m1::Array{Float64,1},m2::Array{Float64,1},theta::Float64) ##return m'=retate(m1,theta)
   m=cross_product(m1,m2)
   if m==[0,0,0]
-    if m1==[0,0,1.0]
-      m= [1.0,0,0]
+    if m1==m2
+      return m1
     else
-     m=cross_product(m1,[0,0,1.0])
+      if m1==[0,0,1.0]
+        m= [1.0,0,0]
+      else
+        m=cross_product(m1,[0,0,1.0])
+      end
     end
   end
   normalise(m,1)

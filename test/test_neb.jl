@@ -1,6 +1,27 @@
 using JuMag
 using Printf
 using NPZ
+using Test
+
+m1=[1.0,0,0]
+m2=[0,1.0,0]
+m3=[0,0,1.0]
+
+mxy=JuMag.rotating_oprate(m1,m2,pi/4)
+mxz=JuMag.rotating_oprate(m1,m3,pi/4)
+myz=JuMag.rotating_oprate(m2,m3,pi/4)
+@test isapprox(mxy,[sqrt(2)/2,sqrt(2)/2,0])
+@test isapprox(mxz,[sqrt(2)/2,0,sqrt(2)/2])
+@test isapprox(myz,[0,sqrt(2)/2,sqrt(2)/2])
+interplotion1=JuMag.interpolate_m([1.0,0,0],[0,1.0,0],1)
+interplotion2=JuMag.interpolate_m([1.0,0,0],[1.0,0,0],1)
+interplotion3=JuMag.interpolate_m([0,0,1.0],[0,0,1.0],1)
+@test isapprox(interplotion1[:,1],[1.0,0,0])
+@test isapprox(interplotion1[:,2],[sqrt(2)/2,sqrt(2)/2,0])
+@test isapprox(interplotion2[:,1],[1.0,0,0])
+@test isapprox(interplotion2[:,2],[1.0,0,0])
+@test isapprox(interplotion3[:,1],[0,0,1.0])
+@test isapprox(interplotion3[:,2],[0,0,1.0])
 
 function creat_sim()
     mesh =  FDMesh(nx=4, ny=4, nz=4, dx=2.5e-9, dy=2.5e-9, dz=2.5e-9)
