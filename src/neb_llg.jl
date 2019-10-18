@@ -36,7 +36,11 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
     rk_data = neb.driver.ode
     for i=1:maxsteps
 
-        advance_step(neb, rk_data)
+        if !advance_step(neb, rk_data)
+            @info("Advance step failed, end.")
+            break
+        end
+
         neb.driver.nsteps = rk_data.nsteps
 
         step_size = rk_data.step

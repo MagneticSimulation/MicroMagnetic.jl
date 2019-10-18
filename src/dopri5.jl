@@ -105,6 +105,8 @@ end
 
 function advance_step(sim::AbstractSim, integrator::DormandPrince)
 
+    max_nsteps = 100
+
     t = integrator.t
 
     sim.prespin .= sim.spin
@@ -115,9 +117,17 @@ function advance_step(sim::AbstractSim, integrator::DormandPrince)
 
     step_next = integrator.step_next
 
+    nstep = 1
     while true
         max_error = dopri5_step_inner(sim, step_next, t)/integrator.tol
-        
+        if isnan(max_error)
+            step_next = 1e-14
+        end
+        nstep += 1
+        if nstep > max_nsteps
+            @info("Too many inner steps, the system may not converge!", step_next, max_error)
+            return false
+        end
         integrator.succeed = (max_error <= 1)
 
         if integrator.succeed
@@ -132,4 +142,5 @@ function advance_step(sim::AbstractSim, integrator::DormandPrince)
             step_next = step_next*min(integrator.facmax, max(integrator.facmin, factor))
         end
     end
+    return true
 end

@@ -18,7 +18,6 @@ mutable struct NEB <: AbstractSim
   gpu::Bool
 end
 
-
 function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_constant=1.0e5, driver="LLG")
   nxyz = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
   N = sum(intervals)+length(intervals)+1
@@ -163,7 +162,7 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
 
   if neb.gpu
       for n = 2:neb.N-1
-          copyto!(sim.spin, images[:,n])
+          copyto!(sim.spin, view(images, :, n))
           fill!(sim.prespin, 0.0) #we use prespin to store field
           sim.total_energy = 0
           for interaction in sim.interactions
@@ -172,7 +171,7 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
               interaction.total_energy = sum(sim.energy)
               sim.total_energy += interaction.total_energy
           end
-          copyto!(neb.field[:, n], sim.prespin)
+          copyto!(view(neb.field, :, n), sim.prespin)
           neb.energy[n] = sim.total_energy
       end
 
@@ -226,7 +225,7 @@ function compute_system_energy(neb::NEB,  t::Float64)
   fill!(neb.energy, 0.0)
   if neb.gpu
       for n = 1:neb.N
-          copyto!(sim.spin, images[:,n])
+          copyto!(sim.spin, view(images, :, n))
           sim.total_energy = 0
           for interaction in sim.interactions
               effective_field(interaction, sim, sim.spin, t)
