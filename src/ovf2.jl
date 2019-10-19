@@ -254,7 +254,7 @@ function read_ovf(fname::String)
             elseif  line[15:end] == "Binary 4"
                 read_OVF2_Binary4(io, ovf)
                 close(io)
-            elseif line[15:end] == "text"
+            elseif lowercase(line[15:end]) == "text"
                 read_OVF2_Text(io, ovf)
                 close(io)
             else

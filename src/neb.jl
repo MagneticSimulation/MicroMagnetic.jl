@@ -48,7 +48,7 @@ function create_neb_driver(driver::String, nxyz::Int64, N::Int64) #TODO: FIX ME
       gk = zeros(Float64,3*nxyz,N)
       return NEB_SD(gk, 0.0, 1e-5, 1e-14, 0)
   elseif driver == "LLG"
-      tol = 1e-4
+      tol = 1e-6
       dopri5 = DormandPrince(nxyz*N, neb_llg_call_back, tol)
       return NEB_LLG_Driver(0, dopri5)
   else
@@ -161,6 +161,7 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
   fill!(neb.energy, 0.0)
 
   if neb.gpu
+      local_field = zeros(3*sim.nxyz)
       for n = 2:neb.N-1
           copyto!(sim.spin, view(images, :, n))
           fill!(sim.prespin, 0.0) #we use prespin to store field
@@ -171,7 +172,9 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
               interaction.total_energy = sum(sim.energy)
               sim.total_energy += interaction.total_energy
           end
-          copyto!(view(neb.field, :, n), sim.prespin)
+          #copyto!(view(neb.field, :, n), sim.prespin) #FIXME: we need to wait the bug in CuArrays to be fixed
+          copyto!(local_field, sim.prespin)
+          neb.field[:, n] .= local_field
           neb.energy[n] = sim.total_energy
       end
 
@@ -182,7 +185,6 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
           neb.energy[n] = sum(sim.energy)
       end
  end
-
   t = zeros(3*nxyz,N)
   Threads.@threads  for n = 1:neb.N
     if (n==1)||(n==neb.N)

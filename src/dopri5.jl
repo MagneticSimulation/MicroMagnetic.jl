@@ -113,6 +113,9 @@ function advance_step(sim::AbstractSim, integrator::DormandPrince)
 
     if integrator.step_next <= 0
         integrator.step_next = compute_init_step_DP(sim, 1e-12)
+        if integrator.step_next<1e-15
+            #integrator.step_next = 1e-15
+        end
     end
 
     step_next = integrator.step_next
