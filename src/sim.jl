@@ -151,11 +151,11 @@ function init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
 end
 
 """
-    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
+    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman", save_energy=true)
 
-Add a static Zeeman energy to the simulation.
+Add a static Zeeman energy to the simulation. If save_energy = false, the total energy will not be saved.
 """
-function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
+function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman", save_energy=true)
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -163,29 +163,30 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 
   zeeman =  Zeeman(field, energy, name)
   push!(sim.interactions, zeeman)
+  if save_energy
+      if isa(H0, Tuple)
+          push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
+          push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
+          id = length(sim.interactions)
+          fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
+          push!(sim.saver.results, fun)
+      end
 
-  if isa(H0, Tuple)
-      push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
-      push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
-      id = length(sim.interactions)
-      fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
-      push!(sim.saver.results, fun)
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
   end
-
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
   return zeeman
 end
 
 """
     update_zeeman(sim::AbstractSim, H0::Tuple; name="zeeman")
 
-Set the external field of Zeeman z to H0 where H0 is TupleOrArrayOrFunction.
-For example,
+Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its name. For example,
+
 ```julia
-   add_zeeman(sim, (0,0,0)) #create a zeeman energy with field (0,0,0) A/m
-   update_zeeman(sim, (0,0,1e5)) #change the field to (0,0,1e5) A/m
+   add_zeeman(sim, (0,0,0), name="my_H")  #create a zeeman energy with field (0,0,0) A/m
+   update_zeeman(sim, (0,0,1e5), name="my_H")  #change the field to (0,0,1e5) A/m
 ```
 
 """
@@ -200,10 +201,11 @@ function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeema
       return nothing
     end
   end
+  return nothing
 end
 
 """
-    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
+    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman", save_energy=true)
 
 Add a time varying zeeman to system.
 
@@ -228,7 +230,7 @@ Example:
   add_zeeman(sim, spatial_H, time_fun)
 ```
 """
-function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
+function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman", save_energy=true)
   nxyz = sim.nxyz
   init_field = zeros(Float64, 3*nxyz)
   field = zeros(Float64, 3*nxyz)
@@ -237,18 +239,19 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; 
 
   zeeman =  TimeZeeman(ft, init_field, field, energy, name)
   push!(sim.interactions, zeeman)
+  if save_energy
+      if isa(H0, Tuple)
+          push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
+          push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
+          id = length(sim.interactions)
+          fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
+          push!(sim.saver.results, fun)
+      end
 
-  if isa(H0, Tuple)
-      push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
-      push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
-      id = length(sim.interactions)
-      fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
-      push!(sim.saver.results, fun)
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
   end
-
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
   return zeeman
 end
 
@@ -261,7 +264,7 @@ For example:
 add_exc_vector(sim, (2e-12,5e-12,0))
 ```
 """
-function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch_vector")
+function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch_vector", save_energy=true)
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -270,10 +273,12 @@ function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch
   exch = Vector_Exchange(Spatial_A , field, energy, name)
   push!(sim.interactions, exch)
 
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  id = length(sim.interactions)
-  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  if save_energy
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
   return exch
 end
 
@@ -282,7 +287,7 @@ end
 
 Add exchange energy to the system.
 """
-function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
+function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch", save_energy=true)
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -295,17 +300,17 @@ function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   end
   push!(sim.interactions, exch)
 
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  id = length(sim.interactions)
-  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  if save_energy
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
   return exch
 end
 
 
-
-
-function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="rkky")
+function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="rkky", save_energy=true)
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -313,15 +318,17 @@ function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="r
 
   push!(sim.interactions, exch)
 
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  id = length(sim.interactions)
-  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  if save_energy
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
   return exch
 end
 
 """
-    add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
+    add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi", save_energy=true)
 
 Add DMI to the system. Example:
 
@@ -329,22 +336,24 @@ Add DMI to the system. Example:
    add_dmi(sim, (1e-3, 1e-3, 0))
 ```
 """
-function add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
+function add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi", save_energy=true)
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
   dmi =  BulkDMI(Float64(D[1]), Float64(D[2]), Float64(D[3]), field, energy, name)
   push!(sim.interactions, dmi)
 
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  id = length(sim.interactions)
-  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  if save_energy
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
   return dmi
 end
 
 """
-    add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
+    add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk", save_energy=true)
 
 Add DMI to the system. `type` could be "bulk" or "interfacial"
 Examples:
@@ -357,47 +366,51 @@ or
    add_dmi(sim, 1e-3, type="bulk")
 ```
 """
-function add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
+function add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk", save_energy=true)
     if type == "interfacial"
-        return add_dmi_interfacial(sim, D, name=name)
+        return add_dmi_interfacial(sim, D, name=name, save_energy=save_energy)
     end
-   return add_dmi(sim, (D,D,D), name=name)
+   return add_dmi(sim, (D,D,D), name=name, save_energy=save_energy)
 end
 
-function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
+function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi", save_energy=true)
     nxyz = sim.nxyz
     field = zeros(Float64, 3*nxyz)
     energy = zeros(Float64, nxyz)
     dmi =  InterfacialDMI(Float64(D), field, energy, name)
     push!(sim.interactions, dmi)
 
-    push!(sim.saver.headers, string("E_",name))
-    push!(sim.saver.units, "J")
-    id = length(sim.interactions)
-    push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+    if save_energy
+        push!(sim.saver.headers, string("E_",name))
+        push!(sim.saver.units, "J")
+        id = length(sim.interactions)
+        push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+    end
     return dmi
 end
 
 """
-    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
+    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, save_energy=true)
 
 Add Demag to the system. `Nx`, `Ny` and `Nz` can be used to describe the macro boundary conditions which means that
 the given mesh is repeated `2Nx+1`, `2Ny+1 and `2Nz+1` times in `x`, `y` and `z` direction, respectively.
 """
-function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
+function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, save_energy=true)
   demag = init_demag(sim, Nx, Ny, Nz)
   demag.name = name
   push!(sim.interactions, demag)
 
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  id = length(sim.interactions)
-  push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
+  if save_energy
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
+  end
   return demag
 end
 
 """
-    add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
+    add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis", save_energy=true)
 
 Add Anisotropy to the system, where the energy density is given by
 
@@ -405,7 +418,7 @@ Add Anisotropy to the system, where the energy density is given by
 E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
 ```
 """
-function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
+function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis", save_energy=true)
   nxyz = sim.nxyz
   Kus =  zeros(Float64, nxyz)
   init_scalar!(Kus, sim.mesh, Ku)
@@ -416,22 +429,27 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   anis =  Anisotropy(Kus, naxis, field, energy, name)
   push!(sim.interactions, anis)
 
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  id = length(sim.interactions)
-  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  if save_energy
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
   return anis
 end
 """
     update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
-Replace the value of Anisotropy with Ku
+
+update anisotropy constant Ku according to its name.
+
 Example:
 
 ```julia
-mesh = FDMesh(nx=200, ny=200, nz=12, dx=5e-9, dy=5e-9, dz=5e-9)
-sim = Sim(mesh)
-add_anis(sim,3e4,axis = (0,0,1))
-update_anis(sim, 5e4)
+    mesh = FDMesh(nx=200, ny=200, nz=12, dx=5e-9, dy=5e-9, dz=5e-9)
+    sim = Sim(mesh)
+    add_anis(sim, 3e4, axis = (0,0,1), name="K1")
+    add_anis(sim, 1e5, axis = (1,0,0), name="K2")
+    update_anis(sim, 5e4, name="K2")  #update anisotropy K2
 ````
 """
 function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
@@ -444,19 +462,22 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
       return nothing
     end
   end
+  return nothing
 end
 
-function add_cubic_anis(sim::AbstractSim, Kc::Float64; name="cubic")
+function add_cubic_anis(sim::AbstractSim, Kc::Float64; name="cubic", save_energy=true)
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
   anis =  CubicAnisotropy(Kc, field, energy, name)
   push!(sim.interactions, anis)
 
-  push!(sim.saver.headers, string("E_",name))
-  push!(sim.saver.units, "J")
-  id = length(sim.interactions)
-  push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  if save_energy
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
   return anis
 end
 
