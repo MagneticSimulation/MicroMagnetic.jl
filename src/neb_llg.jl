@@ -23,8 +23,9 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
     driver = neb.driver
 
     if save_m_every>0
-        compute_system_energy(neb,  0.0)
+        compute_system_energy(neb)
         write_data(neb)
+        write_neb_CartesianDistance(neb)
     end
     if save_vtk_every > 0
         save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, 0)))
@@ -49,8 +50,9 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
                      i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor, Dates.now())
 
         if save_m_every>0 && i%save_m_every == 0
-            compute_system_energy(neb,  0.0)
+            compute_system_energy(neb)
             write_data(neb)
+            write_neb_CartesianDistance(neb)
         end
         if save_vtk_every > 0 && i%save_vtk_every == 0
             save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
@@ -63,8 +65,9 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
             @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
 
             if save_m_every>0
-                compute_system_energy(neb, 0.0)
+                compute_system_energy(neb)
                 write_data(neb)
+                write_neb_CartesianDistance(neb)
             end
             if save_vtk_every > 0
                 save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))

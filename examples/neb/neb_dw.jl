@@ -32,4 +32,4 @@ neb = NEB(sim, init_images, [6, 6]; name="dw", driver="LLG")
 neb.spring_constant = 1e6
 #println(neb.images)
 
-relax(neb, stopping_dmdt=0.1, save_vtk_every=500)
+relax(neb, stopping_dmdt=0.1, save_ovf_every=500)

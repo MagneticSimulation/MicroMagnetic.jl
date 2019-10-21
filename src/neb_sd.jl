@@ -255,7 +255,7 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
   driver = neb.driver
   maxtorque=zeros(N)
   if save_m_every>0
-    compute_system_energy(neb,  0.0)
+    compute_system_energy(neb)
     write_data(neb)
   end
   if save_vtk_every > 0
@@ -279,7 +279,7 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
       @info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", i, driver.tau, max_torque)
 
       if save_m_every>0 && i%save_m_every == 0
-        compute_system_energy(neb,  0.0)
+        compute_system_energy(neb)
         write_data(neb)
       end
       if save_vtk_every > 0 && i%save_vtk_every == 0
@@ -291,7 +291,7 @@ function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_e
       if max_torque < stopping_torque
         @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
         if save_m_every>0
-         compute_system_energy(neb, 0.0)
+         compute_system_energy(neb)
           write_data(neb)
         end
         if save_vtk_every > 0
