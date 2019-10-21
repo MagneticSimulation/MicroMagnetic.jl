@@ -3,32 +3,45 @@
 
 Create a simulation instance for given mesh.
 """
-function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5")
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  spin = zeros(Float64,3*nxyz)
-  prespin = zeros(Float64,3*nxyz)
-  field = zeros(Float64,3*nxyz)
-  energy = zeros(Float64,nxyz)
-  Ms = zeros(Float64,nxyz)
+function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5", save_data=true)
+    if isa(mesh, FDMesh)
+        sim = MicroSim()
+    else
+        sim = AtomicSim()
+    end
 
-  headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
-  units = ["<>", "<J>",("<>", "<>", "<>")]
-  results = [o::AbstractSim -> o.saver.nsteps,
-             o::AbstractSim -> sum(o.energy),
-             average_m]
-  if driver == "LLG"
-      insert!(headers, 2, "time")
-      insert!(units, 2, "<s>")
-      insert!(results, 2, o::AbstractSim -> o.saver.t)
-  end
-  driver = create_driver(driver, integrator, nxyz)
-  saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
-  interactions = []
-  if isa(mesh, FDMesh)
-    return MicroSim(mesh, driver, saver, spin, prespin, field, energy, Ms, nxyz, name, interactions)
-  else
-    return AtomicSim(mesh, driver, saver, spin, prespin, field, energy, Ms, nxyz, name, interactions)
-  end
+    sim.name = name
+    sim.mesh = mesh
+    nxyz = mesh.nx*mesh.ny*mesh.nz
+    sim.nxyz = nxyz
+    sim.spin = zeros(Float64,3*nxyz)
+    sim.prespin = zeros(Float64,3*nxyz)
+    sim.field = zeros(Float64,3*nxyz)
+    sim.energy = zeros(Float64,nxyz)
+    sim.Ms = zeros(Float64,nxyz)
+
+    if save_data
+        headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
+        units = ["<>", "<J>",("<>", "<>", "<>")]
+        results = [o::AbstractSim -> o.saver.nsteps,
+                o::AbstractSim -> sum(o.energy),
+                average_m]
+        sim.saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
+    end
+
+    if driver!="none"
+      if driver == "LLG" && save_data
+          saver = sim.saver
+          insert!(saver.headers, 2, "time")
+          insert!(saver.units, 2, "<s>")
+          insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
+      end
+      sim.driver = create_driver(driver, integrator, nxyz)
+    end
+
+   sim.interactions = []
+   #println(sim)
+   return sim
 end
 
 """

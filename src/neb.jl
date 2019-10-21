@@ -1,3 +1,4 @@
+using LinearAlgebra
 abstract type NEBDriver end
 
 mutable struct NEB <: AbstractSim
@@ -15,6 +16,7 @@ mutable struct NEB <: AbstractSim
   energy::Array{Float64, 1}
   saver::DataSaver
   spring_constant::Float64
+  tangents::Array{Float64, 2}
   gpu::Bool
 end
 
@@ -22,6 +24,7 @@ function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_c
   nxyz = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
   N = sum(intervals)+length(intervals)+1
   images = zeros(Float64,3*sim.nxyz,N)
+  tangents = zeros(Float64,3*sim.nxyz,N)
   pre_images = zeros(Float64,3*sim.nxyz,N)
   energy = zeros(Float64, N)
   Ms = zeros(Float64,nxyz)
@@ -37,7 +40,7 @@ function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_c
   prespins = reshape(pre_images, 3*sim.nxyz*N)
   gpu = isa(sim, MicroSimGPU) ? true : false  #FIXME
   neb = NEB(N, sim.nxyz*N, sim, init_m, driver, images, pre_images, spins, prespins,
-             name, field, energy, saver, spring_constant, gpu)
+             name, field, energy, saver, spring_constant, tangents, gpu)
   init_images(neb, intervals)
   compute_system_energy(neb, 0.0)
   return neb
@@ -61,7 +64,7 @@ end
   return [-x3*y2 + x2*y3, x3*y1 - x1*y3, -x2*y1 + x1*y2]
 end
 
-function rotating_oprate(m1::Array{Float64,1},m2::Array{Float64,1},theta::Float64) ##return m'=retate(m1,theta)
+function rotation_operator(m1::Array{Float64,1},m2::Array{Float64,1},theta::Float64) ##return m'=retate(m1,theta)
   m=cross_product(m1,m2)
   if m==[0,0,0]
     if m1==m2
@@ -100,7 +103,7 @@ function interpolate_m(m1::Array{Float64,1}, m2::Array{Float64,1}, n::Int)
       theta=acos(b1[:,j]'*b2[:,j])
       dtheta=theta/(n+1)
       angle=(i-1)dtheta
-      m[k,i],m[k+1,i],m[k+2,i]=rotating_oprate(b1[:,j],b2[:,j],angle)
+      m[k,i],m[k+1,i],m[k+2,i]=rotation_operator(b1[:,j],b2[:,j],angle)
     end
   end
   return m
@@ -147,11 +150,7 @@ function init_images(neb::NEB, intervals::Any)
   end
 end
 
-function model(a::Array{Float64,1})
-  return sqrt(a'*a)
-end
-
-function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
+function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
   sim = neb.sim
   nxyz = sim.nxyz
   #neb.spin[:] = spin[:], we already copy spin to neb.images in dopri5
@@ -167,7 +166,7 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
           fill!(sim.prespin, 0.0) #we use prespin to store field
           sim.total_energy = 0
           for interaction in sim.interactions
-              effective_field(interaction, sim, sim.spin, t)
+              effective_field(interaction, sim, sim.spin, 0.0)
               sim.prespin .+= sim.field
               interaction.total_energy = sum(sim.energy)
               sim.total_energy += interaction.total_energy
@@ -185,7 +184,7 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
           neb.energy[n] = sum(sim.energy)
       end
  end
-  t = zeros(3*nxyz,N)
+  t = neb.tangents
   Threads.@threads  for n = 1:neb.N
     if (n==1)||(n==neb.N)
       continue
@@ -211,11 +210,11 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1}, t::Float64)
       fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], t[j,n],t[j+1,n],t[j+2,n])
       t[j,n],t[j+1,n],t[j+2,n] = cross_product(fx,fy,fz, images[j,n],images[j+1,n],images[j+2,n])
     end
-    norm_t = model(t[:,n])
+    norm_t = LinearAlgebra.norm(t[:,n])
     t[:,n] = t[:,n]/norm_t
     f = neb.field[:,n]'*t[:,n]
     neb.field[:,n] .-= f*t[:,n]
-    neb.field[:,n] .+= neb.spring_constant*(model(tip)-model(tim))*t[:,n]
+    neb.field[:,n] .+= neb.spring_constant*(LinearAlgebra.norm(tip)-LinearAlgebra.norm(tim))*t[:,n]
   end
   return 0
 end

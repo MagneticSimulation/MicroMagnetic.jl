@@ -135,7 +135,7 @@ function search_tau(neb::NEB)
   driver.tau = tau1
   neb.images = update_images(driver,images,h0,nxyz,N)
 
-  effective_field_NEB(neb, neb.spin, 0.0)
+  effective_field_NEB(neb, neb.spin)
 
   gk1 =compute_gk(neb.images,neb.field,nxyz,N)
   gk1_norm = compute_norm_gk(gk1,N)
@@ -143,7 +143,7 @@ function search_tau(neb::NEB)
     tau2 = tau1 + dtau
     driver.tau = tau2
     neb.images = update_images(driver,images,h0,nxyz,N)
-    effective_field_NEB(neb, neb.spin, 0.0)
+    effective_field_NEB(neb, neb.spin)
     gk2 =compute_gk(neb.images,neb.field,nxyz,N)
     gk2_norm = compute_norm_gk(gk2,N)
     if gk1_norm>=gk2_norm
@@ -163,14 +163,14 @@ function search_tau(neb::NEB)
     tau1 = a + 1/3*(b-a)
     driver.tau = tau1
     neb.images = update_images(driver,images,h0,nxyz,N)
-    effective_field_NEB(neb, neb.spin, 0.0)
+    effective_field_NEB(neb, neb.spin)
     gk1 =compute_gk(neb.images,neb.field,nxyz,N)
     gk1_norm = compute_norm_gk(gk1,N)
 
     tau2 = a + 2/3*(b-a)
     driver.tau = tau2
     neb.images = update_images(driver,images,h0,nxyz,N)
-    effective_field_NEB(neb, neb.spin, 0.0)
+    effective_field_NEB(neb, neb.spin)
     gk2 =compute_gk(neb.images,neb.field,nxyz,N)
     gk2_norm = compute_norm_gk(gk2,N)
     if gk1_norm<gk2_norm

@@ -135,6 +135,7 @@ mutable struct MicroSim <: AbstractSim
   nxyz::Int64
   name::String
   interactions::Array
+  MicroSim() = new()
 end
 
 mutable struct AtomicSim <: AbstractSim
@@ -149,6 +150,7 @@ mutable struct AtomicSim <: AbstractSim
   nxyz::Int64
   name::String
   interactions::Array
+  AtomicSim() = new()
 end
 
 mutable struct Exchange <: MicroEnergy
