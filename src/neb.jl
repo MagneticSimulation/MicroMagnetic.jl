@@ -80,7 +80,7 @@ function init_images(neb::NEB, intervals::Any)
   sim=neb.sim
   nxyz=sim.nxyz
   N=neb.N
-  m=zeros(3*nxyz,N)
+  images = neb.images
   pics= neb.init_m
   if length(pics)==length(intervals)+1
     n=1
@@ -91,23 +91,21 @@ function init_images(neb::NEB, intervals::Any)
       init_vector!(m2, sim.mesh, pics[i+1])
       normalise(m1, nxyz)
       normalise(m2, nxyz)
-      #M = interpolate_m(m1, m2, Int(intervals[i]))
-      M = interpolate_m_spherical(m1,m2,Int(intervals[i]))
+      M = interpolate_m(m1, m2, Int(intervals[i]))
+      #M = interpolate_m_spherical(m1,m2,Int(intervals[i]))
       for j=1:intervals[i]+1
-          m[:,n]=M[:,j]
+          images[:,n]=M[:,j]
           n += 1
       end
     end
-    m3 = zeros(3*nxyz)
-    init_vector!(m3, sim.mesh, pics[length(pics)])
-    normalise(m3,nxyz)
-    m[:,N]=m3[:]
+    init_vector!(images[:,N], sim.mesh, pics[length(pics)])
+    normalise(images[:,N],nxyz)
   else
     println("Input error!")
   end
-  neb.pre_images[:]=m[:]
-  normalise(neb.prespin, neb.nxyz)
-  neb.images[:]=neb.pre_images[:]
+
+  normalise(neb.spin, neb.nxyz)
+  neb.pre_images[:]=neb.images[:]
 
   for n = 1:N
     name = @sprintf("E_total_%g",n)
@@ -315,7 +313,7 @@ function rotation_operator(m1::Array{Float64,1}, m2::Array{Float64,1}, theta::Fl
   a23 = (1-ct)*m[2]*m[3] - st*m[1]
   a31 = (1-ct)*m[1]*m[3] - st*m[2]
   a32 = (1-ct)*m[2]*m[3] + st*m[1]
-  a33 = ct+(1-ct*m[3]*m[3])
+  a33 = ct+(1-ct)*m[3]*m[3]
   op=[a11 a12 a13; a21 a22 a23; a31 a32 a33]
 
   return op*m1
