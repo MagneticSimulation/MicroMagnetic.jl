@@ -98,8 +98,10 @@ function init_images(neb::NEB, intervals::Any)
           n += 1
       end
     end
-    init_vector!(images[:,N], sim.mesh, pics[length(pics)])
-    normalise(images[:,N],nxyz)
+    m = zeros(3*nxyz)
+    init_vector!(m, sim.mesh, pics[length(pics)])
+    normalise(m,nxyz)
+    images[:,N].=m
   else
     println("Input error!")
   end
