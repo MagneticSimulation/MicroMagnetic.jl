@@ -45,8 +45,13 @@ end
 
 sim=creat_sim()
 
-neb = NEB(sim, [ (1,0,0), (0,1,0)], 1;name="haha")
+neb = NEB(sim, [ (1,0,0), (0,1,0)], 1; name="haha")
 println(neb.images)
-@test isapprox(neb.CartesianDistance[1],atan(sqrt(2)/2,sqrt(2)/2))
+@test isapprox(neb.distance[1],atan(sqrt(2)/2,sqrt(2)/2))
 
+neb = NEB(sim, [ (1,0,0), (0,0,1), (-1,0,0)], [2, 2]; name="test")
+@test(size(neb.images) == (3, 7))
+for i = 1:7
+    println(neb.images[:, i])
+end
 #relax(neb)

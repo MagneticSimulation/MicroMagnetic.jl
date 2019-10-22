@@ -15,9 +15,9 @@ mutable struct NEB <: AbstractSim
   name::String
   field::Array{Float64, 2}
   energy::Array{Float64, 1}
-  CartesianDistance::Array{Float64, 1}
-  saver::DataSaver
-  CartesianDistance_saver::DataSaver
+  distance::Array{Float64, 1}
+  saver_energy::DataSaver
+  saver_distance::DataSaver
   spring_constant::Float64
   tangents::Array{Float64, 2}
   gpu::Bool
@@ -33,7 +33,7 @@ function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_c
   Ms = zeros(Float64,nxyz)
   driver = create_neb_driver(driver, nxyz, N)
   field = zeros(Float64,3*nxyz, N)
-  CartesianDistance=zeros(Float64,N-1)
+  distance=zeros(Float64,N-1)
 
   headers = ["steps"]
   units = ["<>"]
@@ -42,17 +42,23 @@ function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_c
   distance_units = ["<>"]
   distance_results = Any[o::NEB -> o.driver.nsteps]
   saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
-  CartesianDistance_saver = DataSaver(string(@sprintf("CartesianDistance_%s",name), ".txt"),
+  saver_distance = DataSaver(string(@sprintf("%s_distance",name), ".txt"),
                                     0.0, 0, false, distance_headers, distance_units, distance_results)
-  
+
 
   spins = reshape(images, 3*sim.nxyz*N)
   prespins = reshape(pre_images, 3*sim.nxyz*N)
-  gpu = isa(sim, MicroSimGPU) ? true : false  #FIXME
+
+  gpu = false
+  try
+      gpu = isa(sim, MicroSimGPU) ? true : false
+  catch
+      gpu = false
+  end
   neb = NEB(N, sim.nxyz*N, sim, init_m, driver, images, pre_images, spins, prespins,
-             name, field, energy, CartesianDistance,saver, CartesianDistance_saver, spring_constant, tangents, gpu)
+             name, field, energy, distance, saver, saver_distance, spring_constant, tangents, gpu)
   init_images(neb, intervals)
-  compute_CartesianDistance(neb.CartesianDistance,neb.images,N,nxyz)
+  compute_distance(neb.distance,neb.images,N,nxyz)
   compute_system_energy(neb)
   return neb
 end
@@ -62,7 +68,7 @@ function create_neb_driver(driver::String, nxyz::Int64, N::Int64) #TODO: FIX ME
       gk = zeros(Float64,3*nxyz,N)
       return NEB_SD(gk, 0.0, 1e-5, 1e-14, 0)
   elseif driver == "LLG"
-      tol = 1e-6
+      tol = 1e-5
       dopri5 = DormandPrince(nxyz*N, neb_llg_call_back, tol)
       return NEB_LLG_Driver(0, dopri5)
   else
@@ -78,20 +84,20 @@ function init_images(neb::NEB, intervals::Any)
   pics= neb.init_m
   if length(pics)==length(intervals)+1
     n=1
-    for i=1:(length(pics)-1)
+    for i=1:length(intervals)
       m1=zeros(3*nxyz)
       m2=zeros(3*nxyz)
       init_vector!(m1, sim.mesh, pics[i])
       init_vector!(m2, sim.mesh, pics[i+1])
-      normalise(m1,nxyz)
-      normalise(m2,nxyz)
-      M=interpolate_m(m1,m2,Int(intervals[i]))
+      normalise(m1, nxyz)
+      normalise(m2, nxyz)
+      M = interpolate_m(m1,m2,Int(intervals[i]))
       for j=1:intervals[i]+1
           m[:,n]=M[:,j]
-          n+=1
+          n += 1
       end
     end
-    m3=zeros(3*nxyz)
+    m3 = zeros(3*nxyz)
     init_vector!(m3, sim.mesh, pics[length(pics)])
     normalise(m3,nxyz)
     m[:,N]=m3[:]
@@ -104,17 +110,18 @@ function init_images(neb::NEB, intervals::Any)
 
   for n = 1:N
     name = @sprintf("E_total_%g",n)
-    push!(neb.saver.headers,name)
-    push!(neb.saver.units, "J")
+    push!(neb.saver_energy.headers,name)
+    push!(neb.saver_energy.units, "<J>")
     fun =  o::NEB -> o.energy[n]
-    push!(neb.saver.results, fun)
+    push!(neb.saver_energy.results, fun)
   end
 
-  for n = 1:N-1
-    name =  @sprintf("CartesianDistance_%d",n)
-    push!(neb.CartesianDistance_saver.headers,name)
-    fun =  o::NEB -> o.CartesianDistance[n]
-    push!(neb.CartesianDistance_saver.results, fun)
+  for n = 1:N-1  #TODO: using a single function?
+    name =  @sprintf("distance_%d",n)
+    push!(neb.saver_distance.headers,name)
+    push!(neb.saver_distance.units, "<>")
+    fun =  o::NEB -> o.distance[n]
+    push!(neb.saver_distance.results, fun)
   end
 end
 
@@ -139,7 +146,7 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
               interaction.total_energy = sum(sim.energy)
               sim.total_energy += interaction.total_energy
           end
-          #copyto!(view(neb.field, :, n), sim.prespin) #FIXME: we need to wait the bug in CuArrays to be fixed
+          #copyto!(view(neb.field, :, n), sim.prespin) #FIXME: we need to wait the bug fixed in CuArrays
           copyto!(local_field, sim.prespin)
           neb.field[:, n] .= local_field
           neb.energy[n] = sim.total_energy
@@ -160,10 +167,10 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
       neb.field[:,n] .-= f*neb.tangents[:,n]
     end
 
-    compute_CartesianDistance(neb.CartesianDistance,neb.images,N,nxyz)
+    compute_distance(neb.distance,neb.images,N,nxyz)
 
     for n=2:N-1
-      neb.field[:,n] .+= neb.spring_constant*(neb.CartesianDistance[n]-neb.CartesianDistance[n-1])*neb.tangents[:,n]
+      neb.field[:,n] .+= neb.spring_constant*(neb.distance[n]-neb.distance[n-1])*neb.tangents[:,n]
     end
 end
 
@@ -203,7 +210,7 @@ function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy:
   end
 end
 
-function compute_CartesianDistance(CartesianDistance::Array{Float64,1},images::Array{Float64, 2},N::Int,nxyz::Int)
+function compute_distance(distance::Array{Float64,1},images::Array{Float64, 2},N::Int,nxyz::Int)
   Threads.@threads for n=1:N-1
     m1 = images[:,n]
     m2 = images[:,n+1]
@@ -212,13 +219,10 @@ function compute_CartesianDistance(CartesianDistance::Array{Float64,1},images::A
         j=3*i-2
         m1xm2=cross_product(m1[j],m1[j+1],m1[j+2],m2[j],m2[j+1],m2[j+2])
         l[i]=atan(norm(m1xm2),m1[j]*m2[j]+m1[j+1]*m2[j+1]+m1[j+2]*m2[j+2])
-        CartesianDistance[n] = LinearAlgebra.norm(l)
     end
+    distance[n] = LinearAlgebra.norm(l)
   end
 end
-
-
-
 
 function compute_system_energy(neb::NEB)
   sim = neb.sim
@@ -285,73 +289,53 @@ function save_ovf(neb::NEB, name::String)
   end
 end
 
-@inline function cross_product(a::Array{T,1}, b::Array{T,1}) where {T<:AbstractFloat}
-  x1=a[1];x2=a[2];x3=a[3];y1=b[1];y2=b[2];y3=b[3]
-  return [-x3*y2 + x2*y3, x3*y1 - x1*y3, -x2*y1 + x1*y2]
-end
-
-function rotation_operator(m1::Array{Float64,1},m2::Array{Float64,1},theta::Float64) ##return m'=retate(m1,theta)
-  m=cross_product(m1,m2)
-  if m==[0,0,0]
-    if m1==m2
-      return m1
-    else
-      if m1==[0,0,1.0]
-        m= [1.0,0,0]
-      else
-        m=cross_product(m1,[0,0,1.0])
-      end
-    end
+#rotate m1 in the m1_m2 plane by theta. If m1 is parallel to m2 (m1 x m2 = 0), the plane
+#is determined by m1 and ez (unless m1 itself is ez).
+function rotation_operator(m1::Array{Float64,1}, m2::Array{Float64,1}, theta::Float64) ##return m'=retate(m1,theta)
+    m = LinearAlgebra.cross(m1, m2)
+    if m == [0,0,0]
+        if m1 == m2
+            return m1
+        else
+            if m1 == [0,0,1.0]
+                m = [1.0,0,0]
+            else
+                m = LinearAlgebra.cross(m1,[0,0,1.0])
+            end
+        end
   end
-  normalise(m,1)
-  a11 = cos(theta)+(1-cos(theta))*m[1]^2
-  a12 = (1-cos(theta))*m[1]*m[2]-sin(theta)*m[3]
-  a13 = (1-cos(theta))*m[1]*m[3]+sin(theta)*m[2]
-  a21 = (1-cos(theta))*m[2]*m[1]+sin(theta)*m[3]
-  a22 = cos(theta)+(1-cos(theta))*m[2]*m[2]
-  a23 = (1-cos(theta))*m[2]*m[3]-sin(theta)*m[1]
-  a31 = (1-cos(theta))*m[1]*m[3]-sin(theta)*m[2]
-  a32 = (1-cos(theta))*m[2]*m[3]+sin(theta)*m[1]
-  a33 = cos(theta)+(1-cos(theta)*m[3]*m[3])
+  normalise(m, 1)
+  st, ct = sin(theta), cos(theta)
+  a11 = ct+(1-ct)*m[1]^2
+  a12 = (1-ct)*m[1]*m[2] - st*m[3]
+  a13 = (1-ct)*m[1]*m[3] + st*m[2]
+  a21 = (1-ct)*m[2]*m[1] + st*m[3]
+  a22 = ct+(1-ct)*m[2]*m[2]
+  a23 = (1-ct)*m[2]*m[3] - st*m[1]
+  a31 = (1-ct)*m[1]*m[3] - st*m[2]
+  a32 = (1-ct)*m[2]*m[3] + st*m[1]
+  a33 = ct+(1-ct*m[3]*m[3])
   op=[a11 a12 a13; a21 a22 a23; a31 a32 a33]
 
   return op*m1
 end
 
-function interpolate_m(m1::Array{Float64,1}, m2::Array{Float64,1}, n::Int)
-  nxyz=Int(length(m1)/3)
-  m = zeros(3*nxyz,n+1)
-  b1=reshape(m1,3,nxyz)
-  b2=reshape(m2,3,nxyz)
-  for i=1:n+1
-    for j=1:nxyz
-      k=3*j-2
-      theta=acos(b1[:,j]'*b2[:,j])
-      dtheta=theta/(n+1)
-      angle=(i-1)dtheta
-      m[k,i],m[k+1,i],m[k+2,i]=rotation_operator(b1[:,j],b2[:,j],angle)
-    end
-  end
-  return m
-end
+#Interpolate magnetization between image m1 and image m2, where the total images
+#number is N+1
+function interpolate_m(m1::Array{Float64,1}, m2::Array{Float64,1}, N::Int)
+    nxyz = Int(length(m1)/3)
+    m = zeros(3*nxyz,N+1)
+    b1 = reshape(m1,3,nxyz)
+    b2 = reshape(m2,3,nxyz)
 
-function write_neb_CartesianDistance(neb::NEB)
-  saver = neb.CartesianDistance_saver
-  if !saver.header_saved
-    io = open(saver.name, "w");
-    write(io, "#")
-    for header in saver.headers
-      write(io, formatstring(header));
+    for i=1:N+1
+        for j=1:nxyz
+            k=3*j-2
+            theta = acos(b1[:,j]'*b2[:,j])
+            dtheta = theta/(N+1)
+            angle = (i-1)*dtheta
+            m[k,i],m[k+1,i],m[k+2,i]=rotation_operator(b1[:,j],b2[:,j],angle)
+        end
     end
-    write(io, "\n#");
-    saver.header_saved = true
-  else
-    io = open(saver.name, "a");
-  end
-
-  for fun in saver.results
-    write(io, formatstring(fun(neb)));
-  end
-  write(io, "\n")
-  close(io);
+    return m
 end

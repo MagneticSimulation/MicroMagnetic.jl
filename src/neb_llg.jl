@@ -24,8 +24,8 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
 
     if save_m_every>0
         compute_system_energy(neb)
-        write_data(neb)
-        write_neb_CartesianDistance(neb)
+        write_data(neb, neb.saver_energy)
+        write_data(neb, neb.saver_distance)
     end
     if save_vtk_every > 0
         save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, 0)))
@@ -51,8 +51,8 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
 
         if save_m_every>0 && i%save_m_every == 0
             compute_system_energy(neb)
-            write_data(neb)
-            write_neb_CartesianDistance(neb)
+            write_data(neb, neb.saver_energy)
+            write_data(neb, neb.saver_distance)
         end
         if save_vtk_every > 0 && i%save_vtk_every == 0
             save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
@@ -66,8 +66,8 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
 
             if save_m_every>0
                 compute_system_energy(neb)
-                write_data(neb)
-                write_neb_CartesianDistance(neb)
+                write_data(neb, neb.saver_energy)
+                write_data(neb, neb.saver_distance)
             end
             if save_vtk_every > 0
                 save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
