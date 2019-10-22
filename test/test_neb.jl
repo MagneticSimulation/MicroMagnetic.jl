@@ -23,8 +23,13 @@ interplotion3=JuMag.interpolate_m([0,0,1.0],[0,0,1.0],1)
 @test isapprox(interplotion3[:,1],[0,0,1.0])
 @test isapprox(interplotion3[:,2],[0,0,1.0])
 
-
-
+m1 = [0.061446725558210215, 0.32475341620029013, 0.9438005714050057]
+m2 = [0, 0, 1.0]
+m = JuMag.interpolate_m(m1, m2, 1)
+println("Input: ", m1)
+println("interpolate_m1: ", m)
+p = JuMag.interpolate_m_spherical(m1, m2, 1)
+println("interpolate_m2: ", p)
 
 function creat_sim()
     mesh =  FDMesh(nx=1, ny=1, nz=1, dx=2.5e-9, dy=2.5e-9, dz=2.5e-9)
@@ -54,4 +59,6 @@ neb = NEB(sim, [ (1,0,0), (0,0,1), (-1,0,0)], [2, 2]; name="test")
 for i = 1:7
     println(neb.images[:, i])
 end
+
+
 #relax(neb)

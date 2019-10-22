@@ -91,7 +91,8 @@ function init_images(neb::NEB, intervals::Any)
       init_vector!(m2, sim.mesh, pics[i+1])
       normalise(m1, nxyz)
       normalise(m2, nxyz)
-      M = interpolate_m(m1,m2,Int(intervals[i]))
+      #M = interpolate_m(m1, m2, Int(intervals[i]))
+      M = interpolate_m_spherical(m1,m2,Int(intervals[i]))
       for j=1:intervals[i]+1
           m[:,n]=M[:,j]
           n += 1
@@ -335,6 +336,42 @@ function interpolate_m(m1::Array{Float64,1}, m2::Array{Float64,1}, N::Int)
             dtheta = theta/(N+1)
             angle = (i-1)*dtheta
             m[k,i],m[k+1,i],m[k+2,i]=rotation_operator(b1[:,j],b2[:,j],angle)
+        end
+    end
+    return m
+end
+
+function cartesian2spherical(m, nxyz)
+    R, theta, phi  = zeros(nxyz), zeros(nxyz), zeros(nxyz)
+    for j=1:nxyz
+        k=3*j-2
+        r = sqrt(m[k]^2+m[k+1]^2)
+        theta[j] = atan(r, m[k+2])
+        phi[j] = atan(m[k+1], m[k])
+        R[j] = sqrt(r^2+m[k+2]^2)
+    end
+    return R, theta, phi
+end
+
+#Interpolate magnetization between image m1 and image m2, where the total images
+#number is N+1
+function interpolate_m_spherical(m1::Array{Float64,1}, m2::Array{Float64,1}, N::Int)
+    nxyz = Int(length(m1)/3)
+
+    R1, theta1, phi1 = cartesian2spherical(m1, nxyz)
+    R2, theta2, phi2  = cartesian2spherical(m2, nxyz)
+
+    m = zeros(3*nxyz,N+1)
+
+    for i=1:N+1
+        v = view(m, :, i)
+        for j = 1:nxyz
+            k = 3*j-2
+            theta = theta1[j] + (i-1)/(N+1)*(theta2[j] - theta1[j])
+            phi = phi1[j] + (i-1)/(N+1)*(phi2[j] - phi1[j])
+            v[k] = R1[j]*sin(theta)*cos(phi)
+            v[k+1] = R1[j]*sin(theta)*sin(phi)
+            v[k+2] = R1[j]*cos(theta)
         end
     end
     return m
