@@ -97,10 +97,30 @@ function save_vtk_points(sim::AbstractSim, fname::String; fields::Array{String, 
   vtk_save(vtk)
 end
 
+"""
+    ovf2vtk(ovf_name, vtk_name)
+Convert ovf file to vtk format
 
-function ovf2vtk(mesh, ovf_name, vtk_name)
-    sim = Sim(mesh, driver="SD")
-    read_ovf(sim, ovf_name)
-    save_vtk(sim, vtk_name)
+```julia
+    ovf2vtk("ovf","vtk")
+```
+"""
+function ovf2vtk(ovf_name, vtk_name)
+    ovf = read_ovf(ovf_name)
+    dx,dy,dz = ovf.xstepsize,ovf.ystepsize,ovf.zstepsize
+    nx,ny,nz = ovf.xnodes,ovf.ynodes,ovf.znodes
+
+    xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
+
+    for k = 1:nz+1, j = 1:ny+1, i = 1:nx+1
+      xyz[1, i, j, k] = (i-0.5)*dx
+      xyz[2, i, j, k] = (j-0.5)*dy
+      xyz[3, i, j, k] = (k-0.5)*dz
+    end
+
+    vtk = vtk_grid(vtk_name, xyz)
+    b = reshape(ovf.data, (3, nx, ny, nz))
+    vtk_cell_data(vtk, b , "m")
+    vtk_save(vtk)
     return nothing
 end
