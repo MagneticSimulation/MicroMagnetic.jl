@@ -195,9 +195,11 @@ function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy:
     elseif (E3>E2)&&(E2>E1)
       t[:,n] = tip
     elseif E3>E1
-      t[:,n] =dEmax*tip+dEmin*tim
+      t[:,n] = dEmax*tip+dEmin*tim
+    elseif E3<E1
+      t[:,n] = dEmin*tip+dEmax*tim
     else
-      t[:,n] =dEmin*tip+dEmax*tim
+      t[:,n] = tim + tip
     end
 
     for i = 1:nxyz
@@ -209,6 +211,8 @@ function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy:
     norm_t = LinearAlgebra.norm(t[:,n])
     t[:,n] = t[:,n]/norm_t
   end
+
+   return nothing
 end
 
 function compute_distance(distance::Array{Float64,1},images::Array{Float64, 2},N::Int,nxyz::Int)
