@@ -26,6 +26,8 @@ const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)
 const _using_gpu = Ref(false)
 
+const _mpi_available = Ref(true)
+
 function cuda_using_double(flag = true)
    _cuda_using_double[] = flag
    return nothing
@@ -82,5 +84,18 @@ if _cuda_available.x
     export FDMeshGPU, CubicMeshGPU, TriangularMesh, MonteCarlo, run_sim, add_demag_gpu
 end
 
+try
+	using MPI
+catch
+    _mpi_available[] = false
+    @warn "MPI is not available!"
+end
+
+if _mpi_available.x && _cuda_available.x
+    include("cuda_mpi/neb.jl")
+    include("cuda_mpi/dopri5.jl")
+    include("cuda_mpi/neb_kernels.jl")
+    export NEB_MPI
+end
 
 end

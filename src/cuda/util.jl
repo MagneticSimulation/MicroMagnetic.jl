@@ -162,8 +162,7 @@ function omega_to_spin(omega::CuArray{T, 1}, spin::CuArray{T, 1}, spin_next::CuA
   return nothing
 end
 
-
-function compute_dm(dm_dt::CuArray{T, 1}, m1::CuArray{T, 1}, m2::CuArray{T, 1}, N::Int64) where {T<:AbstractFloat}
+function compute_dm!(dm::CuArray{T, 1}, m1::CuArray{T, 1}, m2::CuArray{T, 1}, N::Int64) where {T<:AbstractFloat}
   function __kernal!(c, a, b, n::Int64)
      i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
      if 0 < i <= n
@@ -176,7 +175,7 @@ function compute_dm(dm_dt::CuArray{T, 1}, m1::CuArray{T, 1}, m2::CuArray{T, 1}, 
      return nothing
   end
   blk, thr = CuArrays.cudims(N)
-  @cuda blocks=blk threads=thr __kernal!(dm_dt, m1, m2, N)
+  @cuda blocks=blk threads=thr __kernal!(dm, m1, m2, N)
   return nothing
 end
 

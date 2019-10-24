@@ -594,7 +594,7 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
     #omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
     max_dmdt = 0.0
     if _using_gpu.x
-        compute_dm(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
+        compute_dm!(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
         max_dmdt = maximum(rk_data.omega_t)/step_size
     else
         max_dmdt = compute_dmdt(sim.prespin, sim.spin, sim.nxyz, step_size)
