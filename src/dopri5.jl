@@ -43,6 +43,7 @@ function DormandPrince(nxyz::Int64, rhs_fun, tol::Float64)
                 k1, k2, k3, k4, k5, k6, k7, rhs_fun, false)
 end
 
+#this function can be run in both GPU and CPU, however, does not work for GPU+MPI?
 function dopri5_step_inner(sim::AbstractSim, step::Float64, t::Float64)
   a = (1/5, 3/10, 4/5, 8/9, 1.0, 1.0)
   b = (1/5, 3/40, 9/40, 44/45, -56/15, 32/9)
@@ -83,18 +84,21 @@ function dopri5_step_inner(sim::AbstractSim, step::Float64, t::Float64)
   ode.nfevals += 7
   ode.errors .= (w[1].*k1 + w[2].*k2 .+ w[3].*k3 .+ w[4].*k4 .+ w[5].*k5 + w[6].*k6 + w[7].*k7).*step
 
-  max_error =  maximum(abs.(ode.errors)) + eps()
+  #max_error =  maximum(abs.(ode.errors)) + eps() #the CuArray version eat memory
+  abs!(ode.errors)
+  max_error =  maximum(ode.errors) + eps()
 
   return max_error
 end
 
-
+#this function can be run in both GPU and CPU
 function compute_init_step_DP(sim::AbstractSim, dt::Float64)
   abs_step = dt
   abs_step_tmp = dt
   integrator = sim.driver.ode
   integrator.rhs_fun(sim, integrator.errors, sim.spin, integrator.t)
-  r_step = maximum(abs.(integrator.errors)/(integrator.safety*integrator.tol^0.2))
+  abs!(integrator.errors)
+  r_step = maximum(integrator.errors)/(integrator.safety*integrator.tol^0.2)
   integrator.nfevals += 1
   #FIXME: how to obtain a reasonable init step?
   if abs_step*r_step > 0.001

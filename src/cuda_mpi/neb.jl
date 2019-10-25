@@ -110,8 +110,8 @@ end
 
 function create_neb_driver_mpi(driver::String, nxyz::Int64, N::Int64)
   if driver == "LLG"
-      tol = 1e-6
-      dopri5 = DormandPrinceGPU_MPI(nxyz*N, neb_llg_call_back_gpu_mpi, tol)
+      tol = 1e-5
+      dopri5 = DormandPrinceGPU(nxyz*N, neb_llg_call_back_gpu_mpi, tol)
       return NEB_LLG_Driver(0, dopri5)
   else
     error("Only Driver 'LLG' is supported!")
@@ -173,8 +173,10 @@ function init_images(neb::NEB_GPU_MPI, init_m::Any, intervals::Any)
         CuArrays.@sync copyto!(neb.image_r, m)
     end
 
-  println("We are here!!!")
-  return nothing
+    CuArrays.@sync copyto!(neb.prespin, neb.spin)
+
+    println("We are here!!!")
+    return nothing
 end
 
 
@@ -187,7 +189,7 @@ function effective_field_NEB(neb::NEB_GPU_MPI, spin::CuArray{T, 1})  where {T<:A
 
   update_images_between_processes(neb)
   #compute_field_related_to_tangent(neb)
-
+  MPI.Barrier(MPI.COMM_WORLD)
   return 0
 end
 
@@ -235,7 +237,7 @@ function update_images_between_processes(neb::NEB_GPU_MPI)
 end
 
 function compute_micromagnetic_field(neb::NEB_GPU_MPI)
-    fill!(neb.field, 0.0)
+    CuArrays.@sync fill!(neb.field, 0.0)
     sim = neb.sim
     dof = 3*sim.nxyz
     for n = 1:neb.N
@@ -293,6 +295,8 @@ end
 
 function neb_llg_call_back_gpu_mpi(neb::NEB_GPU_MPI, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64)  where {T<:AbstractFloat}
   effective_field_NEB(neb, spin)
+  #println("spin: ", neb.spin)
+  #println("fields: ", neb.field)
   neb_llg_rhs_gpu(dm_dt, spin, neb.field, 2.21e5, neb.nxyz)
   return nothing
 end
@@ -339,9 +343,11 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
 
         step_size = rk_data.step
 
-        compute_dm!(sim.field, sim.prespin, sim.spin, sim.nxyz)
-        max_dmdt = maximum(sim.field)/step_size
-        all_max_dmdt = [0]
+        #we borrow neb.field to store dm
+        compute_dm!(neb.field, neb.prespin, neb.spin, neb.nxyz)
+        max_dmdt = maximum(view(neb.field, 1:neb.nxyz))/step_size
+
+        all_max_dmdt = [0.0]
 
         if neb.comm_rank == 0
             all_max_dmdt[1] = MPI.Reduce(max_dmdt, max, 0, MPI.COMM_WORLD)
@@ -352,7 +358,7 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
 
         if neb.comm_rank == 0
             @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e  time=%s",
-                            i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor, Dates.now())
+                            i, rk_data.step, rk_data.t, all_max_dmdt[1]/dmdt_factor, Dates.now())
         end
 
         if save_m_every>0 && i%save_m_every == 0 && neb.comm_rank == 0

@@ -33,3 +33,12 @@ function abs!(a::Array{T,1}, b::Array{T,1})  where {T<:AbstractFloat}
     a .= abs.(b)
     return nothing
 end
+
+function abs!(a::Array{T,1})  where {T<:AbstractFloat}
+    for i in 1:length(a)
+        if a[i] < 0
+            @inbounds a[i] = -a[i]
+        end
+    end
+    return nothing
+end
