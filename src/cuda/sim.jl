@@ -1,24 +1,42 @@
-function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Default")
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  Float = _cuda_using_double.x ? Float64 : Float32
-  spin = CuArrays.zeros(Float, 3*nxyz)
-  prespin = CuArrays.zeros(Float,3*nxyz)
-  field = CuArrays.zeros(Float,3*nxyz)
-  energy = CuArrays.zeros(Float,nxyz)
-  Ms = CuArrays.zeros(Float, nxyz)
-  driver = create_driver_gpu(driver, integrator, nxyz)
+function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Default", save_data=true)
+    Float = _cuda_using_double.x ? Float64 : Float32
+    sim = MicroSimGPU{Float}()
+    sim.mesh = mesh
+    nxyz = mesh.nx*mesh.ny*mesh.nz
 
-  headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
-  units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
-  results = [o::AbstractSim -> o.saver.nsteps,
-             o::AbstractSim -> o.saver.t,
-             o::AbstractSim -> o.total_energy, average_m]
-  saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
-  interactions = []
+    sim.nxyz = nxyz
+    sim.spin = CuArrays.zeros(Float, 3*nxyz)
+    sim.prespin = CuArrays.zeros(Float,3*nxyz)
+    sim.field = CuArrays.zeros(Float,3*nxyz)
+    sim.energy = CuArrays.zeros(Float,nxyz)
+    sim.Ms = CuArrays.zeros(Float, nxyz)
+    sim.total_energy = 0.0
+    sim.interactions = []
 
-  blocks, threads = CuArrays.cudims(nxyz)
-  return MicroSimGPU(mesh, driver, saver, spin, prespin, field, energy, Ms, Float(0.0),
-                     nxyz, blocks, threads, name, interactions)
+    if save_data
+        headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
+        units = ["<>", "<J>",("<>", "<>", "<>")]
+        results = [o::AbstractSim -> o.saver.nsteps,
+                   o::AbstractSim -> o.total_energy, average_m]
+        sim.saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
+    end
+
+    if driver!="none"
+        sim.driver = create_driver_gpu(driver, integrator, nxyz)
+        if driver == "LLG" && save_data
+            saver = sim.saver
+            insert!(saver.headers, 2, "time")
+            insert!(saver.units, 2, "<s>")
+            insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
+        end
+    end
+
+    blocks, threads = CuArrays.cudims(nxyz)
+    sim.blocks = blocks
+    sim.threads = threads
+    sim.name = name
+
+    return sim
 
 end
 
