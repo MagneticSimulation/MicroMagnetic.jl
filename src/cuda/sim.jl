@@ -12,6 +12,7 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Default", save
     sim.Ms = CuArrays.zeros(Float, nxyz)
     sim.total_energy = 0.0
     sim.interactions = []
+    sim.save_data = save_data
 
     if save_data
         headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
@@ -69,7 +70,7 @@ function init_m0(sim::MicroSimGPU, m0::TupleOrArrayOrFunction; norm=true)
   return true
 end
 
-function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction; name="zeeman", save_energy=true)
+function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction; name="zeeman")
   nxyz = sim.nxyz
   T = _cuda_using_double.x ? Float64 : Float32
   field = zeros(T, 3*nxyz)
@@ -80,7 +81,7 @@ function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction; name="zeeman",
   zeeman =  ZeemanGPU(field, energy, field_gpu, T(0.0), name)
   push!(sim.interactions, zeeman)
 
-  if save_energy
+  if sim.save_data
       if isa(H0, Tuple)
           push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
           push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
@@ -117,7 +118,7 @@ function update_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction; name = "zee
 end
 
 
-function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman", save_energy=true)
+function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
   nxyz = sim.nxyz
   T = _cuda_using_double.x ? Float64 : Float32
   field = zeros(T, 3*nxyz)
@@ -128,7 +129,7 @@ function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction, ft::Function; 
   zeeman =  TimeZeemanGPU(ft, init_field, field, energy, T(0), name)
   push!(sim.interactions, zeeman)
 
-  if save_energy
+  if sim.save_data
       if isa(H0, Tuple)
           push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
           push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
@@ -145,7 +146,7 @@ function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction, ft::Function; 
   return zeeman
 end
 
-function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch", save_energy=true)
+function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
@@ -156,7 +157,7 @@ function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch", sav
 
   push!(sim.interactions, exch)
 
-  if save_energy
+  if sim.save_data
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)
@@ -165,7 +166,7 @@ function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch", sav
   return exch
 end
 
-function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch_vector", save_energy=true)
+function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch_vector")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
@@ -175,7 +176,7 @@ function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch
   exch = Vector_ExchangeGPU(Spatial_A , field, energy, Float(0.0), name)
   push!(sim.interactions, exch)
 
-  if save_energy
+  if sim.save_data
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)
@@ -184,7 +185,7 @@ function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch
   return exch
 end
 
-function add_exch_rkky(sim::MicroSimGPU, sigma::Float64, Delta::Float64; name="rkky", save_energy=true)
+function add_exch_rkky(sim::MicroSimGPU, sigma::Float64, Delta::Float64; name="rkky")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
@@ -193,7 +194,7 @@ function add_exch_rkky(sim::MicroSimGPU, sigma::Float64, Delta::Float64; name="r
 
   push!(sim.interactions, exch)
 
-  if save_energy
+  if sim.save_data
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)
@@ -203,14 +204,14 @@ function add_exch_rkky(sim::MicroSimGPU, sigma::Float64, Delta::Float64; name="r
 end
 
 
-function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi", save_energy=true)
+function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
   dmi = BulkDMIGPU(Float(D[1]), Float(D[2]), Float(D[3]), field, energy, Float(0.0), name)
 
-  if save_energy
+  if sim.save_data
       push!(sim.interactions, dmi)
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
@@ -220,7 +221,7 @@ function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi", save_
   return dmi
 end
 
-function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi", save_energy=true)
+function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi")
   nxyz = sim.nxyz
   T = _cuda_using_double.x ? Float64 : Float32
   Ds = zeros(T, sim.nxyz)
@@ -230,7 +231,7 @@ function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi", save_energy=true)
   energy = zeros(T, nxyz)
   dmi = SpatialBulkDMIGPU(Ds_gpu, field, energy, T(0.0), name)
 
-  if save_energy
+  if sim.save_data
       push!(sim.interactions, dmi)
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
@@ -248,7 +249,7 @@ function add_dmi(sim::MicroSimGPU, D::Real; name="dmi", type="bulk", save_energy
 end
 
 
-function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi", save_energy=true)
+function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi")
     nxyz = sim.nxyz
     T = _cuda_using_double.x ? Float64 : Float32
     field = zeros(T, 3*nxyz)
@@ -256,7 +257,7 @@ function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi", save_energy=
     dmi =  InterfacialDMIGPU(T(D), field, energy, T(0.0), name)
     push!(sim.interactions, dmi)
 
-    if save_energy
+    if sim.save_data
         push!(sim.saver.headers, string("E_",name))
         push!(sim.saver.units, "J")
         id = length(sim.interactions)
@@ -266,7 +267,7 @@ function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi", save_energy=
 end
 
 
-function add_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis", save_energy=true)
+function add_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   Kus = zeros(Float, sim.nxyz)
@@ -279,7 +280,7 @@ function add_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   anis = AnisotropyGPU(Kus, naxis, field, energy, Float(0.0), name)
   push!(sim.interactions, anis)
 
-  if save_energy
+  if sim.save_data
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)
@@ -288,7 +289,7 @@ function add_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   return anis
 end
 
-function add_cubic_anis(sim::MicroSimGPU, Kc::Float64; name="cubic", save_energy=true)
+function add_cubic_anis(sim::MicroSimGPU, Kc::Float64; name="cubic")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
@@ -296,7 +297,7 @@ function add_cubic_anis(sim::MicroSimGPU, Kc::Float64; name="cubic", save_energy
   anis = CubicAnisotropyGPU(Float(Kc), field, energy, Float(0.0), name)
   push!(sim.interactions, anis)
 
-  if save_energy
+  if sim.save_data
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)
@@ -320,12 +321,12 @@ function update_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; name = "anis
   return nothing
 end
 
-function add_demag(sim::MicroSimGPU; name="demag", Nx=0, Ny=0, Nz=0, save_energy=true)
+function add_demag(sim::MicroSimGPU; name="demag", Nx=0, Ny=0, Nz=0)
   demag = init_demag_gpu(sim, Nx, Ny, Nz)
   demag.name = name
   push!(sim.interactions, demag)
 
-  if save_energy
+  if sim.save_data
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)
@@ -334,12 +335,12 @@ function add_demag(sim::MicroSimGPU; name="demag", Nx=0, Ny=0, Nz=0, save_energy
   return demag
 end
 
-function add_demag_gpu(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, save_energy=true)
+function add_demag_gpu(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
   demag = init_demag_gpu_II(sim, Nx, Ny, Nz)
   demag.name = name
   push!(sim.interactions, demag)
 
-  if save_energy
+  if sim.save_data
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)

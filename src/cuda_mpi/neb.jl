@@ -15,13 +15,12 @@ mutable struct NEB_GPU_MPI{T<:AbstractFloat} <: AbstractSim
     spin::CuArray{T, 1}
     prespin::CuArray{T, 1}
     image_r::CuArray{T, 1}
-    image_rc::Array{T, 1}  #in future we will delete this
+    image_rc::Array{T, 1}
     field::CuArray{T, 1}
     tangent::CuArray{T, 1}
     energy::CuArray{T, 1}
-    distance::Array{Float64, 1}
-    all_energy::Array{Float64, 1}
-    all_distance::Array{Float64, 1}
+    energy_cpu::Array{T, 1}
+    distance::Array{T, 1}
     saver_energy::DataSaver
     saver_distance::DataSaver
     spring_constant::Float64
@@ -49,7 +48,7 @@ function NEB_MPI(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spri
     neb.N_total = N
     neb.N = ceil(Int64, N/comm_size)
     if comm_rank == comm_size - 1
-        neb.N = N%comm_size == 0 ? div(N, comm_size) : N%comm_size
+        neb.N = N - comm_rank*ceil(Int64, N/comm_size)
     end
     neb.nxyz = sim.nxyz*neb.N
     neb.sim = sim
@@ -66,46 +65,48 @@ function NEB_MPI(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spri
     neb.field = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
     neb.tangent = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
     neb.energy = CuArrays.zeros(Float, neb.N+2)
-    neb.distance = zeros(Float64, neb.N+1)
-    neb.all_energy = zeros(Float64, N)
-    neb.all_distance = zeros(Float64, N-1)
+    neb.energy_cpu = zeros(Float, neb.N+2)
+    neb.distance = zeros(Float, neb.N+1)
 
-    if comm_rank == 0 #only the root process has savers
-        headers = ["steps"]
-        units = ["<>"]
-        results = Any[o::NEB_GPU_MPI -> o.driver.nsteps]
-        neb.saver_energy = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
-
-        distance_headers= ["steps"]
-        distance_units = ["<>"]
-        distance_results = Any[o::NEB_GPU_MPI -> o.driver.nsteps]
-
-        neb.saver_distance = DataSaver(string(name, "_distance.txt"),
-                                          0.0, 0, false, distance_headers, distance_units, distance_results)
-
-       for n = 1:N
-           name = @sprintf("E_total_%g",n)
-           push!(neb.saver_energy.headers,name)
-           push!(neb.saver_energy.units, "<J>")
-           fun =  o::NEB_GPU_MPI -> o.all_energy[n]
-           push!(neb.saver_energy.results, fun)
-       end
-
-       for n = 1:N-1
-           name =  @sprintf("distance_%d",n)
-           push!(neb.saver_distance.headers,name)
-           push!(neb.saver_distance.units, "<>")
-           fun =  o::NEB_GPU_MPI -> o.all_distance[n]
-           push!(neb.saver_distance.results, fun)
-       end
-
-    end
-
+    init_saver(neb)
     init_images(neb, init_m, intervals)
 
-    compute_system_energy(neb)
+    update_images_between_processes(neb)
+    compute_system_energy_two_ends(neb)
 
     return neb
+end
+
+function init_saver(neb::NEB_GPU_MPI)
+
+    headers = ["steps"]
+    units = ["<>"]
+    results = Any[o::NEB_GPU_MPI -> o.driver.nsteps]
+    neb.saver_energy = DataSaver(@sprintf("%s_energy_%d.txt", neb.name, neb.comm_rank),
+                                 0.0, 0, false, headers, units, results)
+
+    distance_headers= ["steps"]
+    distance_units = ["<>"]
+    distance_results = Any[o::NEB_GPU_MPI -> o.driver.nsteps]
+
+    neb.saver_distance = DataSaver(@sprintf("%s_distance_%d.txt", neb.name, neb.comm_rank),
+                                   0.0, 0, false, distance_headers, distance_units, distance_results)
+    for n = 1:neb.N
+        name = @sprintf("E_total_%g",n)
+        push!(neb.saver_energy.headers,name)
+        push!(neb.saver_energy.units, "<J>")
+        fun =  o::NEB_GPU_MPI -> o.energy_cpu[n]
+        push!(neb.saver_energy.results, fun)
+    end
+
+    for n = 1:neb.N-1
+        name =  @sprintf("distance_%d",n)
+        push!(neb.saver_distance.headers,name)
+        push!(neb.saver_distance.units, "<>")
+        fun =  o::NEB_GPU_MPI -> o.distance[n]
+        push!(neb.saver_distance.results, fun)
+    end
+
 end
 
 function create_neb_driver_mpi(driver::String, nxyz::Int64, N::Int64)
@@ -183,12 +184,12 @@ end
 function effective_field_NEB(neb::NEB_GPU_MPI, spin::CuArray{T, 1})  where {T<:AbstractFloat}
 
   #neb.spin[:] = spin[:], we already copy spin to neb.spin in dopri5
-  CuArrays.@sync begin
-      compute_micromagnetic_field(neb)
-  end
 
   update_images_between_processes(neb)
-  #compute_field_related_to_tangent(neb)
+
+  compute_micromagnetic_field(neb)
+
+  compute_field_related_to_tangent(neb)
   MPI.Barrier(MPI.COMM_WORLD)
   return 0
 end
@@ -250,9 +251,11 @@ function compute_micromagnetic_field(neb::NEB_GPU_MPI)
             interaction.total_energy = sum(sim.energy)
             sim.total_energy += interaction.total_energy
         end
-
-            #neb.energy[n] = sim.total_energy
+        neb.energy_cpu[n+1] = sim.total_energy
     end
+
+    compute_system_energy_two_ends(neb)
+    CuArrays.@sync copyto!(neb.energy, neb.energy_cpu)
    return nothing
 end
 
@@ -271,11 +274,34 @@ function compute_field_related_to_tangent(neb::NEB_GPU_MPI)
    return nothing
 end
 
+#let compute the total energy for the two ends directly for now.
+#for larger systems it should be better to use MPI for sending/recieving
+#energys.
+function compute_system_energy_two_ends(neb::NEB_GPU_MPI)
+  sim = neb.sim
+  #left image
+  sim.total_energy = 0
+  for interaction in sim.interactions
+      effective_field(interaction, sim, neb.image_l, 0.0)
+      interaction.total_energy = sum(sim.energy)
+      sim.total_energy += interaction.total_energy
+  end
+  neb.energy_cpu[1] = sim.total_energy
+
+  #right image
+  sim.total_energy = 0
+  for interaction in sim.interactions
+      effective_field(interaction, sim, neb.image_r, 0.0)
+      interaction.total_energy = sum(sim.energy)
+      sim.total_energy += interaction.total_energy
+  end
+  neb.energy_cpu[end] = sim.total_energy
+
+  return 0
+end
+
 function compute_system_energy(neb::NEB_GPU_MPI)
   sim = neb.sim
-
-  #sim.total_energy = 0
-  CuArrays.@sync fill!(neb.energy, 0.0)
 
   dof = 3*sim.nxyz
   for n = 1:neb.N
@@ -286,7 +312,7 @@ function compute_system_energy(neb::NEB_GPU_MPI)
           interaction.total_energy = sum(sim.energy)
           sim.total_energy += interaction.total_energy
       end
-      neb.energy[n] = sim.total_energy
+      neb.energy_cpu[n+1] = sim.total_energy
   end
 
   return 0
@@ -318,8 +344,8 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
 
     driver = neb.driver
 
-    if save_m_every>0 && neb.comm_rank == 0
-        #compute_system_energy(neb)
+    if save_m_every>0
+        compute_system_energy(neb)
         write_data(neb, neb.saver_energy)
         write_data(neb, neb.saver_distance)
     end
@@ -361,7 +387,7 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
                             i, rk_data.step, rk_data.t, all_max_dmdt[1]/dmdt_factor, Dates.now())
         end
 
-        if save_m_every>0 && i%save_m_every == 0 && neb.comm_rank == 0
+        if save_m_every>0 && i%save_m_every == 0
             compute_system_energy(neb)
             write_data(neb, neb.saver_energy)
             write_data(neb, neb.saver_distance)
@@ -376,7 +402,7 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
         if all_max_dmdt[1] < stopping_dmdt*dmdt_factor
             @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
 
-            if save_m_every>0 && neb.comm_rank == 0
+            if save_m_every>0
                 compute_system_energy(neb)
                 write_data(neb, neb.saver_energy)
                 write_data(neb, neb.saver_distance)

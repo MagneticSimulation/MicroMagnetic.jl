@@ -41,6 +41,7 @@ mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   threads::Int64
   name::String
   interactions::Array{Any, 1}
+  save_data::Bool
   MicroSimGPU{T}() where {T<:AbstractFloat} = new()
 end
 

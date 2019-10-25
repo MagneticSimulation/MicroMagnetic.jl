@@ -74,9 +74,9 @@ function write_OVF2_Header(io::IOStream, sim::AbstractSim)
     hdr(io, "valuelabels", labels)
     hdr(io, "valueunits", units)
 
-	## We don't really have stages
-	##fmt.Fprintln(io, "# Desc: Stage simulation time: ", meta.TimeStep, " s") // TODO
-	hdr(io, "Desc",string("Total simulation time: ", sim.saver.t, " s"))
+    ## We don't really have stages
+    ##fmt.Fprintln(io, "# Desc: Stage simulation time: ", meta.TimeStep, " s") // TODO
+    #hdr(io, "Desc", string("Total simulation time: ", sim.saver.t, " s")) // sim.saver may not be initialized
 
     hdr(io, "xbase", dx/2)
     hdr(io, "ybase", dy/2)

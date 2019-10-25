@@ -135,6 +135,7 @@ mutable struct MicroSim <: AbstractSim
   nxyz::Int64
   name::String
   interactions::Array
+  save_data::Bool
   MicroSim() = new()
 end
 
@@ -150,6 +151,7 @@ mutable struct AtomicSim <: AbstractSim
   nxyz::Int64
   name::String
   interactions::Array
+  save_data::Bool
   AtomicSim() = new()
 end
 
