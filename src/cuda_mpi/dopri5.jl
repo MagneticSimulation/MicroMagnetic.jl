@@ -203,7 +203,7 @@ function dopri5_step_inner_GPU(sim::AbstractSim, step::Float64, t::Float64)
                                w[1], ode.k1, w[2], ode.k2,
                                w[3], ode.k3, w[4], ode.k4,
                                w[5], ode.k5, w[6], ode.k6,
-                               w[7], ode.k5, step, N)
+                               w[7], ode.k7, step, N)
   abs!(ode.errors)
   max_error =  maximum(ode.errors) + eps()
 

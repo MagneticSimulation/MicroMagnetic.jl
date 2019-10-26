@@ -121,14 +121,15 @@ function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
         @inbounds mx = m[j]
         @inbounds my = m[j+1]
         @inbounds mz = m[j+2]
+        @inbounds mm = mx*mx + my*my + mz*mz
         @inbounds mh = mx*h[j] + my*h[j+1] + mz*h[j+2]
-        @inbounds h1 = h[j] - mh*mx
-        @inbounds h2 = h[j+1] - mh*my
-        @inbounds h3 = h[j+2] - mh*mz
+        @inbounds h1 = mm*h[j] - mh*mx
+        @inbounds h2 = mm*h[j+1] - mh*my
+        @inbounds h3 = mm*h[j+2] - mh*mz
 
-        @inbounds dw_dt[j] = gamma*h1
-        @inbounds dw_dt[j+1] = gamma*h2
-        @inbounds dw_dt[j+2] = gamma*h3
+        @inbounds dw_dt[j] = 0.5*gamma*h1  #we multiply a factor of 0.5 [1/(1+alpha^2) in orginal LLG equation]
+        @inbounds dw_dt[j+1] = 0.5gamma*h2
+        @inbounds dw_dt[j+2] = 0.5*gamma*h3
     end
     return nothing
 end
