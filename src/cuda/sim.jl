@@ -241,11 +241,11 @@ function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi")
   return dmi
 end
 
-function add_dmi(sim::MicroSimGPU, D::Real; name="dmi", type="bulk", save_energy=true)
+function add_dmi(sim::MicroSimGPU, D::Real; name="dmi", type="bulk")
     if type == "interfacial"
-        return add_dmi_interfacial(sim, D, name=name, save_energy=save_energy)
+        return add_dmi_interfacial(sim, D, name=name)
     end
-   return add_dmi(sim, (D,D,D), name=name, save_energy=save_energy)
+   return add_dmi(sim, (D,D,D), name=name)
 end
 
 

@@ -165,9 +165,9 @@ function init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
 end
 
 """
-    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman", save_energy=true)
+    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 
-Add a static Zeeman energy to the simulation. If save_energy = false, the total energy will not be saved.
+Add a static Zeeman energy to the simulation.
 """
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
   nxyz = sim.nxyz
@@ -406,7 +406,7 @@ function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
 end
 
 """
-    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, save_energy=true)
+    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
 
 Add Demag to the system. `Nx`, `Ny` and `Nz` can be used to describe the macro boundary conditions which means that
 the given mesh is repeated `2Nx+1`, `2Ny+1 and `2Nz+1` times in `x`, `y` and `z` direction, respectively.
@@ -426,7 +426,7 @@ function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
 end
 
 """
-    add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis", save_energy=true)
+    add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
 
 Add Anisotropy to the system, where the energy density is given by
 
