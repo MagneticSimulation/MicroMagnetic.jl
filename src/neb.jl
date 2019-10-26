@@ -85,12 +85,10 @@ function init_images(neb::NEB, intervals::Any)
   if length(pics)==length(intervals)+1
     n=1
     for i=1:length(intervals)
-      m1=zeros(3*nxyz)
-      m2=zeros(3*nxyz)
-      init_vector!(m1, sim.mesh, pics[i])
-      init_vector!(m2, sim.mesh, pics[i+1])
-      normalise(m1, nxyz)
-      normalise(m2, nxyz)
+        init_m0(sim, pics[i])
+        m1 = sim.spin[:]
+        init_m0(sim, pics[i+1])
+        m2 = sim.spin[:]
       M = interpolate_m(m1, m2, Int(intervals[i]))
       #M = interpolate_m_spherical(m1,m2,Int(intervals[i]))
       for j=1:intervals[i]+1
@@ -98,15 +96,13 @@ function init_images(neb::NEB, intervals::Any)
           n += 1
       end
     end
-    m = zeros(3*nxyz)
-    init_vector!(m, sim.mesh, pics[length(pics)])
-    normalise(m,nxyz)
-    images[:,N].=m
+    init_m0(sim, pics[end])
+    images[:,N].= sim.spin[:]
   else
     println("Input error!")
   end
 
-  normalise(neb.spin, neb.nxyz)
+  #normalise(neb.spin, neb.nxyz)
   neb.pre_images[:]=neb.images[:]
 
   for n = 1:N
@@ -159,6 +155,8 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
           neb.field[:,n] .= sim.field
           neb.energy[n] = sum(sim.energy)
       end
+      #println("neb.field: ",neb.field)
+      #println("neb.spin: ",neb.spin)
   end
 
     compute_tangents(neb.tangents,neb.images,neb.energy,N,nxyz)

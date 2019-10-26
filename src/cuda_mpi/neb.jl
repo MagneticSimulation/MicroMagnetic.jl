@@ -132,6 +132,22 @@ function create_neb_driver_mpi(driver::String, nxyz::Int64, N::Int64)
   end
 end
 
+function init_m0_Ms(sim::MicroSimGPU, m0::TupleOrArrayOrFunction)
+  Float = _cuda_using_double.x ? Float64 : Float32
+  spin = zeros(Float, 3*sim.nxyz)
+  init_vector!(spin, sim.mesh, m0)
+  normalise(spin, sim.nxyz)
+  Ms = Array(sim.Ms)
+  for i = 1:sim.nxyz
+      if abs(Ms[i]) < eps(Float)
+          spin[3*i-2] = 0
+          spin[3*i-1] = 0
+          spin[3*i] = 0
+      end
+  end
+  return spin
+end
+
 function init_images(neb::NEB_GPU_MPI, init_m::Any, intervals::Any)
     sim = neb.sim
     nxyz = sim.nxyz
@@ -157,33 +173,27 @@ function init_images(neb::NEB_GPU_MPI, init_m::Any, intervals::Any)
     end
 
     for id = 1:length(intervals)
-          m1 = zeros(3*nxyz)
-          m2 = zeros(3*nxyz)
-          init_vector!(m1, sim.mesh, init_m[id])
-          init_vector!(m2, sim.mesh, init_m[id+1])
-          normalise(m1, nxyz)
-          normalise(m2, nxyz)
-          M = interpolate_m(m1, m2, Int(intervals[id]))
-          #M = interpolate_m_spherical(m1,m2,Int(intervals[i]))
-          if  rank == 0 && image_id == 1
-              CuArrays.@sync copyto!(neb.image_l, M[:, 1])
-          end
-          for j=1:intervals[id]+1
-              #images[:,n]=M[:,j]
-               if  start+1 <= image_id <= stop+1
-                   k = local_image_id-1
-                   b = view(neb.spin, k*dof+1:(k+1)*dof)
-                   CuArrays.@sync copyto!(b, M[:, j])
-                   local_image_id += 1
-               end
-              image_id += 1
-          end
+        m1 = init_m0_Ms(sim, init_m[id])
+        m2 = init_m0_Ms(sim, init_m[id+1])
+        M = interpolate_m(m1, m2, Int(intervals[id]))
+        #M = interpolate_m_spherical(m1,m2,Int(intervals[i]))
+        if  rank == 0 && image_id == 1
+            CuArrays.@sync copyto!(neb.image_l, M[:, 1])
+        end
+        for j=1:intervals[id]+1
+            #images[:,n]=M[:,j]
+            if  start+1 <= image_id <= stop+1
+                k = local_image_id-1
+                b = view(neb.spin, k*dof+1:(k+1)*dof)
+                CuArrays.@sync copyto!(b, M[:, j])
+                local_image_id += 1
+            end
+            image_id += 1
+        end
     end
 
     if rank == size - 1
-        m = zeros(3*nxyz)
-        init_vector!(m, sim.mesh, init_m[end])
-        normalise(m, nxyz)
+        m = init_m0_Ms(sim, init_m[end])
         CuArrays.@sync copyto!(neb.image_r, m)
     end
 
