@@ -4,6 +4,7 @@
 #To use this integrator, one needs to provide:
 #   - A simulation instance with field "spin" and "prespin"
 #   - A call back function
+using MPI
 using CuArrays
 
 mutable struct DormandPrinceGPU{T<:AbstractFloat}  <: Integrator
@@ -214,9 +215,9 @@ function dopri5_step_inner_GPU_MPI(neb::NEB_GPU_MPI, step::Float64, t::Float64)
     all_max_error = [0.0]
     #println("rank = $(neb.comm_rank), max_error= $max_error")
     if neb.comm_rank == 0
-        all_max_error[1] = MPI.Reduce(max_error, max, 0, MPI.COMM_WORLD)
+        all_max_error[1] = MPI.Reduce(max_error, MPI.MAX, 0, MPI.COMM_WORLD)
     else
-        MPI.Reduce(max_error, max, 0, MPI.COMM_WORLD)
+        MPI.Reduce(max_error, MPI.MAX, 0, MPI.COMM_WORLD)
     end
     MPI.Bcast!(all_max_error, 0, MPI.COMM_WORLD)
     #println("rank = $(neb.comm_rank), all_max_error= $all_max_error")
@@ -229,9 +230,9 @@ function compute_init_step_GPU_MPI(neb::NEB_GPU_MPI, dt::Float64)
     all_step_next = [0.0]
 
     if neb.comm_rank == 0
-        all_step_next[1] = MPI.Reduce(step_next, min, 0, MPI.COMM_WORLD)
+        all_step_next[1] = MPI.Reduce(step_next, MPI.MIN, 0, MPI.COMM_WORLD)
     else
-        MPI.Reduce(step_next, min, 0, MPI.COMM_WORLD)
+        MPI.Reduce(step_next, MPI.MIN, 0, MPI.COMM_WORLD)
     end
     MPI.Bcast!(all_step_next, 0, MPI.COMM_WORLD)
     return all_step_next[1]

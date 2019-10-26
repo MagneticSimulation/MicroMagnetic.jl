@@ -29,7 +29,9 @@ mutable struct NEB_GPU_MPI{T<:AbstractFloat} <: AbstractSim
 end
 
 function NEB_MPI(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_constant=1.0e5, driver="LLG")
-    MPI.Init()
+    if !MPI.Initialized()
+        MPI.Init()
+    end
     comm = MPI.COMM_WORLD
 
     Float = _cuda_using_double.x ? Float64 : Float32
@@ -53,6 +55,11 @@ function NEB_MPI(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spri
     neb.nxyz = sim.nxyz*neb.N
     neb.sim = sim
     neb.name = name
+    if comm_rank == 0
+        @info("NEB_MPI using $comm_size processes.")
+    end
+    MPI.Barrier(MPI.COMM_WORLD)
+    @info("Process $comm_rank contains $(neb.N) free images.")
 
     neb.driver = create_neb_driver_mpi(driver, nxyz, N)
 
@@ -91,16 +98,22 @@ function init_saver(neb::NEB_GPU_MPI)
 
     neb.saver_distance = DataSaver(@sprintf("%s_distance_%d.txt", neb.name, neb.comm_rank),
                                    0.0, 0, false, distance_headers, distance_units, distance_results)
-    for n = 1:neb.N
-        name = @sprintf("E_total_%g",n)
+
+    rank, size = neb.comm_rank, neb.comm_size
+    Nstart = rank == 0  ? 1 : 2
+    Nstop = rank == size - 1 ? neb.N+2 : neb.N+1
+    image_id_start = rank == size - 1 ? neb.N_total - neb.N : rank*neb.N
+    for n = Nstart:Nstop
+        name = @sprintf("E_total_%g",n-1+image_id_start)
         push!(neb.saver_energy.headers,name)
         push!(neb.saver_energy.units, "<J>")
         fun =  o::NEB_GPU_MPI -> o.energy_cpu[n]
         push!(neb.saver_energy.results, fun)
     end
 
-    for n = 1:neb.N-1
-        name =  @sprintf("distance_%d",n)
+    for n = 1:Nstop-1
+        id = image_id_start + n
+        name =  @sprintf("distance_%d_%d", id-1, id)
         push!(neb.saver_distance.headers,name)
         push!(neb.saver_distance.units, "<>")
         fun =  o::NEB_GPU_MPI -> o.distance[n]
@@ -175,8 +188,7 @@ function init_images(neb::NEB_GPU_MPI, init_m::Any, intervals::Any)
     end
 
     CuArrays.@sync copyto!(neb.prespin, neb.spin)
-
-    println("We are here!!!")
+    MPI.Barrier(MPI.COMM_WORLD)
     return nothing
 end
 
@@ -244,14 +256,13 @@ function compute_micromagnetic_field(neb::NEB_GPU_MPI)
     for n = 1:neb.N
         f = view(neb.field, (n-1)*dof+1:n*dof)
         m = view(neb.spin, (n-1)*dof+1:n*dof)
-        sim.total_energy = 0
+        total_energy = 0
         for interaction in sim.interactions
             effective_field(interaction, sim, m, 0.0)
             f .+= sim.field
-            interaction.total_energy = sum(sim.energy)
-            sim.total_energy += interaction.total_energy
+            total_energy += sum(sim.energy)
         end
-        neb.energy_cpu[n+1] = sim.total_energy
+        neb.energy_cpu[n+1] = total_energy
     end
 
     compute_system_energy_two_ends(neb)
@@ -280,22 +291,20 @@ end
 function compute_system_energy_two_ends(neb::NEB_GPU_MPI)
   sim = neb.sim
   #left image
-  sim.total_energy = 0
+  total_energy = 0
   for interaction in sim.interactions
       effective_field(interaction, sim, neb.image_l, 0.0)
-      interaction.total_energy = sum(sim.energy)
-      sim.total_energy += interaction.total_energy
+      total_energy +=  sum(sim.energy)
   end
-  neb.energy_cpu[1] = sim.total_energy
+  neb.energy_cpu[1] = total_energy
 
   #right image
-  sim.total_energy = 0
+  total_energy = 0
   for interaction in sim.interactions
       effective_field(interaction, sim, neb.image_r, 0.0)
-      interaction.total_energy = sum(sim.energy)
-      sim.total_energy += interaction.total_energy
+      total_energy +=  sum(sim.energy)
   end
-  neb.energy_cpu[end] = sim.total_energy
+  neb.energy_cpu[end] = total_energy
 
   return 0
 end
@@ -314,15 +323,12 @@ function compute_system_energy(neb::NEB_GPU_MPI)
       end
       neb.energy_cpu[n+1] = sim.total_energy
   end
-
   return 0
 end
 
 
 function neb_llg_call_back_gpu_mpi(neb::NEB_GPU_MPI, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64)  where {T<:AbstractFloat}
   effective_field_NEB(neb, spin)
-  #println("spin: ", neb.spin)
-  #println("fields: ", neb.field)
   neb_llg_rhs_gpu(dm_dt, spin, neb.field, 2.21e5, neb.nxyz)
   return nothing
 end
@@ -346,6 +352,7 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
 
     if save_m_every>0
         compute_system_energy(neb)
+        compute_distance(neb)
         write_data(neb, neb.saver_energy)
         write_data(neb, neb.saver_distance)
     end
@@ -378,7 +385,7 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
         if neb.comm_rank == 0
             all_max_dmdt[1] = MPI.Reduce(max_dmdt, max, 0, MPI.COMM_WORLD)
         else
-            MPI.Reduce(max_dmdt, max, 0, MPI.COMM_WORLD)
+            MPI.Reduce(max_dmdt, MPI.MAX, 0, MPI.COMM_WORLD)
         end
         MPI.Bcast!(all_max_dmdt, 0, MPI.COMM_WORLD)
 
@@ -389,6 +396,7 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
 
         if save_m_every>0 && i%save_m_every == 0
             compute_system_energy(neb)
+            compute_distance(neb)
             write_data(neb, neb.saver_energy)
             write_data(neb, neb.saver_distance)
         end
@@ -419,14 +427,28 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
     return nothing
 end
 
-
+#TODO: merge save_ovf and save_vtk???
 function save_ovf(neb::NEB_GPU_MPI, name::String)
   sim = neb.sim
   dof = 3*sim.nxyz
+  rank = neb.comm_rank
+  size = neb.comm_size
+
+  id_start = rank == size - 1 ? neb.N_total - neb.N : rank*neb.N
+  if rank == 0
+      sim.spin .= neb.image_l
+      fname=@sprintf("%s_n_%d.ovf", name, 0)
+      save_ovf(sim, fname)
+  end
   for n = 1:neb.N
       b = view(neb.spin, (n-1)*dof+1:n*dof)
       sim.spin .= b
-      fname=@sprintf("%s_n_%d.ovf", name, n+neb.N*neb.comm_rank)
+      fname=@sprintf("%s_n_%d.ovf", name, n+id_start)
+      save_ovf(sim, fname)
+  end
+  if rank == size - 1
+      sim.spin .= neb.image_r
+      fname=@sprintf("%s_n_%d.ovf", name, neb.N_total+1)
       save_ovf(sim, fname)
   end
 end
@@ -434,10 +456,24 @@ end
 function save_vtk(neb::NEB_GPU_MPI, name::String)
   sim = neb.sim
   dof = 3*sim.nxyz
-  for n=1:neb.N
+  rank = neb.comm_rank
+  size = neb.comm_size
+
+  id_start = rank == size - 1 ? neb.N_total - neb.N : rank*neb.N
+  if rank == 0
+      sim.spin .= neb.image_l
+      fname=@sprintf("%s_n_%d", name, 0)
+      save_vtk(sim, fname)
+  end
+  for n = 1:neb.N
       b = view(neb.spin, (n-1)*dof+1:n*dof)
       sim.spin .= b
-      fname=@sprintf("%s_n_%d", name, n+neb.N*neb.comm_rank)
-      save_vtk(sim, fname, fields=fields)
+      fname=@sprintf("%s_n_%d", name, n+id_start)
+      save_vtk(sim, fname)
+  end
+  if rank == size - 1
+      sim.spin .= neb.image_r
+      fname=@sprintf("%s_n_%d", name, neb.N_total+1)
+      save_vtk(sim, fname)
   end
 end

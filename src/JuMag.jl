@@ -54,7 +54,7 @@ include("neb_llg.jl")
 include("ovf2.jl")
 
 try
-	using CUDAnative, CuArrays
+	using CUDAnative, CuArrays, CuArrays.CUDAdrv
     #CuArrays.allowscalar(false) TODO: where should it be?
 	#using CuArrays.CUFFT
 	#@info "Running CUFFT $(CUFFT.version())"
@@ -96,6 +96,17 @@ if _mpi_available.x && _cuda_available.x
     include("cuda_mpi/dopri5.jl")
     include("cuda_mpi/neb_kernels.jl")
     export NEB_MPI
+
+    function using_multiple_gpus()
+        if !MPI.Initialized()
+            MPI.Init()
+        end
+        comm = MPI.COMM_WORLD
+        CUDAnative.device!(MPI.Comm_rank(comm) % length(devices()))
+    end
+
+    #export using_multiple_gpus
+
 end
 
 end

@@ -14,6 +14,7 @@ include("test_integrator.jl")
 include("test_relax.jl")
 include("test_util.jl")
 include("test_ovf.jl")
+include("test_neb.jl")
 
 if JuMag._cuda_available.x
   JuMag.cuda_using_double()

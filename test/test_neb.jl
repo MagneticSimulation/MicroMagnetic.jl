@@ -32,8 +32,8 @@ p = JuMag.interpolate_m_spherical(m1, m2, 1)
 println("interpolate_m2: ", p)
 
 function creat_sim()
-    mesh =  FDMesh(nx=1, ny=1, nz=1, dx=2.5e-9, dy=2.5e-9, dz=2.5e-9)
-    sim = Sim(mesh, name="neb", driver="SD")
+    mesh =  FDMesh(nx=1, ny=1, nz=1, dx=5e-9, dy=5e-9, dz=5e-9)
+    sim = Sim(mesh, name="neb", driver="none",save_data=false)
     set_Ms(sim, 8e5)
 
     init_m0(sim, (0.6, 0, -0.8))
@@ -50,18 +50,20 @@ end
 
 sim=creat_sim()
 
-neb = NEB(sim, [ (1,0,0), (0,1,0)], 1; name="haha")
+neb = NEB(sim, [ (1,0,0), (0,1,0)], 1; name="test")
 println(neb.images)
 @test isapprox(neb.distance[1],atan(sqrt(2)/2,sqrt(2)/2))
 @test isapprox(neb.images[:,1],[1,0,0])
 @test isapprox(neb.images[:,2],mxy)
 @test isapprox(neb.images[:,3],[0,1,0])
 
-neb = NEB(sim, [ (1,0,0), (0,0,1), (-1,0,0)], [2, 2]; name="test")
-@test(size(neb.images) == (3, 7))
-for i = 1:7
-    println(neb.images[:, i])
-end
+neb = NEB(sim, [ (1,0,0), (0,1,1), (-1,0,0)], [5, 5]; name="test")
+@test(size(neb.images) == (3, 13))
 
-
-#relax(neb)
+init_energy_diff = maximum(neb.energy) - neb.energy[1]
+relax(neb, maxsteps=200, stopping_dmdt=0.01, save_ovf_every=-1)
+final_energy_diff = maximum(neb.energy) - neb.energy[1]
+expected_energy_diff = 5e4*5e-9^3
+println("init_diff=$init_energy_diff, expected_diff=$expected_energy_diff, final_diff=$final_energy_diff")
+@test init_energy_diff > expected_energy_diff
+@test abs(final_energy_diff - expected_energy_diff)/expected_energy_diff < 1e-8
