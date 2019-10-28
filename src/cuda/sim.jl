@@ -211,8 +211,8 @@ function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi")
   energy = zeros(Float, nxyz)
   dmi = BulkDMIGPU(Float(D[1]), Float(D[2]), Float(D[3]), field, energy, Float(0.0), name)
 
+  push!(sim.interactions, dmi)
   if sim.save_data
-      push!(sim.interactions, dmi)
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)
@@ -231,8 +231,8 @@ function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi")
   energy = zeros(T, nxyz)
   dmi = SpatialBulkDMIGPU(Ds_gpu, field, energy, T(0.0), name)
 
+  push!(sim.interactions, dmi)
   if sim.save_data
-      push!(sim.interactions, dmi)
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)

@@ -430,7 +430,7 @@ function compute_system_energy(sim::AbstractSim, spin::Array{Float64, 1}, t::Flo
   fill!(sim.energy, 0.0)
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)
-	sim.energy .+= interaction.energy
+    sim.energy .+= interaction.energy
   end
   return 0
 end

@@ -81,7 +81,7 @@ function init_images(neb::NEB, intervals::Any)
   nxyz=sim.nxyz
   N=neb.N
   images = neb.images
-  pics= neb.init_m
+  pics = neb.init_m
   if length(pics)==length(intervals)+1
     n=1
     for i=1:length(intervals)
@@ -206,6 +206,7 @@ function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy:
 
     norm_t = LinearAlgebra.norm(t[:,n])
     t[:,n] = t[:,n]/norm_t
+
   end
 
    return nothing
@@ -332,7 +333,14 @@ function interpolate_m(m1::Array{Float64,1}, m2::Array{Float64,1}, N::Int)
     for i=1:N+1
         for j=1:nxyz
             k=3*j-2
-            theta = acos(b1[:,j]'*b2[:,j])
+            amp = b1[:,j]'*b2[:,j]
+            if amp > 1
+                amp = 1.0
+            end
+            if amp < -1
+                amp = -1.0
+            end
+            theta = acos(amp)
             dtheta = theta/(N+1)
             angle = (i-1)*dtheta
             m[k,i],m[k+1,i],m[k+2,i]=rotation_operator(b1[:,j],b2[:,j],angle)
