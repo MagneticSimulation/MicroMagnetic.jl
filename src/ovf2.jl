@@ -95,12 +95,12 @@ function write_OVF2_Data(io::IOStream, sim::AbstractSim, dataformat::String)
         hdr(io, "Begin", "Data " * dataformat)
         write_OVF2_Text(io, sim)
         hdr(io, "End", "Data " * dataformat)
-    elseif dataformat == "binary4"
+    elseif dataformat == "binary4" || dataformat == "binary"
         hdr(io, "Begin", "Data Binary 4")
         write_OVF2_Binary4(io, sim)
         write(io, "\n")
         hdr(io, "End", "Data Binary 4")
-    elseif dataformat == "binary8" || dataformat == "binary"
+    elseif dataformat == "binary8"
         hdr(io, "Begin", "Data Binary 8")
         write_OVF2_Binary8(io, sim)
         write(io, "\n")
