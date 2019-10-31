@@ -3,9 +3,11 @@ using Random
 mutable struct MonteCarlo{TF<:AbstractFloat} <:AbstractSimGPU
   mesh::Mesh
   mu_s::Float64
-  J::Float64
+  J::Float64   #Jxy
+  Jz::Float64
   J1::Float64
-  D::Float64
+  D::Float64   #Dxy
+  Dz::Float64
   D1::Float64
   bulk_dmi::Bool
   Ku::Float64
@@ -32,7 +34,7 @@ J, D, Ku and Kc in units of Joule
 H in units of Tesla.
 
 """
-function MonteCarlo(mesh::Mesh; mu_s=1.0*mu_B, J=1*meV, J1=0, D=0, D1=0, Ku=0, Kc=0, H=(0,0,0), T=10, bulk_dmi=false, name="dyn")
+function MonteCarlo(mesh::Mesh; mu_s=1.0*mu_B, J=1*meV, Jz=0, J1=0, D=0, Dz=0, D1=0, Ku=0, Kc=0, H=(0,0,0), T=10, bulk_dmi=false, name="dyn")
   nxy = mesh.nx*mesh.ny*mesh.nz
   Float = _cuda_using_double.x ? Float64 : Float32
   spin = CuArrays.zeros(Float, 3*nxy)
@@ -50,7 +52,7 @@ function MonteCarlo(mesh::Mesh; mu_s=1.0*mu_B, J=1*meV, J1=0, D=0, D1=0, Ku=0, K
              o::AbstractSim -> o.total_energy, average_m]
   saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
 
-  return MonteCarlo(mesh, mu_s, J/k_B, J1/k_B, D/k_B, D1/k_B, bulk_dmi, Ku/k_B, Kc/k_B, Float64(T),
+  return MonteCarlo(mesh, mu_s, J/k_B, Jz/k_B, J1/k_B, D/k_B, Dz/k_B, D1/k_B, bulk_dmi, Ku/k_B, Kc/k_B, Float64(T),
                     H[1]*mu_s/k_B, H[2]*mu_s/k_B, H[3]*mu_s/k_B,
                     saver, spin, nextspin, rnd, energy, Float(0.0), nxy, 0, name)
 end
@@ -120,7 +122,8 @@ function run_single_step_cubic(sim::MonteCarlo, bias::Int64)
   mesh = sim.mesh
   @cuda blocks=blk threads=thr run_step_cubic_kernel!(sim.spin, sim.nextspin,
                                sim.rnd, sim.energy, mesh.ngbs, mesh.nngbs,
-                               F(sim.J), F(sim.J1), F(sim.D), F(sim.D1), sim.bulk_dmi,
+                               F(sim.J), F(sim.Jz), F(sim.J1),
+                               F(sim.D), F(sim.Dz), F(sim.D1), sim.bulk_dmi,
                                F(sim.Ku), F(sim.Kc),
                                F(sim.Hx), F(sim.Hy), F(sim.Hz), F(sim.T),
                                mesh.nx, mesh.ny, mesh.nz, bias)
@@ -174,7 +177,7 @@ function compute_cubic_energy(sim::MonteCarlo)
     return sum(sim.energy)*k_B
 end
 
-function run_sim(sim::MonteCarlo; maxsteps=10000, save_m_every = 10, save_vtk_every=-1)
+function run_sim(sim::MonteCarlo; maxsteps=10000, save_m_every = 10, save_vtk_every=-1, save_ovf_every=-1, ovf_format="binary8")
     cubic = isa(sim.mesh, CubicMeshGPU) ? true : false
     for i=1:maxsteps
 
@@ -184,6 +187,12 @@ function run_sim(sim::MonteCarlo; maxsteps=10000, save_m_every = 10, save_vtk_ev
                 @info @sprintf("step=%5d  total_energy=%g", sim.steps, energy)
                 #compute_system_energy(sim, sim.spin, 0.0)
                 #write_data(sim)
+            end
+        end
+
+        if save_ovf_every > 0
+            if sim.steps%save_ovf_every == 0
+                save_ovf(sim, @sprintf("%s_%d", sim.name, sim.steps), dataformat = ovf_format)
             end
         end
 

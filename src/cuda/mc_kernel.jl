@@ -78,7 +78,7 @@ end
 
 function run_step_cubic_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1},
                               energy::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},
-                              nngbs::CuDeviceArray{Int32, 2}, J::T, J1::T, D::T, D1::T, bulk_dmi::Bool,
+                              nngbs::CuDeviceArray{Int32, 2}, J::T, Jz::T, J1::T, D::T, Dz::T, D1::T, bulk_dmi::Bool,
                               Ku::T, Kc::T, Hx::T, Hy::T, Hz::T, temp::T,
                               nx::Int64, ny::Int64, nz::Int64, bias::Int64) where {T<:AbstractFloat}
 
@@ -116,11 +116,11 @@ function run_step_cubic_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T,
                 @inbounds sx = m[k]
                 @inbounds sy = m[k+1]
                 @inbounds sz = m[k+2]
-                delta_E -= J*(dmx*sx + dmy*sy + dmz*sz) #exchange
+                delta_E -= J*(dmx*sx + dmy*sy) + Jz*dmz*sz #exchange
 
                 Dx = bulk_dmi ? D*Rx[j] : -D*Ry[j]
                 Dy = bulk_dmi ? D*Ry[j] : D*Rx[j]
-                Dz = bulk_dmi ? D*Rz[j] : T(0)
+                Dz = bulk_dmi ? Dz*Rz[j] : T(0)
                 delta_E += volume(dmx, dmy, dmz, sx, sy, sz, Dx, Dy, Dz) #DMI
             end
 
