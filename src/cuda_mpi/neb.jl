@@ -438,7 +438,7 @@ function relax(neb::NEB_GPU_MPI; maxsteps=10000, stopping_dmdt=0.05, save_m_ever
 end
 
 #TODO: merge save_ovf and save_vtk???
-function save_ovf(neb::NEB_GPU_MPI, name::String)
+function save_ovf(neb::NEB_GPU_MPI, name::String;ovf_format::String="binary")
   sim = neb.sim
   dof = 3*sim.nxyz
   rank = neb.comm_rank
@@ -448,18 +448,18 @@ function save_ovf(neb::NEB_GPU_MPI, name::String)
   if rank == 0
       sim.spin .= neb.image_l
       fname=@sprintf("%s_n_%d.ovf", name, 0)
-      save_ovf(sim, fname)
+      save_ovf(sim, fname; dataformat=ovf_format)
   end
   for n = 1:neb.N
       b = view(neb.spin, (n-1)*dof+1:n*dof)
       sim.spin .= b
       fname=@sprintf("%s_n_%d.ovf", name, n+id_start)
-      save_ovf(sim, fname)
+      save_ovf(sim, fname; dataformat=ovf_format)
   end
   if rank == size - 1
       sim.spin .= neb.image_r
       fname=@sprintf("%s_n_%d.ovf", name, neb.N_total+1)
-      save_ovf(sim, fname)
+      save_ovf(sim, fname; dataformat=ovf_format)
   end
 end
 

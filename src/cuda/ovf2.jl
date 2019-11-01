@@ -27,8 +27,8 @@ function write_OVF2_Text(io::IOStream, sim::AbstractSimGPU)
 end
 
 function write_OVF2_Binary(io::IOStream, sim::AbstractSimGPU,dataformat)
-    Float = dataformat=="binary8" ? Float64 : Float32
-    binary = dataformat=="binary8" ? "Binary 8" : "Binary 4"
+    Float = _cuda_using_double.x ? Float64 : Float32
+    binary = _cuda_using_double.x ? "Binary 8" : "Binary 4"
     hdr(io, "Begin", "Data "  * binary)
 
     mesh = sim.mesh
@@ -39,7 +39,7 @@ function write_OVF2_Binary(io::IOStream, sim::AbstractSimGPU,dataformat)
     copyto!(spin, sim.spin)
 
     b = reshape(spin, (3, nx, ny, nz))
-    checknumber = dataformat=="binary8" ? Float(123456789012345.0) : Float(1234567.0)
+    checknumber = _cuda_using_double.x ? Float(123456789012345.0) : Float(1234567.0)
 
     write(io, checknumber)   ##OOMMF requires this number to be first to check the format
 

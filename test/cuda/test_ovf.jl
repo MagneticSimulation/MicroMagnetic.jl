@@ -43,6 +43,8 @@ spin = Array(sim.spin)
 spin = Array(sim.prespin)
 @test isapprox(spin, expected,atol=1e-5)
 
+relax(sim,maxsteps = 20)
+
 read_ovf(sim, "test_ovf32")
 println(sim.spin)
 spin = Array(sim.spin)
