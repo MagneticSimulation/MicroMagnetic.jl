@@ -109,21 +109,39 @@ function run_step_cubic_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T,
         @inbounds delta_E += Kc*(CUDAnative.pow(m[i+1],4) - CUDAnative.pow(next_m[i+1],4)) #Cubic Anisotropy for y
         @inbounds delta_E += Kc*(CUDAnative.pow(m[i],4) - CUDAnative.pow(next_m[i],4)) #Cubic Anisotropy for x
 
-        for j = 1:6
+        for j = 1:4
             id = ngbs[j, index]
             if id>0
                 k = 3*id-2
                 @inbounds sx = m[k]
                 @inbounds sy = m[k+1]
                 @inbounds sz = m[k+2]
-                delta_E -= J*(dmx*sx + dmy*sy) + Jz*dmz*sz #exchange
+                delta_E -= J*(dmx*sx + dmy*sy + dmz*sz) #exchange
 
                 Dx = bulk_dmi ? D*Rx[j] : -D*Ry[j]
                 Dy = bulk_dmi ? D*Ry[j] : D*Rx[j]
                 Dz = bulk_dmi ? Dz*Rz[j] : T(0)
                 delta_E += volume(dmx, dmy, dmz, sx, sy, sz, Dx, Dy, Dz) #DMI
             end
+        end
 
+        for j = 5:6
+            id = ngbs[j, index]
+            if id>0
+                k = 3*id-2
+                @inbounds sx = m[k]
+                @inbounds sy = m[k+1]
+                @inbounds sz = m[k+2]
+                delta_E -= Jz*(dmx*sx + dmy*sy + dmz*sz) #exchange
+
+                Dx = bulk_dmi ? D*Rx[j] : -D*Ry[j]
+                Dy = bulk_dmi ? D*Ry[j] : D*Rx[j]
+                Dz = bulk_dmi ? Dz*Rz[j] : T(0)
+                delta_E += volume(dmx, dmy, dmz, sx, sy, sz, Dx, Dy, Dz) #DMI
+            end
+        end
+
+        for j = 1:6
             id = nngbs[j, index]
             if id>0
                 k = 3*id-2
