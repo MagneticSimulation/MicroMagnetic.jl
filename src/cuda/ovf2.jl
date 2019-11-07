@@ -2,8 +2,8 @@ function write_OVF2_Data(io::IOStream, sim::AbstractSimGPU, dataformat::String)
     if dataformat == "text"
         hdr(io, "Begin", "Data " * dataformat)
         write_OVF2_Text(io, sim)
-    elseif dataformat == "binary"
-        write_OVF2_Binary(io, sim)
+    elseif dataformat == "binary" || dataformat == "binary4" || dataformat == "binary8"
+        write_OVF2_Binary(io, sim, dataformat)
     else
         @info "Data format error!"
     end
@@ -26,7 +26,7 @@ function write_OVF2_Text(io::IOStream, sim::AbstractSimGPU)
 
 end
 
-function write_OVF2_Binary(io::IOStream, sim::AbstractSimGPU)
+function write_OVF2_Binary(io::IOStream, sim::AbstractSimGPU,dataformat)
     Float = _cuda_using_double.x ? Float64 : Float32
     binary = _cuda_using_double.x ? "Binary 8" : "Binary 4"
     hdr(io, "Begin", "Data "  * binary)

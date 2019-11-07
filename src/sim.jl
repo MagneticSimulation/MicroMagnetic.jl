@@ -615,8 +615,8 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
     if save_ovf_every > 0 && i%save_ovf_every == 0
       save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
     end
-    sim.saver.t = rk_data.t
-    sim.saver.nsteps += 1
+      sim.saver.t = rk_data.t
+      sim.saver.nsteps += 1
     if max_dmdt < stopping_dmdt*dmdt_factor
       @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
       if save_m_every>0

@@ -251,7 +251,7 @@ function compute_system_energy(neb::NEB)
   return 0
 end
 
-function relax(neb::NEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks",save_ovf_every=-1, ovf_folder="ovfs")
+function relax(neb::NEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks",save_ovf_every=-1, ovf_folder="ovfs",ovf_format="binary")
 
   is_relax_NEB = false
   if isa(neb.driver, NEB_SD)
@@ -266,9 +266,9 @@ function relax(neb::NEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1
   end
 
   if is_relax_NEB
-      relax_NEB(neb, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder,save_ovf_every, ovf_folder)
+      relax_NEB(neb, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder,save_ovf_every, ovf_folder,ovf_format)
   else
-      relax_NEB_LLG(neb, maxsteps, Float64(stopping_dmdt), save_m_every, save_vtk_every, vtk_folder,save_ovf_every, ovf_folder)
+      relax_NEB_LLG(neb, maxsteps, Float64(stopping_dmdt), save_m_every, save_vtk_every, vtk_folder,save_ovf_every, ovf_folder,ovf_format)
   end
   return nothing
 end
@@ -282,12 +282,12 @@ function save_vtk(neb::NEB, name::String, fields::Array{String, 1} = String[])
   end
 end
 
-function save_ovf(neb::NEB, name::String)
+function save_ovf(neb::NEB, name::String;ovf_format::String="binary")
   sim = neb.sim
   for n=1:neb.N
     sim.spin[:]=neb.images[:,n]
     fname=@sprintf("%s_n_%d",name,n)
-    save_ovf(sim,fname)
+    save_ovf(sim,fname,dataformat=ovf_format)
   end
 end
 
