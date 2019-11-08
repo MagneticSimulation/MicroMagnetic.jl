@@ -16,6 +16,7 @@ export init_m0,
        set_ux, write_data,
        compute_system_energy,
        compute_skyrmion_number,
+       compute_winding_number_3d,
        compute_guiding_centre, set_aj,
        NEB,
        interpolate_m,save_ovf,read_ovf
@@ -29,6 +30,7 @@ const _using_gpu = Ref(false)
 const _mpi_available = Ref(true)
 
 function cuda_using_double(flag = true)
+
    _cuda_using_double[] = flag
    return nothing
 end

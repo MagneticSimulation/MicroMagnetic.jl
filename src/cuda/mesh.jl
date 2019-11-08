@@ -9,6 +9,7 @@ struct TriangularMesh <: Mesh
   ngbs::CuArray{Int32, 2}
   xperiodic::Bool
   yperiodic::Bool
+  zperiodic::Bool
 end
 
 @inline function index(i::Int64, j::Int64, nx::Int64, ny::Int64)::Int32
@@ -45,7 +46,7 @@ The neighbours are indexed as counterclockwise of the given spin:
   |right top_right top_left  left  bottom_left bottom_right |
 
 """
-function TriangularMesh(;dx=1e-9, nx=3, ny=2, pbc="open")
+function TriangularMesh2D(;dx=1e-9, nx=3, ny=2, pbc="open")
 
     ngbs = zeros(Int32, 6, nx*ny)
     xperiodic = 'x' in pbc ? true : false
@@ -59,6 +60,38 @@ function TriangularMesh(;dx=1e-9, nx=3, ny=2, pbc="open")
         ngbs[4,id] = indexpbc(i-1, j, nx, ny, xperiodic, yperiodic)  #left
         ngbs[5,id] = indexpbc(i, j-1, nx, ny, xperiodic, yperiodic)  #bottom_left
         ngbs[6,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
+    end
+    dy  = dx*sqrt(3)/2
+    return TriangularMesh(dx, dy, dx, nx, ny, 1, nx*ny, CuArray(ngbs), xperiodic, yperiodic)
+end
+
+
+"""
+Create a 3d triangular mesh.
+
+The neighbours are indexed as counterclockwise of the given spin:
+
+  |  1      2         3       4         5          6           7      8   |
+  |right top_right top_left  left  bottom_left bottom_right   top   bottom|
+
+"""
+function TriangularMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=3, ny=2, nz=1, pbc="open")
+
+    ngbs = zeros(Int32, 8, nx*ny*nz)
+    xperiodic = 'x' in pbc ? true : false
+    yperiodic = 'y' in pbc ? true : false
+    zperiodic = 'z' in pbc ? true : false
+
+    for k = 1:nz, j = 1:ny, i=1:nx
+        id = index(i,j, k, nx, ny, nz)
+        ngbs[1,id] = indexpbc(i+1, j, k, nx, ny, nz, xperiodic, yperiodic)  #right
+        ngbs[2,id] = indexpbc(i, j+1, k, nx, ny, nz, xperiodic, yperiodic)  #top_right
+        ngbs[3,id] = indexpbc(i-1, j+1, k, nx, ny, nz, xperiodic, yperiodic)  #top_left
+        ngbs[4,id] = indexpbc(i-1, j, nx, ny, xperiodic, yperiodic)  #left
+        ngbs[5,id] = indexpbc(i, j-1, nx, ny, xperiodic, yperiodic)  #bottom_left
+        ngbs[6,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
+        ngbs[7,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
+        ngbs[8,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
     end
     dy  = dx*sqrt(3)/2
     return TriangularMesh(dx, dy, dx, nx, ny, 1, nx*ny, CuArray(ngbs), xperiodic, yperiodic)
