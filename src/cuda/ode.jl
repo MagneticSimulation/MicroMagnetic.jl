@@ -182,3 +182,7 @@ function interpolation_dopri5(ode::Dopri5GPU, t::Float64)
                                  ode.step, N)
     return nothing
 end
+
+function run_step(sim::AbstractSim, driver::LLG_GPU)
+    advance_step(sim, driver.ode)
+end

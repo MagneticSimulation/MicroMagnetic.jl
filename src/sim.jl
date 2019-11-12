@@ -498,125 +498,86 @@ function add_cubic_anis(sim::AbstractSim, Kc::Float64; name="cubic")
 end
 
 """
-    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
+    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
 
-Relax the system using `LLG` or `SD` driver. The stop condition is determined by either `stopping_dmdt`(for `LLG`) or `stopping_torque`(for `SD`).
+Relax the system using `LLG` or `SD` driver. The stop condition is determined by `stopping_dmdt`(both for `LLG` and `SD` drivers).
 Spins can be stored in ovfs or vtks. ovf format can be chosen in "binary"(float64),"binary8"(float64), "binary4"(float32), "text"
 
 Fields can be stored in vtks by:
 
 ```julia
-relax(sim,save_vtk_every = 10, fields = ["demag", "exch", "anis"])
+relax(sim, save_vtk_every = 10, fields = ["demag", "exch", "anis"])
 ```
-
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs",save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
-  is_relax_llg = false
-  if _cuda_available.x && isa(sim.driver, LLG_GPU)
-        is_relax_llg = true
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks", fields::Array{String, 1} = String[])
+
+  llg_driver = false
+
+  if isa(sim.driver, LLG) || (_cuda_available.x && isa(sim.driver, LLG_GPU))
+      llg_driver = true
   end
 
-  if isa(sim.driver, LLG)
-      is_relax_llg = true
-  end
-
-  if !isdir(vtk_folder) && save_vtk_every>0
+  if !isdir(vtk_folder) && save_vtk_every > 0
       mkdir(vtk_folder)
   end
 
-  if !isdir(ovf_folder)&& save_ovf_every>0
-    mkdir(ovf_folder)
-end
-
-  if is_relax_llg
-      relax_llg(sim, maxsteps, Float64(stopping_dmdt), save_m_every, save_ovf_every, ovf_format, ovf_folder, save_vtk_every, vtk_folder, fields)
-  else
-      relax_energy(sim, maxsteps, Float64(stopping_torque), save_m_every, save_ovf_every, ovf_format, ovf_folder, save_vtk_every, vtk_folder, fields)
+  if !isdir(ovf_folder) && save_ovf_every > 0
+      mkdir(ovf_folder)
   end
-  return nothing
-end
-
-
-function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float64,
-                     save_m_every::Int64, save_ovf_every::Int64, ovf_format::String, ovf_folder::String, save_vtk_every::Int64, vtk_folder::String, fields::Array{String, 1} = String[])
 
   if _cuda_available.x && isa(sim, MicroSimGPU)
       T = _cuda_using_double.x ? Float64 : Float32
-      gk_abs = CuArrays.zeros(T, 3*sim.nxyz)
+      dm = CuArrays.zeros(T, 3*sim.nxyz)
   else
-      gk_abs = zeros(Float64,3*sim.nxyz)
+      dm = zeros(Float64,3*sim.nxyz)
   end
-
-  driver = sim.driver
-  for i=1:maxsteps
-    run_step(sim, driver)
-    abs!(gk_abs, driver.gk)  #max_torque = maximum(abs.(driver.gk)) eats gpu memory???
-    max_torque = maximum(gk_abs)
-	@info @sprintf("step=%5d  tau=%10.6e  max_torque=%10.6e", i, driver.tau, max_torque)
-    if save_m_every>0 && i%save_m_every == 0
-      compute_system_energy(sim, sim.spin, 0.0)
-      write_data(sim)
-    end
-    if save_vtk_every > 0 && i%save_vtk_every == 0
-        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)),fields = fields)
-    end
-    if save_ovf_every > 0 && i%save_ovf_every == 0
-      save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
-    end
-    sim.saver.nsteps += 1
-    if max_torque < stopping_torque
-      @info @sprintf("max_torque (mxmxH) is less than stopping_torque=%g, Done!", stopping_torque)
-      if save_m_every>0
-          compute_system_energy(sim, sim.spin, 0.0)
-          write_data(sim)
-      end
-      if save_vtk_every > 0
-          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)),fields = fields)
-      end
-      if save_ovf_every > 0
-        save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
-      end
-      break
-    end
-  end
-  return nothing
-end
-
-function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
-         save_m_every::Int64, save_ovf_every::Int64, ovf_format::String, ovf_folder::String, save_vtk_every::Int64, vtk_folder::String, fields::Array{String, 1} = String[])
-  step = 0
-  rk_data = sim.driver.ode
 
   dmdt_factor = 1.0
   if isa(sim, MicroSim) || (_cuda_available.x && isa(sim, MicroSimGPU))
     dmdt_factor = (2 * pi / 360) * 1e9
   end
+
+  step = 0
+  driver = sim.driver
+  @info @sprintf("Running Driver : %s.", typeof(driver))
   for i=1:maxsteps
-    advance_step(sim, rk_data)
-    step_size = rk_data.step
-    #omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
 
-    compute_dm!(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
-    max_dmdt = maximum(rk_data.omega_t)/step_size
+      run_step(sim, driver)
 
-    @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
-                   i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor)
-    if save_m_every>0 && i%save_m_every == 0
-      compute_system_energy(sim, sim.spin, sim.driver.ode.t)
-      write_data(sim)
-    end
+      step_size = llg_driver ? driver.ode.step : driver.tau/2.21e5*2
+
+      compute_dm!(dm, sim.prespin, sim.spin, sim.nxyz)
+      max_dmdt = maximum(dm)/step_size
+
+      t = llg_driver ? sim.driver.ode.t : 0.0
+      if llg_driver
+          @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
+                        i, step_size, t, max_dmdt/dmdt_factor)
+      else
+          @info @sprintf("step =%5d  step_size=%10.6e    max_dmdt=%10.6e",
+                        i, step_size, max_dmdt/dmdt_factor)
+      end
+
+      if save_m_every>0 && i%save_m_every == 0
+          compute_system_energy(sim, sim.spin, t)
+          write_data(sim)
+      end
     if save_vtk_every > 0 && i%save_vtk_every == 0
         save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
     end
     if save_ovf_every > 0 && i%save_ovf_every == 0
       save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
     end
-      sim.saver.t = rk_data.t
-      sim.saver.nsteps += 1
+
+    if llg_driver
+        sim.saver.t = driver.ode.t
+    end
+
+    sim.saver.nsteps += 1
     if max_dmdt < stopping_dmdt*dmdt_factor
       @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
       if save_m_every>0
-          compute_system_energy(sim, sim.spin, sim.driver.ode.t)
+          compute_system_energy(sim, sim.spin, t)
           write_data(sim)
       end
       if save_vtk_every > 0
@@ -625,8 +586,18 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
       if save_ovf_every > 0
         save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
       end
+      step = i
       break
     end
+  end
+
+  if step == maxsteps
+      if save_vtk_every > 0
+          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, step)), fields = fields)
+      end
+      if save_ovf_every > 0
+          save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, step)), dataformat = ovf_format)
+      end
   end
   return nothing
 end

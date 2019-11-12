@@ -41,7 +41,7 @@ function relax_system_sdm()
   add_dmi(sim, 0.09, name="dmi")
 
   init_m0(sim, m0_fun)
-  relax(sim, maxsteps=2000, stopping_torque=0.01, save_vtk_every = 10)
+  relax(sim, maxsteps=2000, stopping_dmdt=0.01, save_vtk_every = 10)
   #println(sim.spin)
   npzwrite("m2.npy", sim.spin)
   #save_vtk(sim, "skx", fields=["exch", "dmi"])

@@ -151,3 +151,7 @@ function advance_step(sim::AbstractSim, integrator::DormandPrince)
     end
     return true
 end
+
+function run_step(sim::AbstractSim, driver::LLG)
+    advance_step(sim, driver.ode)
+end

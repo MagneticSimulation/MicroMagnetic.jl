@@ -34,7 +34,7 @@ function relax_system()
   add_demag(sim)
 
   init_m0(sim, init_fun)
-  relax(sim, maxsteps=2000, stopping_torque=1.0, save_vtk_every = 100, save_m_every=-1)
+  relax(sim, maxsteps=2000, stopping_dmdt=0.1, save_vtk_every = 100, save_m_every=-1)
   #println(sim.spin)
   npzwrite("m0.npy", sim.spin)
   #save_vtk(sim, "skx", fields=["exch", "dmi"])

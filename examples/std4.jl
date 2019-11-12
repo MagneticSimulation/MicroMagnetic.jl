@@ -14,7 +14,7 @@ function relax_system(mesh)
 
   init_m0(sim, (1, 0.25, 0.1))
 
-  relax(sim, maxsteps=5000, stopping_torque=10)
+  relax(sim, maxsteps=5000, stopping_dmdt=0.1)
   npzwrite("m0.npy", Array(sim.spin))
 end
 
