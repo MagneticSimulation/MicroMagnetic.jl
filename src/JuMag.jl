@@ -84,6 +84,7 @@ if _cuda_available.x
     include("cuda/vtk.jl")
     include("cuda/ovf2.jl")
     include("mc/mc.jl")
+    include("mc/mc_kernel.jl")
     export FDMeshGPU,
            CubicMeshGPU,
            TriangularMesh,

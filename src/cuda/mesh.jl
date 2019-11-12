@@ -37,6 +37,7 @@ function indexpbc(i::Int64, j::Int64, nx::Int64, ny::Int64, xperiodic::Bool, ype
   end
   return index(i, j, nx, ny)
 end
+
 """
 Create a 2d triangular mesh.
 
@@ -62,7 +63,7 @@ function TriangularMesh2D(;dx=1e-9, nx=3, ny=2, pbc="open")
         ngbs[6,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
     end
     dy  = dx*sqrt(3)/2
-    return TriangularMesh(dx, dy, dx, nx, ny, 1, nx*ny, CuArray(ngbs), xperiodic, yperiodic)
+    return TriangularMesh(dx, dy, dx, nx, ny, 1, nx*ny, CuArray(ngbs), xperiodic, yperiodic, false)
 end
 
 
@@ -94,7 +95,7 @@ function TriangularMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=3, ny=2, nz=1, pbc="open"
         ngbs[8,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
     end
     dy  = dx*sqrt(3)/2
-    return TriangularMesh(dx, dy, dx, nx, ny, 1, nx*ny, CuArray(ngbs), xperiodic, yperiodic)
+    return TriangularMesh(dx, dy, dz, nx, ny, nz, nx*ny*nz, CuArray(ngbs), xperiodic, yperiodic, zperiodic)
 end
 
 
@@ -106,6 +107,7 @@ struct CubicMeshGPU <: Mesh
   ny::Int64
   nz::Int64
   nxyz::Int64
+  n_ngbs::Int64
   ngbs::CuArray{Int32, 2}
   nngbs::CuArray{Int32, 2}
   xperiodic::Bool
@@ -136,5 +138,5 @@ function CubicMeshGPU(;a=1.0, nx=1, ny=1, nz=1, pbc="open")
     nngbs[6,id] = indexpbc(i,j,k+2,nx,ny,nz, xperiodic, yperiodic, zperiodic)
   end
   nxyz = nx*ny*nz
-  return CubicMeshGPU(a, a, a, nx, ny, nz, nxyz, CuArray(ngbs), CuArray(nngbs), xperiodic, yperiodic, zperiodic)
+  return CubicMeshGPU(a, a, a, nx, ny, nz, nxyz, 6, CuArray(ngbs), CuArray(nngbs), xperiodic, yperiodic, zperiodic)
 end
