@@ -19,7 +19,7 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 
 Requirements:
 
-- Julia 1.0 (or above) (<http://julialang.org/downloads/>)
+- Julia 1.2 (or above) (<http://julialang.org/downloads/>)
 - Some packages such as FFTW, WriteVTK and NPZ
 - CUDA-related packages such as CuArrays and CUDAnative (optional for GPU support)
 
