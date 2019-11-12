@@ -1,7 +1,14 @@
-__precompile__()
-
+#__precompile__()
 module JuMag
+
 using Printf
+using CUDAnative
+using CuArrays
+using CuArrays.CUDAdrv
+
+const _cuda_using_double = Ref(false)
+const _cuda_available = Ref(true)
+const _mpi_available = Ref(true)
 
 export init_m0,
        add_zeeman,
@@ -23,14 +30,7 @@ export init_m0,
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT
 
-const _cuda_using_double = Ref(false)
-const _cuda_available = Ref(true)
-const _using_gpu = Ref(false)
-
-const _mpi_available = Ref(true)
-
 function cuda_using_double(flag = true)
-
    _cuda_using_double[] = flag
    return nothing
 end
@@ -55,16 +55,12 @@ include("neb_sd.jl")
 include("neb_llg.jl")
 include("ovf2.jl")
 
-try
-	using CUDAnative, CuArrays, CuArrays.CUDAdrv
-    #CuArrays.allowscalar(false) TODO: where should it be?
-	#using CuArrays.CUFFT
-	#@info "Running CUFFT $(CUFFT.version())"
-catch
-    _cuda_available[] = false
-    _using_gpu[] = false
-    @warn "CUDA is not available!"
+#_cuda_available[] = CuArrays.functional()
+
+if !_cuda_available.x
+    @warn "CuArrays does not work!"
 end
+
 
 if _cuda_available.x
     include("cuda/head.jl")
@@ -98,7 +94,6 @@ try
 	using MPI
 catch
     _mpi_available[] = false
-    @warn "MPI is not available!"
 end
 
 if _mpi_available.x && _cuda_available.x
@@ -114,9 +109,16 @@ if _mpi_available.x && _cuda_available.x
         comm = MPI.COMM_WORLD
         CUDAnative.device!(MPI.Comm_rank(comm) % length(devices()))
     end
-
-    #export using_multiple_gpus
-
 end
 
+function __init__()
+    _cuda_available[] = CuArrays.functional()
+    if !_cuda_available.x
+        @warn "CUDA is not available!"
+    end
+    if !_mpi_available.x
+        @warn "MPI is not available!"
+    end
 end
+
+end #module

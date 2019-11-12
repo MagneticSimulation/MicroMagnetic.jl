@@ -512,7 +512,7 @@ relax(sim,save_vtk_every = 10, fields = ["demag", "exch", "anis"])
 """
 function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs",save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
   is_relax_llg = false
-  if _using_gpu.x && isa(sim.driver, LLG_GPU)
+  if _cuda_available.x && isa(sim.driver, LLG_GPU)
         is_relax_llg = true
   end
 
@@ -540,7 +540,7 @@ end
 function relax_energy(sim::AbstractSim, maxsteps::Int64, stopping_torque::Float64,
                      save_m_every::Int64, save_ovf_every::Int64, ovf_format::String, ovf_folder::String, save_vtk_every::Int64, vtk_folder::String, fields::Array{String, 1} = String[])
 
-  if _using_gpu.x && isa(sim, MicroSimGPU)
+  if _cuda_available.x && isa(sim, MicroSimGPU)
       T = _cuda_using_double.x ? Float64 : Float32
       gk_abs = CuArrays.zeros(T, 3*sim.nxyz)
   else
@@ -588,7 +588,7 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
   rk_data = sim.driver.ode
 
   dmdt_factor = 1.0
-  if isa(sim, MicroSim) || (_using_gpu.x && isa(sim, MicroSimGPU))
+  if isa(sim, MicroSim) || (_cuda_available.x && isa(sim, MicroSimGPU))
     dmdt_factor = (2 * pi / 360) * 1e9
   end
   for i=1:maxsteps
@@ -596,7 +596,7 @@ function relax_llg(sim::AbstractSim, maxsteps::Int64, stopping_dmdt::Float64,
     step_size = rk_data.step
     #omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
     max_dmdt = 0.0
-    if _using_gpu.x
+    if _cuda_available.x
         compute_dm!(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
         max_dmdt = maximum(rk_data.omega_t)/step_size
     else

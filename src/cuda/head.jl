@@ -1,6 +1,21 @@
 abstract type AbstractSimGPU <:AbstractSim end
+abstract type MeshGPU <: Mesh end
 abstract type DriverGPU end
 abstract type MicroEnergyGPU end
+
+struct FDMeshGPU{T <: AbstractFloat} <: MeshGPU
+  dx::T
+  dy::T
+  dz::T
+  nx::Int64
+  ny::Int64
+  nz::Int64
+  nxyz::Int64
+  xperiodic::Bool
+  yperiodic::Bool
+  zperiodic::Bool
+  volume::T
+end
 
 mutable struct Dopri5GPU{T<:AbstractFloat} <: AbstractDopri5
    tol::Float64

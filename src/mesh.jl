@@ -77,17 +77,6 @@ function indexpbc(i::Int64, j::Int64, k::Int64,
   return index(i,j,k, nx, ny, nz)
 end
 
-function FDMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=10, ny=10, nz=1, pbc="open")
-  nxyz = nx*ny*nz
-  volume = dx*dy*dz
-  Float = _cuda_using_double.x ? Float64 : Float32
-  xperiodic = 'x' in pbc ? true : false
-  yperiodic = 'y' in pbc ? true : false
-  zperiodic = 'z' in pbc ? true : false
-  _using_gpu[] = true;
-  return FDMeshGPU(Float(dx), Float(dy), Float(dz), nx, ny, nz, nxyz, xperiodic, yperiodic, zperiodic, Float(volume))
-end
-
 
 """
     FDMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
@@ -111,7 +100,6 @@ function FDMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     end
     volume = dx*dy*dz
     nxyz = nx*ny*nz
-    _using_gpu[] = false; #we need to review.
     return FDMesh(dx, dy, dz, nx, ny, nz, nxyz, volume, ngbs, xperiodic, yperiodic, zperiodic)
 end
 
