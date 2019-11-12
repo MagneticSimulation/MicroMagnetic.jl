@@ -143,6 +143,17 @@ function compute_dmdt(m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64, dt
   return max_dmdt/dt
 end
 
+function compute_dm!(dm::Array{Float64, 1}, m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64)
+  for i = 1:N
+    j = 3*i - 2
+    mx = m1[j] - m2[j]
+    my = m1[j+1] - m2[j+1]
+    mz = m1[j+2] - m2[j+2]
+    dm[i] = sqrt(mx*mx + my*my + mz*mz)
+  end
+  return nothing
+end
+
 function compute_dm_step(m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64)
   max_dm = 0.0
   for i = 0:N-1
