@@ -8,8 +8,3 @@ test:1.2:
   tags:
     - nvidia
   image: nvidia/cuda:latest
-
-coverage:
-  allow_failure: true
-  only:
-  - master
