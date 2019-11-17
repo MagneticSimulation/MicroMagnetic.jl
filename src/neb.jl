@@ -20,7 +20,6 @@ mutable struct NEB <: AbstractSim
   saver_distance::DataSaver
   spring_constant::Float64
   tangents::Array{Float64, 2}
-  gpu::Bool
 end
 
 function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_constant=1.0e5, driver="LLG")
@@ -49,14 +48,8 @@ function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_c
   spins = reshape(images, 3*sim.nxyz*N)
   prespins = reshape(pre_images, 3*sim.nxyz*N)
 
-  gpu = false
-  try
-      gpu = isa(sim, MicroSimGPU) ? true : false
-  catch
-      gpu = false
-  end
   neb = NEB(N, sim.nxyz*N, sim, init_m, driver, images, pre_images, spins, prespins,
-             name, field, energy, distance, saver, saver_distance, spring_constant, tangents, gpu)
+             name, field, energy, distance, saver, saver_distance, spring_constant, tangents)
   init_images(neb, intervals)
   compute_distance(neb.distance,neb.images,N,nxyz)
   compute_system_energy(neb)
@@ -123,39 +116,21 @@ function init_images(neb::NEB, intervals::Any)
 end
 
 function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
-  sim = neb.sim
-  nxyz = sim.nxyz
-  #neb.spin[:] = spin[:], we already copy spin to neb.images in dopri5
-  images = neb.images
-  N = neb.N
-  fill!(neb.field, 0.0)
-  fill!(neb.energy, 0.0)
+    sim = neb.sim
+    nxyz = sim.nxyz
+    #neb.spin[:] = spin[:], we already copy spin to neb.images in dopri5
+    images = neb.images
+    N = neb.N
+    fill!(neb.field, 0.0)
+    fill!(neb.energy, 0.0)
 
-  if neb.gpu
-      local_field = zeros(3*sim.nxyz)
-      for n = 2:neb.N-1
-          copyto!(sim.spin, view(images, :, n))
-          fill!(sim.prespin, 0.0) #we use prespin to store field
-          sim.total_energy = 0
-          for interaction in sim.interactions
-              effective_field(interaction, sim, sim.spin, 0.0)
-              sim.prespin .+= sim.field
-              interaction.total_energy = sum(sim.energy)
-              sim.total_energy += interaction.total_energy
-          end
-          #copyto!(view(neb.field, :, n), sim.prespin) #FIXME: we need to wait the bug fixed in CuArrays
-          copyto!(local_field, sim.prespin)
-          neb.field[:, n] .= local_field
-          neb.energy[n] = sim.total_energy
-      end
 
-  else
-      for n = 2:neb.N-1
-          effective_field(sim, images[:,n], 0.0)
-          neb.field[:,n] .= sim.field
-          neb.energy[n] = sum(sim.energy)
-      end
-  end
+    for n = 2:neb.N-1
+        effective_field(sim, images[:,n], 0.0)
+        neb.field[:,n] .= sim.field
+        neb.energy[n] = sum(sim.energy)
+    end
+
 
     compute_tangents(neb.tangents,neb.images,neb.energy,N,nxyz)
 
@@ -184,7 +159,6 @@ function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy:
     dEmin = min(abs(E3-E2),abs(E2-E1))
     tip = images[:,n+1]-images[:,n]
     tim = images[:,n]-images[:,n-1]
-
 
     if (E1>E2)&&(E2>E3)
       t[:,n] = tim
@@ -231,23 +205,12 @@ function compute_system_energy(neb::NEB)
   images = neb.images
   #sim.total_energy = 0
   fill!(neb.energy, 0.0)
-  if neb.gpu
-      for n = 1:neb.N
-          copyto!(sim.spin, view(images, :, n))
-          sim.total_energy = 0
-          for interaction in sim.interactions
-              effective_field(interaction, sim, sim.spin, 0.0)
-              interaction.total_energy = sum(sim.energy)
-              sim.total_energy += interaction.total_energy
-          end
-          neb.energy[n] = sim.total_energy
-      end
-  else
-      for n = 1:neb.N
-          effective_field(sim, images[:,n], 0.0)
-          neb.energy[n] = sum(sim.energy)
-      end
+
+  for n = 1:neb.N
+      effective_field(sim, images[:,n], 0.0)
+      neb.energy[n] = sum(sim.energy)
   end
+
   return 0
 end
 
