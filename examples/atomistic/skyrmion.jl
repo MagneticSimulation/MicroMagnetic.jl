@@ -4,7 +4,7 @@ using NPZ
 
 mesh =  CubicMesh(nx=100, ny=100, nz=1, pbc="xy")
 
-function m0_fun(i,j,k)
+function m0_fun(i,j,k, dx, dy, dz)
   r2 = (i-50)^2 + (j-50)^2
   if r2 < 10^2
     return (0.1, 0, -1)

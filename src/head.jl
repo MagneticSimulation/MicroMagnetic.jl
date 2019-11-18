@@ -1,5 +1,4 @@
 abstract type Driver end
-abstract type Mesh end
 abstract type AbstractSim end
 abstract type MicroEnergy end
 abstract type Interaction end
@@ -47,33 +46,6 @@ an array or a function:
     ```
 """
 TupleOrArrayOrFunction = Union{Tuple, Array, Function}
-
-struct FDMesh <: Mesh
-  dx::Float64
-  dy::Float64
-  dz::Float64
-  nx::Int64
-  ny::Int64
-  nz::Int64
-  nxyz::Int64
-  volume::Float64
-  ngbs::Array{Int64, 2}
-  xperiodic::Bool
-  yperiodic::Bool
-  zperiodic::Bool
-end
-
-struct CubicMesh <: Mesh
-  a::Float64
-  nx::Int64
-  ny::Int64
-  nz::Int64
-  nxyz::Int64
-  ngbs::Array{Int64, 2}
-  xperiodic::Bool
-  yperiodic::Bool
-  zperiodic::Bool
-end
 
 mutable struct Dopri5 <: AbstractDopri5
    tol::Float64
@@ -126,7 +98,7 @@ mutable struct MicroSim <: AbstractSim
 end
 
 mutable struct AtomicSim <: AbstractSim
-  mesh::CubicMesh
+  mesh::Mesh
   driver::Driver
   saver::DataSaver
   spin::Array{Float64, 1}

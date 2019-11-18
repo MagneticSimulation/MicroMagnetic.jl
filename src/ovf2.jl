@@ -38,13 +38,8 @@ function write_OVF2_Header(io::IOStream, sim::AbstractSim)
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
-    dx, dy, dz = 1.0,1.0,1.0
 
-    if isa(mesh, CubicMesh)
-      dx, dy, dz=mesh.a, mesh.a, mesh.a
-    else
-      dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
-    end
+    dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
 
     write(io, "# OOMMF OVF 2.0\n")
     hdr(io, "Segment count", "1")

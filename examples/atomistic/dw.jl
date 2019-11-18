@@ -2,7 +2,7 @@ using JuMag
 using Printf
 using Test
 
-function init_dw(i,j,k)
+function init_dw(i,j,k, dx, dy, dz)
   if i < 150
     return (1,0.1,0)
   elseif i<160

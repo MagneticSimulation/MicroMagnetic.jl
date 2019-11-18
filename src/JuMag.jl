@@ -36,9 +36,9 @@ function cuda_using_double(flag = true)
 end
 
 include("const.jl")
+include("mesh.jl")
 include("head.jl")
 include("util.jl")
-include("mesh.jl")
 include("driver.jl")
 include("sd.jl")
 include("llg.jl")

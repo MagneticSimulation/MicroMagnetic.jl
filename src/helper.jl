@@ -37,19 +37,6 @@ function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Function) where {T<:Abst
   return nothing
 end
 
-function init_vector!(v::Array{T, 1}, mesh::CubicMesh, init::Function) where {T<:AbstractFloat}
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  b = reshape(v, 3, nxyz)
-  for i = 1:mesh.nx
-    for j = 1:mesh.ny
-      for k = 1:mesh.nz
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        b[:, id] .=  init(i,j,k)
-      end
-    end
-  end
-end
-
 function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Tuple{Real,Real,Real}) where {T<:AbstractFloat}
   nxyz = mesh.nx*mesh.ny*mesh.nz
   b = reshape(v, 3, nxyz)
