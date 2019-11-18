@@ -6,7 +6,7 @@ mesh =  CubicMesh(nx=100, ny=100, nz=1, pbc="xy")
 
 function m0_fun(i,j,k)
   r2 = (i-50)^2 + (j-50)^2
-  if r2 < 10
+  if r2 < 10^2
     return (0.1, 0, -1)
   end
   return (0,0,1)
@@ -24,8 +24,8 @@ function relax_system()
   add_dmi(sim, 0.09, name="dmi")
 
   init_m0(sim, m0_fun)
-  #relax(sim, maxsteps=2000, stopping_torque=0.1, save_vtk_every = 10)
-  relax(sim, maxsteps=2000, stopping_dmdt=0.00001, save_vtk_every = 10)
+
+  relax(sim, maxsteps=2000, stopping_dmdt=1e-4, save_vtk_every = 100)
   #println(sim.spin)
   npzwrite("m0.npy", sim.spin)
   #save_vtk(sim, "skx", fields=["exch", "dmi"])

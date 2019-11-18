@@ -288,9 +288,10 @@ function effective_field(dmi::BulkDMI, sim::AtomicSim, spin::Array{Float64, 1}, 
   field = dmi.field
   energy = dmi.energy
   mu_s = sim.mu_s
-  ax = (1.0,-1.0, 0.0, 0.0, 0.0, 0.0)
-  ay = (0.0, 0.0, 1.0,-1.0, 0.0, 0.0)
-  az = (0.0, 0.0, 0.0, 0.0, 1.0,-1.0)
+  Dx, Dy, Dz = dmi.Dx, dmi.Dy, dmi.Dz
+  ax = (Dx,-Dx, 0.0, 0.0, 0.0, 0.0)
+  ay = (0.0, 0.0, Dy, -Dy, 0.0, 0.0)
+  az = (0.0, 0.0, 0.0, 0.0, Dz, -Dz)
 
   Threads.@threads for i = 1:nxyz
     if mu_s[i] == 0.0
@@ -304,9 +305,9 @@ function effective_field(dmi::BulkDMI, sim::AtomicSim, spin::Array{Float64, 1}, 
       id = ngbs[j,i]
       if id>0 && mu_s[id]>0
         k = 3*(id-1)+1
-        fx += dmi.D*cross_x(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
-        fy += dmi.D*cross_y(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
-        fz += dmi.D*cross_z(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
+        fx += cross_x(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
+        fy += cross_y(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
+        fz += cross_z(ax[j],ay[j],az[j],spin[k],spin[k+1],spin[k+2]);
       end
     end
 

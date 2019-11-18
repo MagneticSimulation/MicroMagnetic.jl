@@ -18,7 +18,11 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5", save_dat
     sim.prespin = zeros(Float64,3*nxyz)
     sim.field = zeros(Float64,3*nxyz)
     sim.energy = zeros(Float64,nxyz)
-    sim.Ms = zeros(Float64,nxyz)
+    if isa(mesh, FDMesh)
+        sim.Ms = zeros(Float64, nxyz)
+    else
+        sim.mu_s = zeros(Float64, nxyz)
+    end
     sim.save_data = save_data
 
     if save_data
