@@ -83,6 +83,18 @@ function set_mu_s(sim::AtomicSim, fun_Ms::Function)
     return true
 end
 
+function set_mu_s_kagome(sim::AtomicSim, Ms::Number)
+    mesh = sim.mesh
+    for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
+        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        sim.mu_s[id] = Ms
+        if i%2==0 && j%2==0
+            sim.mu_s[id] = 0.0
+        end
+    end
+    return true
+end
+
 function set_mu_s(sim::AtomicSim, Ms::Number)
     for i =1:sim.nxyz
         sim.mu_s[i] = Ms
@@ -91,7 +103,15 @@ function set_mu_s(sim::AtomicSim, Ms::Number)
 end
 
 function set_ux(sim::AbstractSim, init_ux)
-	init_scalar!(sim.driver.ux, sim.mesh, init_ux)
+    init_scalar!(sim.driver.ux, sim.mesh, init_ux)
+end
+
+function set_uy(sim::AbstractSim, init_uy)
+    init_scalar!(sim.driver.uy, sim.mesh, init_uy)
+end
+
+function set_uz(sim::AbstractSim, init_uz)
+    init_scalar!(sim.driver.uz, sim.mesh, init_uz)
 end
 
 function set_aj(sim::AbstractSim, init_aj)
@@ -329,6 +349,61 @@ function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   return exch
 end
 
+"""
+    add_exch(sim::AtomicSim, Js::Array{Float64, 1}; name="exch")
+
+Add exchange energy to the system.
+"""
+function add_exch(sim::AtomicSim, Js::Array{Float64, 1}; name="exch")
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  a,b = size(sim.mesh.ngbs)
+  if length(Js) != a
+      @error("The length of given Js is $(length(Js)) but we need an array with $a.")
+  end
+  exch = HeisenbergExchange(Js, field, energy, name)
+
+  push!(sim.interactions, exch)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
+  return exch
+end
+
+
+"""
+    add_exch(sim::AtomicSim, J::Number; name="exch")
+
+Add exchange energy to the system.
+"""
+function add_exch(sim::AtomicSim, J::Number; name="exch")
+  a,b = size(sim.mesh.ngbs)
+  Js = zeros(a)
+  Js .= J
+  add_exch(sim, Js, name=name)
+end
+
+
+"""
+    add_exch_kagome(sim::AtomicSim, Jxy::Number, Jz::Number; name="exch")
+
+Add exchange energy to the system.
+"""
+function add_exch_kagome(sim::AtomicSim, Jxy::Number, Jz::Number; name="exch")
+  a,b = size(sim.mesh.ngbs)
+  if a!=8
+      error("The number of neigbours is not 8.")
+  end
+  Js = zeros(8)
+  Js[1:6] .= Jxy
+  Js[7:8] .= Jz
+  add_exch(sim, Js, name=name)
+end
 
 function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="rkky")
   nxyz = sim.nxyz
@@ -483,6 +558,32 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
     end
   end
   return nothing
+end
+
+
+"""
+    add_anis_kagome(sim::AtomicSim, Ku::Float64; ax1=(-0.5,-sqrt(3)/2,0), ax2=(1,0,0), ax3=(-0.5,sqrt(3)/2,0), name="anis")
+
+Add Anisotropy for kagome system, where the energy density is given by
+
+```math
+E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
+```
+"""
+function add_anis_kagome(sim::AtomicSim, Ku::Float64; ax1=(-0.5,-sqrt(3)/2,0), ax2=(1,0,0), ax3=(-0.5,sqrt(3)/2,0), name="anis")
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  anis =  KagomeAnisotropy(Ku, ax1, ax2, ax3, field, energy, name)
+  push!(sim.interactions, anis)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
+  return anis
 end
 
 function add_cubic_anis(sim::AbstractSim, Kc::Float64; name="cubic")

@@ -96,10 +96,38 @@ function compute_field_stt(m::Array{T, 1}, h_stt::Array{T, 1},
 
 end
 
+#compute (\vec{u} \cdot \nabla \vec{m}) only for z-direction
+function compute_field_stt_trianglar(m::Array{T, 1}, h_stt::Array{T, 1},
+                           uz::Array{T, 1}, dz::T,
+                           ngbs::Array{Int64, 2}, N::Int64) where {T<:AbstractFloat}
+
+  for i = 1:N
+      fx, fy, fz = 0.0, 0.0, 0.0
+
+      #z-direction
+      i1 = ngbs[7,i]
+      i2 = ngbs[8,i]
+      factor = i1*i2>0 ? 1/(2*dz) : 1/dz
+      i1 < 0 && (i1 = i)
+      i2 < 0 && (i2 = i)
+      j1 = 3*i1-2
+      j2 = 3*i2-2
+      fx += uz[i] * (m[j2] - m[j1]) * factor;
+      fy += uz[i] * (m[j2+1] - m[j1+1]) * factor;
+      fz += uz[i] * (m[j2+2] - m[j1+2]) * factor;
+
+      h_stt[3*i-2] = fx
+      h_stt[3*i-1] = fy
+      h_stt[3*i	] = fz
+
+  end
+
+end
+
 
 function llg_rhs_stt(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float64, 1},
                      h_stt::Array{Float64, 1}, omega::Array{Float64, 1}, alpha::Float64,
-					 beta::Float64, gamma::Float64, N::Int64)
+                     beta::Float64, gamma::Float64, N::Int64)
   for i = 0:N-1
     j = 3*i+1
     a = gamma/(1+alpha*alpha)
@@ -160,7 +188,11 @@ function llg_stt_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, t::Float6
   mesh = sim.mesh
   omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
   effective_field(sim, sim.spin, t)
-  compute_field_stt(sim.spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
+  if isa(sim.mesh, TriangularMesh)
+      compute_field_stt_trianglar(sim.spin, driver.h_stt, driver.uz, mesh.dz, mesh.ngbs, sim.nxyz)
+  else
+      compute_field_stt(sim.spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
+  end
   llg_rhs_stt(dw_dt, sim.spin, sim.field, driver.h_stt, omega, driver.alpha, driver.beta, driver.gamma, sim.nxyz)
 
   return nothing

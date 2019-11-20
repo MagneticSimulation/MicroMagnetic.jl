@@ -101,6 +101,10 @@ function effective_field(anis::Anisotropy, sim::AtomicSim, spin::Array{Float64, 
   axis = anis.axis
   for i = 1:nxyz
     if mu_s[i] == 0.0
+        energy[i] = 0.0
+        field[3*i-2] = 0.0
+        field[3*i-1] = 0.0
+        field[3*i] = 0.0
       continue
     end
     k = 3*(i-1)
@@ -110,6 +114,48 @@ function effective_field(anis::Anisotropy, sim::AtomicSim, spin::Array{Float64, 
     field[k+2] = 2*Ku[i]*sa*axis[2]*mu_s_inv
     field[k+3] = 2*Ku[i]*sa*axis[3]*mu_s_inv
     energy[i] = Ku[i]*(1.0-sa*sa)
+  end
+
+end
+
+
+function effective_field(anis::KagomeAnisotropy, sim::AtomicSim, spin::Array{Float64, 1}, t::Float64)
+  mesh = sim.mesh
+  nxyz = sim.nxyz
+  field = anis.field
+  energy = anis.energy
+  mu_s = sim.mu_s
+  Ku = anis.Ku
+  nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+
+  for k = 1:nz, j = 1:ny, i=1:nx
+      id = index(i,j, k, nx, ny, nz)
+
+      k = 3*(id-1)
+      if mu_s[id] == 0.0
+          field[k+1] = 0
+          field[k+2] = 0
+          field[k+3] = 0
+          energy[id] = 0
+          continue
+      end
+
+      axis = (0,0,0)
+
+      if i%2==0 && j%2==0
+          axis = anis.ax1
+      elseif i%2==1 && j%2==0
+          axis = anis.ax1
+      elseif i%2==0 && j%2==1
+          axis = anis.ax1
+      end
+      sa = spin[k+1]*axis[1]+spin[k+2]*axis[2]+spin[k+3]*axis[3]
+
+    mu_s_inv = 1.0/mu_s[i]
+    field[k+1] = 2*Ku*sa*axis[1]*mu_s_inv
+    field[k+2] = 2*Ku*sa*axis[2]*mu_s_inv
+    field[k+3] = 2*Ku*sa*axis[3]*mu_s_inv
+    energy[id] = Ku*(1.0-sa*sa)
   end
 
 end
@@ -132,10 +178,14 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
   nabla = (ax, ax, ay, ay, az, az)
 
   for index = 1:nxyz
+    i = 3*index - 2
     if Ms[index] == 0.0
+        energy[i] = 0.0
+        field[3*i-2] = 0.0
+        field[3*i-1] = 0.0
+        field[3*i] = 0.0
       continue
     end
-	  i = 3*index - 2
     fx, fy, fz = 0.0, 0.0, 0.0
     for j=1:6
       id = ngbs[j,index]
@@ -172,10 +222,15 @@ function effective_field(exch::Vector_Exchange, sim::MicroSim, spin::Array{Float
   nabla = (ax, ax, ay, ay, az, az)
 
   for index = 1:nxyz
+    i = 3*index - 2
     if Ms[index] == 0.0
-      continue
+        energy[i] = 0.0
+        field[3*i-2] = 0.0
+        field[3*i-1] = 0.0
+        field[3*i] = 0.0
+        continue
     end
-	  i = 3*index - 2
+
     fx, fy, fz = 0.0, 0.0, 0.0
     for j=1:2
       id = ngbs[j,index]
@@ -258,20 +313,24 @@ function effective_field(exch::HeisenbergExchange, sim::AtomicSim, spin::Array{F
   field = exch.field
   energy = exch.energy
   mu_s = sim.mu_s
+  a,b = size(ngbs)
 
   Threads.@threads for i = 1:nxyz
     if mu_s[i] == 0.0
-      #we already set energy and  field to zero
+      energy[i] = 0
+      field[3*i-2] = 0
+      field[3*i-1] = 0
+      field[3*i] = 0
       continue
     end
     fx, fy, fz = 0.0, 0.0, 0.0
-    for j=1:6
+    for j=1:a
       id = ngbs[j,i]
       if id>0 && mu_s[id]>0
         k = 3*(id-1)
-        fx += exch.J*spin[k+1]
-        fy += exch.J*spin[k+2]
-        fz += exch.J*spin[k+3]
+        fx += exch.Js[j]*spin[k+1]
+        fy += exch.Js[j]*spin[k+2]
+        fz += exch.Js[j]*spin[k+3]
       end
     end
     mu_s_inv = 1.0/(mu_s[i])
@@ -295,7 +354,11 @@ function effective_field(dmi::BulkDMI, sim::AtomicSim, spin::Array{Float64, 1}, 
 
   Threads.@threads for i = 1:nxyz
     if mu_s[i] == 0.0
-      continue
+        energy[i] = 0
+        field[3*i-2] = 0
+        field[3*i-1] = 0
+        field[3*i] = 0
+        continue
     end
     fx = 0.0
     fy = 0.0

@@ -58,7 +58,7 @@ function MonteCarlo(mesh::Mesh; mu_s=1.0*mu_B, J=1*meV, Jz=0, J1=0, D=0, Dz=0, D
 end
 
 
-function init_vector!(v::Array{T, 1}, mesh::TriangularMesh, init::Function) where {T<:AbstractFloat}
+function init_vector!(v::Array{T, 1}, mesh::TriangularMeshGPU, init::Function) where {T<:AbstractFloat}
   nxyz = mesh.nx*mesh.ny
   dx,dy = mesh.dx, mesh.dy
   b = reshape(v, 3, nxyz)

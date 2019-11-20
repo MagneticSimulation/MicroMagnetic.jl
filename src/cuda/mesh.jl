@@ -8,7 +8,7 @@ function FDMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=10, ny=10, nz=1, pbc="open")
   return FDMeshGPU(Float(dx), Float(dy), Float(dz), nx, ny, nz, nxyz, xperiodic, yperiodic, zperiodic, Float(volume))
 end
 
-struct TriangularMesh <: Mesh
+struct TriangularMeshGPU <: Mesh
   dx::Float64
   dy::Float64
   dz::Float64
@@ -73,7 +73,7 @@ function TriangularMesh2D(;dx=1e-9, nx=3, ny=2, pbc="open")
         ngbs[6,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
     end
     dy  = dx*sqrt(3)/2
-    return TriangularMesh(dx, dy, dx, nx, ny, 1, nx*ny, CuArray(ngbs), xperiodic, yperiodic, false)
+    return TriangularMeshGPU(dx, dy, dx, nx, ny, 1, nx*ny, CuArray(ngbs), xperiodic, yperiodic, false)
 end
 
 
@@ -83,11 +83,10 @@ Create a 3d triangular mesh.
 The neighbours are indexed as counterclockwise of the given spin:
 
   |  1      2         3       4         5          6           7      8   |
-  |right top_right top_left  left  bottom_left bottom_right   top   bottom|
+  |right top_right top_left  left  bottom_left bottom_right   below  above |
 
 """
-function TriangularMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=3, ny=2, nz=1, pbc="open")
-
+function TriangularMeshGPU(;dx=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     ngbs = zeros(Int32, 8, nx*ny*nz)
     xperiodic = 'x' in pbc ? true : false
     yperiodic = 'y' in pbc ? true : false
@@ -95,18 +94,19 @@ function TriangularMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=3, ny=2, nz=1, pbc="open"
 
     for k = 1:nz, j = 1:ny, i=1:nx
         id = index(i,j, k, nx, ny, nz)
-        ngbs[1,id] = indexpbc(i+1, j, k, nx, ny, nz, xperiodic, yperiodic)  #right
-        ngbs[2,id] = indexpbc(i, j+1, k, nx, ny, nz, xperiodic, yperiodic)  #top_right
-        ngbs[3,id] = indexpbc(i-1, j+1, k, nx, ny, nz, xperiodic, yperiodic)  #top_left
-        ngbs[4,id] = indexpbc(i-1, j, nx, ny, xperiodic, yperiodic)  #left
-        ngbs[5,id] = indexpbc(i, j-1, nx, ny, xperiodic, yperiodic)  #bottom_left
-        ngbs[6,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
-        ngbs[7,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
-        ngbs[8,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
+        ngbs[1,id] = indexpbc(i+1, j, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #right
+        ngbs[2,id] = indexpbc(i, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_right
+        ngbs[3,id] = indexpbc(i-1, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_left
+        ngbs[4,id] = indexpbc(i-1, j, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #left
+        ngbs[5,id] = indexpbc(i, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_left
+        ngbs[6,id] = indexpbc(i+1, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_right
+        ngbs[7,id] = indexpbc(i, j, k-1, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #below
+        ngbs[8,id] = indexpbc(i, j, k+1, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #above
     end
     dy  = dx*sqrt(3)/2
-    return TriangularMesh(dx, dy, dz, nx, ny, nz, nx*ny*nz, CuArray(ngbs), xperiodic, yperiodic, zperiodic)
+    return TriangularMeshGPU(dx, dy, dz, nx, ny, nz, nx*ny*nz, CuArray(ngbs), xperiodic, yperiodic, zperiodic)
 end
+
 
 
 struct CubicMeshGPU <: Mesh

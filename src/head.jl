@@ -136,7 +136,7 @@ mutable struct ExchangeRKKY <: MicroEnergy
 end
 
 mutable struct HeisenbergExchange <: Interaction
-   J::Float64
+   Js::Array{Float64, 1}   #The length of Js should be equal to the number of neighbours
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String
@@ -162,6 +162,16 @@ end
 mutable struct Anisotropy
    Ku::Array{Float64, 1}
    axis::Tuple
+   field::Array{Float64, 1}
+   energy::Array{Float64, 1}
+   name::String
+end
+
+mutable struct KagomeAnisotropy
+   Ku::Float64
+   ax1::Tuple
+   ax2::Tuple
+   ax3::Tuple
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String
