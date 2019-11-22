@@ -180,10 +180,10 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
   for index = 1:nxyz
     i = 3*index - 2
     if Ms[index] == 0.0
-        energy[i] = 0.0
-        field[3*i-2] = 0.0
-        field[3*i-1] = 0.0
-        field[3*i] = 0.0
+        energy[index] = 0.0
+        field[i] = 0.0
+        field[i+1] = 0.0
+        field[i+2] = 0.0
       continue
     end
     fx, fy, fz = 0.0, 0.0, 0.0
@@ -224,10 +224,10 @@ function effective_field(exch::Vector_Exchange, sim::MicroSim, spin::Array{Float
   for index = 1:nxyz
     i = 3*index - 2
     if Ms[index] == 0.0
-        energy[i] = 0.0
-        field[3*i-2] = 0.0
-        field[3*i-1] = 0.0
-        field[3*i] = 0.0
+        energy[index] = 0.0
+        field[i] = 0.0
+        field[i+1] = 0.0
+        field[i+2] = 0.0
         continue
     end
 
