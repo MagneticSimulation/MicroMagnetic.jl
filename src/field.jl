@@ -142,12 +142,12 @@ function effective_field(anis::KagomeAnisotropy, sim::AtomicSim, spin::Array{Flo
 
       axis = (0,0,0)
 
-      if i%2==0 && j%2==0
-          axis = anis.ax1
-      elseif i%2==1 && j%2==0
+      if i%2==1 && j%2==1
           axis = anis.ax1
       elseif i%2==0 && j%2==1
-          axis = anis.ax1
+          axis = anis.ax2
+      elseif i%2==1 && j%2==0
+          axis = anis.ax3
       end
       sa = spin[k+1]*axis[1]+spin[k+2]*axis[2]+spin[k+3]*axis[3]
 
