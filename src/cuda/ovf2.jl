@@ -24,6 +24,8 @@ function write_OVF2_Text(io::IOStream, sim::AbstractSimGPU)
         write(io, string(b[1, i, j, k], " ", b[2, i, j, k], " ", b[3, i, j, k], "\n"))
     end
 
+    hdr(io, "End", "Data Text")
+
 end
 
 function write_OVF2_Binary(io::IOStream, sim::AbstractSimGPU,dataformat)

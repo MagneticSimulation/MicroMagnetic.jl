@@ -23,7 +23,10 @@ For example:
     ```
 """
 function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "binary")
-    io = open(fname * ".ovf", "w")
+    if !endswith(fname,".ovf")
+        fname = fname* ".ovf"
+    end
+    io = open(fname, "w")
     write_OVF2_Header(io, sim)
     write_OVF2_Data(io, sim, dataformat)
     hdr(io, "End", "Segment")
@@ -87,9 +90,9 @@ end
 
 function write_OVF2_Data(io::IOStream, sim::AbstractSim, dataformat::String)
     if dataformat == "text"
-        hdr(io, "Begin", "Data " * dataformat)
+        hdr(io, "Begin", "Data " * "Text")
         write_OVF2_Text(io, sim)
-        hdr(io, "End", "Data " * dataformat)
+        hdr(io, "End", "Data " * "Text")
     elseif dataformat == "binary4" || dataformat == "binary"
         hdr(io, "Begin", "Data Binary 4")
         write_OVF2_Binary4(io, sim)
