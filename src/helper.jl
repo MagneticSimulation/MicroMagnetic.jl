@@ -315,7 +315,7 @@ end
 function compute_winding_number_3d(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     v = zeros(T, 3*ny*ny*nz)
-    ompute_winding_number_3d(v, m, mesh)
+    compute_winding_number_3d(v, m, mesh)
     return sum(v)
 end
 

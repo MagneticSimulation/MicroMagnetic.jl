@@ -26,7 +26,6 @@ end
 
 mutable struct MonteCarloNew{TF<:AbstractFloat} <:AbstractSimGPU
   mesh::Mesh
-  mu_s::Float64
   exch::ExchangeMC
   dmi::DMI_MC
   zee::ZeemanMC
@@ -60,7 +59,6 @@ function MonteCarloNew(mesh::Mesh; name="mc")
     sim.steps = 0
     sim.name = name
     sim.T = 300
-    sim.mu_s = 1.0*mu_B
     sim.exch = ExchangeMC(CuArrays.zeros(Float, mesh.n_ngbs), CuArrays.zeros(Float, mesh.n_ngbs))
     sim.dmi = DMI_MC(CuArrays.zeros(Float, (3, mesh.n_ngbs)), CuArrays.zeros(Float, (3, mesh.n_ngbs)))
     sim.zee = ZeemanMC(0.0,0.0,0.0)
@@ -157,11 +155,17 @@ function add_dmi(sim::MonteCarloNew; D=1.0, D1=0.0, type="bulk")
     return nothing
 end
 
+#Hx, Hy, Hz in energy unit， just as J and D
 function add_zeeman(sim::MonteCarloNew; Hx=0, Hy=0, Hz=0)
     zeeman = sim.zee
-    zeeman.Hx = Hx*sim.mu_s
-    zeeman.Hy = Hy*sim.mu_s
-    zeeman.Hz = Hz*sim.mu_s
+    zeeman.Hx = Hx/k_B
+    zeeman.Hy = Hy/k_B
+    zeeman.Hz = Hz/k_B
+    return nothing
+end
+
+function update_zeeman(sim::MonteCarloNew; Hx=0, Hy=0, Hz=0)
+    add_zeeman(sim, Hx=Hx, Hy=Hy, Hz=Hz)
     return nothing
 end
 
