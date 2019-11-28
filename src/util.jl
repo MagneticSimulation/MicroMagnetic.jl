@@ -42,3 +42,19 @@ function abs!(a::Array{T,1})  where {T<:AbstractFloat}
     end
     return nothing
 end
+
+#The frequency of discrete FFT
+#f = [0, 1, ...,   N/2-1,     -N/2, ..., -1] / (d*N)   if n is even
+#f = [0, 1, ..., (N-1)/2, -(N-1)/2, ..., -1] / (d*N)   if n is odd
+#where d is the data interval.
+function fftfreq(N; d=1)
+    f = zeros(Float64, N)
+    n = ceil(Int, N/2)
+    for i = 1:n
+        f[i] = (i-1)/(d*N)
+    end
+    for i = n+1:N
+        f[i] = (i-1-N)/(d*N)
+    end
+    return f
+end
