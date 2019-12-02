@@ -13,7 +13,7 @@ const _mpi_available = Ref(true)
 export init_m0,
        add_zeeman,
        add_dmi,
-       add_exch, add_exch_kagome, 
+       add_exch, add_exch_kagome,
        add_anis, add_cubic_anis,
        add_demag, add_exch_rkky, add_anis_kagome,
        update_zeeman,update_anis,add_exch_vector,
@@ -27,9 +27,12 @@ export init_m0,
        compute_system_energy,
        compute_skyrmion_number,
        compute_winding_number_3d,
+       winding_number_3d,
        compute_guiding_centre, set_aj,
        NEB,
-       interpolate_m,save_ovf,read_ovf
+       interpolate_m,save_ovf,read_ovf,
+       fftfreq
+
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT
 
@@ -57,6 +60,7 @@ include("neb.jl")
 include("neb_sd.jl")
 include("neb_llg.jl")
 include("ovf2.jl")
+include("tools.jl")
 
 #_cuda_available[] = CuArrays.functional()
 
