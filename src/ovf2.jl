@@ -1,4 +1,4 @@
-mutable struct OVF2
+mutable struct OVF2{T<:AbstractFloat} 
     xnodes::Int64
     ynodes::Int64
     znodes::Int64
@@ -6,10 +6,10 @@ mutable struct OVF2
     ystepsize::Float64
     zstepsize::Float64
     data_type::String
-    data::Array{Float64, 1}
-    OVF2() = new()
+    name::String
+    data::Array{T, 1}
+    OVF2{T}() where {T<:AbstractFloat} = new()
 end
-
 
 """
   save_ovf(sim::AbstractSim, fname::String; dataformat::String = "text")
@@ -22,13 +22,29 @@ For example:
         save_ovf(sim, "m0")
     ```
 """
-function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "binary")
+function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "Binary 4")
+    mesh = sim.mesh
+    nxyz = mesh.nx*mesh.ny*mesh.nz
+
+    ovf = OVF2{Float64}()
+    ovf.xnodes = mesh.nx
+    ovf.ynodes = mesh.ny
+    ovf.znodes = mesh.nz
+    ovf.xstepsize = mesh.dx
+    ovf.ystepsize = mesh.dy
+    ovf.zstepsize = mesh.dz
+    ovf.data_type = dataformat
+    ovf.name = sim.name
+    ovf.data = zeros(Float64,3*nxyz)
+    copyto!(ovf.data, sim.spin)
+
     if !endswith(fname,".ovf")
         fname = fname* ".ovf"
     end
+
     io = open(fname, "w")
-    write_OVF2_Header(io, sim)
-    write_OVF2_Data(io, sim, dataformat)
+    write_OVF2_Header(io, ovf)
+    write_OVF2_Data(io, ovf)
     hdr(io, "End", "Segment")
     close(io)
 end
@@ -37,19 +53,18 @@ function hdr(io::IOStream, string1::Any, string2::Any)
     write(io, string("# ", string(string1), ": ", string(string2), "\n"))
 end
 
-function write_OVF2_Header(io::IOStream, sim::AbstractSim)
-    mesh = sim.mesh
-    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
-    xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
+function write_OVF2_Header(io::IOStream, ovf::OVF2)
+    nx, ny, nz = ovf.xnodes, ovf.ynodes, ovf.znodes
+    xyz = zeros(Float32, 3, nx, ny, nz)
 
-    dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
+    dx, dy, dz=ovf.xstepsize, ovf.ystepsize, ovf.zstepsize
 
     write(io, "# OOMMF OVF 2.0\n")
     hdr(io, "Segment count", "1")
     hdr(io, "Begin", "Segment")
     hdr(io, "Begin", "Header")
 
-    hdr(io, "Title", sim.name)
+    hdr(io, "Title", ovf.name)
     hdr(io, "meshtype", "rectangular")
     hdr(io, "meshunit", "m")
 
@@ -88,19 +103,21 @@ function write_OVF2_Header(io::IOStream, sim::AbstractSim)
     hdr(io, "End", "Header")
 end
 
-function write_OVF2_Data(io::IOStream, sim::AbstractSim, dataformat::String)
+function write_OVF2_Data(io::IOStream, ovf::OVF2)
+    dataformat = lowercase(ovf.data_type)
+
     if dataformat == "text"
-        hdr(io, "Begin", "Data " * "Text")
-        write_OVF2_Text(io, sim)
-        hdr(io, "End", "Data " * "Text")
-    elseif dataformat == "binary4" || dataformat == "binary"
+        hdr(io, "Begin", "Data Text")
+        write_OVF2_Text(io, ovf)
+        hdr(io, "End", "Data Text")
+    elseif dataformat == "binary 4" || dataformat == "binary"
         hdr(io, "Begin", "Data Binary 4")
-        write_OVF2_Binary4(io, sim)
+        write_OVF2_Binary4(io, ovf)
         write(io, "\n")
         hdr(io, "End", "Data Binary 4")
-    elseif dataformat == "binary8"
+    elseif dataformat == "binary 8"
         hdr(io, "Begin", "Data Binary 8")
-        write_OVF2_Binary8(io, sim)
+        write_OVF2_Binary8(io, ovf)
         write(io, "\n")
         hdr(io, "End", "Data Binary 8")
     else
@@ -108,11 +125,11 @@ function write_OVF2_Data(io::IOStream, sim::AbstractSim, dataformat::String)
     end
 end
 
-function write_OVF2_Text(io::IOStream, sim::AbstractSim)
-    mesh = sim.mesh
-    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+function write_OVF2_Text(io::IOStream, ovf::OVF2)
 
-    b = reshape(sim.spin, (3, nx, ny, nz))
+    nx, ny, nz = ovf.xnodes, ovf.ynodes, ovf.znodes
+
+    b = reshape(ovf.data, (3, nx, ny, nz))
 
     for k = 1:nz, j = 1:ny, i = 1:nx
         write(io, string(b[1, i, j, k], " ", b[2, i, j, k], " ", b[3, i, j, k], "\n"))
@@ -120,12 +137,11 @@ function write_OVF2_Text(io::IOStream, sim::AbstractSim)
 
 end
 
-function write_OVF2_Binary4(io::IOStream, sim::AbstractSim)
-    mesh = sim.mesh
-    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+function write_OVF2_Binary4(io::IOStream, ovf::OVF2)
+    nx, ny, nz = ovf.xnodes, ovf.ynodes, ovf.znodes
     nxyz = nx*ny*nz
     spin = zeros(Float32, 3*nxyz)
-    copyto!(spin, sim.spin)
+    copyto!(spin, ovf.data)
 
     b = reshape(spin, (3, nx, ny, nz))
 
@@ -139,11 +155,10 @@ function write_OVF2_Binary4(io::IOStream, sim::AbstractSim)
 
 end
 
-function write_OVF2_Binary8(io::IOStream, sim::AbstractSim)
-    mesh = sim.mesh
-    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+function write_OVF2_Binary8(io::IOStream, ovf::OVF2)
+    nx, ny, nz = ovf.xnodes, ovf.ynodes, ovf.znodes
 
-    b = reshape(sim.spin, (3, nx, ny, nz))
+    b = reshape(ovf.data, (3, nx, ny, nz))
 
     write(io, Float64(123456789012345.0))   ##OOMMF requires this number to be first to check the format
 
@@ -197,7 +212,7 @@ function read_OVF2_Binary8(io::IOStream, ovf::OVF2)
 end
 
 function read_OVF2_Text(io::IOStream, ovf::OVF2)
-    ovf.data_type = "text"
+    ovf.data_type = "Text"
     nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
     spin = zeros(Float64, 3*nxyz)
     i = 0
@@ -220,12 +235,12 @@ end
 
     Load ovf file as OVF2 Type, where spin is stored in OVF2.data
 """
-function read_ovf(fname::String)
+function read_ovf(fname::String; T::DataType=Float64)
     if !endswith(fname, ".ovf")
         fname = fname*".ovf"
     end
 
-    ovf = OVF2()
+    ovf = OVF2{T}()
 
     io = open(fname, "r")
     if !startswith(readline(io), "# OOMMF OVF 2")
