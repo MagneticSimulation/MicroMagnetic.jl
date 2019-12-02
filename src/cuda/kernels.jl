@@ -154,7 +154,7 @@ indexm = 3*index
 @inbounds Ms_local = Ms[index]
 @inbounds exchx = A[indexm-2]
 @inbounds exchy = A[indexm-1]
-@inbounds exchz = A[indexm-2]
+@inbounds exchz = A[indexm]
 
 if Ms_local == T(0)
 @inbounds energy[index] = 0
