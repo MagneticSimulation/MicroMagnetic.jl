@@ -280,10 +280,10 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; 
   push!(sim.interactions, zeeman)
 
   if sim.save_data
+    id = length(sim.interactions)
       if isa(H0, Tuple)
           push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
           push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
-          id = length(sim.interactions)
           fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
           push!(sim.saver.results, fun)
       end

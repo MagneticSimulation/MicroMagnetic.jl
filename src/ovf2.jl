@@ -38,6 +38,10 @@ function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "Binary 
     ovf.data = zeros(Float64,3*nxyz)
     copyto!(ovf.data, sim.spin)
 
+    save_ovf(ovf,fname)
+end
+
+function save_ovf(ovf,fname)
     if !endswith(fname,".ovf")
         fname = fname* ".ovf"
     end
@@ -248,7 +252,9 @@ function read_ovf(fname::String; T::DataType=Float64)
     end
 
     for line in eachline(io)
-        if startswith(line, "# xnodes:")
+        if startswith(line, "# Title:")
+            ovf.name = line[10:end]
+        elseif startswith(line, "# xnodes:")
             ovf.xnodes = parse(Int64, line[10:end])
         elseif startswith(line, "# ynodes:")
             ovf.ynodes = parse(Int64, line[10:end])

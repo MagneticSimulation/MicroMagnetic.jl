@@ -21,14 +21,7 @@ function save_ovf(sim::AbstractSimGPU, fname::String; dataformat::String = "auto
   ovf.data = zeros(T,3*nxyz)
   copyto!(ovf.data, sim.spin)
 
-  if !endswith(fname,".ovf")
-      fname = fname* ".ovf"
-  end
-  io = open(fname, "w")
-  write_OVF2_Header(io, ovf)
-  write_OVF2_Data(io, ovf)
-  hdr(io, "End", "Segment")
-  close(io)
+  save_ovf(ovf,fname)
 end
 
 
