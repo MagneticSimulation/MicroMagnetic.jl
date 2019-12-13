@@ -38,7 +38,7 @@ mutable struct LLG_STT_CPP_GPU{T<:AbstractFloat} <: DriverGPU
   alpha::T
   beta::T
   gamma::T
-  eta::T
+  bj::T
   ode::Dopri5GPU
   tol::Float64
   p::Tuple{Real, Real, Real}

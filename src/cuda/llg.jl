@@ -170,7 +170,7 @@ end
 function llg_rhs_stt_cpp_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                      h::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1},
                      omega::CuDeviceArray{T, 1}, aj::CuDeviceArray{T, 1},
-                     px::T, py::T, pz::T, alpha::T, beta::T, eta::T,
+                     px::T, py::T, pz::T, alpha::T, beta::T, bj::T,
                      gamma::T, N::Int64) where { T<:AbstractFloat }
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if 0 < index <= N
@@ -178,6 +178,8 @@ function llg_rhs_stt_cpp_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T,
         a = gamma/(1+alpha*alpha)
         b = alpha*a
         u::T = -1.0/(1+alpha*alpha)
+
+        @inbounds aj_ = aj[index]
 
         @inbounds mx = m[j]
         @inbounds my = m[j+1]
@@ -193,17 +195,17 @@ function llg_rhs_stt_cpp_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T,
         @inbounds ht3 = h_stt[j+2] - mht*mz;
 
         mpt = mx*px + my*py + mz*pz
-        @inbounds hp1 = aj[index]*(px-mpt*mx);
-        @inbounds hp2 = aj[index]*(py-mpt*my);
-        @inbounds hp3 = aj[index]*(pz-mpt*mz);
+        @inbounds hp1 = px-mpt*mx;
+        @inbounds hp2 = py-mpt*my;
+        @inbounds hp3 = pz-mpt*mz;
 
-        f1 = a*h1 + u*(beta-alpha)*ht1 + u*(eta-alpha)*hp1
-        f2 = a*h2 + u*(beta-alpha)*ht2 + u*(eta-alpha)*hp2
-        f3 = a*h3 + u*(beta-alpha)*ht3 + u*(eta-alpha)*hp3
+        f1 = a*h1 + u*(beta-alpha)*ht1 + u*(bj-alpha*aj_)*hp1
+        f2 = a*h2 + u*(beta-alpha)*ht2 + u*(bj-alpha*aj_)*hp2
+        f3 = a*h3 + u*(beta-alpha)*ht3 + u*(bj-alpha*aj_)*hp3
 
-        ht1 = b*h1 + u*(1+alpha*beta)*ht1 + u*(1+alpha*eta)*hp1
-        ht2 = b*h2 + u*(1+alpha*beta)*ht2 + u*(1+alpha*eta)*hp2
-        ht3 = b*h2 + u*(1+alpha*beta)*ht3 + u*(1+alpha*eta)*hp3
+        ht1 = b*h1 + u*(1+alpha*beta)*ht1 + u*(aj_+alpha*bj)*hp1
+        ht2 = b*h2 + u*(1+alpha*beta)*ht2 + u*(aj_+alpha*bj)*hp2
+        ht3 = b*h2 + u*(1+alpha*beta)*ht3 + u*(aj_+alpha*bj)*hp3
 
         f1 += cross_x(mx,my,mz, ht1, ht2, ht3)
         f2 += cross_y(mx,my,mz, ht1, ht2, ht3)
@@ -222,10 +224,10 @@ function llg_rhs_stt_cpp_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T,
 end
 
 function llg_rhs_stt_cpp_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1}, h_stt::CuArray{T, 1},
-                 omega::CuArray{T, 1}, aj::CuArray{T, 1}, p::Tuple, alpha::T, beta::T, eta::T, gamma::T, N::Int64) where {T<:AbstractFloat}
+                 omega::CuArray{T, 1}, aj::CuArray{T, 1}, p::Tuple, alpha::T, beta::T, bj::T, gamma::T, N::Int64) where {T<:AbstractFloat}
     blk, thr = CuArrays.cudims(N)
     px, py, pz = T(p[1]), T(p[2]), T(p[3])
-    @cuda blocks=blk threads=thr llg_rhs_stt_cpp_kernal!(dw_dt, m, h, h_stt, omega, aj, px, py, pz, alpha, beta, eta, gamma, N)
+    @cuda blocks=blk threads=thr llg_rhs_stt_cpp_kernal!(dw_dt, m, h, h_stt, omega, aj, px, py, pz, alpha, beta, bj, gamma, N)
     return nothing
 end
 
@@ -264,7 +266,7 @@ function llg_stt_cpp_call_back_gpu(sim::AbstractSim, dw_dt::CuArray{T, 1}, t::Fl
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, sim.nxyz)
 
     llg_rhs_stt_cpp_gpu(dw_dt, sim.spin, driver.field, driver.h_stt, omega, driver.aj, driver.p, driver.alpha,
-                        driver.beta, driver.eta, driver.gamma, sim.nxyz)
+                        driver.beta, driver.bj, driver.gamma, sim.nxyz)
 
     return nothing
 
