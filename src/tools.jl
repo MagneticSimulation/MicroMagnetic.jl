@@ -152,7 +152,7 @@ end
 #V is the Accelerating voltage, in Kv
 #V0 is the mean inner potential (MIP)
 #alpha: beam divergence angle
-function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, Cs=0, alpha=1e-5, zero_padding_size=-1)
+function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding_size=-1)
     ovf = read_ovf(ovf_name)
     nx = ovf.xnodes
     ny = ovf.ynodes
@@ -165,6 +165,7 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, Cs=0, alpha=1e-5, zero_p
     m = reshape(spin,(3, nx, ny, nz))
 
     lambda, phi_E = compute_electric_phase(1000*V, V0, dz, nz)
+    #println("lambda= ", lambda)
 
     mx = m[1, :, :, 1]
     my = m[2, :, :, 1]
@@ -180,11 +181,11 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, Cs=0, alpha=1e-5, zero_p
         new_my[i,j] = my[i,j]
     end
 
-    fft_mx = fftshift(fft(new_mx))
-    fft_my = fftshift(fft(new_my))
+    fft_mx = fft(new_mx)
+    fft_my = fft(new_my)
 
-    kx = fftshift(fftfreq(Nx, d=dx)*2*pi)
-    ky = fftshift(fftfreq(Ny, d=dy)*2*pi)
+    kx = fftfreq(Nx, d=dx)*2*pi
+    ky = fftfreq(Ny, d=dy)*2*pi
 
     fft_mx_ky = zeros(Complex{Float64}, (Nx,Ny))
     fft_my_kx = zeros(Complex{Float64}, (Nx,Ny))
@@ -197,23 +198,21 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, Cs=0, alpha=1e-5, zero_p
     T = zeros(Complex{Float64}, (Nx,Ny))
     E = zeros(Nx,Ny)
     df = df*1e-6
+
     for i=1:Nx, j=1:Ny
         k2 = kx[i]^2 + ky[j]^2
         k = sqrt(k2)
-        T[i,j] = exp(-pi*1im*(0.5*Cs*lambda^3*k2-df*lambda*k2))
-        E[i,j] = exp(-(pi^2)*(alpha^2)*(df*k + Cs*(lambda^2)*k^3)^2)
+        T[i,j] = exp(pi*1im*(df*lambda*k2))
+        E[i,j] = exp(-(pi*alpha*df*k)^2)
         if k2 > 0
             Phi_M[i,j] = 1im*(c_e/h_bar)*pi*mu_0*Ms*(nz*dz)*(fft_mx_ky[i,j]-fft_my_kx[i,j])/k2
         end
     end
-    println(maximum(E))
-
 
     phi_M = real(ifft(Phi_M))
-    println(maximum(phi_M), phi_E)
     phi = mod.(phi_M .+ phi_E, 2*pi)
 
-    fg = exp.(1im.*phi)
-    intensity = (abs.(ifft(fg.*T.*E))).^2;
-    return phi_M, intensity
+    fg = fft(exp.(1im.*phi))
+    intensity = (abs.(ifft(fg.*E.*T))).^2;
+    return phi, intensity
 end
