@@ -216,3 +216,49 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
     intensity = (abs.(ifft(fg.*E.*T))).^2;
     return phi, intensity
 end
+
+function m_average(m::Array{T,1},nx::Int,ny::Int,nz::Int;axis::String="z") where T<:AbstractFloat ##axis can only chosen from "x" "y" "z"
+
+    if length(m) != 3*nx*ny*nz
+        println("Length doesn't match!")
+        return nothing
+    end
+
+    b = reshape(m,(3,nx,ny,nz))
+    if axis =="x"
+        m_in_plane = zeros(2,ny,nz)
+        m_out_plane = zeros(ny,nz)
+        for j=1:ny, k=1:nz, i = 1:nx
+            m_in_plane[1,j,k] += b[2,i,j,k]/nx
+            m_in_plane[2,j,k] += b[3,i,j,k]/nx
+            m_out_plane[j,k] += b[1,i,j,k]/nx
+        end
+    elseif axis == "y"
+        m_in_plane = zeros(2,nx,nz)
+        m_out_plane = zeros(nx,nz)
+        for i = 1:nx, k=1:nz, j=1:ny
+            m_in_plane[1,i,k] -= b[1,i,j,k]/ny  ##from y+ view, the left hand direction is x-
+            m_in_plane[2,i,k] += b[3,i,j,k]/ny
+            m_out_plane[i,k] += b[2,i,j,k]/ny
+        end
+    elseif axis == "z"
+        m_in_plane = zeros(2,nx,ny)
+        m_out_plane = zeros(nx,ny)
+        for i = 1:nx, j=1:ny, k=1:nz
+            m_in_plane[1,i,j] += b[1,i,j,k]/nz
+            m_in_plane[2,i,j] += b[2,i,j,k]/nz
+            m_out_plane[i,j] += b[3,i,j,k]/nz
+        end
+    end
+
+    return m_in_plane,m_out_plane
+end
+
+function m_average(ovf::OVF2;axis::String="z")
+    m = ovf.data
+    nx = ovf.xnodes
+    ny = ovf.ynodes
+    nz = ovf.znodes
+
+    return m_average(m,nx,ny,nz,axis=axis)
+end

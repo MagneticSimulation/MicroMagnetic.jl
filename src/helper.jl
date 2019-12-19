@@ -46,7 +46,7 @@ function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Tuple{Real,Real,Real}) w
   return nothing
 end
 
-function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Array{T, 1}) where {T<:AbstractFloat}
+function init_vector!(v::Array{T1, 1}, mesh::Mesh, init::Array{T2, 1}) where {T1,T2<:AbstractFloat}
   v .= init
   return nothing
 end
