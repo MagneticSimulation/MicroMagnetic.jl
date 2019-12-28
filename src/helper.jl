@@ -5,7 +5,7 @@ function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Number) where {T<:Abstr
     return nothing
 end
 
-function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Array{T, 1}) where {T<:AbstractFloat}
+function  init_scalar!(v::Array{T1, 1}, mesh::Mesh, init::Array{T2, 1}) where {T1,T2<:AbstractFloat}
     v .= init
     return nothing
 end
