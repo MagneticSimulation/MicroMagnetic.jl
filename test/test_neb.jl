@@ -25,9 +25,9 @@ interplotion3=JuMag.interpolate_m([0,0,1.0],[0,0,1.0],1)
 
 m1 = [0.061446725558210215, 0.32475341620029013, 0.9438005714050057]
 m2 = [0, 0, 1.0]
-m = JuMag.interpolate_m(m1, m2, 1)
+m_neb = JuMag.interpolate_m(m1, m2, 1)
 println("Input: ", m1)
-println("interpolate_m1: ", m)
+println("interpolate_m1: ", m_neb)
 p = JuMag.interpolate_m_spherical(m1, m2, 1)
 println("interpolate_m2: ", p)
 
