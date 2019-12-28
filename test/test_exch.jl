@@ -60,3 +60,120 @@ fx = sigma/Delta/(mu0*Ms)*0.6
 fy = sigma/Delta/(mu0*Ms)*0.8
 println(fx-b[1,1])
 @test fx-b[1,1] == 0.0
+
+mesh =FDMesh(nx=3,ny=3,nz=3)
+function m(i,j,k,dx,dy,dz)
+  return (i^2,j+1.0,k*j)
+end
+
+function test_exch_vector_x(mesh)
+  function Ms_x(i,j,k,dx,dy,dz)
+    if j==2 && k==2
+      return 1e5
+    else
+      return 0
+    end
+  end
+  sim1 = Sim(mesh)
+  sim2 = Sim(mesh)
+  set_Ms(sim1,Ms_x)
+  set_Ms(sim2,Ms_x)
+  add_exch(sim1,1e-12)
+  add_exch_vector(sim2,(1e-12,0,0))
+  init_m0(sim1,m)
+  init_m0(sim2,m)
+  JuMag.effective_field(sim1, sim1.spin, 0.0)
+  JuMag.effective_field(sim2, sim2.spin, 0.0)
+  for i =1:3*27
+    @test sim1.field[i]-sim2.field[i] ==0.0
+  end
+end
+function test_exch_vector_x(mesh)
+  function Ms_x(i,j,k,dx,dy,dz)
+    if j==2 && k==2
+      return 1e5
+    else
+      return 0
+    end
+  end
+  sim1 = Sim(mesh)
+  sim2 = Sim(mesh)
+  set_Ms(sim1,Ms_x)
+  set_Ms(sim2,Ms_x)
+  add_exch(sim1,1e-12)
+  add_exch_vector(sim2,(1e-12,0,0))
+  init_m0(sim1,m)
+  init_m0(sim2,m)
+  JuMag.effective_field(sim1, sim1.spin, 0.0)
+  JuMag.effective_field(sim2, sim2.spin, 0.0)
+  for i =1:3*27
+    @test sim1.field[i]-sim2.field[i] ==0.0
+  end
+end
+function test_exch_vector_y(mesh)
+  function Ms_y(i,j,k,dx,dy,dz)
+    if i==2 && k==2
+      return 1e5
+    else
+      return 0
+    end
+  end
+  sim1 = Sim(mesh)
+  sim2 = Sim(mesh)
+  set_Ms(sim1,Ms_y)
+  set_Ms(sim2,Ms_y)
+  add_exch(sim1,1e-12)
+  add_exch_vector(sim2,(0,1e-12,0))
+  init_m0(sim1,m)
+  init_m0(sim2,m)
+  JuMag.effective_field(sim1, sim1.spin, 0.0)
+  JuMag.effective_field(sim2, sim2.spin, 0.0)
+  for i =1:3*27
+    @test sim1.field[i]-sim2.field[i] ==0.0
+  end
+end
+function test_exch_vector_z(mesh)
+  function Ms_z(i,j,k,dx,dy,dz)
+    if i==2 && j==2
+      return 1e5
+    else
+      return 0
+    end
+  end
+  sim1 = Sim(mesh)
+  sim2 = Sim(mesh)
+  set_Ms(sim1,Ms_z)
+  set_Ms(sim2,Ms_z)
+  add_exch(sim1,1e-12)
+  add_exch_vector(sim2,(0,0,1e-12))
+  init_m0(sim1,m)
+  init_m0(sim2,m)
+  JuMag.effective_field(sim1, sim1.spin, 0.0)
+  JuMag.effective_field(sim2, sim2.spin, 0.0)
+  for i =1:3*27
+    @test sim1.field[i]-sim2.field[i] ==0.0
+  end
+end
+function test_exch_vector_all(mesh)
+  function Ms_all(i,j,k,dx,dy,dz)
+    return i^2+j*1e3+k
+  end
+  sim1 = Sim(mesh)
+  sim2 = Sim(mesh)
+  set_Ms(sim1,Ms_all)
+  set_Ms(sim2,Ms_all)
+  add_exch(sim1,1e-12)
+  add_exch_vector(sim2,(1e-12,1e-12,1e-12))
+  init_m0(sim1,m)
+  init_m0(sim2,m)
+  JuMag.effective_field(sim1, sim1.spin, 0.0)
+  JuMag.effective_field(sim2, sim2.spin, 0.0)
+  for i =1:3*27
+    @test sim1.field[i]-sim2.field[i] ==0.0
+  end
+end
+
+test_exch_vector_x(mesh)
+test_exch_vector_y(mesh)
+test_exch_vector_z(mesh)
+test_exch_vector_all(mesh)
