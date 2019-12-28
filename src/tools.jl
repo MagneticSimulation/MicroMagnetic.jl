@@ -152,7 +152,8 @@ end
 #V is the Accelerating voltage, in Kv
 #V0 is the mean inner potential (MIP)
 #alpha: beam divergence angle
-function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding_size=-1)
+# use 'axis="x"' to change the axis of LTEM, angle_x = $angle to simulate the titled surface
+function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding_size=512,axis="z",angle_x=0,angle_y=0)
     ovf = read_ovf(ovf_name)
     nx = ovf.xnodes
     ny = ovf.ynodes
@@ -166,9 +167,22 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
 
     lambda, phi_E = compute_electric_phase(1000*V, V0, dz, nz)
     #println("lambda= ", lambda)
+    mx,my,mz = m_average(ovf,axis=axis)
+    mx1 = mx
+    my1 = my.*cos(angle_y/180*pi) - mz.*sin(angle_y/180*pi)
+    mz1 = mz.*cos(angle_y/180*pi) + my.*sin(angle_y/180*pi)  ##after rotation by x-axis
 
-    mx = m[1, :, :, 1]
-    my = m[2, :, :, 1]
+    mx2 = mx1.*cos(angle_x/180*pi)- mz1.*sin(angle_x/180*pi)   ##after rotation by y-axis
+    my2 = my1
+    mz2 = mz1.*cos(angle_x/180*pi) + mx1.*sin(angle_x/180*pi)
+
+    mx,my,mz = mx2,my2,mz2
+    if axis == "x"
+        nx =ny
+        ny=nz
+    elseif axis == "y"
+        ny=nz
+    end
 
     N = zero_padding_size
     Nx = N > nx ? N : nx
@@ -177,8 +191,8 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
     new_mx = zeros(Nx, Ny)
     new_my = zeros(Nx, Ny)
     for i=1:nx, j=1:ny
-        new_mx[i,j] = mx[i,j]
-        new_my[i,j] = my[i,j]
+        new_mx[Int(floor(Nx/2-nx/2+i)),Int(floor(Ny/2-ny/2+j))] = mx[i,j]
+        new_my[Int(floor(Nx/2-nx/2+i)),Int(floor(Ny/2-ny/2+j))] = my[i,j]
     end
 
     fft_mx = fft(new_mx)
@@ -209,12 +223,21 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
         end
     end
 
-    phi_M = real(ifft(Phi_M))
+    phi_M = abs.(ifft(Phi_M))
     phi = mod.(phi_M .+ phi_E, 2*pi)
 
     fg = fft(exp.(1im.*phi))
     intensity = (abs.(ifft(fg.*E.*T))).^2;
-    return phi, intensity
+
+    local_phi = zeros(nx,ny)
+    local_intensity = zeros(nx,ny)
+
+    for i =1:nx,j=1:ny
+        local_phi[i,j] = phi_M[Int(floor(Nx/2-nx/2+i)),Int(floor(Ny/2-ny/2+j))]
+        local_intensity[i,j] = intensity[Int(floor(Nx/2-nx/2+i)),Int(floor(Ny/2-ny/2+j))]
+    end
+    #return phi_M, intensity
+    return local_phi, local_intensity
 end
 
 function m_average(m::Array{T,1},nx::Int,ny::Int,nz::Int;axis::String="z") where T<:AbstractFloat ##axis can only chosen from "x" "y" "z"
@@ -226,32 +249,29 @@ function m_average(m::Array{T,1},nx::Int,ny::Int,nz::Int;axis::String="z") where
 
     b = reshape(m,(3,nx,ny,nz))
     if axis =="x"
-        m_in_plane = zeros(2,ny,nz)
-        m_out_plane = zeros(ny,nz)
-        for j=1:ny, k=1:nz, i = 1:nx
-            m_in_plane[1,j,k] += b[2,i,j,k]/nx
-            m_in_plane[2,j,k] += b[3,i,j,k]/nx
-            m_out_plane[j,k] += b[1,i,j,k]/nx
+        mx,my,mz = zeros(ny,nz),zeros(ny,nz),zeros(ny,nz)
+        for i = 1:nx
+            mx .+= b[2,i,:,:]/nx
+            my .+= b[3,i,:,:]/nx
+            mz .+= b[1,i,:,:]/nx
         end
     elseif axis == "y"
-        m_in_plane = zeros(2,nx,nz)
-        m_out_plane = zeros(nx,nz)
-        for i = 1:nx, k=1:nz, j=1:ny
-            m_in_plane[1,i,k] -= b[1,i,j,k]/ny  ##from y+ view, the left hand direction is x-
-            m_in_plane[2,i,k] += b[3,i,j,k]/ny
-            m_out_plane[i,k] += b[2,i,j,k]/ny
+        mx,my,mz = zeros(nx,nz),zeros(nx,nz),zeros(nx,nz)
+        for j = 1:ny
+            mx .-= b[1,:,j,:]/ny
+            my .+= b[3,:,j,:]/ny
+            mz .+= b[2,:,j,:]/ny
         end
     elseif axis == "z"
-        m_in_plane = zeros(2,nx,ny)
-        m_out_plane = zeros(nx,ny)
-        for i = 1:nx, j=1:ny, k=1:nz
-            m_in_plane[1,i,j] += b[1,i,j,k]/nz
-            m_in_plane[2,i,j] += b[2,i,j,k]/nz
-            m_out_plane[i,j] += b[3,i,j,k]/nz
+        mx,my,mz = zeros(nx,ny),zeros(nx,ny),zeros(nx,ny)
+        for k = 1:nz
+            mx .+= b[1,:,:,k]/nz
+            my .+= b[2,:,:,k]/nz
+            mz .+= b[3,:,:,k]/nz
         end
     end
 
-    return m_in_plane,m_out_plane
+    return mx,my,mz
 end
 
 function m_average(ovf::OVF2;axis::String="z")
