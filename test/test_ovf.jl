@@ -4,7 +4,8 @@ using Test
 mesh = FDMesh(nx = 2, ny = 1, nz = 1, dx = 1e-9, dy = 1e-9, dz = 1e-9)
 sim = Sim(mesh, name = "test_ovf1")
 set_Ms(sim, 8.0e5)
-init_m0(sim, (0.6,0.8,0))
+m = [0.6,0.8,0,0.6,0.8,0]
+init_m0(sim, m)
 save_ovf(sim, "test_ovf_bin", dataformat = "Binary 8")
 save_ovf(sim, "test_ovf_text", dataformat = "Text")
 
@@ -12,23 +13,33 @@ function test_read_ovf_with_sim(ovf_name)
     sim = Sim(mesh, name = "test_ovf3")
     set_Ms(sim, 8.0e5)
     read_ovf(sim, ovf_name)
-    println(sim.spin)
-    @test sim.spin[1] == 0.6
-    @test sim.spin[2] == 0.8
-    @test sim.spin[3] == 0.0
-    @test sim.prespin[1] == 0.6
-    @test sim.prespin[2] == 0.8
-    @test sim.prespin[3] == 0.0
+    println("spin:",sim.spin)
+    for i =1:6
+        @test sim.spin[i] == m[i]
+    end
 end
 
 function test_read_ovf(ovf_name)
     ovf = read_ovf(ovf_name)
-    @test ovf.data[1] == 0.6
-    @test ovf.data[2] == 0.8
-    @test ovf.data[3] == 0.0
-    @test ovf.data[4] == 0.6
-    @test ovf.data[5] == 0.8
-    @test ovf.data[6] == 0.0
+    @test length(ovf.data) == 6
+    for i =1:6
+        @test ovf.data[i] ==m[i]
+    end
+end
+
+function test_save_ovf_without_sim(ovfname)
+    ovf=read_ovf(ovfname)
+    save_ovf(ovf,ovfname*"_binary")
+    ovf.data_type="Text"
+    save_ovf(ovf,ovfname*"text")
+    ovf_bin=read_ovf(ovfname*"_binary")
+    ovf_text=read_ovf(ovfname*"text")
+    @test length(ovf_bin.data) == 6
+    @test length(ovf_text.data) == 6
+    for i =1:6
+        @test ovf_bin.data[i] ==m[i]
+        @test ovf_text.data[i] ==m[i]
+    end
 end
 
 @testset "Test ovfs" begin
@@ -36,6 +47,8 @@ end
     test_read_ovf_with_sim("test_ovf_text")
     test_read_ovf("test_ovf_bin")
     test_read_ovf("test_ovf_text")
+    test_save_ovf_without_sim("test_ovf_bin")
+    test_save_ovf_without_sim("test_ovf_text")
 end
 
 #JuMag.cuda_using_double(true)
