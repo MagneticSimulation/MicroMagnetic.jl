@@ -143,7 +143,7 @@ function total_energy_kernel!(m::CuDeviceArray{T, 1}, energy::CuDeviceArray{T, 1
 end
 
 function run_monte_carlo_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1},
-                              energy::CuDeviceArray{T, 1}, temp::T,
+                              energy::CuDeviceArray{T, 1}, temp::Float64,
                               nx::Int64, ny::Int64, nz::Int64, bias::Int64) where {T<:AbstractFloat}
 
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x

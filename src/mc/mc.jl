@@ -61,7 +61,7 @@ function MonteCarloNew(mesh::Mesh; name="mc")
     sim.T = 300
     sim.exch = ExchangeMC(CuArrays.zeros(Float, mesh.n_ngbs), CuArrays.zeros(Float, mesh.n_ngbs))
     sim.dmi = DMI_MC(CuArrays.zeros(Float, (3, mesh.n_ngbs)), CuArrays.zeros(Float, (3, mesh.n_ngbs)))
-    sim.zee = ZeemanMC(0.0,0.0,0.0)
+    sim.zee = ZeemanMC(Float(0),Float(0),Float(0))
     sim.anis = Anisotropy_MC(Float(0),Float(0),Float(0),Float(1),Float(0))
 
     headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
@@ -86,9 +86,9 @@ function add_exch(sim::MonteCarloNew, Jx, Jy, Jz, Jx1, Jy1, Jz1)
     Jy = Jy/k_B
     Jz = Jz/k_B
     Jx1 = Jx1/k_B
-    Jx2 = Jx2/k_B
-    Jx3 = Jx3/k_B
-    J = Array([T(Jx/k_B), T(Jx), T(Jy), T(Jy), T(Jz), T(Jz)])
+    Jy1 = Jy1/k_B
+    Jz1 = Jz1/k_B
+    J = Array([T(Jx), T(Jx), T(Jy), T(Jy), T(Jz), T(Jz)])
     J1 = Array([T(Jx1), T(Jx1), T(Jy1), T(Jy1), T(Jz1), T(Jz1)])
     copyto!(exch.J, J)
     copyto!(exch.J1, J1)
@@ -101,7 +101,7 @@ function add_exch(sim::MonteCarloNew; J=1, J1=0)
     return nothing
 end
 
-function add_dmi(sim::MonteCarloNew, Dx::Float64, Dy::Float64, Dz::Float64, Dx1::Float64, Dy1::Float64, Dz1::Float64, type::String)
+function add_dmi(sim::MonteCarloNew, Dx::Number, Dy::Number, Dz::Number, Dx1::Number, Dy1::Number, Dz1::Number, type::String)
     dmi = sim.dmi
     cubic = isa(sim.mesh, CubicMeshGPU) ? true : false
     if !cubic
