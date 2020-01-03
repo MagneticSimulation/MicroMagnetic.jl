@@ -136,24 +136,25 @@ function fft_m(ovf_name; axis='z', zero_padding_size=-1)
 end
 
 
-function compute_electric_phase(V, V0, dz, nz)
+function compute_electric_phase(V, V0, dz, nz, beta)
     C = 299792458.0
     E0 = m_e*C^2
     Ek = V*c_e
     P =  sqrt(Ek^2+2*Ek*E0)/C
     lambda = 2*pi*h_bar/P #lambda in m
     CE = (2*pi/(lambda*V))*(Ek+E0)/(Ek+2*E0)
-    phi_E = CE*V0*(dz*nz)
+    phi_E = CE*V0*(dz*nz)/cos(beta)
     return lambda, phi_E
 end
 
-
+#Ref: "MALTS: A tool to simulate Lorentz Transmission Electron Microscopy from micromagnetic simulations" by Stephanie K. Walton
 #df in um
 #V is the Accelerating voltage, in Kv
 #V0 is the mean inner potential (MIP)
 #alpha: beam divergence angle
-# use 'axis="x"' to change the axis of LTEM, angle_x = $angle to simulate the titled surface
-function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding_size=512,axis="z",angle_x=0,angle_y=0)
+#axis="x" is the normal direction
+#beta is the angle between electron beam and the normal axis, in radian
+function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding_size=512,axis="z",beta=0)
     ovf = read_ovf(ovf_name)
     nx = ovf.xnodes
     ny = ovf.ynodes
@@ -165,29 +166,25 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
     spin = ovf.data
     m = reshape(spin,(3, nx, ny, nz))
 
-    lambda, phi_E = compute_electric_phase(1000*V, V0, dz, nz)
-    #println("lambda= ", lambda)
-    mx,my,mz = m_average(ovf,axis=axis)
-    mx1 = mx
-    my1 = my.*cos(angle_y/180*pi) - mz.*sin(angle_y/180*pi)
-    mz1 = mz.*cos(angle_y/180*pi) + my.*sin(angle_y/180*pi)  ##after rotation by x-axis
-
-    mx2 = mx1.*cos(angle_x/180*pi)- mz1.*sin(angle_x/180*pi)   ##after rotation by y-axis
-    my2 = my1
-    mz2 = mz1.*cos(angle_x/180*pi) + mx1.*sin(angle_x/180*pi)
-
-    mx,my,mz = mx2,my2,mz2
+    mx1,my1,mz1 = m_average(ovf,axis=axis)
+    mx = mx1
+    my = cos(beta)*my1-sin(beta)*mz1
     if axis == "x"
-        nx =ny
-        ny=nz
+        nx,dx=ny,dy
+        ny,dy=nz,dz
     elseif axis == "y"
-        ny=nz
+        ny,dy=nz,dz
     end
+
+    dx=dx*cos(beta)
+
+    lambda, phi_E = compute_electric_phase(1000*V, V0, dz, nz, beta)
 
     N = zero_padding_size
     Nx = N > nx ? N : nx
     Ny = N > ny ? N : ny
 
+    #put data on the center of zero padding square
     new_mx = zeros(Nx, Ny)
     new_my = zeros(Nx, Ny)
     for i=1:nx, j=1:ny
@@ -198,8 +195,8 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
     fft_mx = fft(new_mx)
     fft_my = fft(new_my)
 
-    kx = fftfreq(Nx, d=dx)*2*pi
-    ky = fftfreq(Ny, d=dy)*2*pi
+    kx = fftfreq(Nx, d=dx)
+    ky = fftfreq(Ny, d=dy)
 
     fft_mx_ky = zeros(Complex{Float64}, (Nx,Ny))
     fft_my_kx = zeros(Complex{Float64}, (Nx,Ny))
@@ -216,17 +213,25 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
     for i=1:Nx, j=1:Ny
         k2 = kx[i]^2 + ky[j]^2
         k = sqrt(k2)
-        T[i,j] = exp(pi*1im*(df*lambda*k2))
+        T[i,j] = exp(-pi*1im*(df*lambda*k2))
         E[i,j] = exp(-(pi*alpha*df*k)^2)
         if k2 > 0
-            Phi_M[i,j] = 1im*(c_e/h_bar)*pi*mu_0*Ms*(nz*dz)*(fft_mx_ky[i,j]-fft_my_kx[i,j])/k2
+            Phi_M[i,j] = 1im*(c_e/h_bar)*mu_0*Ms*(nz*dz)*(fft_mx_ky[i,j]-fft_my_kx[i,j])/k2
         end
     end
+    Phi_M[1,1]=0
 
-    phi_M = abs.(ifft(Phi_M))
-    phi = mod.(phi_M .+ phi_E, 2*pi)
+    phi_M =(nz*dz)/cos(beta)*real.(ifft(Phi_M))
+
+    phi = phi_M
+
+    for i=1:nx,j=1:ny
+        phi[Int(floor(Nx/2-nx/2+i)),Int(floor(Ny/2-ny/2+j))] += phi_E
+    end
+    phi = mod.(phi,2*pi)
 
     fg = fft(exp.(1im.*phi))
+
     intensity = (abs.(ifft(fg.*E.*T))).^2;
 
     local_phi = zeros(nx,ny)
@@ -236,7 +241,7 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
         local_phi[i,j] = phi_M[Int(floor(Nx/2-nx/2+i)),Int(floor(Ny/2-ny/2+j))]
         local_intensity[i,j] = intensity[Int(floor(Nx/2-nx/2+i)),Int(floor(Ny/2-ny/2+j))]
     end
-    #return phi_M, intensity
+
     return local_phi, local_intensity
 end
 
@@ -248,30 +253,34 @@ function m_average(m::Array{T,1},nx::Int,ny::Int,nz::Int;axis::String="z") where
     end
 
     b = reshape(m,(3,nx,ny,nz))
+    N = 0
     if axis =="x"
         mx,my,mz = zeros(ny,nz),zeros(ny,nz),zeros(ny,nz)
         for i = 1:nx
-            mx .+= b[2,i,:,:]/nx
-            my .+= b[3,i,:,:]/nx
-            mz .+= b[1,i,:,:]/nx
+            mx .+= b[2,i,:,:]
+            my .+= b[3,i,:,:]
+            mz .+= b[1,i,:,:]
         end
+        N = nx
     elseif axis == "y"
         mx,my,mz = zeros(nx,nz),zeros(nx,nz),zeros(nx,nz)
         for j = 1:ny
-            mx .-= b[1,:,j,:]/ny
-            my .+= b[3,:,j,:]/ny
-            mz .+= b[2,:,j,:]/ny
+            mx .-= b[1,:,j,:]
+            my .+= b[3,:,j,:]
+            mz .+= b[2,:,j,:]
         end
+        N = ny
     elseif axis == "z"
         mx,my,mz = zeros(nx,ny),zeros(nx,ny),zeros(nx,ny)
         for k = 1:nz
-            mx .+= b[1,:,:,k]/nz
-            my .+= b[2,:,:,k]/nz
-            mz .+= b[3,:,:,k]/nz
+            mx .+= b[1,:,:,k]
+            my .+= b[2,:,:,k]
+            mz .+= b[3,:,:,k]
         end
+        N = nz
     end
 
-    return mx,my,mz
+    return mx/N,my/N,mz/N
 end
 
 function m_average(ovf::OVF2;axis::String="z")
