@@ -25,7 +25,7 @@ function compute_field_macro(mesh, Nx, Ny, Nz; gpu=false)
     function rand_m(i, j, k, dx, dy, dz)
         I = i%3
         J = j%3
-        return (1, sin(I*0.3), cos(J*0.7))
+        return (0.2, sin(I*0.9), cos(J*1.1))
     end
 
     init_m0(sim, rand_m)
@@ -48,8 +48,9 @@ function test_field_macro(;gpu=false)
         mesh1 =  FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=1, ny=1, nz=1)
         mesh2 =  FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=3, ny=3, nz=1)
         mesh3 =  FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=101, ny=101, nz=1)
-        mesh4 =  FDMeshGPU(dx=2e-9, dy=2e-9, dz=2e-9, nx=33, ny=33, nz=1)
+        mesh4 =  FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=33, ny=33, nz=1)
     end
+
 
     f1 = compute_field_macro_uniform(mesh1, 500, 0, 0, gpu=gpu)  #1d case
     println(f1)
@@ -72,16 +73,16 @@ function test_field_macro(;gpu=false)
     println(f3, f3b)
     @test isapprox(f3, f3b, atol=1e-10)
 
-    f5 = compute_field_macro_uniform(mesh2, 5, 5, 0, gpu=gpu) #self-consistency
-    f6 = compute_field_macro_uniform(mesh4, 0, 0, 0, gpu=gpu)
+    f5 = compute_field_macro(mesh2, 5, 5, 0, gpu=gpu) #self-consistency
+    f6 = compute_field_macro(mesh4, 0, 0, 0, gpu=gpu)
     f5 = Array(f5)
     f6 = Array(f6)
     field = reshape(f6, 3, 33, 33, 1)
     f6b = field[1:3, 16:18, 16:18, 1]
     field = reshape(f6b, 27)
-    println(size(f5), size(f5), typeof(f5), typeof(field))
     println(maximum(abs.(field)))
-    @test maximum(abs.(f5-field))<5e-7
+    println(maximum(abs.(f5-field)))
+    @test maximum(abs.(f5-field))<1e-10
 
 end
 
