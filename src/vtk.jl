@@ -21,8 +21,10 @@ function save_m(sim::AbstractSim, fname::String; vtk::Bool=false, npy::Bool=fals
 
   if npy
     !isdir(npy_folder) && mkdir(npy_folder)
-    name = @sprintf("%s.npy", fname)
-    npzwrite(name, joinpath(npy_folder,sim.spin))
+    if !endswith(fname,".npy")
+      fname = @sprintf("%s.npy", fname)
+    end
+    npzwrite(joinpath(npy_folder,fname),sim.spin)
   end
 end
 
