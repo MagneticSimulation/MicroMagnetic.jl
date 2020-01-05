@@ -155,3 +155,7 @@ end
 function run_step(sim::AbstractSim, driver::LLG)
     advance_step(sim, driver.ode)
 end
+
+function run_step(sim::AbstractSim, driver::LLG_STT)
+    advance_step(sim, driver.ode)
+end

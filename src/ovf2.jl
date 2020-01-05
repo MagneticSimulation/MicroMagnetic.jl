@@ -1,4 +1,4 @@
-mutable struct OVF2{T<:AbstractFloat} 
+mutable struct OVF2{T<:AbstractFloat}
     xnodes::Int64
     ynodes::Int64
     znodes::Int64
@@ -41,7 +41,7 @@ function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "Binary 
     save_ovf(ovf,fname)
 end
 
-function save_ovf(ovf,fname)
+function save_ovf(ovf, fname)
     if !endswith(fname,".ovf")
         fname = fname* ".ovf"
     end
