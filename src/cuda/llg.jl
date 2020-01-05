@@ -51,8 +51,8 @@ function field_stt_kernal!(m::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1}, M
         i1 = _x_minus_one(i, index, nx, ny, nz, xperiodic, Ms)
         i2 = _x_plus_one(i, index, nx, ny, nz, xperiodic, Ms)
         factor = i1*i2>0 ? 1/(2*dx) : 1/dx
-        i1 < 0 && (i1 = i)
-        i2 < 0 && (i2 = i)
+        i1 < 0 && (i1 = index)
+        i2 < 0 && (i2 = index)
         j1 = 3*i1-2
         j2 = 3*i2-2
         @inbounds u = ut*ux[index]*factor
@@ -65,8 +65,8 @@ function field_stt_kernal!(m::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1}, M
         i1 = _y_minus_one(j, index, nx, ny, nz, yperiodic, Ms)
         i2 = _y_plus_one(j, index, nx, ny, nz, yperiodic, Ms)
         factor = i1*i2>0 ? 1/(2*dy) : 1/dy
-        i1 < 0 && (i1 = i)
-        i2 < 0 && (i2 = i)
+        i1 < 0 && (i1 = index)
+        i2 < 0 && (i2 = index)
         j1 = 3*i1-2
         j2 = 3*i2-2
         @inbounds u = ut*uy[index]*factor
@@ -79,8 +79,8 @@ function field_stt_kernal!(m::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1}, M
         i1 = _z_minus_one(k, index, nx, ny, nz, zperiodic, Ms)
         i2 = _z_plus_one(k, index, nx, ny, nz, zperiodic, Ms)
         factor = i1*i2>0 ? 1/(2*dz) : 1/dz
-        i1 < 0 && (i1 = i)
-        i2 < 0 && (i2 = i)
+        i1 < 0 && (i1 = index)
+        i2 < 0 && (i2 = index)
         j1 = 3*i1-2
         j2 = 3*i2-2
         @inbounds u = ut*uz[index]*factor
