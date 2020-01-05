@@ -120,7 +120,7 @@ function llg_rhs_stt_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
         j = 3*index-2
         a = gamma/(1+alpha*alpha)
         b = alpha*a
-        u::T = -1.0/(1+alpha*alpha)
+        u::T = 1.0/(1+alpha*alpha)
 
         @inbounds mx = m[j]
         @inbounds my = m[j+1]
@@ -139,13 +139,13 @@ function llg_rhs_stt_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
 	    f2 = a*h2 + u*(beta-alpha)*ht2
 	    f3 = a*h3 + u*(beta-alpha)*ht3
 
-        ht1 = b*h1 + u*(1+alpha*beta)*ht1
-        ht2 = b*h2 + u*(1+alpha*beta)*ht2
-        ht3 = b*h2 + u*(1+alpha*beta)*ht3
+        hpt1 = b*h1 + u*(1+alpha*beta)*ht1
+        hpt2 = b*h2 + u*(1+alpha*beta)*ht2
+        hpt3 = b*h3 + u*(1+alpha*beta)*ht3
 
-        f1 += cross_x(mx,my,mz, ht1, ht2, ht3)
-        f2 += cross_y(mx,my,mz, ht1, ht2, ht3)
-        f3 += cross_z(mx,my,mz, ht1, ht2, ht3)
+        f1 += cross_x(mx,my,mz, hpt1, hpt2, hpt3)
+        f2 += cross_y(mx,my,mz, hpt1, hpt2, hpt3)
+        f3 += cross_z(mx,my,mz, hpt1, hpt2, hpt3)
 
         @inbounds wx = omega[j]
         @inbounds wy = omega[j+1]
@@ -177,7 +177,7 @@ function llg_rhs_stt_cpp_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T,
         j = 3*index-2
         a = gamma/(1+alpha*alpha)
         b = alpha*a
-        u::T = -1.0/(1+alpha*alpha)
+        u::T = 1.0/(1+alpha*alpha)
 
         @inbounds aj_ = aj[index]
 
@@ -203,13 +203,13 @@ function llg_rhs_stt_cpp_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T,
         f2 = a*h2 + u*(beta-alpha)*ht2 + u*(bj-alpha*aj_)*hp2
         f3 = a*h3 + u*(beta-alpha)*ht3 + u*(bj-alpha*aj_)*hp3
 
-        ht1 = b*h1 + u*(1+alpha*beta)*ht1 + u*(aj_+alpha*bj)*hp1
-        ht2 = b*h2 + u*(1+alpha*beta)*ht2 + u*(aj_+alpha*bj)*hp2
-        ht3 = b*h2 + u*(1+alpha*beta)*ht3 + u*(aj_+alpha*bj)*hp3
+        hpt1 = b*h1 + u*(1+alpha*beta)*ht1 + u*(aj_+alpha*bj)*hp1
+        hpt2 = b*h2 + u*(1+alpha*beta)*ht2 + u*(aj_+alpha*bj)*hp2
+        hpt3 = b*h3 + u*(1+alpha*beta)*ht3 + u*(aj_+alpha*bj)*hp3
 
-        f1 += cross_x(mx,my,mz, ht1, ht2, ht3)
-        f2 += cross_y(mx,my,mz, ht1, ht2, ht3)
-        f3 += cross_z(mx,my,mz, ht1, ht2, ht3)
+        f1 += cross_x(mx,my,mz, hpt1, hpt2, hpt3)
+        f2 += cross_y(mx,my,mz, hpt1, hpt2, hpt3)
+        f3 += cross_z(mx,my,mz, hpt1, hpt2, hpt3)
 
         @inbounds wx = omega[j]
         @inbounds wy = omega[j+1]

@@ -24,7 +24,8 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Default", save
 
     if driver!="none"
         sim.driver = create_driver_gpu(driver, integrator, nxyz)
-        if driver == "LLG" && save_data
+
+        if driver in ("LLG", "LLG_STT", "LLG_STT_CPP") && save_data
             saver = sim.saver
             insert!(saver.headers, 2, "time")
             insert!(saver.units, 2, "<s>")

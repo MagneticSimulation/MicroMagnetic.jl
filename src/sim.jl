@@ -35,7 +35,7 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5", save_dat
     end
 
     if driver!="none"
-      if driver == "LLG" && save_data
+      if driver in ("LLG", "LLG_STT", "LLG_STT_CPP") && save_data
           saver = sim.saver
           insert!(saver.headers, 2, "time")
           insert!(saver.units, 2, "<s>")

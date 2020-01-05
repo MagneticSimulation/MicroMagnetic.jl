@@ -223,7 +223,7 @@ function llg_call_back(sim::AbstractSim, dm_dt::Array{Float64, 1}, spin::Array{F
   return nothing
 end
 
-function llg_stt_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, spin::Array{Float64, 1}, t::Float64)
+function llg_stt_call_back(sim::AbstractSim, dm_dt::Array{Float64, 1}, spin::Array{Float64, 1}, t::Float64)
 
   driver = sim.driver
   mesh = sim.mesh
@@ -234,7 +234,7 @@ function llg_stt_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, spin::Arr
   else
       compute_field_stt(spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
   end
-  llg_stt_rhs(dw_dt, sim.spin, sim.field, driver.h_stt, driver.alpha, driver.beta, driver.gamma, sim.nxyz)
+  llg_stt_rhs(dm_dt, spin, sim.field, driver.h_stt, driver.alpha, driver.beta, driver.gamma, sim.nxyz)
 
   return nothing
 
