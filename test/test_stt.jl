@@ -50,9 +50,9 @@ function run_dynamics_stt(mesh; alpha=0.1, beta=0.0, u=10, integrator="Default")
 	m_1 = sum(m[1, :])/sim.nxyz
 	L = mesh.nx * mesh.dx
 	v = 0.5*(m_1 - m_0)*L/1e-10
-	v_expect = (1+alpha*beta)/(1+alpha^2)*u
+	v_expect = -(1+alpha*beta)/(1+alpha^2)*u
 	println(v, " expected v=", v_expect)
-	@test (abs(v-v_expect)/v_expect)<0.006
+	@test abs((v-v_expect)/v_expect)<0.006
 	return nothing
 end
 

@@ -136,101 +136,102 @@ function exchange_vector_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
     dx::T, dy::T, dz::T, nx::Int64, ny::Int64, nz::Int64, volume::T,
     xperiodic::Bool, yperiodic::Bool, zperiodic::Bool) where {T<:AbstractFloat}
 
-index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
-nxy = nx * ny
-nxyz = nxy * nz
-ax = 2 / (dx * dx)
-ay = 2 / (dy * dy)
-az = 2 / (dz * dz)
+    nxy = nx * ny
+    nxyz = nxy * nz
+    ax = 2 / (dx * dx)
+    ay = 2 / (dy * dy)
+    az = 2 / (dz * dz)
 
-if 0 < index <= nxyz
-i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+    if 0 < index <= nxyz
+        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
 
-indexm = 3*index
-@inbounds mx = m[indexm-2]
-@inbounds my = m[indexm-1]
-@inbounds mz = m[indexm]
-@inbounds Ms_local = Ms[index]
-@inbounds exchx = A[indexm-2]
-@inbounds exchy = A[indexm-1]
-@inbounds exchz = A[indexm]
+        indexm = 3*index
+        @inbounds mx = m[indexm-2]
+        @inbounds my = m[indexm-1]
+        @inbounds mz = m[indexm]
+        @inbounds Ms_local = Ms[index]
+        @inbounds exchx = A[indexm-2]
+        @inbounds exchy = A[indexm-1]
+        @inbounds exchz = A[indexm]
 
-if Ms_local == T(0)
-@inbounds energy[index] = 0
-@inbounds h[indexm - 2] = 0
-@inbounds h[indexm - 1] = 0
-@inbounds h[indexm] = 0
-return nothing
-end
-id, idm = 0, 0
-fx, fy, fz = T(0.0), T(0.0), T(0.0)
-if k>1 || zperiodic
-id = (k==1) ? index - nxy + nxyz : index - nxy
-idm = 3*id
-@inbounds if Ms[id]>0
-@inbounds fx += az*exchz*(m[idm-2] - mx)
-@inbounds fy += az*exchz*(m[idm-1] - my)
-@inbounds fz += az*exchz*(m[idm] - mz)
-end
-end
+        if Ms_local == T(0)
+            @inbounds energy[index] = 0
+            @inbounds h[indexm - 2] = 0
+            @inbounds h[indexm - 1] = 0
+            @inbounds h[indexm] = 0
+            return nothing
+        end
 
-if j>1 || yperiodic
-id = (j==1) ? index - nx + nxy : index - nx
-idm = 3*id
-@inbounds if Ms[id]>0
-@inbounds fx += ay*exchy*(m[idm-2] - mx)
-@inbounds fy += ay*exchy*(m[idm-1] - my)
-@inbounds fz += ay*exchy*(m[idm] - mz)
-end
-end
+        id, idm = 0, 0
+        fx, fy, fz = T(0.0), T(0.0), T(0.0)
+        if k>1 || zperiodic
+            id = (k==1) ? index - nxy + nxyz : index - nxy
+            idm = 3*id
+            @inbounds if Ms[id]>0
+                @inbounds fx += az*exchz*(m[idm-2] - mx)
+                @inbounds fy += az*exchz*(m[idm-1] - my)
+                @inbounds fz += az*exchz*(m[idm] - mz)
+            end
+        end
 
-if i>1 || xperiodic
-id = (i==1) ? index - 1 + nx : index -1
-idm = 3*id
-@inbounds if Ms[id]>0
-@inbounds fx += ax*exchx*(m[idm-2] - mx)
-@inbounds fy += ax*exchx*(m[idm-1] - my)
-@inbounds fz += ax*exchx*(m[idm] - mz)
-end
-end
+        if j>1 || yperiodic
+            id = (j==1) ? index - nx + nxy : index - nx
+            idm = 3*id
+            @inbounds if Ms[id]>0
+                @inbounds fx += ay*exchy*(m[idm-2] - mx)
+                @inbounds fy += ay*exchy*(m[idm-1] - my)
+                @inbounds fz += ay*exchy*(m[idm] - mz)
+            end
+        end
 
-if i<nx || xperiodic
-id = (i==nx) ? index +1 - nx : index +1
-idm = 3*id
-@inbounds if Ms[id]>0
-@inbounds fx += ax*exchx*(m[idm-2]- mx)
-@inbounds fy += ax*exchx*(m[idm-1]- my)
-@inbounds fz += ax*exchx*(m[idm]- mz)
-end
-end
+        if i>1 || xperiodic
+            id = (i==1) ? index - 1 + nx : index -1
+            idm = 3*id
+            @inbounds if Ms[id]>0
+                @inbounds fx += ax*exchx*(m[idm-2] - mx)
+                @inbounds fy += ax*exchx*(m[idm-1] - my)
+                @inbounds fz += ax*exchx*(m[idm] - mz)
+            end
+        end
 
-if j<ny || yperiodic
-id = (j==ny) ? index + nx - nxy : index + nx
-idm = 3*id
-@inbounds if Ms[id]>0
-@inbounds fx += ay*exchy*(m[idm-2]- mx)
-@inbounds fy += ay*exchy*(m[idm-1]- my)
-@inbounds fz += ay*exchy*(m[idm]- mz)
-end
-end
+        if i<nx || xperiodic
+            id = (i==nx) ? index +1 - nx : index +1
+            idm = 3*id
+            @inbounds if Ms[id]>0
+                @inbounds fx += ax*exchx*(m[idm-2]- mx)
+                @inbounds fy += ax*exchx*(m[idm-1]- my)
+                @inbounds fz += ax*exchx*(m[idm]- mz)
+            end
+        end
 
-if k<nz || zperiodic
-id = (k==nz) ? index + nxy - nxyz : index + nxy
-idm = 3*id
-@inbounds if Ms[id]>0
-@inbounds fx += az*exchz*(m[idm-2]- mx)
-@inbounds fy += az*exchz*(m[idm-1]- my)
-@inbounds fz += az*exchz*(m[idm]- mz)
-end
-end
-Ms_inv = 1.0/(4.0*pi*1e-7*Ms_local)
-@inbounds energy[index] = - 0.5 * (fx * mx + fy * my + fz * mz)* volume;
-@inbounds h[indexm - 2] =  fx*Ms_inv;
-@inbounds h[indexm - 1] =  fy*Ms_inv;
-@inbounds h[indexm] = fz*Ms_inv;
-end
-return nothing
+        if j<ny || yperiodic
+            id = (j==ny) ? index + nx - nxy : index + nx
+            idm = 3*id
+            @inbounds if Ms[id]>0
+                @inbounds fx += ay*exchy*(m[idm-2]- mx)
+                @inbounds fy += ay*exchy*(m[idm-1]- my)
+                @inbounds fz += ay*exchy*(m[idm]- mz)
+            end
+        end
+
+        if k<nz || zperiodic
+            id = (k==nz) ? index + nxy - nxyz : index + nxy
+            idm = 3*id
+            @inbounds if Ms[id]>0
+                @inbounds fx += az*exchz*(m[idm-2]- mx)
+                @inbounds fy += az*exchz*(m[idm-1]- my)
+                @inbounds fz += az*exchz*(m[idm]- mz)
+            end
+        end
+        Ms_inv = 1.0/(4.0*pi*1e-7*Ms_local)
+        @inbounds energy[index] = - 0.5 * (fx * mx + fy * my + fz * mz)* volume;
+        @inbounds h[indexm - 2] =  fx*Ms_inv;
+        @inbounds h[indexm - 1] =  fy*Ms_inv;
+        @inbounds h[indexm] = fz*Ms_inv;
+    end
+    return nothing
 end
 
 
