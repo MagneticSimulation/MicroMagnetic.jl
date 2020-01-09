@@ -256,7 +256,7 @@ end
 
 #rotate m1 in the m1_m2 plane by theta. If m1 is parallel to m2 (m1 x m2 = 0), the plane
 #is determined by m1 and ez (unless m1 itself is ez).
-function rotation_operator(m1::Array{Float64,1}, m2::Array{Float64,1}, theta::Float64) ##return m'=retate(m1,theta)
+function rotation_operator(m1::Array{T,1}, m2::Array{T,1}, theta::T) where T<:AbstractFloat ##return m'=retate(m1,theta)
     m = LinearAlgebra.cross(m1, m2)
     if m == [0,0,0]
         if m1 == m2
@@ -287,7 +287,7 @@ end
 
 #Interpolate magnetization between image m1 and image m2, where the total images
 #number is N+1
-function interpolate_m(m1::Array{Float64,1}, m2::Array{Float64,1}, N::Int)
+function interpolate_m(m1::Array{T,1}, m2::Array{T,1}, N::Int) where T<:AbstractFloat
     nxyz = Int(length(m1)/3)
     m = zeros(3*nxyz,N+1)
     b1 = reshape(m1,3,nxyz)
@@ -326,7 +326,7 @@ end
 
 #Interpolate magnetization between image m1 and image m2, where the total images
 #number is N+1
-function interpolate_m_spherical(m1::Array{Float64,1}, m2::Array{Float64,1}, N::Int)
+function interpolate_m_spherical(m1::Array{T,1}, m2::Array{T,1}, N::Int) where T<:AbstractFloat
     nxyz = Int(length(m1)/3)
 
     R1, theta1, phi1 = cartesian2spherical(m1, nxyz)
