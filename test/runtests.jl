@@ -22,6 +22,7 @@ if JuMag._cuda_available.x
   include("cuda/test_demag.jl")
   include("cuda/test_llg.jl")
   include("cuda/test_ovf.jl")
+  include("cuda/test_neb.jl")
 
   JuMag.cuda_using_double()
   test_zeeman(gpu=true)
