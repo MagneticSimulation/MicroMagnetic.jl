@@ -132,22 +132,6 @@ function create_neb_driver_mpi(driver::String, nxyz::Int64, N::Int64)
   end
 end
 
-function init_m0_Ms(sim::MicroSimGPU, m0::TupleOrArrayOrFunction)
-  Float = _cuda_using_double.x ? Float64 : Float32
-  spin = zeros(Float, 3*sim.nxyz)
-  init_vector!(spin, sim.mesh, m0)
-  normalise(spin, sim.nxyz)
-  Ms = Array(sim.Ms)
-  for i = 1:sim.nxyz
-      if abs(Ms[i]) < eps(Float)
-          spin[3*i-2] = 0
-          spin[3*i-1] = 0
-          spin[3*i] = 0
-      end
-  end
-  return spin
-end
-
 function init_images(neb::NEB_GPU_MPI, init_m::Any, intervals::Any)
     sim = neb.sim
     nxyz = sim.nxyz
