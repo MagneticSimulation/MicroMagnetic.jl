@@ -86,6 +86,9 @@ if _cuda_available.x
     include("cuda/mc_kernel.jl")
     include("cuda/vtk.jl")
     include("cuda/ovf2.jl")
+    include("cuda/neb.jl")
+    include("cuda/neb_kernels.jl")
+    include("cuda/dopri5.jl")
     include("mc/mc.jl")
     include("mc/mc_kernel.jl")
     export FDMeshGPU,
@@ -94,7 +97,8 @@ if _cuda_available.x
            MonteCarlo,
            MonteCarloNew,
            run_sim,
-           add_demag_gpu
+           add_demag_gpu,
+           NEB_GPU
 end
 
 try
