@@ -385,3 +385,53 @@ function compute_guiding_centre(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFl
     end
     return Rxs, Rys
 end
+"""
+    set_skyrmion(sim::AbstractSim, center::Tuple, R::Float64 ; ratio=0.7,direction=-1,chiral=1,type="bloch")
+
+Set a skyrmion profile of sim.spin. For example:
+```julia
+set_skyrmion(sim,(5e-8,5e-8),2e-8,ratio=0.5,direction=-1,chiral=1,type="bloch")
+```
+Create a bloch-skyrmion centered on (5e-8,5e-8) in xy-plane, with radius 2e-8
+ratio=w/R, where w is the width of domain wall. default value is 0.7
+direction can be 1 or -1, giving the axis towards z+ and z-(by default), respectively
+chiral=1: right-handed(by default), chiral=-1: left-handed
+type="bloch" or type="neel"
+"""
+function set_skyrmion(sim, center::Tuple, R::Float64; ratio=0.7,direction=-1,chiral=1,type="bloch")
+  if type!="neel" && type!="bloch"
+      @info("set_skyrmion:type should be \"neel\" or \"bloch\" ")
+      return nothing
+  end
+  x0,y0 = center[1],center[2]
+  w=ratio*R
+  mesh=sim.mesh
+  nx,ny,nz=mesh.nx,mesh.ny,mesh.nz
+  dx,dy,dz=mesh.dx,mesh.dy,mesh.dz
+  b=reshape(sim.spin,(3,nx,ny,nz))
+
+  for i =1:nx,j=1:ny
+      x,y=i*dx-x0,j*dy-y0
+      r=sqrt(x^2+y^2)
+      if x^2+y^2 <= 4*R^2
+         theta = 2*atan(sinh(R/w)/sinh(r/w))
+          if direction == 1
+              theta = theta+pi
+          end
+          if chiral==-1
+              theta = -theta
+          end
+          if type == "neel"
+              b[1,i,j,:] .= -sin(theta)*x/r
+              b[2,i,j,:] .= -sin(theta)*y/r
+              b[3,i,j,:] .= cos(theta)
+          elseif type == "bloch"
+              b[1,i,j,:] .= sin(theta)*y/r
+              b[2,i,j,:] .= -sin(theta)*x/r
+              b[3,i,j,:] .= cos(theta)
+          end
+      end
+  end
+  copyto!(sim.prespin,sim.spin)
+  return nothing
+end
