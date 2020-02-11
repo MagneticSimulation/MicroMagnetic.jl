@@ -147,6 +147,70 @@ function compute_electric_phase(V, V0, dz, nz, beta)
     return lambda, phi_E
 end
 
+function compute_magnetic_phase_direct(mx, my, dx, dy, Lz, Ms, i0, j0)  #slow, for testing purpose
+    Nx, Ny = size(mx)
+    mu0 = 4*pi*1e-7
+    Phi0 = 2.067833e-15
+
+    phi = 0
+    for i=1:Nx, j=1:Ny
+        x = (i0-i)*dx
+        y = (j0-j)*dy
+        r = sqrt(x^2+y^2)
+        if  r > 0.001*min(dx, dy)
+            phi += (y*mx[i,j] -  x*my[i,j])/r^2
+        end
+    end
+    return -phi*mu0*Ms*Lz/(2*Phi0)*dx*dy
+end
+
+
+function compute_magnetic_phase_fft(mx, my, dx, dy, Lz, Ms; Nx=-1, Ny=-1)
+    mu0 = 4*pi*1e-7
+    Phi0 = 2.067833e-15
+    nx, ny =  size(mx)
+
+    Nx = Nx < 0 ? nx : Nx
+    Ny = Ny < 0 ? ny : Ny
+
+    Lx = Nx + nx - 1
+    Ly = Ny + ny - 1
+    new_mx = zeros(Lx, Ly)
+    new_my = zeros(Lx, Ly)
+    for i=1:nx, j=1:ny
+        new_mx[i,j] = mx[i,j]
+        new_my[i,j] = my[i,j]
+    end
+
+    F(x::Number, y::Number) = y == 0 ? 0 : y/(x^2+y^2)
+    G(x::Number, y::Number) = x == 0 ? 0 : x/(x^2+y^2)
+
+    fs = zeros(Lx, Ly)
+    gs = zeros(Lx, Ly)
+    for i=1:Lx, j=1:Ly
+        fs[i,j] = F((-(Lx-1)/2+i-1)*dx, (-(Ly-1)/2+j-1)*dy)
+        gs[i,j] = G((-(Lx-1)/2+i-1)*dx, (-(Ly-1)/2+j-1)*dy)
+    end
+
+    fft_mx = fft(new_mx)
+    fft_my = fft(new_my)
+    fft_fs = fft(fs)
+    fft_gs = fft(gs)
+
+    fft_phi = zeros(Complex{Float64}, (Lx,Ly))
+    for i=1:Lx, j=1:Ly
+        fft_phi[i,j] = fft_mx[i,j]*fft_fs[i,j] - fft_my[i,j]*fft_gs[i,j]
+    end
+
+    phi_all = real.(ifft(fft_phi))
+    phi = zeros(Nx, Ny)
+    for i=1:Nx, j=1:Ny
+        phi[i,j] = phi_all[i+nx-1, j+ny-1]
+    end
+
+    return -phi*mu0*Ms*Lz/(2*Phi0)*dx*dy
+end
+
 #Ref: "MALTS: A tool to simulate Lorentz Transmission Electron Microscopy from micromagnetic simulations" by Stephanie K. Walton
 #df in um
 #V is the Accelerating voltage, in Kv
@@ -221,7 +285,7 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
     end
     Phi_M[1,1]=0
 
-    phi_M =(nz*dz)/cos(beta)*real.(ifft(Phi_M))
+    phi_M = 1/cos(beta)*real.(ifft(Phi_M))
 
     phi = phi_M
 

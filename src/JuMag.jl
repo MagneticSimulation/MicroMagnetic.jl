@@ -11,6 +11,8 @@ const _cuda_available = Ref(true)
 const _mpi_available = Ref(true)
 
 export init_m0,
+       init_m0_random,
+       init_m0_skyrmion,
        add_zeeman,
        add_dmi,
        add_exch, add_exch_kagome,
@@ -60,6 +62,7 @@ include("neb.jl")
 include("neb_sd.jl")
 include("neb_llg.jl")
 include("ovf2.jl")
+include("init_m.jl")
 include("tools.jl")
 
 #_cuda_available[] = CuArrays.functional()
