@@ -90,22 +90,30 @@ function save_vtk_points(sim::AbstractSim, fname::String; fields::Array{String, 
 end
 
 """
-    ovf2vtk(ovf_name, vtk_name=nothing; point_data=false)
+    ovf2vtk(ovf_name, vtk_name=nothing; point_data=false, box=noting)
 
 Convert ovf file to vtk format. The data will be saved to points if point_data == true otherwise
 the data will be saved to cells.
+
+If box is not nothing, it should be a tuple. For instance, box = (nx1, nx2, ny1, ny2, nz1, nz2).
+In this case, the generated vtk only contains the spins inside the box (including the boundary).
 
 ```julia
     ovf2vtk("my.ovf", "test.vts")
     ovf2vtk("my.ovf", point_data=true)
 ```
 """
-function ovf2vtk(ovf_name, vtk_name=nothing; point_data=false)
+function ovf2vtk(ovf_name, vtk_name=nothing; point_data=false, box=nothing)
     if vtk_name == nothing
         vtk_name = endswith(ovf_name, ".ovf") ? ovf_name[1:end-4] : ovf_name
     end
     ovf = read_ovf(ovf_name)
     nx,ny,nz = ovf.xnodes,ovf.ynodes,ovf.znodes
+    if box != nothing
+        nx = box[2]-box[1]+1
+        ny = box[4]-box[3]+1
+        nz = box[6]-box[5]+1
+    end
 
     if point_data
         xyz = zeros(Float32, 3, nx, ny, nz)
@@ -121,7 +129,11 @@ function ovf2vtk(ovf_name, vtk_name=nothing; point_data=false)
     end
 
     vtk = vtk_grid(vtk_name, xyz)
-    b = reshape(ovf.data, (3, nx, ny, nz))
+    data = reshape(ovf.data, (3, ovf.xnodes, ovf.ynodes, ovf.znodes))
+    b = data
+    if box != nothing
+        b = data[:, box[1]:box[2], box[3]:box[4], box[5]:box[6]]
+    end
     if point_data
         vtk_point_data(vtk, b, "m")
     else
