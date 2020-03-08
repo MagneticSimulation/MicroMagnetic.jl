@@ -1,18 +1,4 @@
 
-function uniform_random_sphere_kernel!(m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1}, nxyz::Int64) where {T<:AbstractFloat}
-    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= nxyz
-        j = 3*index - 2
-        @inbounds phi = rnd[j]*2*pi;
-        @inbounds ct = 2*rnd[j+1] - 1;
-        st = CUDAnative.sqrt(1-ct*ct);
-        @inbounds m[j] = st*CUDAnative.cos(phi);
-        @inbounds m[j+1] = st*CUDAnative.sin(phi);
-        @inbounds m[j+2] = ct;
-    end
-   return nothing
-end
-
 
 function run_step_triangular_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1},
                               energy::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},

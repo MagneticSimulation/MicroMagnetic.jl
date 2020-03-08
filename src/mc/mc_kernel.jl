@@ -1,3 +1,28 @@
+function uniform_random_sphere_kernel!(m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1}, nxyz::Int64) where {T<:AbstractFloat}
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if index <= nxyz
+        j = 3*index - 2
+        @inbounds phi = rnd[j]*2*pi;
+        @inbounds ct = 2*rnd[j+1] - 1;
+        st = CUDAnative.sqrt(1-ct*ct);
+        @inbounds m[j] = st*CUDAnative.cos(phi);
+        @inbounds m[j+1] = st*CUDAnative.sin(phi);
+        @inbounds m[j+2] = ct;
+    end
+   return nothing
+end
+
+function uniform_random_circle_xy_kernel!(m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1}, nxyz::Int64) where {T<:AbstractFloat}
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if index <= nxyz
+        j = 3*index - 2
+        @inbounds phi = rnd[j]*2*pi;
+        @inbounds m[j] = CUDAnative.cos(phi);
+        @inbounds m[j+1] = CUDAnative.sin(phi);
+        @inbounds m[j+2] = 0;
+    end
+   return nothing
+end
 
 function dE_zeeman_anisotropy_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T, 1},
                               dE::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},

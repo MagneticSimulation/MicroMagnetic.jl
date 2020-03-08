@@ -41,12 +41,14 @@ mutable struct MonteCarloNew{TF<:AbstractFloat} <:AbstractSimGPU
   steps::Int64
   name::String
   T::Float64
+  mc_2d::Bool
   MonteCarloNew{T}() where {T<:AbstractFloat} = new()
 end
 
-function MonteCarloNew(mesh::Mesh; name="mc")
+function MonteCarloNew(mesh::Mesh; name="mc", mc_2d=false)
     Float = _cuda_using_double.x ? Float64 : Float32
     sim = MonteCarloNew{Float}()
+    sim.mc_2d = mc_2d
     sim.mesh = mesh
     nxyz = mesh.nx*mesh.ny*mesh.nz
     sim.nxyz = nxyz
@@ -196,10 +198,30 @@ function init_m0(sim::MonteCarloNew, m0::Any; norm=true)
   return true
 end
 
+function uniform_random_sphere(spin::CuArray{T, 1}, rnd::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
+
+    rand!(rnd)
+    blk, thr = CuArrays.cudims(N)
+    @cuda blocks=blk threads=thr uniform_random_sphere_kernel!(spin, rnd, N)
+
+    return  nothing
+end
+
+function uniform_random_circle_xy(spin::CuArray{T, 1}, rnd::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
+
+    rand!(rnd)
+    blk, thr = CuArrays.cudims(N)
+    @cuda blocks=blk threads=thr uniform_random_circle_xy_kernel!(spin, rnd, N)
+
+    return  nothing
+end
 
 function run_step(sim::MonteCarloNew)
-
-  uniform_random_sphere(sim.nextspin, sim.rnd, sim.nxyz)
+  if sim.mc_2d
+      uniform_random_circle_xy(sim.nextspin, sim.rnd, sim.nxyz)
+  else
+      uniform_random_sphere(sim.nextspin, sim.rnd, sim.nxyz)
+  end
   run_single_step(sim, 0)
   run_single_step(sim, 1)
   run_single_step(sim, 2)

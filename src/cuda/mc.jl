@@ -96,14 +96,7 @@ function init_m0(sim::MonteCarlo, m0::Any; norm=true)
 end
 
 
-function uniform_random_sphere(spin::CuArray{T, 1}, rnd::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
 
-    rand!(rnd)
-    blk, thr = CuArrays.cudims(N)
-    @cuda blocks=blk threads=thr uniform_random_sphere_kernel!(spin, rnd, N)
-
-    return  nothing
-end
 
 function run_single_step_triangular(sim::MonteCarlo, bias::Int64)
   F = _cuda_using_double.x ? Float64 : Float32
