@@ -27,7 +27,7 @@ function save_vtk(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} =
   nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
   xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
   dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
-  if isa(mesh, TriangularMesh)
+  if isa(mesh, TriangularMeshGPU)
       for k = 1:nz+1, j = 1:ny+1, i = 1:nx+1
         xyz[1, i, j, k] = (i-0.5)*dx + (j-1)*dx/2
         xyz[2, i, j, k] = (j-0.5)*dy

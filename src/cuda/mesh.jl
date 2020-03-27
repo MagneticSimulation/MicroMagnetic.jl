@@ -16,7 +16,9 @@ struct TriangularMeshGPU <: Mesh
   ny::Int64
   nz::Int64
   nxyz::Int64
+  n_ngbs::Int64
   ngbs::CuArray{Int32, 2}
+  nngbs::CuArray{Int32, 2}
   xperiodic::Bool
   yperiodic::Bool
   zperiodic::Bool
@@ -49,45 +51,22 @@ function indexpbc(i::Int64, j::Int64, nx::Int64, ny::Int64, xperiodic::Bool, ype
 end
 
 """
-Create a 2d triangular mesh.
-
-The neighbours are indexed as counterclockwise of the given spin:
-
-  |  1      2         3       4         5          6        |
-  |right top_right top_left  left  bottom_left bottom_right |
-
-"""
-function TriangularMesh2D(;dx=1e-9, nx=3, ny=2, pbc="open")
-
-    ngbs = zeros(Int32, 6, nx*ny)
-    xperiodic = 'x' in pbc ? true : false
-    yperiodic = 'y' in pbc ? true : false
-
-    for j = 1:ny, i=1:nx
-        id = index(i, j, nx, ny)
-        ngbs[1,id] = indexpbc(i+1, j, nx, ny, xperiodic, yperiodic)  #right
-        ngbs[2,id] = indexpbc(i, j+1, nx, ny, xperiodic, yperiodic)  #top_right
-        ngbs[3,id] = indexpbc(i-1, j+1, nx, ny, xperiodic, yperiodic)  #top_left
-        ngbs[4,id] = indexpbc(i-1, j, nx, ny, xperiodic, yperiodic)  #left
-        ngbs[5,id] = indexpbc(i, j-1, nx, ny, xperiodic, yperiodic)  #bottom_left
-        ngbs[6,id] = indexpbc(i+1, j-1, nx, ny, xperiodic, yperiodic)  #bottom_right
-    end
-    dy  = dx*sqrt(3)/2
-    return TriangularMeshGPU(dx, dy, dx, nx, ny, 1, nx*ny, CuArray(ngbs), xperiodic, yperiodic, false)
-end
-
-
-"""
 Create a 3d triangular mesh.
 
-The neighbours are indexed as counterclockwise of the given spin:
+The nearest neighbours are indexed as counterclockwise of the given spin:
 
   |  1      2         3       4         5          6           7      8   |
   |right top_right top_left  left  bottom_left bottom_right   below  above |
 
+and the next-nearest neighbours are
+
+  |  1       2        3       4         5          6           7      8   |
+  |top_right top  top_left  bottom_left bottom bottom_right   below  above |
+
 """
 function TriangularMeshGPU(;dx=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     ngbs = zeros(Int32, 8, nx*ny*nz)
+    nngbs = zeros(Int32, 8, nx*ny*nz)
     xperiodic = 'x' in pbc ? true : false
     yperiodic = 'y' in pbc ? true : false
     zperiodic = 'z' in pbc ? true : false
@@ -102,11 +81,19 @@ function TriangularMeshGPU(;dx=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
         ngbs[6,id] = indexpbc(i+1, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_right
         ngbs[7,id] = indexpbc(i, j, k-1, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #below
         ngbs[8,id] = indexpbc(i, j, k+1, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #above
+
+        nngbs[1,id] = indexpbc(i+1, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_right
+        nngbs[2,id] = indexpbc(i-1, j+2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top
+        nngbs[3,id] = indexpbc(i-2, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_left
+        nngbs[4,id] = indexpbc(i-1, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_left
+        nngbs[5,id] = indexpbc(i-1, j+2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom
+        nngbs[6,id] = indexpbc(i+1, j-2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_right
+        nngbs[7,id] = indexpbc(i, j, k-2, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #below
+        nngbs[8,id] = indexpbc(i, j, k+2, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #above
     end
     dy  = dx*sqrt(3)/2
-    return TriangularMeshGPU(dx, dy, dz, nx, ny, nz, nx*ny*nz, CuArray(ngbs), xperiodic, yperiodic, zperiodic)
+    return TriangularMeshGPU(dx, dy, dz, nx, ny, nz, nx*ny*nz, 8, CuArray(ngbs), CuArray(nngbs), xperiodic, yperiodic, zperiodic)
 end
-
 
 
 struct CubicMeshGPU <: Mesh

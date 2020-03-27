@@ -85,20 +85,20 @@ if _cuda_available.x
     include("cuda/demag_kernel.jl")
     include("cuda/demag.jl")
     include("cuda/sd.jl")
-    include("cuda/mc.jl")
-    include("cuda/mc_kernel.jl")
     include("cuda/vtk.jl")
     include("cuda/ovf2.jl")
     include("cuda/neb.jl")
     include("cuda/neb_kernels.jl")
     include("cuda/dopri5.jl")
+    include("mc/mc_helper.jl")
     include("mc/mc.jl")
     include("mc/mc_kernel.jl")
     export FDMeshGPU,
            CubicMeshGPU,
-           TriangularMesh,
-           MonteCarlo,
+           TriangularMeshGPU,
            MonteCarloNew,
+           set_shape,
+           set_shape_to_kagome,
            run_sim,
            add_demag_gpu,
            NEB_GPU

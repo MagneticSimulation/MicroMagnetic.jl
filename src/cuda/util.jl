@@ -120,6 +120,34 @@ function init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init_fun::Function) where {T
     return true
 end
 
+function init_vector!(v::Array{T, 1}, mesh::TriangularMeshGPU, init::Function) where {T<:AbstractFloat}
+  nxyz = mesh.nx*mesh.ny*mesh.nz
+  dx,dy = mesh.dx, mesh.dy
+  b = reshape(v, 3, nxyz)
+  for i = 1:mesh.nx
+    for j = 1:mesh.ny
+        for k = 1:mesh.nz
+            id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+            b[:, id] .=  init(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        end
+      end
+  end
+  return nothing
+end
+
+function init_vector!(v::Array{T, 1}, mesh::CubicMeshGPU, init::Function) where {T<:AbstractFloat}
+  nxyz = mesh.nx*mesh.ny*mesh.nz
+  b = reshape(v, 3, nxyz)
+  for i = 1:mesh.nx
+    for j = 1:mesh.ny
+      for k = 1:mesh.nz
+        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        b[:, id] .=  init(i,j,k, mesh.nx, mesh.ny, mesh.nz)
+      end
+    end
+  end
+end
+
 function init_vector!(v::CuArray{T, 1}, mesh::Mesh, init::Any) where {T<:AbstractFloat}
     F = _cuda_using_double.x ? Float64 : Float32
     tmp = zeros(F, 3*mesh.nxyz)

@@ -1,11 +1,11 @@
 using JuMag
 using Random
 
-function rand_m(i, j, k)
+function rand_m(i, j, k, nx, ny, nz)
   return 2*rand(3).-1
 end
 
-function rand_m_uniform(i, j, k)
+function rand_m_uniform(i, j, k, nx, ny, nz)
   return (0,0,1)
 end
 
@@ -38,7 +38,7 @@ end
 
 f = open("M_H.txt", "w")
 write(f, "#T(K)     m \n")
-for T = 10:20:500
+for T = 10:20:100
     println("Running for $T ...")
     m = relax_system(T)
     write(f, "$T    $m \n")
