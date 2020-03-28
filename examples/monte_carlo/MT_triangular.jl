@@ -12,12 +12,15 @@ end
 JuMag.cuda_using_double(true)
 
 function relax_system()
-  mesh =  CubicMeshGPU(nx=30, ny=30, nz=30, pbc="xyz")
+  mesh =  TriangularMeshGPU(nx=30, ny=30, nz=30, pbc="xyz")
   sim = MonteCarloNew(mesh, name="mc")
+
+  #set_shape_to_kagome(sim)
+
   init_m0(sim, rand_m_uniform)
 
   add_exch(sim, J=300*k_B)
-  add_dmi(sim, D=0, D1=0)
+  add_dmi(sim, D=0)
   add_zeeman(sim, Hx=0, Hy=0, Hz=0)
   add_anis(sim, Ku=0, Kc=0)
 
@@ -26,10 +29,10 @@ function relax_system()
 
   ms = zeros(1000)
 
-  f = open("M_H.txt", "w")
+  f = open("M_H_tri.txt", "w")
   write(f, "#T(K)     m \n")
 
-  for T = 500:-20:10
+  for T = 700:-20:10
       sim.T = T
       println("Running for $T ...")
       run_sim(sim, maxsteps=100000, save_vtk_every=-1, save_m_every=-1)

@@ -235,6 +235,11 @@ function average_m(sim::AbstractSimGPU)
   return Tuple(sum(b, dims=2)./sim.nxyz)  #FIXME: using non-zero N in general case?
 end
 
+function average_m(sim::AbstractSimGPU, shape::CuArray{Bool, 1})
+  b = reshape(sim.spin, 3, sim.nxyz)
+  return Tuple(sum(b, dims=2)./sum(shape))
+end
+
 function compute_skyrmion_number(v::Array{T, 1}, m::Array{T, 1}, mesh::TriangularMesh) where {T<:AbstractFloat}
     nx,ny = mesh.nx, mesh.ny
     ngbs = Array(mesh.ngbs)
