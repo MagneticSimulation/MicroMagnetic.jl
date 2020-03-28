@@ -130,7 +130,9 @@ function add_dmi_triangular(sim::MonteCarloNew, Dxy::Number, Dz::Number, type::S
 
     DD = zeros(T, (3, 8))
     if type == "bulk"
-        DD .= D
+        for i=1:8
+            DD[:, i] .= D[i]
+        end
     elseif type == "interfacial"
         for i=1:8
             DD[:, i] .= cross_product((0,0,1.0), D[i])
