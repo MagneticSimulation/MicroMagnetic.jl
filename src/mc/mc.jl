@@ -1,4 +1,5 @@
 using Random
+using WriteVTK
 
 function MonteCarloNew(mesh::Mesh; name="mc", mc_2d=false)
     Float = _cuda_using_double.x ? Float64 : Float32
@@ -201,7 +202,15 @@ function add_anis_kagome(sim::MonteCarloNew; Ku=0)
 
   return nothing
 end
+function add_anis_kagome_6fold(sim::MonteCarloNew; K1=0,K2=0)
+  T = _cuda_using_double.x ? Float64 : Float32
 
+  sim.anis = KagomeAnisotropy6FoldMC(T(0),T(0))
+  sim.anis.K1 = K1/k_B
+  sim.anis.K2 = K2/k_B
+
+  return nothing
+end
 
 function init_m0(sim::MonteCarloNew, m0::Any; norm=true)
   Float = _cuda_using_double.x ? Float64 : Float32
@@ -213,9 +222,9 @@ function init_m0(sim::MonteCarloNew, m0::Any; norm=true)
   shape = Array(sim.shape)
   for i in 1:sim.nxyz
       if !shape[i]
-          spin[3*i-2] = 0
-          spin[3*i-1] = 0
-          spin[3*i] = 0
+          spin[3*i-2] = NaN32
+          spin[3*i-1] = NaN32
+          spin[3*i] = NaN32
       end
   end
   copyto!(sim.spin, spin)
@@ -228,12 +237,12 @@ function update_ngbs(mesh, shape::Array{Bool})
     for i = 1:mesh.nxyz
         for j=1:mesh.n_ngbs
             id = ngbs[j, i]
-            if id>0 && (!shape[id])
+            if id>0 && ((!shape[id]) ||(!shape[i]))
                 ngbs[j, i] = -1
             end
 
             id = nngbs[j, i]
-            if id>0 && (!shape[id])
+            if id>0 && ((!shape[id]) ||(!shape[i]))
                 nngbs[j, i] = -1
             end
         end
@@ -343,4 +352,98 @@ function run_sim(sim::MonteCarloNew; maxsteps=10000, save_m_every = 10, save_vtk
         end
 
     end
+end
+
+function compute_clock_number(m::Array{T, 1}, cn::Array{Float32, 1},shape::Array{Bool},mesh::TriangularMeshGPU) where {T<:AbstractFloat}
+    # nx,ny = mesh.nx, mesh.ny
+    # v = zeros(T, nx*ny)
+    # compute_skyrmion_number(v, m, mesh)
+    # return sum(v)
+  signA=zeros(typeof(0.0),6)
+  ngbs = Array(mesh.ngbs)
+  for i = 1:mesh.nxyz
+    mx=m[i*3-2]
+    my=m[i*3-1]
+    if shape[i]
+    if ngbs[1, i]==-1
+     #     -m×n2+m×n3     -m×n5+m×n6
+     signA.=( 0,-1, 1, 0,-1, 1)
+     # cn[i]=1
+    elseif ngbs[2, i]==-1
+     # m×n1     -m×n3+m×n4     -m×n6
+     signA.=( 1, 0,-1, 1, 0,-1)
+     # cn[i]=2
+    elseif ngbs[3, i]==-1
+     #-m×n1+m×n2     -m×n4+m×n5
+     signA.=(-1, 1, 0,-1, 1, 0)
+     # cn[i]=3
+    end
+    for j=1:6
+      id = ngbs[j, i]
+      if id >0
+        nx=m[id*3-2]
+        ny=m[id*3-1]
+        cn[i]+=signA[j]*(mx*ny-my*nx)
+      end
+    end
+    cn[i]=cn[i]*2/sqrt(3)
+    else
+    cn[i]=NaN32
+    end#if
+  end
+
+#     rij=zeros(Float32, 6,2)
+#     rij[1,:].=(1,0)
+#     rij[2,:].=( 0.5,0.5*sqrt(3))
+#     rij[3,:].=(-0.5,0.5*sqrt(3))
+#     rij[4,:].=(-1,0)
+#     rij[5,:].=(-0.5,-0.5*sqrt(3))
+#     rij[6,:].=( 0.5,-0.5*sqrt(3))
+#     for i = 1:mesh.nxyz
+#         mx=m[i*3-2]
+#         my=m[i*3-1]
+#         mz=m[i*3]
+#         for j=1:6
+#           id = ngbs[j, i]
+#           if id >0
+#             mnbx=m[id*3-2]
+#             mnby=m[id*3-1]
+#             mnbz=m[id*3]
+# #rij[j,1](m_z mnb_x -m_x mnb_z)-rij[j,2](m_y mnb_z - m_z mnb_y) 
+#             cn[i]+=rij[j,1]*(mz*mnbx-mx*mnbz)-rij[j,2]*(my*mnbz-mz*mnby)
+#             # cn[i]+=1
+#           end
+#         end
+#     end
+end
+
+function save_vtk_clocknum(sim::AbstractSimGPU,cn::Array{Float32, 1}, fname::String; fields::Array{String, 1} = String[])
+  mesh = sim.mesh
+  nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+  xyz = zeros(Float32, 3, nx, ny, nz)
+  dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
+  for k = 1:nz, j = 1:ny, i = 1:nx
+    xyz[1, i, j, k] = (i-0.5)*dx - (j-1)*dx/2
+    xyz[2, i, j, k] = (j-0.5)*dy
+    xyz[3, i, j, k] = (k-0.5)*dz
+  end
+
+  vtk = vtk_grid(fname, xyz)
+  T = _cuda_using_double.x ? Float64 : Float32
+  spin = zeros(T, 3*sim.nxyz)
+  copyto!(spin, sim.spin)
+  b = reshape(spin, (3, nx, ny, nz))
+  vtk_point_data(vtk, b , "m")
+  vtk_point_data(vtk,reshape(cn,(nx, ny, nz)),"clocknum")
+  if length(fields) > 0
+    compute_fields_to_gpu(sim,sim.spin,0.0)
+    fields = Set(fields)
+    for i in sim.interactions
+      if i.name in fields
+        b = reshape(i.field, (3, nx, ny, nz))
+        vtk_point_data(vtk, b, i.name)
+      end
+    end
+  end
+  vtk_save(vtk)
 end

@@ -115,10 +115,71 @@ function dE_zeeman_kagome_anisotropy_triangular_mesh_kernel!(m::CuDeviceArray{T,
             ux,uy,uz = (-0.5,sqrt(3)/2,0)
         end
 
+
         delta_E = -(dmx*Hx+dmy*Hy+dmz*Hz) #zeeman
 
         @inbounds delta_E += Ku*CUDAnative.pow(m[i]*ux+m[i+1]*uy+m[i+2]*uz, 2) #Anisotropy
         @inbounds delta_E -= Ku*CUDAnative.pow(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz, 2)
+        @inbounds dE[index] = delta_E
+   end
+   return nothing
+end
+
+function dE_zeeman_kagome_anisotropy_6fold_triangular_mesh_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T, 1},
+                              shape::CuDeviceArray{Bool, 1},
+                              dE::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},
+                              Hx::T, Hy::T, Hz::T, K1::T, K2::T,
+                              nx::Int64, ny::Int64, nz::Int64, bias::Int64) where {T<:AbstractFloat}
+
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+
+    #bias should be 0, 1 and 2 for cubic mesh
+    if index <= nx*ny*nz && shape[index]
+        a, b, c = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        if mod(a-b+c,3)!= bias
+            return nothing
+        end
+        i = 3*index - 2
+        @inbounds dmx = next_m[i] - m[i]
+        @inbounds dmy = next_m[i+1] - m[i+1]
+        @inbounds dmz = next_m[i+2] - m[i+2]
+
+        # ux,uy,uz = T(0),T(0),T(0)
+        # if a%2==1 && b%2==1
+        #     ux,uy,uz = (-0.5,-sqrt(3)/2,0)
+        # elseif a%2==0 && b%2==1
+        #     ux,uy,uz = (1,0,0)
+        # elseif a%2==1 && b%2==0
+        #     ux,uy,uz = (-0.5,sqrt(3)/2,0)
+        # end
+        u1x,u1y = T(0),T(0),T(0)
+        u2x,u2y = T(0),T(0),T(0)
+        u3x,u3y = T(0),T(0),T(0)
+        u1x,u1y = (1,0)
+        u2x,u2y = (-0.5,sqrt(3)/2)
+        u3x,u3y = (-0.5,-sqrt(3)/2)
+# #for induced H 
+#         x=(a-25.5)-0.5*(b-25.5)
+#         y=0.5*(b-25.5)/sqrt(3)
+#         r2=x*x+y*y
+#         r=sqrt(r2)
+#         overr=1/r2/r
+#         H_x=Hx*y*overr
+#         H_y=-Hx*x*overr
+#         delta_E = -(dmx*Hx*y*overr+dmy*x*overr+dmz*Hz) #zeeman
+        delta_E = -(dmx*Hx+dmy*Hy+dmz*Hz) #zeeman
+
+        # @inbounds delta_E += Ku*CUDAnative.pow(m[i]*ux+m[i+1]*uy+m[i+2]*uz, 2) #Anisotropy
+        # @inbounds delta_E -= Ku*CUDAnative.pow(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz, 2)
+        @inbounds mu1s=CUDAnative.pow(m[i]*u1x+m[i+1]*u1y,2) 
+        @inbounds mu2s=CUDAnative.pow(m[i]*u2x+m[i+1]*u2y,2) 
+        @inbounds mu3s=CUDAnative.pow(m[i]*u3x+m[i+1]*u3y,2) 
+        delta_E += K1*(mu1s*mu2s+mu2s*mu3s+mu3s*mu1s)+K2*(mu1s*mu2s*mu3s)
+        @inbounds nu1s=CUDAnative.pow(next_m[i]*u1x+next_m[i+1]*u1y,2) 
+        @inbounds nu2s=CUDAnative.pow(next_m[i]*u2x+next_m[i+1]*u2y,2) 
+        @inbounds nu3s=CUDAnative.pow(next_m[i]*u3x+next_m[i+1]*u3y,2)
+        delta_E -= K1*(nu1s*nu2s+nu2s*nu3s+nu3s*nu1s)+K2*(nu1s*nu2s*nu3s)
+
         @inbounds dE[index] = delta_E
    end
    return nothing

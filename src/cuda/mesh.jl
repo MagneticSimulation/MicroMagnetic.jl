@@ -70,24 +70,24 @@ function TriangularMeshGPU(;dx=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     xperiodic = 'x' in pbc ? true : false
     yperiodic = 'y' in pbc ? true : false
     zperiodic = 'z' in pbc ? true : false
-
+#modi by Kong
     for k = 1:nz, j = 1:ny, i=1:nx
         id = index(i,j, k, nx, ny, nz)
         ngbs[1,id] = indexpbc(i+1, j, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #right
-        ngbs[2,id] = indexpbc(i, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_right
-        ngbs[3,id] = indexpbc(i-1, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_left
+        ngbs[2,id] = indexpbc(i+1, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_right
+        ngbs[3,id] = indexpbc(i, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_left
         ngbs[4,id] = indexpbc(i-1, j, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #left
-        ngbs[5,id] = indexpbc(i, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_left
-        ngbs[6,id] = indexpbc(i+1, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_right
+        ngbs[5,id] = indexpbc(i-1, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_left
+        ngbs[6,id] = indexpbc(i, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_right
         ngbs[7,id] = indexpbc(i, j, k-1, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #below
         ngbs[8,id] = indexpbc(i, j, k+1, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #above
 
-        nngbs[1,id] = indexpbc(i+1, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_right
-        nngbs[2,id] = indexpbc(i-1, j+2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top
-        nngbs[3,id] = indexpbc(i-2, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_left
-        nngbs[4,id] = indexpbc(i-1, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_left
-        nngbs[5,id] = indexpbc(i-1, j+2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom
-        nngbs[6,id] = indexpbc(i+1, j-2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_right
+        nngbs[1,id] = indexpbc(i+2, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_right
+        nngbs[2,id] = indexpbc(i+1, j+2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top
+        nngbs[3,id] = indexpbc(i-1, j+1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #top_left
+        nngbs[4,id] = indexpbc(i-2, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_left
+        nngbs[5,id] = indexpbc(i-1, j-2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom
+        nngbs[6,id] = indexpbc(i+1, j-1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #bottom_right
         nngbs[7,id] = indexpbc(i, j, k-2, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #below
         nngbs[8,id] = indexpbc(i, j, k+2, nx, ny, nz, xperiodic, yperiodic, zperiodic)  #above
     end
