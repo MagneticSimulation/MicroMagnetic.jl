@@ -43,9 +43,9 @@ function save_vtk(sim::AbstractSim, fname::String; fields::Array{String, 1} = St
   xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
   dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
   for k = 1:nz+1, j = 1:ny+1, i = 1:nx+1
-    xyz[1, i, j, k] = (i-0.5)*dx
-    xyz[2, i, j, k] = (j-0.5)*dy
-    xyz[3, i, j, k] = (k-0.5)*dz
+    xyz[1, i, j, k] = (i-0.5-nx/2)*dx
+    xyz[2, i, j, k] = (j-0.5-ny/2)*dy
+    xyz[3, i, j, k] = (k-0.5-nz/2)*dz
   end
   vtk = vtk_grid(fname, xyz)
   b = reshape(sim.spin, (3, nx, ny, nz))
@@ -69,9 +69,9 @@ function save_vtk_points(sim::AbstractSim, fname::String; fields::Array{String, 
   xyz = zeros(Float32, 3, nx, ny, nz)
   dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
   for k = 1:nz, j = 1:ny, i = 1:nx
-    xyz[1, i, j, k] = (i-0.5)*dx
-    xyz[2, i, j, k] = (j-0.5)*dy
-    xyz[3, i, j, k] = (k-0.5)*dz
+    xyz[1, i, j, k] = (i-0.5-nx/2)*dx
+    xyz[2, i, j, k] = (j-0.5-ny/2)*dy
+    xyz[3, i, j, k] = (k-0.5-nz/2)*dz
   end
   vtk = vtk_grid(fname, xyz)
   b = reshape(sim.spin, (3, nx, ny, nz))
@@ -123,9 +123,9 @@ function ovf2vtk(ovf_name, vtk_name=nothing; point_data=false, box=nothing)
 
     dim = size(xyz)
     for k = 1:dim[4], j = 1:dim[3], i = 1:dim[2]
-      xyz[1, i, j, k] = (i-0.5)*ovf.xstepsize
-      xyz[2, i, j, k] = (j-0.5)*ovf.ystepsize
-      xyz[3, i, j, k] = (k-0.5)*ovf.zstepsize
+      xyz[1, i, j, k] = (i-0.5-nx/2)*ovf.xstepsize
+      xyz[2, i, j, k] = (j-0.5-ny/2)*ovf.ystepsize
+      xyz[3, i, j, k] = (k-0.5-nz/2)*ovf.zstepsize
     end
 
     vtk = vtk_grid(vtk_name, xyz)

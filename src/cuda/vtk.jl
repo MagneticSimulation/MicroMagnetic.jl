@@ -63,9 +63,9 @@ function save_vtk(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} =
       return nothing
   else
     for k = 1:nz+1, j = 1:ny+1, i = 1:nx+1
-      xyz[1, i, j, k] = (i-0.5)*dx
-      xyz[2, i, j, k] = (j-0.5)*dy
-      xyz[3, i, j, k] = (k-0.5)*dz
+      xyz[1, i, j, k] = (i-0.5-nx/2)*dx
+      xyz[2, i, j, k] = (j-0.5-ny/2)*dy
+      xyz[3, i, j, k] = (k-0.5-nz/2)*dz
     end
   end
   vtk = vtk_grid(fname, xyz)
