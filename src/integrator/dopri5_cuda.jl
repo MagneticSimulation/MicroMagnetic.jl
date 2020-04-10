@@ -48,8 +48,8 @@ end
 
 #y = y0+c1*k1*step
 function dopri5__step1__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
-                                c1::T, k1::CuDeviceArray{T, 1},
-                                step::T, n::Int64) where {T<:AbstractFloat}
+                                c1::Float64, k1::CuDeviceArray{T, 1},
+                                step::Float64, n::Int64) where {T<:AbstractFloat}
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
     if 0<i<=n
        @inbounds y[i] = y0[i] + c1*k1[i]*step
@@ -59,9 +59,9 @@ end
 
 #y = y0 + (c1*k1+c2*k2)*step
 function dopri5__step2__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
-                                c1::T, k1::CuDeviceArray{T, 1},
-                                c2::T, k2::CuDeviceArray{T, 1},
-                                step::T, n::Int64) where {T<:AbstractFloat}
+                                c1::Float64, k1::CuDeviceArray{T, 1},
+                                c2::Float64, k2::CuDeviceArray{T, 1},
+                                step::Float64, n::Int64) where {T<:AbstractFloat}
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
     if 0<i<=n
         @inbounds y[i] = y0[i] + (c1*k1[i]+c2*k2[i])*step
@@ -70,10 +70,10 @@ function dopri5__step2__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
 end
 
 function dopri5__step3__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
-                                c1::T, k1::CuDeviceArray{T, 1},
-                                c2::T, k2::CuDeviceArray{T, 1},
-                                c3::T, k3::CuDeviceArray{T, 1},
-                                step::T, n::Int64) where {T<:AbstractFloat}
+                                c1::Float64, k1::CuDeviceArray{T, 1},
+                                c2::Float64, k2::CuDeviceArray{T, 1},
+                                c3::Float64, k3::CuDeviceArray{T, 1},
+                                step::Float64, n::Int64) where {T<:AbstractFloat}
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
     if 0<i<=n
         @inbounds y[i] = y0[i] + (c1*k1[i]+c2*k2[i]+c3*k3[i])*step
@@ -82,11 +82,11 @@ function dopri5__step3__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
 end
 
 function dopri5__step4__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
-                                c1::T, k1::CuDeviceArray{T, 1},
-                                c2::T, k2::CuDeviceArray{T, 1},
-                                c3::T, k3::CuDeviceArray{T, 1},
-                                c4::T, k4::CuDeviceArray{T, 1},
-                                step::T, n::Int64) where {T<:AbstractFloat}
+                                c1::Float64, k1::CuDeviceArray{T, 1},
+                                c2::Float64, k2::CuDeviceArray{T, 1},
+                                c3::Float64, k3::CuDeviceArray{T, 1},
+                                c4::Float64, k4::CuDeviceArray{T, 1},
+                                step::Float64, n::Int64) where {T<:AbstractFloat}
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
     if 0<i<=n
         @inbounds y[i] = y0[i] + (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i])*step
@@ -95,12 +95,12 @@ function dopri5__step4__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
 end
 
 function dopri5__step5__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
-                                c1::T, k1::CuDeviceArray{T, 1},
-                                c2::T, k2::CuDeviceArray{T, 1},
-                                c3::T, k3::CuDeviceArray{T, 1},
-                                c4::T, k4::CuDeviceArray{T, 1},
-                                c5::T, k5::CuDeviceArray{T, 1},
-                                step::T, n::Int64) where {T<:AbstractFloat}
+                                c1::Float64, k1::CuDeviceArray{T, 1},
+                                c2::Float64, k2::CuDeviceArray{T, 1},
+                                c3::Float64, k3::CuDeviceArray{T, 1},
+                                c4::Float64, k4::CuDeviceArray{T, 1},
+                                c5::Float64, k5::CuDeviceArray{T, 1},
+                                step::Float64, n::Int64) where {T<:AbstractFloat}
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
     if 0<i<=n
         @inbounds y[i] = y0[i] + (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i]+c5*k5[i])*step
@@ -109,13 +109,13 @@ function dopri5__step5__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
 end
 
 function dopri5__step6__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
-                                c1::T, k1::CuDeviceArray{T, 1},
-                                c2::T, k2::CuDeviceArray{T, 1},
-                                c3::T, k3::CuDeviceArray{T, 1},
-                                c4::T, k4::CuDeviceArray{T, 1},
-                                c5::T, k5::CuDeviceArray{T, 1},
-                                c6::T, k6::CuDeviceArray{T, 1},
-                                step::T, n::Int64) where {T<:AbstractFloat}
+                                c1::Float64, k1::CuDeviceArray{T, 1},
+                                c2::Float64, k2::CuDeviceArray{T, 1},
+                                c3::Float64, k3::CuDeviceArray{T, 1},
+                                c4::Float64, k4::CuDeviceArray{T, 1},
+                                c5::Float64, k5::CuDeviceArray{T, 1},
+                                c6::Float64, k6::CuDeviceArray{T, 1},
+                                step::Float64, n::Int64) where {T<:AbstractFloat}
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
     if 0<i<=n
         @inbounds y[i] = y0[i] + (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i]+c5*k5[i]+c6*k6[i])*step
@@ -124,14 +124,14 @@ function dopri5__step6__kernel!(y::CuDeviceArray{T, 1}, y0::CuDeviceArray{T, 1},
 end
 
 function dopri5__step7__kernel!(y::CuDeviceArray{T, 1},
-                                c1::T, k1::CuDeviceArray{T, 1},
-                                c2::T, k2::CuDeviceArray{T, 1},
-                                c3::T, k3::CuDeviceArray{T, 1},
-                                c4::T, k4::CuDeviceArray{T, 1},
-                                c5::T, k5::CuDeviceArray{T, 1},
-                                c6::T, k6::CuDeviceArray{T, 1},
-                                c7::T, k7::CuDeviceArray{T, 1},
-                                step::T, n::Int64) where {T<:AbstractFloat}
+                                c1::Float64, k1::CuDeviceArray{T, 1},
+                                c2::Float64, k2::CuDeviceArray{T, 1},
+                                c3::Float64, k3::CuDeviceArray{T, 1},
+                                c4::Float64, k4::CuDeviceArray{T, 1},
+                                c5::Float64, k5::CuDeviceArray{T, 1},
+                                c6::Float64, k6::CuDeviceArray{T, 1},
+                                c7::Float64, k7::CuDeviceArray{T, 1},
+                                step::Float64, n::Int64) where {T<:AbstractFloat}
 	i = (blockIdx().x-1) * blockDim().x + threadIdx().x
     if 0<i<=n
         @inbounds y[i] = (c1*k1[i]+c2*k2[i]+c3*k3[i]+c4*k4[i]+c5*k5[i]+c6*k6[i]+c7*k7[i])*step
@@ -210,7 +210,7 @@ function dopri5_step_inner_GPU(sim::AbstractSim, step::Float64, t::Float64)
 end
 
 
-function advance_step(sim::NEB_GPU, integrator::DormandPrinceGPU)
+function advance_step(sim::AbstractSim, integrator::DormandPrinceGPU)
 
     max_nsteps = 100
 

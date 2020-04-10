@@ -1,4 +1,44 @@
-function llg_rhs_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
+function llg_rhs_kernal!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
+                        h::CuDeviceArray{T, 1}, alpha::T,
+                        gamma::T, precession::Bool, N::Int64) where {T<:AbstractFloat}
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if 0 < index <= N
+        j = 3*index-2
+        a = -gamma/(1+alpha*alpha)
+
+        @inbounds mx = m[j]
+        @inbounds my = m[j+1]
+        @inbounds mz = m[j+2]
+        mm = mx*mx + my*my + mz*mz
+        @inbounds mh = mx*h[j] + my*h[j+1] + mz*h[j+2]
+        @inbounds h1 = h[j] - mh*mx
+        @inbounds h2 = h[j+1] - mh*my
+        @inbounds h3 = h[j+2] - mh*mz
+
+        f1, f2, f3 = T(0), T(0), T(0)
+        if precession
+            f1 = cross_x(mx,my,mz, h1,h2,h3)
+            f2 = cross_y(mx,my,mz, h1,h2,h3)
+            f3 = cross_z(mx,my,mz, h1,h2,h3)
+        end
+
+        @inbounds dm_dt[j] = a * (f1 - h1 * alpha);
+        @inbounds dm_dt[j+1] = a * (f2 - h2 * alpha);
+        @inbounds dm_dt[j+2] = a * (f3 - h3 * alpha);
+    end
+    return nothing
+end
+
+function llg_rhs_gpu(dm_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1},
+                 alpha::T, gamma::T, precession::Bool, N::Int64) where {T<:AbstractFloat}
+
+    blk, thr = CuArrays.cudims(N)
+    @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, m, h, alpha, gamma, precession, N)
+    return nothing
+end
+
+
+function llg_rhs_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                         h::CuDeviceArray{T, 1}, omega::CuDeviceArray{T, 1}, alpha::T,
                         gamma::T, precession::Bool, N::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -29,13 +69,14 @@ function llg_rhs_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
     return nothing
 end
 
-function llg_rhs_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1},
+function llg_rhs_cayley_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1},
                  omega::CuArray{T, 1}, alpha::T, gamma::T, precession::Bool, N::Int64) where {T<:AbstractFloat}
 
     blk, thr = CuArrays.cudims(N)
-    @cuda blocks=blk threads=thr llg_rhs_kernal!(dw_dt, m, h, omega, alpha, gamma, precession, N)
+    @cuda blocks=blk threads=thr llg_rhs_cayley_kernal!(dw_dt, m, h, omega, alpha, gamma, precession, N)
     return nothing
 end
+
 
 function field_stt_kernal!(m::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
                            ux::CuDeviceArray{T, 1}, uy::CuDeviceArray{T, 1}, uz::CuDeviceArray{T, 1}, ut::T,
@@ -231,10 +272,16 @@ function llg_rhs_stt_cpp_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{
     return nothing
 end
 
-function llg_call_back_gpu(sim::MicroSimGPU, dw_dt::CuArray{T, 1}, t::Float64, omega::CuArray{T, 1}) where {T<:AbstractFloat}
+function llg_call_back_gpu(sim::MicroSimGPU, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+    effective_field(sim, spin, t)
+    llg_rhs_gpu(dm_dt, spin, sim.driver.field, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
+    return nothing
+end
+
+function llg_cayley_call_back_gpu(sim::MicroSimGPU, dw_dt::CuArray{T, 1}, t::Float64, omega::CuArray{T, 1}) where {T<:AbstractFloat}
     omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
     effective_field(sim, sim.spin, t)
-    llg_rhs_gpu(dw_dt, sim.spin, sim.driver.field, omega, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
+    llg_rhs_cayley_gpu(dw_dt, sim.spin, sim.driver.field, omega, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
     return nothing
 end
 

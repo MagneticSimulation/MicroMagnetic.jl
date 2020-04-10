@@ -11,8 +11,12 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     return mx, my, mz
 end
 
-function test_integrator(;integrator="RungeKutta")
-    mesh =  FDMesh(nx=1, ny=1, dx=1e-9)
+function test_integrator(;integrator="RungeKutta", gpu=false)
+    if gpu
+        mesh =  FDMeshGPU(nx=1, ny=1, dx=1e-9)
+    else
+        mesh =  FDMesh(nx=1, ny=1, dx=1e-9)
+    end
     sim = Sim(mesh, name="spin", integrator=integrator)
     set_Ms(sim, 8e5)
     sim.driver.alpha = 0.05
@@ -42,9 +46,17 @@ function test_integrator(;integrator="RungeKutta")
     @test abs(mz[1]-sim.spin[3]) < 8e-6
 end
 
-test_integrator(integrator="Default")
-println("Test 'Default' Done!")
-#test_integrator(integrator="RungeKutta")
-#println("Test 'RungeKutta' Done!")
-test_integrator(integrator="DormandPrince")
-println("Test 'DormandPrince' Done!")
+@testset "CPU Integrator" begin
+    test_integrator(integrator="Default")
+    #test_integrator(integrator="RungeKutta")
+    #println("Test 'RungeKutta' Done!")
+    test_integrator(integrator="DormandPrince")
+
+end
+
+if JuMag._cuda_available.x
+    @testset "CPU Integrator" begin
+        test_integrator(integrator="Default")
+        test_integrator(integrator="DormandPrince", gpu=true)
+    end
+end

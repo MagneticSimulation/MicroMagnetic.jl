@@ -61,11 +61,19 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         ff = CuArrays.zeros(Float, nxyz)
 		return EnergyMinimization_GPU(gk, ss, sf, ff, field, Float(0.0), Float(1e-2), Float(1e-10), 0)
     elseif driver=="LLG"
-		tol = 1e-6
-        dopri5 = DormandPrinceCayleyGPU(nxyz, llg_call_back_gpu, tol)
-        Float = _cuda_using_double.x ? Float64 : Float32
-        field = CuArrays.zeros(Float, 3*nxyz)
-		return LLG_GPU(true, Float(0.1), Float(2.21e5), dopri5, tol, field)
+        if integrator == "DormandPrince"
+            tol = 1e-6
+            dopri5 = DormandPrinceGPU(nxyz, llg_call_back_gpu, tol)
+            Float = _cuda_using_double.x ? Float64 : Float32
+            field = CuArrays.zeros(Float, 3*nxyz)
+            return LLG_GPU(true, Float(0.1), Float(2.21e5), dopri5, tol, field)
+        else
+            tol = 1e-6
+            dopri5 = DormandPrinceCayleyGPU(nxyz, llg_cayley_call_back_gpu, tol)
+            Float = _cuda_using_double.x ? Float64 : Float32
+            field = CuArrays.zeros(Float, 3*nxyz)
+		    return LLG_GPU(true, Float(0.1), Float(2.21e5), dopri5, tol, field)
+        end
 	elseif driver=="LLG_STT"
         tol = 1e-6
         dopri5 = DormandPrinceCayleyGPU(nxyz, llg_stt_call_back_gpu, tol)
