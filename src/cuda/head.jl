@@ -17,30 +17,6 @@ struct FDMeshGPU{T <: AbstractFloat} <: MeshGPU
   volume::T
 end
 
-mutable struct Dopri5GPU{T<:AbstractFloat} <: IntegratorCayley
-   tol::Float64
-   t::Float64
-   step::Float64
-   step_next::Float64
-   facmax::Float64
-   facmin::Float64
-   safety::Float64
-   nsteps::Int64
-   nfevals::Int64
-   omega::CuArray{T, 1}
-   omega_t::CuArray{T, 1}
-   dw_dt::CuArray{T, 1}
-   k1::CuArray{T, 1}
-   k2::CuArray{T, 1}
-   k3::CuArray{T, 1}
-   k4::CuArray{T, 1}
-   k5::CuArray{T, 1}
-   k6::CuArray{T, 1}
-   k7::CuArray{T, 1}
-   rhs_fun::Function
-   succeed::Bool
-end
-
 mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   mesh::FDMeshGPU
   driver::DriverGPU

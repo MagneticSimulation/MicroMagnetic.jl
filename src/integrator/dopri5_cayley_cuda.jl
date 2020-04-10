@@ -1,4 +1,29 @@
-function init_runge_kutta_gpu(nxyz::Int64, rhs_fun, tol::Float64)
+mutable struct DormandPrinceCayleyGPU{T<:AbstractFloat} <: IntegratorCayley
+   tol::Float64
+   t::Float64
+   step::Float64
+   step_next::Float64
+   facmax::Float64
+   facmin::Float64
+   safety::Float64
+   nsteps::Int64
+   nfevals::Int64
+   omega::CuArray{T, 1}
+   omega_t::CuArray{T, 1}
+   dw_dt::CuArray{T, 1}
+   k1::CuArray{T, 1}
+   k2::CuArray{T, 1}
+   k3::CuArray{T, 1}
+   k4::CuArray{T, 1}
+   k5::CuArray{T, 1}
+   k6::CuArray{T, 1}
+   k7::CuArray{T, 1}
+   rhs_fun::Function
+   succeed::Bool
+end
+
+
+function DormandPrinceCayleyGPU(nxyz::Int64, rhs_fun, tol::Float64)
   Float = _cuda_using_double.x ? Float64 : Float32
   omega = CuArrays.zeros(Float,3*nxyz)
   omega_t = CuArrays.zeros(Float,3*nxyz)
@@ -13,7 +38,7 @@ function init_runge_kutta_gpu(nxyz::Int64, rhs_fun, tol::Float64)
   facmax = 5.0
   facmin = 0.2
   safety = 0.824
-  return Dopri5GPU(tol, 0.0, 0.0, 0.0, facmax, facmin, safety, 0, 0, omega, omega_t, dw_dt,
+  return DormandPrinceCayleyGPU(tol, 0.0, 0.0, 0.0, facmax, facmin, safety, 0, 0, omega, omega_t, dw_dt,
                    k1, k2, k3, k4, k5, k6, k7, rhs_fun, false)
 end
 
@@ -154,7 +179,7 @@ function compute_init_step(sim::MicroSimGPU, dt::Float64)
 end
 
 
-function interpolation_dopri5(ode::Dopri5GPU, t::Float64)
+function interpolation_dopri5(ode::DormandPrinceCayleyGPU, t::Float64)
     x = (t-ode.t+ode.step)/ode.step
     #assert x>=0 && x<=1
     if x == 1.0

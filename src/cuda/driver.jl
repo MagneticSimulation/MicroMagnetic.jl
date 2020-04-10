@@ -15,7 +15,7 @@ mutable struct LLG_GPU{T<:AbstractFloat} <: DriverGPU
   precession::Bool
   alpha::T
   gamma::T
-  ode::Dopri5GPU
+  ode::Integrator
   tol::Float64
   field::CuArray{T, 1}
 end
@@ -24,7 +24,7 @@ mutable struct LLG_STT_GPU{T<:AbstractFloat} <: DriverGPU
   alpha::T
   beta::T
   gamma::T
-  ode::Dopri5GPU
+  ode::Integrator
   tol::Float64
   ux::CuArray{T, 1}
   uy::CuArray{T, 1}
@@ -39,7 +39,7 @@ mutable struct LLG_STT_CPP_GPU{T<:AbstractFloat} <: DriverGPU
   beta::T
   gamma::T
   bj::T
-  ode::Dopri5GPU
+  ode::Integrator
   tol::Float64
   p::Tuple{Real, Real, Real}
   aj::CuArray{T, 1}
@@ -62,13 +62,13 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
 		return EnergyMinimization_GPU(gk, ss, sf, ff, field, Float(0.0), Float(1e-2), Float(1e-10), 0)
     elseif driver=="LLG"
 		tol = 1e-6
-        dopri5 = init_runge_kutta_gpu(nxyz, llg_call_back_gpu, tol)
+        dopri5 = DormandPrinceCayleyGPU(nxyz, llg_call_back_gpu, tol)
         Float = _cuda_using_double.x ? Float64 : Float32
         field = CuArrays.zeros(Float, 3*nxyz)
 		return LLG_GPU(true, Float(0.1), Float(2.21e5), dopri5, tol, field)
 	elseif driver=="LLG_STT"
         tol = 1e-6
-        dopri5 = init_runge_kutta_gpu(nxyz, llg_stt_call_back_gpu, tol)
+        dopri5 = DormandPrinceCayleyGPU(nxyz, llg_stt_call_back_gpu, tol)
         Float = _cuda_using_double.x ? Float64 : Float32
         ux = CuArrays.zeros(Float, nxyz)
         uy = CuArrays.zeros(Float, nxyz)
@@ -79,7 +79,7 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         return LLG_STT_GPU(Float(0.5), Float(0), Float(2.21e5), dopri5, tol, ux, uy, uz, hstt, field, fun)
     elseif driver=="LLG_STT_CPP"
         tol = 1e-6
-		dopri5 = init_runge_kutta_gpu(nxyz, llg_stt_cpp_call_back_gpu, tol)
+		dopri5 = DormandPrinceCayleyGPU(nxyz, llg_stt_cpp_call_back_gpu, tol)
 		Float = _cuda_using_double.x ? Float64 : Float32
         ux = CuArrays.zeros(Float, nxyz)
         uy = CuArrays.zeros(Float, nxyz)
