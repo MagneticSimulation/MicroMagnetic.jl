@@ -221,15 +221,18 @@ function advance_step(sim::AbstractSim, integrator::DormandPrinceGPU)
     if integrator.step_next <= 0
         integrator.step_next = compute_init_step_DP(sim, 1e-12)
         if integrator.step_next<1e-15
-            #integrator.step_next = 1e-15
+            integrator.step_next = 1e-15
+        end
+        if integrator.step_next > 1e-13
+            integrator.step_next = 1e-13
         end
     end
 
-    step_next = integrator.step_next
+    integrator.step = integrator.step_next
 
     nstep = 1
     while true
-        max_error = dopri5_step_inner_GPU(sim, step_next, t)/integrator.tol
+        max_error = dopri5_step_inner_GPU(sim, integrator.step, t)/integrator.tol
         if isnan(max_error)
             step_next = 1e-14
         end
@@ -242,14 +245,13 @@ function advance_step(sim::AbstractSim, integrator::DormandPrinceGPU)
 
         if integrator.succeed
             integrator.nsteps += 1
-            integrator.step = step_next
             integrator.t += integrator.step
             factor =  integrator.safety*(1.0/max_error)^0.2
-            integrator.step_next = step_next*min(integrator.facmax, max(integrator.facmin, factor))
+            integrator.step_next = integrator.step*min(integrator.facmax, max(integrator.facmin, factor))
             break
         else
             factor =  integrator.safety*(1.0/max_error)^0.25
-            step_next = step_next*min(integrator.facmax, max(integrator.facmin, factor))
+            integrator.step = integrator.step*min(integrator.facmax, max(integrator.facmin, factor))
         end
     end
     return true

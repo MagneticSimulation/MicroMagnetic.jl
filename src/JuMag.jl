@@ -99,6 +99,7 @@ if _cuda_available.x
            CubicMeshGPU,
            TriangularMeshGPU,
            MonteCarloNew,
+           add_thermal_noise,
            set_shape,
            set_shape_to_kagome,
            run_sim,

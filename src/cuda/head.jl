@@ -96,6 +96,16 @@ mutable struct ZeemanGPU{T<:AbstractFloat} <: MicroEnergyGPU
    name::String
 end
 
+mutable struct StochasticFieldGPU{F<:AbstractFloat} <: MicroEnergyGPU
+    T::CuArray{F, 1}
+    eta::CuArray{F, 1}
+    field::Array{F, 1}
+    energy::Array{F, 1}
+    total_energy::F
+    nsteps::Int64
+    name::String
+end
+
 mutable struct TimeZeemanGPU{T<:AbstractFloat} <: MicroEnergyGPU
    time_fun::Function
    init_field::CuArray{T, 1}

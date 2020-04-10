@@ -15,6 +15,32 @@ function zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
    return nothing
 end
 
+function stochastic_field_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
+                                 eta::CuDeviceArray{T, 1}, Temp::CuDeviceArray{T, 1},
+                                 energy::CuDeviceArray{T, 1},
+                                 Ms::CuDeviceArray{T, 1}, factor::Float64, volume::T, nxyz::Int64) where {T<:AbstractFloat}
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if index <= nxyz
+        mu0 = 4*pi*1e-7
+        j = 3*(index-1)
+        @inbounds Ms_local = Ms[index]
+        @inbounds T_local = Temp[index]
+        if Ms_local>0
+            @inbounds scale = CUDAnative.sqrt(factor*T_local/Ms_local)
+            @inbounds h[j+1] = eta[j+1]*scale
+            @inbounds h[j+2] = eta[j+2]*scale
+            @inbounds h[j+3] = eta[j+2]*scale
+            @inbounds energy[index] = -mu0*Ms_local*volume*(m[j+1]*h[j+1] + m[j+2]*h[j+2] + m[j+3]*h[j+3])
+        else
+            @inbounds energy[index] = 0
+            @inbounds h[j+1] = 0
+            @inbounds h[j+2] = 0
+            @inbounds h[j+3] = 0
+        end
+    end
+    return nothing
+end
+
 
 function time_zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         h_static::CuDeviceArray{T, 1}, energy::CuDeviceArray{T, 1},

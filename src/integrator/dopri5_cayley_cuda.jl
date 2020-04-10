@@ -167,6 +167,7 @@ function compute_init_step(sim::MicroSimGPU, dt::Float64)
   abs_step_tmp = dt
   rk_data = sim.driver.ode
   fill!(rk_data.omega, 0)
+  integrator.step = 1e-15
   rk_data.rhs_fun(sim, rk_data.dw_dt, rk_data.t, rk_data.omega)
   abs!(rk_data.dw_dt)
   r_step = maximum(rk_data.dw_dt)/(rk_data.safety*rk_data.tol^0.2)

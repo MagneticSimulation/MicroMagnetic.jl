@@ -8,6 +8,28 @@ function effective_field(zeeman::ZeemanGPU, sim::MicroSimGPU, spin::CuArray{T, 1
   return nothing
 end
 
+function effective_field(stochastic::StochasticFieldGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+  nxyz = sim.nxyz
+  volume = sim.mesh.volume
+  integrator = sim.driver.ode
+
+  if integrator.nsteps > stochastic.nsteps
+      randn!(stochastic.eta)
+      stochastic.nsteps = integrator.nsteps
+  end
+
+  mu0 = 4*pi*1e-7
+  dt = integrator.step
+  gamma = sim.driver.gamma
+  alpha = sim.driver.alpha
+  k_B = 1.3806505e-23
+  factor = 2*alpha*k_B/(mu_0*volume*gamma*dt)
+
+  blocks_n, threads_n = sim.blocks, sim.threads
+  @cuda blocks=blocks_n threads=threads_n stochastic_field_kernel!(spin, sim.field, stochastic.eta, stochastic.T, sim.energy, sim.Ms, factor, volume, nxyz)
+  return nothing
+end
+
 function effective_field(zeeman::TimeZeemanGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   nxyz = sim.nxyz
   volume = sim.mesh.volume

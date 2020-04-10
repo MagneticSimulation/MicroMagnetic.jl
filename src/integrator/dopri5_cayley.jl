@@ -91,6 +91,7 @@ function compute_init_step(sim::AbstractSim, dt::Float64)
   abs_step_tmp = dt
   integrator = sim.driver.ode
   fill!(integrator.omega, 0)
+  integrator.step = 1e-15
   integrator.rhs_fun(sim, integrator.dw_dt, integrator.t, integrator.omega)
   r_step = maximum(abs.(integrator.dw_dt)/(integrator.safety*integrator.tol^0.2))
   integrator.nfevals += 1
@@ -117,23 +118,22 @@ function advance_step(sim::AbstractSim, integrator::IntegratorCayley)
         integrator.step_next = compute_init_step(sim, 1.0)
     end
 
-    step_next = integrator.step_next
+    integrator.step = integrator.step_next
 
     while true
-        max_error = dopri5_step(sim, step_next, t)/integrator.tol
+        max_error = dopri5_step(sim, integrator.step, t)/integrator.tol
 
         integrator.succeed = (max_error <= 1)
 
         if integrator.succeed
             integrator.nsteps += 1
-            integrator.step = step_next
             integrator.t += integrator.step
             factor =  integrator.safety*(1.0/max_error)^0.2
-            integrator.step_next = step_next*min(integrator.facmax, max(integrator.facmin, factor))
+            integrator.step_next = integrator.step*min(integrator.facmax, max(integrator.facmin, factor))
             break
         else
             factor =  integrator.safety*(1.0/max_error)^0.25
-            step_next = step_next*min(integrator.facmax, max(integrator.facmin, factor))
+            integrator.step = integrator.step*min(integrator.facmax, max(integrator.facmin, factor))
         end
     end
   omega_to_spin(integrator.omega, sim.prespin, sim.spin, sim.nxyz)
