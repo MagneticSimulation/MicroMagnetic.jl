@@ -64,12 +64,12 @@ end
     end
 end
 
-#@testset "STT DormandPrince" begin
-#    mesh =  FDMesh(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
-#    for (beta, u) in [(0, 10), (0.1, 3.2), (0.2, 4.7)]
-#      run_dynamics_stt(mesh, beta=beta, u=u, integrator="DormandPrince")
-#    end
-#end
+@testset "STT DormandPrince" begin
+    mesh =  FDMesh(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
+    for (beta, u) in [(0, 10), (0.1, 3.2), (0.2, 4.7)]
+      run_dynamics_stt(mesh, beta=beta, u=u, integrator="DormandPrince")
+    end
+end
 
 if JuMag._cuda_available.x
     @testset "STT GPU" begin

@@ -708,24 +708,23 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
 end
 
 
-function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
-      rk_data = sim.driver.ode
-      if t_end < rk_data.t - rk_data.step
-          println("Run_until: t_end >= rk_data.t - rk_data.step")
+function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayley, save_data::Bool)
+      if t_end < integrator.t - integrator.step
+          println("Run_until: t_end >= integrator.t - integrator.step")
           return
-      elseif t_end == rk_data.t
-          rk_data.omega_t[:] = rk_data.omega[:]
-          omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
+      elseif t_end == integrator.t
+          integrator.omega_t[:] = integrator.omega[:]
+          omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.nxyz)
           sim.saver.t = t_end
           sim.saver.nsteps += 1
           if save_data
               compute_system_energy(sim, sim.spin, t_end)
               write_data(sim)
-		  end
+        end
           return
-      elseif t_end > rk_data.t - rk_data.step && rk_data.step > 0 && t_end < rk_data.t
-          interpolation_dopri5(rk_data, t_end)
-          omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
+      elseif t_end > integrator.t - integrator.step && integrator.step > 0 && t_end < integrator.t
+          interpolation_dopri5(integrator, t_end)
+          omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.nxyz)
           sim.saver.t = t_end
           sim.saver.nsteps += 1
           if save_data
@@ -736,21 +735,21 @@ function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
       end
 
       # so we have t_end > self.t
-      if rk_data.step_next<=0
-          rk_data.step_next = compute_init_step(sim, t_end - rk_data.t)
+      if integrator.step_next<=0
+          integrator.step_next = compute_init_step(sim, t_end - integrator.t)
       end
 
-      while rk_data.t < t_end
-          ratio = (t_end - rk_data.t)/rk_data.step_next
+      while integrator.t < t_end
+          ratio = (t_end - integrator.t)/integrator.step_next
           if ratio<1.2 && ratio>0.8
-              rk_data.step_next = t_end - rk_data.t
+              integrator.step_next = t_end - integrator.t
           end
 
-          advance_step(sim, rk_data)
+          advance_step(sim, integrator)
       end
 
-      interpolation_dopri5(rk_data, t_end)
-      omega_to_spin(rk_data.omega_t, sim.prespin, sim.spin, sim.nxyz)
+      interpolation_dopri5(integrator, t_end)
+      omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.nxyz)
       sim.saver.t = t_end
       sim.saver.nsteps += 1
       if save_data
@@ -758,4 +757,43 @@ function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
           write_data(sim)
       end
       return nothing
+end
+
+
+function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator, save_data::Bool)
+    if t_end < integrator.t - integrator.step
+        @info("Run_until: t_end >= integrator.t - integrator.step")
+        return
+    elseif t_end == integrator.t
+        sim.saver.t = t_end
+        sim.saver.nsteps += 1
+        if save_data
+            compute_system_energy(sim, sim.spin, t_end)
+            write_data(sim)
+        end
+        return
+    end
+
+    # so we have t_end > self.t
+    if integrator.step_next<=0
+        integrator.step_next = compute_init_step_DP(sim, t_end - integrator.t)
+    end
+
+    while integrator.t < t_end
+        if integrator.step_next + integrator.t> t_end
+            integrator.step_next = t_end - integrator.t
+        end
+        advance_step(sim, integrator)
+    end
+
+    sim.saver.t = t_end
+    sim.saver.nsteps += 1
+    if save_data
+        compute_system_energy(sim, sim.spin, t_end)
+        write_data(sim)
+    end
+end
+
+function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
+    run_until(sim, t_end, sim.driver.ode, save_data)
 end

@@ -30,6 +30,10 @@ function test_integrator(;integrator="RungeKutta")
     t = sim.driver.ode.t
     println("Running at time=", t)
 
+    run_until(sim, t+5e-10)
+    t = sim.driver.ode.t
+    println("Running at time=", t)
+
     ts = Array([t])
     mx, my, mz = analytical(0.05, 2.21e5, 1e5, ts)
 
@@ -40,7 +44,7 @@ end
 
 test_integrator(integrator="Default")
 println("Test 'Default' Done!")
-test_integrator(integrator="RungeKutta")
-println("Test 'RungeKutta' Done!")
+#test_integrator(integrator="RungeKutta")
+#println("Test 'RungeKutta' Done!")
 test_integrator(integrator="DormandPrince")
 println("Test 'DormandPrince' Done!")
