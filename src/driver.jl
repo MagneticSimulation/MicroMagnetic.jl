@@ -39,7 +39,7 @@ function create_driver(driver::String, integrator::String, nxyz::Int64)
             return LLG(true, 0.1, 2.21e5, dopri5)
         else
             tol = 1e-6
-            dopri5 = init_runge_kutta(nxyz, llg_cay_call_back, tol)
+            dopri5 = DormandPrinceCayley(nxyz, llg_cay_call_back, tol)
             return LLG(true, 0.1, 2.21e5, dopri5)
         end
     elseif driver=="LLG_STT"
@@ -47,7 +47,7 @@ function create_driver(driver::String, integrator::String, nxyz::Int64)
         if integrator == "DormandPrince"
             dopri5 = DormandPrince(nxyz, llg_stt_call_back, tol)
         else
-            dopri5 = init_runge_kutta(nxyz, llg_stt_cay_call_back, tol)
+            dopri5 = DormandPrinceCayley(nxyz, llg_stt_cay_call_back, tol)
         end
         ux = zeros(nxyz)
         uy = zeros(nxyz)

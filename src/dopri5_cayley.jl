@@ -1,7 +1,30 @@
-include("field.jl")
-#include("llg.jl")
 
-function init_runge_kutta(nxyz::Int64, rhs_fun, tol::Float64)
+mutable struct DormandPrinceCayley <: IntegratorCayley
+   tol::Float64
+   t::Float64
+   step::Float64
+   step_next::Float64
+   facmax::Float64
+   facmin::Float64
+   safety::Float64
+   nsteps::Int64
+   nfevals::Int64
+   omega::Array{Float64, 1}
+   omega_t::Array{Float64, 1}
+   dw_dt::Array{Float64, 1}
+   k1::Array{Float64, 1}
+   k2::Array{Float64, 1}
+   k3::Array{Float64, 1}
+   k4::Array{Float64, 1}
+   k5::Array{Float64, 1}
+   k6::Array{Float64, 1}
+   k7::Array{Float64, 1}
+   rhs_fun::Function
+   succeed::Bool
+end
+
+
+function DormandPrinceCayley(nxyz::Int64, rhs_fun, tol::Float64)
   omega = zeros(Float64,3*nxyz)
   omega_t = zeros(Float64,3*nxyz)
   dw_dt = zeros(Float64,3*nxyz)
@@ -15,7 +38,7 @@ function init_runge_kutta(nxyz::Int64, rhs_fun, tol::Float64)
   facmax = 5.0
   facmin = 0.2
   safety = 0.824
-  return Dopri5(tol, 0.0, 0, 0, facmax, facmin, safety, 0, 0, omega, omega_t, dw_dt,
+  return DormandPrinceCayley(tol, 0.0, 0, 0, facmax, facmin, safety, 0, 0, omega, omega_t, dw_dt,
                 k1, k2, k3, k4, k5, k6, k7, rhs_fun, false)
 end
 
@@ -66,11 +89,11 @@ end
 function compute_init_step(sim::AbstractSim, dt::Float64)
   abs_step = dt
   abs_step_tmp = dt
-  rk_data = sim.driver.ode
-  fill!(rk_data.omega, 0)
-  rk_data.rhs_fun(sim, rk_data.dw_dt, rk_data.t, rk_data.omega)
-  r_step = maximum(abs.(rk_data.dw_dt)/(rk_data.safety*rk_data.tol^0.2))
-  rk_data.nfevals += 1
+  integrator = sim.driver.ode
+  fill!(integrator.omega, 0)
+  integrator.rhs_fun(sim, integrator.dw_dt, integrator.t, integrator.omega)
+  r_step = maximum(abs.(integrator.dw_dt)/(integrator.safety*integrator.tol^0.2))
+  integrator.nfevals += 1
   #FIXME: how to obtain a reasonable init step?
   if abs_step*r_step > 0.001
     abs_step_tmp = 0.001/r_step
@@ -78,51 +101,51 @@ function compute_init_step(sim::AbstractSim, dt::Float64)
   return min(abs_step, abs_step_tmp)
 end
 
-function advance_step(sim::AbstractSim, rk_data::AbstractDopri5)
+function advance_step(sim::AbstractSim, integrator::IntegratorCayley)
 
-    if rk_data.succeed
-        omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
-        if rk_data.nsteps%10 == 0
+    if integrator.succeed
+        omega_to_spin(integrator.omega, sim.prespin, sim.spin, sim.nxyz)
+        if integrator.nsteps%10 == 0
           normalise(sim.spin, sim.nxyz)
         end
         sim.prespin .= sim.spin
     end
 
-    t = rk_data.t
+    t = integrator.t
 
-    if rk_data.step_next <= 0
-        rk_data.step_next = compute_init_step(sim, 1.0)
+    if integrator.step_next <= 0
+        integrator.step_next = compute_init_step(sim, 1.0)
     end
 
-    step_next = rk_data.step_next
+    step_next = integrator.step_next
 
     while true
-        max_error = dopri5_step(sim, step_next, t)/rk_data.tol
+        max_error = dopri5_step(sim, step_next, t)/integrator.tol
 
-        rk_data.succeed = (max_error <= 1)
+        integrator.succeed = (max_error <= 1)
 
-        if rk_data.succeed
-            rk_data.nsteps += 1
-            rk_data.step = step_next
-            rk_data.t += rk_data.step
-            factor =  rk_data.safety*(1.0/max_error)^0.2
-            rk_data.step_next = step_next*min(rk_data.facmax, max(rk_data.facmin, factor))
+        if integrator.succeed
+            integrator.nsteps += 1
+            integrator.step = step_next
+            integrator.t += integrator.step
+            factor =  integrator.safety*(1.0/max_error)^0.2
+            integrator.step_next = step_next*min(integrator.facmax, max(integrator.facmin, factor))
             break
         else
-            factor =  rk_data.safety*(1.0/max_error)^0.25
-            step_next = step_next*min(rk_data.facmax, max(rk_data.facmin, factor))
+            factor =  integrator.safety*(1.0/max_error)^0.25
+            step_next = step_next*min(integrator.facmax, max(integrator.facmin, factor))
         end
     end
-  omega_to_spin(rk_data.omega, sim.prespin, sim.spin, sim.nxyz)
+  omega_to_spin(integrator.omega, sim.prespin, sim.spin, sim.nxyz)
   return true
 end
 
-function interpolation_dopri5(rk_data::AbstractDopri5, t::Float64)
-    x = (t-rk_data.t+rk_data.step)/rk_data.step
+function interpolation_dopri5(integrator::DormandPrinceCayley, t::Float64)
+    x = (t-integrator.t+integrator.step)/integrator.step
     #assert x>=0 && x<=1
-    k1,k2,k3,k4,k5,k6,k7 = rk_data.k1, rk_data.k2, rk_data.k3, rk_data.k4, rk_data.k5, rk_data.k6, rk_data.k7
+    k1,k2,k3,k4,k5,k6,k7 = integrator.k1, integrator.k2, integrator.k3, integrator.k4, integrator.k5, integrator.k6, integrator.k7
     if x == 1.0
-        rk_data.omega_t .= rk_data.omega
+        integrator.omega_t .= integrator.omega
         return
     end
 
@@ -137,5 +160,5 @@ function interpolation_dopri5(rk_data::AbstractDopri5, t::Float64)
     b6 = x1*v[6] - x2*55*(29972135 - 7076736*x)/822651844
     b7 = x*x*(x-1) + x2*10*(7414447 - 829305*x)/29380423
 
-    rk_data.omega_t .= (b1.*k1 .+ b3.*k3 .+ b4.*k4 .+ b5.*k5 .+ b6.*k6 .+ b7*k7).*rk_data.step
+    integrator.omega_t .= (b1.*k1 .+ b3.*k3 .+ b4.*k4 .+ b5.*k5 .+ b6.*k6 .+ b7*k7).*integrator.step
 end

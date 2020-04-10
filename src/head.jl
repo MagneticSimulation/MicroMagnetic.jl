@@ -3,7 +3,7 @@ abstract type AbstractSim end
 abstract type MicroEnergy end
 abstract type Interaction end
 abstract type Integrator end
-abstract type AbstractDopri5 <:Integrator end
+abstract type IntegratorCayley <:Integrator end
 
 """
     NumberOrArrayOrFunction
@@ -47,29 +47,6 @@ an array or a function:
 """
 TupleOrArrayOrFunction = Union{Tuple, Array, Function}
 
-mutable struct Dopri5 <: AbstractDopri5
-   tol::Float64
-   t::Float64
-   step::Float64
-   step_next::Float64
-   facmax::Float64
-   facmin::Float64
-   safety::Float64
-   nsteps::Int64
-   nfevals::Int64
-   omega::Array{Float64, 1}
-   omega_t::Array{Float64, 1}
-   dw_dt::Array{Float64, 1}
-   k1::Array{Float64, 1}
-   k2::Array{Float64, 1}
-   k3::Array{Float64, 1}
-   k4::Array{Float64, 1}
-   k5::Array{Float64, 1}
-   k6::Array{Float64, 1}
-   k7::Array{Float64, 1}
-   rhs_fun::Function
-   succeed::Bool
-end
 
 mutable struct DataSaver
   name::String
