@@ -1,7 +1,6 @@
 abstract type Driver end
 abstract type AbstractSim end
 abstract type MicroEnergy end
-abstract type Interaction end
 abstract type Integrator end
 abstract type IntegratorCayley <:Integrator end
 
@@ -74,22 +73,6 @@ mutable struct MicroSim <: AbstractSim
   MicroSim() = new()
 end
 
-mutable struct AtomicSim <: AbstractSim
-  mesh::Mesh
-  driver::Driver
-  saver::DataSaver
-  spin::Array{Float64, 1}
-  prespin::Array{Float64, 1}
-  field::Array{Float64, 1}
-  energy::Array{Float64, 1}
-  mu_s::Array{Float64, 1}
-  nxyz::Int64
-  name::String
-  interactions::Array
-  save_data::Bool
-  AtomicSim() = new()
-end
-
 mutable struct Exchange <: MicroEnergy
    A::Array{Float64, 1}
    field::Array{Float64, 1}
@@ -112,14 +95,7 @@ mutable struct ExchangeRKKY <: MicroEnergy
    name::String
 end
 
-mutable struct HeisenbergExchange <: Interaction
-   Js::Array{Float64, 1}   #The length of Js should be equal to the number of neighbours
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct BulkDMI
+mutable struct BulkDMI <: MicroEnergy
    Dx::Float64
    Dy::Float64
    Dz::Float64
@@ -128,7 +104,7 @@ mutable struct BulkDMI
    name::String
 end
 
-mutable struct InterfacialDMI
+mutable struct InterfacialDMI <: MicroEnergy
    D::Float64
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
@@ -136,7 +112,7 @@ mutable struct InterfacialDMI
 end
 
 
-mutable struct Anisotropy
+mutable struct Anisotropy <: MicroEnergy
    Ku::Array{Float64, 1}
    axis::Tuple
    field::Array{Float64, 1}
@@ -144,30 +120,20 @@ mutable struct Anisotropy
    name::String
 end
 
-mutable struct KagomeAnisotropy
-   Ku::Float64
-   ax1::Tuple
-   ax2::Tuple
-   ax3::Tuple
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct CubicAnisotropy
+mutable struct CubicAnisotropy <: MicroEnergy
    Kc::Float64
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String
 end
 
-mutable struct Zeeman
+mutable struct Zeeman <: MicroEnergy
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String
 end
 
-mutable struct TimeZeeman
+mutable struct TimeZeeman <: MicroEnergy
    time_fun::Function
    init_field::Array{Float64, 1}
    field::Array{Float64, 1}

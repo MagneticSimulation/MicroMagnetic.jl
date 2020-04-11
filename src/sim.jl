@@ -3,12 +3,9 @@
 
 Create a simulation instance for given mesh.
 """
-function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5", save_data=true)
-    if isa(mesh, FDMesh)
-        sim = MicroSim()
-    else
-        sim = AtomicSim()
-    end
+function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="Dopri5", save_data=true)
+
+    sim = MicroSim()
 
     sim.name = name
     sim.mesh = mesh
@@ -18,11 +15,8 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5", save_dat
     sim.prespin = zeros(Float64,3*nxyz)
     sim.field = zeros(Float64,3*nxyz)
     sim.energy = zeros(Float64,nxyz)
-    if isa(mesh, FDMesh)
-        sim.Ms = zeros(Float64, nxyz)
-    else
-        sim.mu_s = zeros(Float64, nxyz)
-    end
+
+    sim.Ms = zeros(Float64, nxyz)
     sim.save_data = save_data
 
     if save_data
@@ -74,34 +68,6 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     return true
 end
 
-function set_mu_s(sim::AtomicSim, fun_Ms::Function)
-    mesh = sim.mesh
-    for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        sim.mu_s[id] = fun_Ms(i, j, k, mesh.dx, mesh.dy, mesh.dz)
-    end
-    return true
-end
-
-function set_mu_s_kagome(sim::AtomicSim, Ms::Number)
-    mesh = sim.mesh
-    for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        sim.mu_s[id] = Ms
-        if i%2==0 && j%2==0
-            sim.mu_s[id] = 0.0
-        end
-    end
-    return true
-end
-
-function set_mu_s(sim::AtomicSim, Ms::Number)
-    for i =1:sim.nxyz
-        sim.mu_s[i] = Ms
-    end
-    return true
-end
-
 function set_ux(sim::AbstractSim, init_ux)
     init_scalar!(sim.driver.ux, sim.mesh, init_ux)
 end
@@ -135,21 +101,6 @@ function average_m(sim::AbstractSim)
     error("n should not be zero!")
   end
   return (mx/n, my/n, mz/n)
-end
-
-function init_m0(sim::AtomicSim, m0::TupleOrArrayOrFunction; norm=true)
-  init_vector!(sim.prespin, sim.mesh, m0)
-  if norm
-    normalise(sim.prespin, sim.nxyz)
-  end
-  for i = 1:sim.nxyz
-      if sim.mu_s[i] == 0.0
-          sim.prespin[3*i-2] = 0
-          sim.prespin[3*i-1] = 0
-          sim.prespin[3*i] = 0
-      end
-  end
-  sim.spin[:] .= sim.prespin[:]
 end
 
 """
@@ -349,62 +300,6 @@ function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   return exch
 end
 
-"""
-    add_exch(sim::AtomicSim, Js::Array{Float64, 1}; name="exch")
-
-Add exchange energy to the system.
-"""
-function add_exch(sim::AtomicSim, Js::Array{Float64, 1}; name="exch")
-  nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  a,b = size(sim.mesh.ngbs)
-  if length(Js) != a
-      @error("The length of given Js is $(length(Js)) but we need an array with $a.")
-  end
-  exch = HeisenbergExchange(Js, field, energy, name)
-
-  push!(sim.interactions, exch)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return exch
-end
-
-
-"""
-    add_exch(sim::AtomicSim, J::Number; name="exch")
-
-Add exchange energy to the system.
-"""
-function add_exch(sim::AtomicSim, J::Number; name="exch")
-  a,b = size(sim.mesh.ngbs)
-  Js = zeros(a)
-  Js .= J
-  add_exch(sim, Js, name=name)
-end
-
-
-"""
-    add_exch_kagome(sim::AtomicSim, Jxy::Number, Jz::Number; name="exch")
-
-Add exchange energy to the system.
-"""
-function add_exch_kagome(sim::AtomicSim, Jxy::Number, Jz::Number; name="exch")
-  a,b = size(sim.mesh.ngbs)
-  if a!=8
-      error("The number of neigbours is not 8.")
-  end
-  Js = zeros(8)
-  Js[1:6] .= Jxy
-  Js[7:8] .= Jz
-  add_exch(sim, Js, name=name)
-end
-
 function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="rkky")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -560,31 +455,6 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
   return nothing
 end
 
-
-"""
-    add_anis_kagome(sim::AtomicSim, Ku::Float64; ax1=(-0.5,-sqrt(3)/2,0), ax2=(1,0,0), ax3=(-0.5,sqrt(3)/2,0), name="anis")
-
-Add Anisotropy for kagome system, where the energy density is given by
-
-```math
-E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
-```
-"""
-function add_anis_kagome(sim::AtomicSim, Ku::Float64; ax1=(-0.5,-sqrt(3)/2,0), ax2=(1,0,0), ax3=(-0.5,sqrt(3)/2,0), name="anis")
-  nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  anis =  KagomeAnisotropy(Ku, ax1, ax2, ax3, field, energy, name)
-  push!(sim.interactions, anis)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return anis
-end
 
 function add_cubic_anis(sim::AbstractSim, Kc::Float64; name="cubic")
   nxyz = sim.nxyz

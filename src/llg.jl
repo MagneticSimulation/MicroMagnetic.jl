@@ -229,11 +229,9 @@ function llg_stt_call_back(sim::AbstractSim, dm_dt::Array{Float64, 1}, spin::Arr
   mesh = sim.mesh
 
   effective_field(sim, spin, t)
-  if isa(sim.mesh, TriangularMesh)
-      compute_field_stt_trianglar(spin, driver.h_stt, driver.uz, mesh.dz, mesh.ngbs, sim.nxyz)
-  else
-      compute_field_stt(spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
-  end
+
+  compute_field_stt(spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
+
   llg_stt_rhs(dm_dt, spin, sim.field, driver.h_stt, driver.alpha, driver.beta, driver.gamma, sim.nxyz)
 
   return nothing
@@ -247,11 +245,9 @@ function llg_stt_cay_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, t::Fl
   mesh = sim.mesh
   omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
   effective_field(sim, sim.spin, t)
-  if isa(sim.mesh, TriangularMesh)
-      compute_field_stt_trianglar(sim.spin, driver.h_stt, driver.uz, mesh.dz, mesh.ngbs, sim.nxyz)
-  else
-      compute_field_stt(sim.spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
-  end
+
+  compute_field_stt(sim.spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
+
   llg_stt_rhs_Cay(dw_dt, sim.spin, sim.field, driver.h_stt, omega, driver.alpha, driver.beta, driver.gamma, sim.nxyz)
 
   return nothing
