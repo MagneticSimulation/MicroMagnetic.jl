@@ -1,6 +1,7 @@
 using JuMag
 using Printf
 using Test
+using NPZ
 
 function init_dw(i,j,k, dx, dy, dz)
   if i < 150
@@ -12,7 +13,7 @@ function init_dw(i,j,k, dx, dy, dz)
   end
 end
 
-mesh =  CubicMesh(nx=300)
+mesh =  CubicMeshGPU(nx=300)
 sim = Sim(mesh, name="dw_atomic")
 
 set_mu_s(sim, 1.0)
@@ -27,12 +28,4 @@ init_m0(sim, init_dw)
 
 relax(sim, stopping_dmdt=1e-5, maxsteps=1000)
 
-using Plots
-gr()
-
-xs = 1:300
-b = reshape(sim.spin, 3, sim.nxyz)
-plot(xs, b[1,:], marker=:h, markersize=3, linewidth=1, label="mx")
-plot!(xs, b[2,:], marker=:c, markersize=3, linewidth=1, label="my")
-plot!(xs, b[3,:], marker=:p, markersize=1.2, linewidth=1, label="mz")
-savefig("dw.png")
+npzwrite("dw.npy", Array(sim.spin))

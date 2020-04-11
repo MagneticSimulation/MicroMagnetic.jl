@@ -24,6 +24,8 @@ if JuMag._cuda_available.x
   include("cuda/test_ovf.jl")
   include("cuda/test_neb.jl")
 
+  include("atomistic/test_llg.jl")
+
   JuMag.cuda_using_double()
   test_zeeman(gpu=true)
   mesh =  FDMeshGPU(nx=20, ny=5, nz=3, dx=2.5e-9, dy=2.5e-9, dz=3e-9)

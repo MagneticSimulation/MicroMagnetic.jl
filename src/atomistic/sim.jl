@@ -58,10 +58,10 @@ function add_exch(sim::AtomicSimGPU, J::Array; name="exch")
     if length(J) != n_ngbs
         @error("The length of given Js is $(length(Js)) but we need an array with $a.")
     else
-        Js .= [Float(i) for i in J]
+        copyto!(Js, [Float(i) for i in J])
     end
 
-    exch = ExchangeGPU(Js, field, energy, Float(0.0), name)
+    exch = HeisenbergExchange(Js, field, energy, Float(0.0), name)
     push!(sim.interactions, exch)
     if sim.save_data
         push!(sim.saver.headers, string("E_",name))
@@ -80,7 +80,7 @@ Add exchange energy to the system.
 """
 function add_exch(sim::AtomicSimGPU, J::Number; name="exch")
     n_ngbs = sim.mesh.n_ngbs
-    Js = zeros(a)
+    Js = zeros(n_ngbs)
     Js .= J
     add_exch(sim, Js, name=name)
 end

@@ -330,7 +330,7 @@ function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi")
 end
 
 
-function add_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
+function add_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   Kus = zeros(Float, sim.nxyz)
@@ -352,7 +352,7 @@ function add_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   return anis
 end
 
-function add_cubic_anis(sim::MicroSimGPU, Kc::Float64; name="cubic")
+function add_cubic_anis(sim::AbstractSimGPU, Kc::Float64; name="cubic")
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
@@ -370,7 +370,7 @@ function add_cubic_anis(sim::MicroSimGPU, Kc::Float64; name="cubic")
 end
 
 
-function update_anis(sim::MicroSimGPU, Ku::NumberOrArrayOrFunction; name = "anis")
+function update_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; name = "anis")
   nxyz = sim.nxyz
   Kus =  zeros(Float64, nxyz)
   init_scalar!(Kus, sim.mesh, Ku)
