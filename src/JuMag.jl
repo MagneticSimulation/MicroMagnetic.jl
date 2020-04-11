@@ -77,7 +77,10 @@ end
 if _cuda_available.x
     include("cuda/head.jl")
     include("cuda/mesh.jl")
+    include("atomistic/head.jl")
     include("atomistic/mesh.jl")
+    include("atomistic/sim.jl")
+    include("atomistic/field.jl")
     include("cuda/driver.jl")
     include("cuda/sim.jl")
     include("cuda/llg.jl")

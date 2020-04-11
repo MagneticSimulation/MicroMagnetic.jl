@@ -1,6 +1,15 @@
+"""
+    Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Dopri5")
+
+Create a simulation instance for GPU mesh.
+"""
 function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Default", save_data=true)
     Float = _cuda_using_double.x ? Float64 : Float32
-    sim = MicroSimGPU{Float}()
+    if isa(mesh, FDMeshGPU)
+        sim = MicroSimGPU{Float}()
+    else
+        sim = AtomicSimGPU{Float}()
+    end
     sim.mesh = mesh
     nxyz = mesh.nx*mesh.ny*mesh.nz
 
@@ -9,7 +18,11 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Default", save
     sim.prespin = CuArrays.zeros(Float,3*nxyz)
     sim.field = CuArrays.zeros(Float,3*nxyz)
     sim.energy = CuArrays.zeros(Float,nxyz)
-    sim.Ms = CuArrays.zeros(Float, nxyz)
+    if isa(mesh, FDMeshGPU)
+        sim.Ms = CuArrays.zeros(Float, nxyz)
+    else
+        sim.mu_s = CuArrays.zeros(Float, nxyz)
+    end
     sim.total_energy = 0.0
     sim.interactions = []
     sim.save_data = save_data
@@ -51,16 +64,38 @@ function set_Ms(sim::MicroSimGPU, init::Any)
 end
 
 
-function init_m0(sim::MicroSimGPU, m0::TupleOrArrayOrFunction; norm=true)
+"""
+    init_m0(sim::AbstractSimGPU, m0::TupleOrArrayOrFunction; norm=true)
+
+Set the initial magnetization of the system. If `norm=false` the magnetization array will be not normalised.
+Examples:
+
+```julia
+   init_m0(sim, (1,1,1))
+```
+or
+```julia
+   init_m0(sim, (1,1,1), norm=false)
+```
+or
+```julia
+   function uniform_m0(i,j,k,dx,dy,dz)
+       return (0,0,1)
+   end
+   init_m0(sim, uniform_m0)
+```
+"""
+function init_m0(sim::AbstractSimGPU, m0::TupleOrArrayOrFunction; norm=true)
   Float = _cuda_using_double.x ? Float64 : Float32
   spin = zeros(Float, 3*sim.nxyz)
   init_vector!(spin, sim.mesh, m0)
   if norm
     normalise(spin, sim.nxyz)
   end
-  Ms = Array(sim.Ms)
+
+  Ms = isa(sim.mesh, FDMeshGPU) ? Array(sim.Ms) : Array(sim.mu_s)
   for i = 1:sim.nxyz
-      if abs(Ms[i]) < eps(Float)
+      if Ms[i] == 0
           spin[3*i-2] = 0
           spin[3*i-1] = 0
           spin[3*i] = 0
@@ -71,7 +106,12 @@ function init_m0(sim::MicroSimGPU, m0::TupleOrArrayOrFunction; norm=true)
   return true
 end
 
-function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction; name="zeeman")
+"""
+    add_zeeman(sim::AbstractSimGPU, H0::TupleOrArrayOrFunction; name="zeeman")
+
+Add a static Zeeman energy to the simulation.
+"""
+function add_zeeman(sim::AbstractSimGPU, H0::TupleOrArrayOrFunction; name="zeeman")
   nxyz = sim.nxyz
   T = _cuda_using_double.x ? Float64 : Float32
   field = zeros(T, 3*nxyz)

@@ -1,6 +1,7 @@
 abstract type AbstractSimGPU <:AbstractSim end
 abstract type MeshGPU <: Mesh end
 abstract type DriverGPU end
+abstract type EnergyGPU end
 abstract type MicroEnergyGPU end
 
 mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU

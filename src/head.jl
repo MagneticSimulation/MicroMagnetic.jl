@@ -28,6 +28,14 @@ means that the input parameter could be a number or an array or a function:
 """
 NumberOrArrayOrFunction = Union{Number, Array, Function}
 
+"""
+    NumberOrArray
+
+Similar to Union `NumberOrArrayOrFunction`, the Union `NumberOrArray` is designed to deal with cases that a number
+or an array is needed.
+"""
+NumberOrArray = Union{Number, Array}
+
 
 """
     TupleOrArrayOrFunction

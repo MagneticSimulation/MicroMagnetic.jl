@@ -118,7 +118,7 @@ function effective_field(anis::CubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArr
     return nothing
 end
 
-function effective_field(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   fill!(sim.driver.field, 0.0)
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)
@@ -127,7 +127,7 @@ function effective_field(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) wher
   return 0
 end
 
-function compute_system_energy(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+function compute_system_energy(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   sim.total_energy = 0
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)
@@ -138,7 +138,7 @@ function compute_system_energy(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64
 end
 
 
-function compute_fields_to_gpu(sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+function compute_fields_to_gpu(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)
 	copyto!(interaction.field, sim.field)

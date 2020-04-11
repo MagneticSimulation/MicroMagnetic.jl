@@ -272,20 +272,20 @@ function llg_rhs_stt_cpp_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{
     return nothing
 end
 
-function llg_call_back_gpu(sim::MicroSimGPU, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+function llg_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
     effective_field(sim, spin, t)
     llg_rhs_gpu(dm_dt, spin, sim.driver.field, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
     return nothing
 end
 
-function llg_cayley_call_back_gpu(sim::MicroSimGPU, dw_dt::CuArray{T, 1}, t::Float64, omega::CuArray{T, 1}) where {T<:AbstractFloat}
+function llg_cayley_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1}, t::Float64, omega::CuArray{T, 1}) where {T<:AbstractFloat}
     omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
     effective_field(sim, sim.spin, t)
     llg_rhs_cayley_gpu(dw_dt, sim.spin, sim.driver.field, omega, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
     return nothing
 end
 
-function llg_stt_call_back_gpu(sim::AbstractSim, dw_dt::CuArray{T, 1}, t::Float64, omega::CuArray{T, 1}) where {T<:AbstractFloat}
+function llg_stt_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1}, t::Float64, omega::CuArray{T, 1}) where {T<:AbstractFloat}
 
     driver = sim.driver
     mesh = sim.mesh
