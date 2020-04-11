@@ -3,22 +3,8 @@ abstract type MeshGPU <: Mesh end
 abstract type DriverGPU end
 abstract type MicroEnergyGPU end
 
-struct FDMeshGPU{T <: AbstractFloat} <: MeshGPU
-  dx::T
-  dy::T
-  dz::T
-  nx::Int64
-  ny::Int64
-  nz::Int64
-  nxyz::Int64
-  xperiodic::Bool
-  yperiodic::Bool
-  zperiodic::Bool
-  volume::T
-end
-
 mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
-  mesh::FDMeshGPU
+  mesh::MeshGPU
   driver::DriverGPU
   saver::DataSaver
   spin::CuArray{T, 1}
@@ -35,7 +21,6 @@ mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   save_data::Bool
   MicroSimGPU{T}() where {T<:AbstractFloat} = new()
 end
-
 
 mutable struct ExchangeGPU{T<:AbstractFloat} <: MicroEnergyGPU
    A::CuArray{T, 1}
