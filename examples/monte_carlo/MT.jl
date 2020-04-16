@@ -13,7 +13,7 @@ JuMag.cuda_using_double(true)
 
 function relax_system()
   mesh =  CubicMeshGPU(nx=30, ny=30, nz=30, pbc="xyz")
-  sim = MonteCarloNew(mesh, name="mc")
+  sim = MonteCarlo(mesh, name="mc")
   init_m0(sim, rand_m_uniform)
 
   add_exch(sim, J=300*k_B)
@@ -32,7 +32,7 @@ function relax_system()
   for T = 500:-20:10
       sim.T = T
       println("Running for $T ...")
-      run_sim(sim, maxsteps=100000, save_vtk_every=-1, save_m_every=-1)
+      run_sim(sim, maxsteps=100000, save_vtk_every=-1, save_m_every=1000)
 
       for i = 1:1000
           run_sim(sim, maxsteps=20, save_vtk_every=-1, save_m_every=-1)

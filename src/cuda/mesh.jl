@@ -14,6 +14,11 @@ struct FDMeshGPU{T <: AbstractFloat} <: MeshGPU
   volume::T
 end
 
+"""
+    FDMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
+
+The GPU version of the FDMesh, which is needed for GPU compuation.
+"""
 function FDMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=10, ny=10, nz=1, pbc="open")
   nxyz = nx*ny*nz
   volume = dx*dy*dz

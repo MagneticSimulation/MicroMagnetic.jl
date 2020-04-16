@@ -102,10 +102,11 @@ if _cuda_available.x
     export FDMeshGPU,
            CubicMeshGPU,
            TriangularMeshGPU,
-           MonteCarloNew,
+           MonteCarlo,
            add_thermal_noise,
            set_shape,
            set_shape_to_kagome,
+           run_step, 
            run_sim,
            add_demag_gpu,
            NEB_GPU

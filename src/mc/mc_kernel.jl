@@ -56,6 +56,38 @@ function dE_zeeman_anisotropy_cubic_mesh_kernel!(m::CuDeviceArray{T, 1}, next_m:
    return nothing
 end
 
+function total_E_zeeman_anisotropy_kernel!(m::CuDeviceArray{T, 1},
+                              shape::CuDeviceArray{Bool, 1},
+                              dE::CuDeviceArray{T, 1},
+                              Hx::T, Hy::T, Hz::T, Ku::T, Kc::T,
+                              ux::T, uy::T, uz::T,
+                              nxyz::Int64) where {T<:AbstractFloat}
+
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+
+    #bias should be 0, 1 and 2 for cubic mesh
+    if index <= nxyz
+        @inbounds si = shape[index]
+        if !si
+            @inbounds dE[index] = 0
+            return nothing
+        end
+
+        i = 3*index - 2
+        @inbounds mx =  m[i]
+        @inbounds my =  m[i+1]
+        @inbounds mz = m[i+2]
+
+        delta_E = -(mx*Hx+my*Hy+mz*Hz) #zeeman
+
+        delta_E -= Ku*CUDAnative.pow(mx*ux+my*uy+mz*uz, 2) #Anisotropy
+
+        delta_E += Kc*(CUDAnative.pow(mx,4)+CUDAnative.pow(my,4)+CUDAnative.pow(mz,4))
+
+        @inbounds dE[index] = delta_E
+   end
+   return nothing
+end
 
 function dE_zeeman_anisotropy_triangular_mesh_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T, 1},
                               shape::CuDeviceArray{Bool, 1},
@@ -158,25 +190,16 @@ function dE_zeeman_kagome_anisotropy_6fold_triangular_mesh_kernel!(m::CuDeviceAr
         u1x,u1y = (1,0)
         u2x,u2y = (-0.5,sqrt(3)/2)
         u3x,u3y = (-0.5,-sqrt(3)/2)
-# #for induced H 
-#         x=(a-25.5)-0.5*(b-25.5)
-#         y=0.5*(b-25.5)/sqrt(3)
-#         r2=x*x+y*y
-#         r=sqrt(r2)
-#         overr=1/r2/r
-#         H_x=Hx*y*overr
-#         H_y=-Hx*x*overr
-#         delta_E = -(dmx*Hx*y*overr+dmy*x*overr+dmz*Hz) #zeeman
         delta_E = -(dmx*Hx+dmy*Hy+dmz*Hz) #zeeman
 
         # @inbounds delta_E += Ku*CUDAnative.pow(m[i]*ux+m[i+1]*uy+m[i+2]*uz, 2) #Anisotropy
         # @inbounds delta_E -= Ku*CUDAnative.pow(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz, 2)
-        @inbounds mu1s=CUDAnative.pow(m[i]*u1x+m[i+1]*u1y,2) 
-        @inbounds mu2s=CUDAnative.pow(m[i]*u2x+m[i+1]*u2y,2) 
-        @inbounds mu3s=CUDAnative.pow(m[i]*u3x+m[i+1]*u3y,2) 
+        @inbounds mu1s=CUDAnative.pow(m[i]*u1x+m[i+1]*u1y,2)
+        @inbounds mu2s=CUDAnative.pow(m[i]*u2x+m[i+1]*u2y,2)
+        @inbounds mu3s=CUDAnative.pow(m[i]*u3x+m[i+1]*u3y,2)
         delta_E += K1*(mu1s*mu2s+mu2s*mu3s+mu3s*mu1s)+K2*(mu1s*mu2s*mu3s)
-        @inbounds nu1s=CUDAnative.pow(next_m[i]*u1x+next_m[i+1]*u1y,2) 
-        @inbounds nu2s=CUDAnative.pow(next_m[i]*u2x+next_m[i+1]*u2y,2) 
+        @inbounds nu1s=CUDAnative.pow(next_m[i]*u1x+next_m[i+1]*u1y,2)
+        @inbounds nu2s=CUDAnative.pow(next_m[i]*u2x+next_m[i+1]*u2y,2)
         @inbounds nu3s=CUDAnative.pow(next_m[i]*u3x+next_m[i+1]*u3y,2)
         delta_E -= K1*(nu1s*nu2s+nu2s*nu3s+nu3s*nu1s)+K2*(nu1s*nu2s*nu3s)
 
@@ -247,6 +270,70 @@ function add_dE_exch_dmi_cubic_mesh_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDe
 end
 
 
+function add_total_E_exch_dmi_cubic_mesh_kernel!(m::CuDeviceArray{T, 1},
+                              shape::CuDeviceArray{Bool, 1},
+                              dE::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},
+                              nngbs::CuDeviceArray{Int32, 2}, n_ngbs::Int64, J0::CuDeviceArray{T, 1},
+                              J1::CuDeviceArray{T, 1}, D0::CuDeviceArray{T, 2}, D1::CuDeviceArray{T, 2},
+                              nxyz::Int64) where {T<:AbstractFloat}
+
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+
+    if index <= nxyz
+
+        @inbounds si = shape[index]
+        if !si
+            @inbounds dE[index] = 0
+            return nothing
+        end
+
+        i = 3*index - 2
+        @inbounds mx = m[i]
+        @inbounds my = m[i+1]
+        @inbounds mz = m[i+2]
+
+        delta_E = 0.0
+
+        for j = 1:n_ngbs
+            @inbounds id = ngbs[j, index]
+
+            @inbounds J = J0[j]
+            @inbounds Dx = D0[1, j]
+            @inbounds Dy = D0[2, j]
+            @inbounds Dz = D0[3, j]
+
+            if id>0
+                k = 3*id-2
+                @inbounds sx = m[k]
+                @inbounds sy = m[k+1]
+                @inbounds sz = m[k+2]
+                delta_E -= J*(mx*sx + my*sy + mz*sz) #exchange
+                delta_E += volume(mx, my, mz, sx, sy, sz, Dx, Dy, Dz) #DMI
+            end
+
+
+            @inbounds J = J1[j]
+            @inbounds Dx = D1[1, j]
+            @inbounds Dy = D1[2, j]
+            @inbounds Dz = D1[3, j]
+
+            @inbounds id = nngbs[j, index]
+            if id>0
+                k = 3*id-2
+                @inbounds sx = m[k]
+                @inbounds sy = m[k+1]
+                @inbounds sz = m[k+2]
+                delta_E -= J*(mx*sx + my*sy + mz*sz) #exchange
+                delta_E += volume(mx, my, mz, sx, sy, sz, Dx, Dy, Dz) #DMI
+            end
+
+        end
+        @inbounds dE[index] += 0.5*delta_E
+    end
+   return nothing
+end
+
+
 #compute nearest exchange and dmi energy for triangular mesh, can run in parallel
 function add_dE_exch_dmi_triangular_mesh_kernel!(m::CuDeviceArray{T, 1}, next_m::CuDeviceArray{T, 1},
                               shape::CuDeviceArray{Bool, 1},
@@ -287,6 +374,53 @@ function add_dE_exch_dmi_triangular_mesh_kernel!(m::CuDeviceArray{T, 1}, next_m:
             end
         end
         @inbounds dE[index] += delta_E
+    end
+   return nothing
+end
+
+
+function add_total_E_exch_dmi_triangular_mesh_kernel!(m::CuDeviceArray{T, 1},
+                              shape::CuDeviceArray{Bool, 1},
+                              dE::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},
+                              n_ngbs::Int64, J0::CuDeviceArray{T, 1},
+                              D0::CuDeviceArray{T, 2},
+                              nxyz::Int64) where {T<:AbstractFloat}
+
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+
+    if index <= nxyz
+
+        @inbounds si = shape[index]
+        if !si
+            @inbounds dE[index] = 0
+            return nothing
+        end
+
+        i = 3*index - 2
+        @inbounds mx = m[i]
+        @inbounds my = m[i+1]
+        @inbounds mz = m[i+2]
+
+        delta_E = 0.0
+
+        for j = 1:n_ngbs
+            @inbounds id = ngbs[j, index]
+
+            @inbounds J = J0[j]
+            @inbounds Dx = D0[1, j]
+            @inbounds Dy = D0[2, j]
+            @inbounds Dz = D0[3, j]
+
+            if id>0
+                k = 3*id-2
+                @inbounds sx = m[k]
+                @inbounds sy = m[k+1]
+                @inbounds sz = m[k+2]
+                delta_E -= J*(mx*sx + my*sy + mz*sz) #exchange
+                delta_E += volume(mx, my, mz, sx, sy, sz, Dx, Dy, Dz) #DMI
+            end
+        end
+        @inbounds dE[index] += 0.5*delta_E
     end
    return nothing
 end

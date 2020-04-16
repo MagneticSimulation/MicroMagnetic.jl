@@ -8,7 +8,7 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots(figsize=(4, 3))
 
-    data = np.loadtxt("M_H_tri.txt")
+    data = np.loadtxt("M_H.txt")
 
     ax.plot(data[:, 0], data[:, 1],'o-', markersize=5, markeredgecolor='k', markerfacecolor='white')
 

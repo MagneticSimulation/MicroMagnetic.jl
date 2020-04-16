@@ -1,9 +1,9 @@
 using Random
 using WriteVTK
 
-function MonteCarloNew(mesh::Mesh; name="mc", mc_2d=false)
+function MonteCarlo(mesh::Mesh; name="mc", mc_2d=false)
     Float = _cuda_using_double.x ? Float64 : Float32
-    sim = MonteCarloNew{Float}()
+    sim = MonteCarlo{Float}()
     sim.mc_2d = mc_2d
     sim.mesh = mesh
     nxyz = mesh.nx*mesh.ny*mesh.nz
@@ -21,25 +21,26 @@ function MonteCarloNew(mesh::Mesh; name="mc", mc_2d=false)
     if isa(sim.mesh, CubicMeshGPU)
         sim.exch = ExchangeMC(CuArrays.zeros(Float, mesh.n_ngbs), CuArrays.zeros(Float, mesh.n_ngbs))
         sim.dmi = DMI_MC(CuArrays.zeros(Float, (3, mesh.n_ngbs)), CuArrays.zeros(Float, (3, mesh.n_ngbs)))
-    else
+    elseif isa(sim.mesh, TriangularMeshGPU)
         sim.exch = NearestExchangeMC(CuArrays.zeros(Float, mesh.n_ngbs))
         sim.dmi = Nearest_DMI_MC(CuArrays.zeros(Float, (3, mesh.n_ngbs)))
+    else
+        error("Only support CubicMeshGPU and TriangularMeshGPU.")
     end
     sim.zee = ZeemanMC(Float(0),Float(0),Float(0))
     sim.anis = UniformAnisotropyMC(Float(0),Float(0),Float(0),Float(1),Float(0))
 
-    headers = ["step", "time", "E_total", ("m_x", "m_y", "m_z")]
-    units = ["<>", "<s>", "<J>",("<>", "<>", "<>")]
+    headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
+    units = ["<>", "<J>",("<>", "<>", "<>")]
     results = [o::AbstractSim -> o.saver.nsteps,
-             o::AbstractSim -> o.saver.t,
-             o::AbstractSim -> o.total_energy, average_m]
+             o::AbstractSim -> o.total_energy, average_m_with_shape]
     saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
     sim.saver = saver
 
     return sim
 end
 
-function add_exch(sim::MonteCarloNew; J=1, J1=0)
+function add_exch(sim::MonteCarlo; J=1, J1=0)
     sim.exch.J .= J/k_B
     if isa(sim.mesh, CubicMeshGPU)
         sim.exch.J1 .= J1/k_B
@@ -47,7 +48,7 @@ function add_exch(sim::MonteCarloNew; J=1, J1=0)
     return nothing
 end
 
-function add_exch(sim::MonteCarloNew, Jx, Jy, Jz, Jx1, Jy1, Jz1)
+function add_exch(sim::MonteCarlo, Jx, Jy, Jz, Jx1, Jy1, Jz1)
     mesh = sim.mesh
     cubic = isa(mesh, CubicMeshGPU) ? true : false
 
@@ -67,7 +68,7 @@ function add_exch(sim::MonteCarloNew, Jx, Jy, Jz, Jx1, Jy1, Jz1)
     return nothing
 end
 
-function add_dmi_cubic(sim::MonteCarloNew, Dx::Number, Dy::Number, Dz::Number, Dx1::Number, Dy1::Number, Dz1::Number, type::String)
+function add_dmi_cubic(sim::MonteCarlo, Dx::Number, Dy::Number, Dz::Number, Dx1::Number, Dy1::Number, Dz1::Number, type::String)
     dmi = sim.dmi
     cubic = isa(sim.mesh, CubicMeshGPU) ? true : false
     if !cubic
@@ -114,7 +115,7 @@ function add_dmi_cubic(sim::MonteCarloNew, Dx::Number, Dy::Number, Dz::Number, D
     return nothing
 end
 
-function add_dmi_triangular(sim::MonteCarloNew, Dxy::Number, Dz::Number, type::String)
+function add_dmi_triangular(sim::MonteCarlo, Dxy::Number, Dz::Number, type::String)
     dmi = sim.dmi
     T = _cuda_using_double.x ? Float64 : Float32
     Dxy = Dxy/k_B
@@ -144,7 +145,7 @@ function add_dmi_triangular(sim::MonteCarloNew, Dxy::Number, Dz::Number, type::S
     return nothing
 end
 
-function add_dmi(sim::MonteCarloNew; D=1.0, D1=0.0, type="bulk")
+function add_dmi(sim::MonteCarlo; D=1.0, D1=0.0, type="bulk")
     D = Float64(D)
     D1 = Float64(D1)
     if isa(sim.mesh, CubicMeshGPU)
@@ -156,7 +157,7 @@ function add_dmi(sim::MonteCarloNew; D=1.0, D1=0.0, type="bulk")
 end
 
 #Hx, Hy, Hz in energy unit， just as J and D
-function add_zeeman(sim::MonteCarloNew; Hx=0, Hy=0, Hz=0)
+function add_zeeman(sim::MonteCarlo; Hx=0, Hy=0, Hz=0)
     zeeman = sim.zee
     zeeman.Hx = Hx/k_B
     zeeman.Hy = Hy/k_B
@@ -164,12 +165,12 @@ function add_zeeman(sim::MonteCarloNew; Hx=0, Hy=0, Hz=0)
     return nothing
 end
 
-function update_zeeman(sim::MonteCarloNew; Hx=0, Hy=0, Hz=0)
+function update_zeeman(sim::MonteCarlo; Hx=0, Hy=0, Hz=0)
     add_zeeman(sim, Hx=Hx, Hy=Hy, Hz=Hz)
     return nothing
 end
 
-function add_anis(sim::MonteCarloNew; Ku=1, Kc=0, axis=(0,0,1))
+function add_anis(sim::MonteCarlo; Ku=1, Kc=0, axis=(0,0,1))
     anis = sim.anis
     anis.Ku = Ku/k_B
     length = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
@@ -185,7 +186,7 @@ function add_anis(sim::MonteCarloNew; Ku=1, Kc=0, axis=(0,0,1))
 end
 
 """
-    add_anis_kagome(sim::MonteCarloNew, Ku::Float64)
+    add_anis_kagome(sim::MonteCarlo, Ku::Float64)
 
 Add Anisotropy for kagome system, where the energy density is given by
 
@@ -194,7 +195,7 @@ Add Anisotropy for kagome system, where the energy density is given by
 ```
 and u is one of ax1=(-0.5,-sqrt(3)/2,0), ax2=(1,0,0) and ax3=(-0.5,sqrt(3)/2,0).
 """
-function add_anis_kagome(sim::MonteCarloNew; Ku=0)
+function add_anis_kagome(sim::MonteCarlo; Ku=0)
   T = _cuda_using_double.x ? Float64 : Float32
 
   sim.anis = KagomeAnisotropyMC(T(0))
@@ -202,7 +203,7 @@ function add_anis_kagome(sim::MonteCarloNew; Ku=0)
 
   return nothing
 end
-function add_anis_kagome_6fold(sim::MonteCarloNew; K1=0,K2=0)
+function add_anis_kagome_6fold(sim::MonteCarlo; K1=0,K2=0)
   T = _cuda_using_double.x ? Float64 : Float32
 
   sim.anis = KagomeAnisotropy6FoldMC(T(0),T(0))
@@ -212,7 +213,7 @@ function add_anis_kagome_6fold(sim::MonteCarloNew; K1=0,K2=0)
   return nothing
 end
 
-function init_m0(sim::MonteCarloNew, m0::Any; norm=true)
+function init_m0(sim::MonteCarlo, m0::TupleOrArrayOrFunction; norm=true)
   Float = _cuda_using_double.x ? Float64 : Float32
   spin = zeros(Float, 3*sim.nxyz)
   init_vector!(spin, sim.mesh, m0)
@@ -252,7 +253,7 @@ function update_ngbs(mesh, shape::Array{Bool})
     return nothing
 end
 
-function set_shape(sim::MonteCarloNew, fun_Ms::Function)
+function set_shape(sim::MonteCarlo, fun_Ms::Function)
     mesh = sim.mesh
     shape = ones(Bool, mesh.nxyz)
     for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
@@ -264,7 +265,7 @@ function set_shape(sim::MonteCarloNew, fun_Ms::Function)
     return true
 end
 
-function set_shape_to_kagome(sim::MonteCarloNew)
+function set_shape_to_kagome(sim::MonteCarlo)
     mesh = sim.mesh
     shape = ones(Bool, mesh.nxyz)
     for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
@@ -279,39 +280,31 @@ function set_shape_to_kagome(sim::MonteCarloNew)
     return true
 end
 
-function run_step_cubic(sim::MonteCarloNew)
+function run_step(sim::MonteCarlo)
+
     if sim.mc_2d
         uniform_random_circle_xy(sim.nextspin, sim.rnd, sim.nxyz)
     else
         uniform_random_sphere(sim.nextspin, sim.rnd, sim.nxyz)
     end
-    run_single_step(sim, 0, true)
-    run_single_step(sim, 1, true)
-    run_single_step(sim, 2, true)
+
+    run_single_step(sim, 0)
+    run_single_step(sim, 1)
+    run_single_step(sim, 2)
     sim.steps += 1
 
     return  nothing
 end
 
-function run_step_triangular(sim::MonteCarloNew)
 
-  uniform_random_sphere(sim.nextspin, sim.rnd, sim.nxyz)
-
-  run_single_step(sim, 0, false)
-  run_single_step(sim, 1, false)
-  run_single_step(sim, 2, false)
-  sim.steps += 1
-
-  return  nothing
-end
-
-
-function run_single_step(sim::MonteCarloNew, bias::Int64, cubic::Bool)
+function run_single_step(sim::MonteCarlo, bias::Int64)
     blk, thr = CuArrays.cudims(sim.nxyz)
 
-    compute_site_energy_single(sim, bias, cubic)
-
     mesh = sim.mesh
+
+    compute_site_energy_single(sim, bias, mesh)
+
+    cubic = isa(mesh, CubicMeshGPU) ? true : false
 
     @cuda blocks=blk threads=thr  run_monte_carlo_kernel!(sim.spin, sim.nextspin, sim.rnd,
                                     sim.shape,
@@ -322,14 +315,16 @@ function run_single_step(sim::MonteCarloNew, bias::Int64, cubic::Bool)
 end
 
 
-function run_sim(sim::MonteCarloNew; maxsteps=10000, save_m_every = 10, save_vtk_every=-1, save_ovf_every=-1, ovf_format="binary8")
-    cubic = isa(sim.mesh, CubicMeshGPU) ? true : false
+function run_sim(sim::MonteCarlo; maxsteps=10000, save_m_every = 10, save_vtk_every=-1, save_ovf_every=-1, ovf_format="binary8")
+
     for i=1:maxsteps
 
         if save_m_every>0
             if sim.steps%save_m_every == 0
                 energy = compute_system_energy(sim)
-                @info @sprintf("step=%5d  total_energy=%g", sim.steps, energy)
+                @info @sprintf("step=%5d  total_energy=%g J", sim.steps, energy)
+                sim.saver.nsteps += 1
+                write_data(sim)
             end
         end
 
@@ -345,11 +340,7 @@ function run_sim(sim::MonteCarloNew; maxsteps=10000, save_m_every = 10, save_vtk
             end
         end
 
-        if cubic
-           run_step_cubic(sim)
-        else
-           run_step_triangular(sim)
-        end
+        run_step(sim)
 
     end
 end
@@ -392,29 +383,6 @@ function compute_clock_number(m::Array{T, 1}, cn::Array{Float32, 1},shape::Array
     end#if
   end
 
-#     rij=zeros(Float32, 6,2)
-#     rij[1,:].=(1,0)
-#     rij[2,:].=( 0.5,0.5*sqrt(3))
-#     rij[3,:].=(-0.5,0.5*sqrt(3))
-#     rij[4,:].=(-1,0)
-#     rij[5,:].=(-0.5,-0.5*sqrt(3))
-#     rij[6,:].=( 0.5,-0.5*sqrt(3))
-#     for i = 1:mesh.nxyz
-#         mx=m[i*3-2]
-#         my=m[i*3-1]
-#         mz=m[i*3]
-#         for j=1:6
-#           id = ngbs[j, i]
-#           if id >0
-#             mnbx=m[id*3-2]
-#             mnby=m[id*3-1]
-#             mnbz=m[id*3]
-# #rij[j,1](m_z mnb_x -m_x mnb_z)-rij[j,2](m_y mnb_z - m_z mnb_y) 
-#             cn[i]+=rij[j,1]*(mz*mnbx-mx*mnbz)-rij[j,2]*(my*mnbz-mz*mnby)
-#             # cn[i]+=1
-#           end
-#         end
-#     end
 end
 
 function save_vtk_clocknum(sim::AbstractSimGPU,cn::Array{Float32, 1}, fname::String; fields::Array{String, 1} = String[])

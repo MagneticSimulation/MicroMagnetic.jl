@@ -1,6 +1,6 @@
 
 """
-    set_mu_s(sim::MicroSim, Ms::NumberOrArrayOrFunction)
+    set_mu_s(sim::AtomicSimGPU, Ms::NumberOrArrayOrFunction)
 
 Set magnetic moment mu_s of the studied system. For example,
 

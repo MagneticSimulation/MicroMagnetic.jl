@@ -13,7 +13,7 @@ JuMag.cuda_using_double(true)
 
 function relax_system()
   mesh =  TriangularMeshGPU(nx=30, ny=30, nz=30, pbc="xyz")
-  sim = MonteCarloNew(mesh, name="mc")
+  sim = MonteCarlo(mesh, name="mc")
 
   #set_shape_to_kagome(sim)
 

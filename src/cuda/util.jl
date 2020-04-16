@@ -240,6 +240,12 @@ function average_m(sim::AbstractSimGPU, shape::CuArray{Bool, 1})
   return Tuple(sum(b, dims=2)./sum(shape))
 end
 
+function average_m_with_shape(sim::AbstractSimGPU)
+    shape = sim.shape
+  b = reshape(sim.spin, 3, sim.nxyz)
+  return Tuple(sum(b, dims=2)./sum(shape))
+end
+
 function compute_skyrmion_number(v::Array{T, 1}, m::Array{T, 1}, mesh::TriangularMeshGPU) where {T<:AbstractFloat}
     nx,ny = mesh.nx, mesh.ny
     ngbs = Array(mesh.ngbs)

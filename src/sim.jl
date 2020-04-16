@@ -433,14 +433,13 @@ end
 update anisotropy constant Ku according to its name.
 
 Example:
-
 ```julia
     mesh = FDMesh(nx=200, ny=200, nz=12, dx=5e-9, dy=5e-9, dz=5e-9)
     sim = Sim(mesh)
     add_anis(sim, 3e4, axis = (0,0,1), name="K1")
     add_anis(sim, 1e5, axis = (1,0,0), name="K2")
     update_anis(sim, 5e4, name="K2")  #update anisotropy K2
-````
+```
 """
 function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
   nxyz = sim.nxyz
@@ -539,7 +538,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
           write_data(sim)
       end
     if save_vtk_every > 0 && i%save_vtk_every == 0
-        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+        save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
     end
     if save_ovf_every > 0 && i%save_ovf_every == 0
       save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
@@ -557,7 +556,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
           write_data(sim)
       end
       if save_vtk_every > 0
-          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+          save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
       end
       if save_ovf_every > 0
         save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
