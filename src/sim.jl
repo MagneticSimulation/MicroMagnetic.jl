@@ -68,6 +68,23 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     return true
 end
 
+"""
+    set_Ms_cylindrical(sim::MicroSim, Ms::Number, axis=ex)
+
+Set the saturation magnetization Ms of the studied system to a cylindrical shape,
+axis could be JuMag.ex, JuMag.ey or JuMag.ez.
+"""
+function set_Ms_cylindrical(sim::MicroSim, Ms::Number, axis=ez)
+    geo = create_cylinder(sim.mesh, axis)
+    for i in 1:sim.nxyz
+        if geo.shape[i]
+            sim.Ms[i] = Ms
+        end
+    end
+    return true
+end
+
+
 function set_ux(sim::AbstractSim, init_ux)
     init_scalar!(sim.driver.ux, sim.mesh, init_ux)
 end

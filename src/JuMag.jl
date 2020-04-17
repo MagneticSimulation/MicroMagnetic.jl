@@ -17,11 +17,13 @@ export init_m0,
        add_dmi,
        add_exch, add_exch_kagome,
        add_anis, add_cubic_anis,
-       add_demag, add_exch_rkky, add_anis_kagome,add_anis_kagome_6fold,
-       update_zeeman,update_anis,add_exch_vector,
+       add_demag, add_exch_rkky, add_anis_kagome, add_anis_kagome_6fold,
+       update_zeeman,update_anis, add_exch_vector,
        run_until, advance_step, relax,
        save_vtk, save_m, ovf2vtk,
-       FDMesh, set_Ms, Sim,
+       FDMesh,
+       set_Ms, set_Ms_cylindrical,
+       Sim,
        CubicMesh,
        TriangularMesh,
        set_mu_s, set_mu_s_kagome,
@@ -46,6 +48,7 @@ end
 
 include("const.jl")
 include("mesh.jl")
+include("geometry.jl")
 include("head.jl")
 include("util.jl")
 include("driver.jl")
@@ -106,7 +109,7 @@ if _cuda_available.x
            add_thermal_noise,
            set_shape,
            set_shape_to_kagome,
-           run_step, 
+           run_step,
            run_sim,
            add_demag_gpu,
            NEB_GPU

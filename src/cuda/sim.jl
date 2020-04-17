@@ -55,11 +55,31 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Default", save
 
 end
 
-function set_Ms(sim::MicroSimGPU, init::Any)
+"""
+    set_Ms(sim::MicroSimGPU, Ms::NumberOrArrayOrFunction)
+"""
+function set_Ms(sim::MicroSimGPU, Ms::NumberOrArrayOrFunction)
     Float = _cuda_using_double.x ? Float64 : Float32
     Ms = zeros(Float, sim.nxyz)
-    init_scalar!(Ms, sim.mesh, init)
+    init_scalar!(Ms, sim.mesh, Ms)
     copyto!(sim.Ms, Ms)
+    return true
+end
+
+
+"""
+    set_Ms_cylindrical(sim::MicroSimGPU, Ms::Number, axis=ex)
+"""
+function set_Ms_cylindrical(sim::MicroSimGPU, Ms::Number, axis=ez)
+    geo = create_cylinder(sim.mesh, axis)
+    Float = _cuda_using_double.x ? Float64 : Float32
+    Ms_array = zeros(Float, sim.nxyz)
+    for i in 1:sim.nxyz
+        if geo.shape[i]
+            Ms_array[i] = Ms
+        end
+    end
+    copyto!(sim.Ms, Ms_array)
     return true
 end
 
