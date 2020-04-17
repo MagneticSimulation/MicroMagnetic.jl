@@ -60,9 +60,9 @@ end
 """
 function set_Ms(sim::MicroSimGPU, Ms::NumberOrArrayOrFunction)
     Float = _cuda_using_double.x ? Float64 : Float32
-    Ms = zeros(Float, sim.nxyz)
-    init_scalar!(Ms, sim.mesh, Ms)
-    copyto!(sim.Ms, Ms)
+    Ms_a = zeros(Float, sim.nxyz)
+    init_scalar!(Ms_a, sim.mesh, Ms)
+    copyto!(sim.Ms, Ms_a)
     return true
 end
 
