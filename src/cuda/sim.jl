@@ -1,9 +1,9 @@
 """
-    Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Dopri5")
+    Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince")
 
 Create a simulation instance for GPU mesh.
 """
-function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="Default", save_data=true)
+function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
     Float = _cuda_using_double.x ? Float64 : Float32
     if isa(mesh, FDMeshGPU)
         sim = MicroSimGPU{Float}()

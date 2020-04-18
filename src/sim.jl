@@ -1,9 +1,9 @@
 """
-    Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="Dopri5")
+    Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
 
 Create a simulation instance for given mesh.
 """
-function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="Dopri5", save_data=true)
+function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
 
     sim = MicroSim()
 
