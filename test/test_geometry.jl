@@ -3,16 +3,15 @@ using Test
 
 function test_geo(;gpu=false)
     Nz = 10
-    mesh =  FDMesh(dx=2e-9, dy=1e-9, dz=2e-9, nx=30, ny=40, nz=Nz)
+    mesh =  FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=30, ny=30, nz=Nz)
     geo = JuMag.create_cylinder(mesh, JuMag.ex)
     @test isapprox(geo.xc,30e-9)
-    @test isapprox(geo.yc,20e-9)
+    @test isapprox(geo.yc,30e-9)
     @test isapprox(geo.zc,10e-9)
     geo = JuMag.create_cylinder(mesh, JuMag.ez)
-    a = 30e-9
-    b = 20e-9
+    r = 30e-9
 
-    ratio = sum(geo.shape)/Nz*mesh.dx*mesh.dy/(pi*a*b)
+    ratio = sum(geo.shape)/Nz*mesh.dx*mesh.dy/(pi*r*r)
     @test ratio > 0.997
     println(ratio)
 end

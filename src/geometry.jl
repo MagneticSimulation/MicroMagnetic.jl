@@ -8,8 +8,8 @@ abstract type Geometry end
 
 mutable struct Cylinder <: Geometry
     axis::Axis
-    r_a::Float64
-    r_b::Float64
+    r1::Float64  #radius of one surface (+z, +y, +x)
+    r2::Float64  #radius of the other surface (-z, -y, -x)
     h::Float64
     xc :: Float64
     yc :: Float64
@@ -18,7 +18,7 @@ mutable struct Cylinder <: Geometry
     Cylinder() = new()
 end
 
-function create_cylinder(mesh::Mesh, axis::Axis)
+function create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0)
     geo = Cylinder()
     geo.axis = axis
     geo.xc =  mesh.nx*mesh.dx/2.0  #[0, nx*dx]
@@ -26,38 +26,53 @@ function create_cylinder(mesh::Mesh, axis::Axis)
     geo.zc =  mesh.nz*mesh.dz/2.0  #[0, nz*dz]
     geo.shape = zeros(Bool, mesh.nxyz)
     if axis == ez
-        r_a = geo.xc
-        r_b = geo.yc
+        R = min(geo.xc, geo.yc)
+        geo.r1 = r1 > 0 ? r1 : R
+        geo.r2 = r2 > 0 ? r2 : R
         h = 2*geo.zc
+        slope = (geo.r1 - geo.r2)/h
+        b = (geo.r1 + geo.r2)/2
         for i=1:mesh.nx, j=1:mesh.ny, k=1:mesh.nz
-            r1 = (i-0.5)*mesh.dx - geo.xc
-            r2 = (j-0.5)*mesh.dy - geo.yc
+            x = (i-0.5)*mesh.dx - geo.xc
+            y = (j-0.5)*mesh.dy - geo.yc
+            z = (k-0.5)*mesh.dz - geo.zc
+            r = sqrt(x^2+y^2)
             id = index(i,j,k, mesh.nx, mesh.ny, mesh.nz)
-            if (r1/r_a)^2+(r2/r_b)^2<=1
+            if slope*z + b > r
                 geo.shape[id] = true
             end
         end
     elseif axis == ex
-        r_a = geo.yc
-        r_b = geo.zc
+        R = min(geo.yc, geo.zc)
+        geo.r1 = r1 > 0 ? r1 : R
+        geo.r2 = r2 > 0 ? r2 : R
         h = 2*geo.xc
+        slope = (geo.r1 - geo.r2)/h
+        b = (geo.r1 + geo.r2)/2
         for i=1:mesh.nx, j=1:mesh.ny, k=1:mesh.nz
-            r1 = (j-0.5)*mesh.dy - geo.yc
-            r2 = (k-0.5)*mesh.dz - geo.zc
+            x = (i-0.5)*mesh.dx - geo.xc
+            y = (j-0.5)*mesh.dy - geo.yc
+            z = (k-0.5)*mesh.dz - geo.zc
+            r = sqrt(z^2+y^2)
             id = index(i,j,k, mesh.nx, mesh.ny, mesh.nz)
-            if (r1/r_a)^2+(r2/r_b)^2<=1
+            if slope*x + b > r
                 geo.shape[id] = true
             end
         end
     elseif axis == ey
-        r_a = geo.zc
-        r_b = geo.xc
+        R = min(geo.xc, geo.yc)
+        geo.r1 = r1 > 0 ? r1 : R
+        geo.r2 = r2 > 0 ? r2 : R
         h = 2*geo.yc
+        slope = (geo.r1 - geo.r2)/h
+        b = (geo.r1 + geo.r2)/2
         for i=1:mesh.nx, j=1:mesh.ny, k=1:mesh.nz
-            r1 = (k-0.5)*mesh.dz - geo.zc
-            r2 = (i-0.5)*mesh.dx - geo.xc
+            x = (i-0.5)*mesh.dx - geo.xc
+            y = (j-0.5)*mesh.dy - geo.yc
+            z = (k-0.5)*mesh.dz - geo.zc
+            r = sqrt(x^2+z^2)
             id = index(i,j,k, mesh.nx, mesh.ny, mesh.nz)
-            if (r1/r_a)^2+(r2/r_b)^2<=1
+            if slope*y + b > r
                 geo.shape[id] = true
             end
         end

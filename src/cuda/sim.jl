@@ -68,10 +68,10 @@ end
 
 
 """
-    set_Ms_cylindrical(sim::MicroSimGPU, Ms::Number, axis=ex)
+    set_Ms_cylindrical(sim::MicroSimGPU, Ms::Number; axis=ez, r1=0, r2=0)
 """
-function set_Ms_cylindrical(sim::MicroSimGPU, Ms::Number, axis=ez)
-    geo = create_cylinder(sim.mesh, axis)
+function set_Ms_cylindrical(sim::MicroSimGPU, Ms::Number; axis=ez, r1=0, r2=0)
+    geo = create_cylinder(sim.mesh, axis, r1=r1, r2=r2)
     Float = _cuda_using_double.x ? Float64 : Float32
     Ms_array = zeros(Float, sim.nxyz)
     for i in 1:sim.nxyz
