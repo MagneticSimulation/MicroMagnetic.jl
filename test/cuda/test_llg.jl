@@ -1,8 +1,7 @@
 using JuMag
 using Test
 
-JuMag.cuda_using_double(false)
-
+JuMag.cuda_using_double(true)
 
 function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     precession = gamma / (1 + alpha*alpha)
@@ -20,6 +19,7 @@ mesh =  FDMeshGPU(nx=1, ny=1, dx=1e-9)
 sim = Sim(mesh, name="spin")
 
 set_Ms(sim, 8e5)
+sim.driver.ode.tol = 1e-8
 sim.driver.alpha = 0.1
 sim.driver.gamma = 2.21e5
 

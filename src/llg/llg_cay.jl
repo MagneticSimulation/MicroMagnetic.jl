@@ -4,10 +4,11 @@ function llg_rhs_Cay(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Fl
     j = 3*i+1
     a = gamma/(1+alpha*alpha)
     b = alpha*a
+    mm = m[j]*m[j] + m[j+1]*m[j+1] + m[j+2]*m[j+2]
     mh = m[j]*h[j] + m[j+1]*h[j+1] + m[j+2]*h[j+2]
-    h1 = h[j] - mh*m[j]
-    h2 = h[j+1] - mh*m[j+1]
-    h3 = h[j+2] - mh*m[j+2]
+    h1 = mm*h[j] - mh*m[j]
+    h2 = mm*h[j+1] - mh*m[j+1]
+    h3 = mm*h[j+2] - mh*m[j+2]
     f1 = a*h1*precession + b*cross_x(m[j],m[j+1],m[j+2], h1,h2,h3)
     f2 = a*h2*precession + b*cross_y(m[j],m[j+1],m[j+2], h1,h2,h3)
     f3 = a*h3*precession + b*cross_z(m[j],m[j+1],m[j+2], h1,h2,h3)
@@ -33,15 +34,16 @@ function llg_stt_rhs_Cay(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Arra
     hx_stt, hy_stt, hz_stt = h_stt[j], h_stt[j+1], h_stt[j+2]
     ox, oy, oz = omega[j], omega[j+1], omega[j+2]
 
+    mm = mx*mx + my*my + mz*mz
 	mh = mx*hx + my*hy + mz*hz
-    hpx = hx - mh*mx
-    hpy = hy - mh*my
-    hpz = hz - mh*mz
+    hpx = mm*hx - mh*mx
+    hpy = mm*hy - mh*my
+    hpz = mm*hz - mh*mz
 
     mht = mx*hx_stt + my*hy_stt + mz*hz_stt
-	hpx_stt = hx_stt - mht*mx;
-    hpy_stt = hy_stt - mht*my;
-    hpz_stt = hz_stt - mht*mz;
+	hpx_stt = mm*hx_stt - mht*mx;
+    hpy_stt = mm*hy_stt - mht*my;
+    hpz_stt = mm*hz_stt - mht*mz;
 
     fx = a*hx + u*(beta-alpha)*hpx_stt
     fy = a*hy + u*(beta-alpha)*hpy_stt

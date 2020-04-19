@@ -16,9 +16,9 @@ function llg_rhs_kernal!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
         @inbounds mz = m[j+2]
         mm = mx*mx + my*my + mz*mz
         @inbounds mh = mx*h[j] + my*h[j+1] + mz*h[j+2]
-        @inbounds h1 = h[j] - mh*mx
-        @inbounds h2 = h[j+1] - mh*my
-        @inbounds h3 = h[j+2] - mh*mz
+        @inbounds h1 = mm*h[j] - mh*mx
+        @inbounds h2 = mm*h[j+1] - mh*my
+        @inbounds h3 = mm*h[j+2] - mh*mz
 
         f1, f2, f3 = T(0), T(0), T(0)
         if precession
@@ -126,7 +126,6 @@ function compute_field_stt_gpu(m::CuArray{T, 1}, h_stt::CuArray{T, 1}, Ms::CuArr
     return nothing
 end
 
-
 """
 CUDA kernal to compute the STT torque and add it to dm/dt:
     dm/dt += (1+alpha*beta)/(1+alpha^2)*tau - (beta-alpha)/(1+alpha^2)*(m x tau)
@@ -205,9 +204,9 @@ function add_cpp_rhs_kernal!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
         @inbounds mz = m[j+2]
         mm = mx*mx + my*my + mz*mz
         mpt = mx*px + my*py + mz*pz
-        @inbounds hp1 = px-mpt*mx;
-        @inbounds hp2 = py-mpt*my;
-        @inbounds hp3 = pz-mpt*mz;
+        @inbounds hp1 = mm*px-mpt*mx;
+        @inbounds hp2 = mm*py-mpt*my;
+        @inbounds hp3 = mm*pz-mpt*mz;
 
         mth1 = cross_x(mx, my, mz, hp1, hp2, hp3)
         mth2 = cross_y(mx, my, mz, hp1, hp2, hp3)

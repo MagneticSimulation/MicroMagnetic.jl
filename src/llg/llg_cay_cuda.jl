@@ -9,10 +9,11 @@ function llg_rhs_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 
         @inbounds mx = m[j]
         @inbounds my = m[j+1]
         @inbounds mz = m[j+2]
+        mm = mx*mx + my*my + mz*mz
         @inbounds mh = mx*h[j] + my*h[j+1] + mz*h[j+2]
-        @inbounds h1 = h[j] - mh*mx
-        @inbounds h2 = h[j+1] - mh*my
-        @inbounds h3 = h[j+2] - mh*mz
+        @inbounds h1 = mm*h[j] - mh*mx
+        @inbounds h2 = mm*h[j+1] - mh*my
+        @inbounds h3 = mm*h[j+2] - mh*mz
         f1 = -a*h1*precession - b*cross_x(mx,my,mz, h1,h2,h3)
         f2 = -a*h2*precession - b*cross_y(mx,my,mz, h1,h2,h3)
         f3 = -a*h3*precession - b*cross_z(mx,my,mz, h1,h2,h3)
@@ -60,15 +61,16 @@ function llg_rhs_stt_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray
         @inbounds mx = m[j]
         @inbounds my = m[j+1]
         @inbounds mz = m[j+2]
+        mm = mx*mx + my*my + mz*mz
         @inbounds mh = mx*h[j] + my*h[j+1] + mz*h[j+2]
-        @inbounds h1 = h[j] - mh*mx
-        @inbounds h2 = h[j+1] - mh*my
-        @inbounds h3 = h[j+2] - mh*mz
+        @inbounds h1 = mm*h[j] - mh*mx
+        @inbounds h2 = mm*h[j+1] - mh*my
+        @inbounds h3 = mm*h[j+2] - mh*mz
 
         @inbounds mht = mx*h_stt[j] + my*h_stt[j+1] + mz*h_stt[j+2]
-        @inbounds ht1 = h_stt[j] - mht*mx;
-        @inbounds ht2 = h_stt[j+1] - mht*my;
-        @inbounds ht3 = h_stt[j+2] - mht*mz;
+        @inbounds ht1 = mm*h_stt[j] - mht*mx;
+        @inbounds ht2 = mm*h_stt[j+1] - mht*my;
+        @inbounds ht3 = mm*h_stt[j+2] - mht*mz;
 
         f1 = a*h1 + u*(beta-alpha)*ht1
 	    f2 = a*h2 + u*(beta-alpha)*ht2
@@ -136,20 +138,21 @@ function llg_rhs_stt_cpp_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceA
         @inbounds mx = m[j]
         @inbounds my = m[j+1]
         @inbounds mz = m[j+2]
+        mm = mx*mx + my*my + mz*mz
         @inbounds mh = mx*h[j] + my*h[j+1] + mz*h[j+2]
-        @inbounds h1 = h[j] - mh*mx
-        @inbounds h2 = h[j+1] - mh*my
-        @inbounds h3 = h[j+2] - mh*mz
+        @inbounds h1 = mm*h[j] - mh*mx
+        @inbounds h2 = mm*h[j+1] - mh*my
+        @inbounds h3 = mm*h[j+2] - mh*mz
 
         @inbounds mht = mx*h_stt[j] + my*h_stt[j+1] + mz*h_stt[j+2]
-        @inbounds ht1 = h_stt[j] - mht*mx;
-        @inbounds ht2 = h_stt[j+1] - mht*my;
-        @inbounds ht3 = h_stt[j+2] - mht*mz;
+        @inbounds ht1 = mm*h_stt[j] - mht*mx;
+        @inbounds ht2 = mm*h_stt[j+1] - mht*my;
+        @inbounds ht3 = mm*h_stt[j+2] - mht*mz;
 
         mpt = mx*px + my*py + mz*pz
-        @inbounds hp1 = px-mpt*mx;
-        @inbounds hp2 = py-mpt*my;
-        @inbounds hp3 = pz-mpt*mz;
+        @inbounds hp1 = mm*px-mpt*mx;
+        @inbounds hp2 = mm*py-mpt*my;
+        @inbounds hp3 = mm*pz-mpt*mz;
 
         f1 = a*h1 + u*(beta-alpha)*ht1 + u*(bj-alpha*aj_)*hp1
         f2 = a*h2 + u*(beta-alpha)*ht2 + u*(bj-alpha*aj_)*hp2
