@@ -85,7 +85,7 @@ function set_Ms_cylindrical(sim::MicroSimGPU, Ms::Number; axis=ez, r1=0, r2=0)
 end
 
 
-function set_pins(sim::MicroSimGPU, ids::ArrayOrFunction)
+function set_pinning(sim::MicroSimGPU, ids::ArrayOrFunction)
     pins = zeros(Bool, sim.nxyz)
     init_scalar!(pins, sim.mesh, ids)
     copyto!(sim.pins, pins)

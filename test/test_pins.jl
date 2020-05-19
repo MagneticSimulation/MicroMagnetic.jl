@@ -26,7 +26,7 @@ function relax_system(mesh; driver="LLG")
         sim.driver.alpha = 0.5
     end
     set_Ms(sim, 8.6e5)
-    set_pins(sim, pinning_boundary)
+    set_pinning(sim, pinning_boundary)
 
     add_exch(sim, 1.3e-11)
     #add_anis(sim, 1e5, axis=(1,0,0))

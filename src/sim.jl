@@ -87,7 +87,7 @@ end
 
 
 """
-    set_pins(sim::MicroSim, ids::ArrayOrFunction)
+    set_pinning(sim::MicroSim, ids::ArrayOrFunction)
 
 Pinning the spins at the given ids.
 
@@ -98,10 +98,10 @@ function pinning_boundary(i,j,k,dx,dy,dz)
     end
     return false
 end
-set_pins(sim, pinning_boundary)
+set_pinning(sim, pinning_boundary)
 ```
 """
-function set_pins(sim::MicroSim, ids::ArrayOrFunction)
+function set_pinning(sim::MicroSim, ids::ArrayOrFunction)
     init_scalar!(sim.pins, sim.mesh, ids)
     return true
 end
