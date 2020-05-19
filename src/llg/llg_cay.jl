@@ -1,7 +1,15 @@
 function llg_rhs_Cay(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float64, 1},
-                 omega::Array{Float64, 1}, alpha::Float64, gamma::Float64, precession::Bool, N::Int64)
+                 omega::Array{Float64, 1}, pins::Array{Bool, 1},
+                 alpha::Float64, gamma::Float64, precession::Bool, N::Int64)
   for i = 0:N-1
-    j = 3*i+1
+      j = 3*i+1
+      if pins[i+1]
+          dw_dt[j] = 0
+          dw_dt[j+1] = 0
+          dw_dt[j+2] = 0
+          continue
+      end
+
     a = gamma/(1+alpha*alpha)
     b = alpha*a
     mm = m[j]*m[j] + m[j+1]*m[j+1] + m[j+2]*m[j+2]
@@ -22,10 +30,17 @@ end
 
 
 function llg_stt_rhs_Cay(dw_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float64, 1},
-                     h_stt::Array{Float64, 1}, omega::Array{Float64, 1}, alpha::Float64,
-                     beta::Float64, gamma::Float64, N::Int64)
+                     h_stt::Array{Float64, 1}, omega::Array{Float64, 1}, pins::Array{Bool, 1},
+                     alpha::Float64, beta::Float64, gamma::Float64, N::Int64)
   for i = 1:N
     j = 3*i-2
+    if pins[i]
+        dw_dt[j] = 0
+        dw_dt[j+1] = 0
+        dw_dt[j+2] = 0
+        continue
+    end
+
     a = gamma/(1+alpha*alpha)
     b = alpha*a
 	u = 1.0/(1+alpha*alpha)
@@ -68,7 +83,7 @@ function llg_cay_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, t::Float6
 
   omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
   effective_field(sim, sim.spin, t)
-  llg_rhs_Cay(dw_dt, sim.spin, sim.field, omega, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
+  llg_rhs_Cay(dw_dt, sim.spin, sim.field, omega, sim.pins, im.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
 
   return nothing
 
@@ -84,7 +99,7 @@ function llg_stt_cay_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, t::Fl
 
   compute_field_stt(sim.spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
 
-  llg_stt_rhs_Cay(dw_dt, sim.spin, sim.field, driver.h_stt, omega, driver.alpha, driver.beta, driver.gamma, sim.nxyz)
+  llg_stt_rhs_Cay(dw_dt, sim.spin, sim.field, driver.h_stt, omega, sim.pins, driver.alpha, driver.beta, driver.gamma, sim.nxyz)
 
   return nothing
 

@@ -10,7 +10,21 @@ function  init_scalar!(v::Array{T1, 1}, mesh::Mesh, init::Array{T2, 1}) where {T
     return nothing
 end
 
+function  init_scalar!(v::Array{Bool, 1}, mesh::Mesh, init::Array{Bool, 1})
+    v .= init
+    return nothing
+end
+
 function init_scalar!(v::Array{T, 1}, mesh::Mesh, init_fun::Function) where {T<:AbstractFloat}
+    mesh = mesh
+    for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
+        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        v[id] = init_fun(i, j, k, mesh.dx, mesh.dy, mesh.dz)
+    end
+    return true
+end
+
+function init_scalar!(v::Array{Bool, 1}, mesh::Mesh, init_fun::Function)
     mesh = mesh
     for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)

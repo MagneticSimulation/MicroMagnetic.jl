@@ -23,6 +23,7 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince"
     else
         sim.mu_s = CuArrays.zeros(Float, nxyz)
     end
+    sim.pins = CuArrays.zeros(Bool, nxyz)
     sim.total_energy = 0.0
     sim.interactions = []
     sim.save_data = save_data
@@ -83,6 +84,13 @@ function set_Ms_cylindrical(sim::MicroSimGPU, Ms::Number; axis=ez, r1=0, r2=0)
     return true
 end
 
+
+function set_pins(sim::MicroSimGPU, ids::ArrayOrFunction)
+    pins = zeros(Bool, sim.nxyz)
+    init_scalar!(pins, sim.mesh, ids)
+    copyto!(sim.pins, pins)
+    return true
+end
 
 """
     init_m0(sim::AbstractSimGPU, m0::TupleOrArrayOrFunction; norm=true)

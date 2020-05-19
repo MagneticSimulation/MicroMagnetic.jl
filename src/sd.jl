@@ -73,7 +73,7 @@ function search_tau(sim::AbstractSim)
     E2 = sum(sim.energy)
     if E1<E2
       a = tau1
-    else 
+    else
       b = tau2
     end
     if b-a<1e-14
@@ -144,6 +144,9 @@ function run_step(sim::AbstractSim, driver::EnergyMinimization)
   gk = driver.gk
   tau = driver.tau
   for i=0:sim.nxyz-1
+      if sim.pins[i+1]
+          continue
+      end
       j = 3*i+1
       fx,fy,fz = cross_product(m[j],m[j+1],m[j+2],h[j],h[j+1],h[j+2])
       factor = 0.25*(fx*fx+fy*fy+fz*fz)*tau^2

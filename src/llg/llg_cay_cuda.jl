@@ -1,9 +1,15 @@
 function llg_rhs_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
-                        h::CuDeviceArray{T, 1}, omega::CuDeviceArray{T, 1}, alpha::T,
-                        gamma::T, precession::Bool, N::Int64) where {T<:AbstractFloat}
+                        h::CuDeviceArray{T, 1}, omega::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1},
+                        alpha::T, gamma::T, precession::Bool, N::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if 0 < index <= N
         j = 3*index-2
+        if pins[index]
+            @inbounds dm_dt[j] = 0
+            @inbounds dm_dt[j+1] = 0
+            @inbounds dm_dt[j+2] = 0
+            return nothing
+        end
         a = -gamma/(1+alpha*alpha)
         b = alpha*a
         @inbounds mx = m[j]
@@ -40,7 +46,7 @@ function llg_cayley_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1}, t::
 
     blk, thr = CuArrays.cudims(N)
     @cuda blocks=blk threads=thr llg_rhs_cayley_kernal!(dw_dt, sim.spin, driver.field,
-                                                        omega, driver.alpha, driver.gamma,
+                                                        omega, sim.pins, driver.alpha, driver.gamma,
                                                         driver.precession, N)
 
      return nothing
@@ -49,11 +55,18 @@ end
 
 function llg_rhs_stt_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                      h::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1},
-                     omega::CuDeviceArray{T, 1}, alpha::T, beta::T,
+                     omega::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1}, alpha::T, beta::T,
                      gamma::T, N::Int64) where { T<:AbstractFloat }
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if 0 < index <= N
         j = 3*index-2
+        if pins[index]
+            @inbounds dm_dt[j] = 0
+            @inbounds dm_dt[j+1] = 0
+            @inbounds dm_dt[j+2] = 0
+            return nothing
+        end
+
         a = gamma/(1+alpha*alpha)
         b = alpha*a
         u::T = 1.0/(1+alpha*alpha)
@@ -114,7 +127,7 @@ function llg_stt_cayley_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1},
     compute_field_stt_gpu(sim.spin, driver.h_stt, sim.Ms, driver.ux, driver.uy, driver.uz, T(ut),
                        mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny, mesh.nz,
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, sim.nxyz)
-    llg_rhs_stt_cayley_gpu(dw_dt, sim.spin, driver.field, driver.h_stt, omega, driver.alpha,
+    llg_rhs_stt_cayley_gpu(dw_dt, sim.spin, driver.field, driver.h_stt, omega, sim.pins, driver.alpha,
                            driver.beta, driver.gamma, sim.nxyz)
 
     return nothing
@@ -123,12 +136,19 @@ end
 
 function llg_rhs_stt_cpp_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                      h::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1},
-                     omega::CuDeviceArray{T, 1}, aj::CuDeviceArray{T, 1},
+                     omega::CuDeviceArray{T, 1}, aj::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1},
                      px::T, py::T, pz::T, alpha::T, beta::T, bj::T,
                      gamma::T, N::Int64) where { T<:AbstractFloat }
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if 0 < index <= N
         j = 3*index-2
+        if pins[index]
+            @inbounds dm_dt[j] = 0
+            @inbounds dm_dt[j+1] = 0
+            @inbounds dm_dt[j+2] = 0
+            return nothing
+        end
+
         a = gamma/(1+alpha*alpha)
         b = alpha*a
         u::T = 1.0/(1+alpha*alpha)
@@ -179,10 +199,10 @@ function llg_rhs_stt_cpp_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceA
 end
 
 function llg_rhs_stt_cpp_cayley_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1}, h_stt::CuArray{T, 1},
-                 omega::CuArray{T, 1}, aj::CuArray{T, 1}, p::Tuple, alpha::T, beta::T, bj::T, gamma::T, N::Int64) where {T<:AbstractFloat}
+                 omega::CuArray{T, 1}, aj::CuArray{T, 1}, pins::CuArray{Bool, 1}, p::Tuple, alpha::T, beta::T, bj::T, gamma::T, N::Int64) where {T<:AbstractFloat}
     blk, thr = CuArrays.cudims(N)
     px, py, pz = T(p[1]), T(p[2]), T(p[3])
-    @cuda blocks=blk threads=thr llg_rhs_stt_cpp_cayley_kernal!(dw_dt, m, h, h_stt, omega, aj, px, py, pz, alpha, beta, bj, gamma, N)
+    @cuda blocks=blk threads=thr llg_rhs_stt_cpp_cayley_kernal!(dw_dt, m, h, h_stt, omega, aj, pins, px, py, pz, alpha, beta, bj, gamma, N)
     return nothing
 end
 
@@ -197,7 +217,7 @@ function llg_stt_cpp_cayley_call_back_gpu(sim::AbstractSim, dw_dt::CuArray{T, 1}
                        mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny, mesh.nz,
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, sim.nxyz)
 
-    llg_rhs_stt_cpp_cayley_gpu(dw_dt, sim.spin, driver.field, driver.h_stt, omega, driver.aj, driver.p, driver.alpha,
+    llg_rhs_stt_cpp_cayley_gpu(dw_dt, sim.spin, driver.field, driver.h_stt, omega, driver.aj, sim.pins, driver.p, driver.alpha,
                         driver.beta, driver.bj, driver.gamma, sim.nxyz)
 
     return nothing

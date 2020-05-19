@@ -39,9 +39,12 @@ function compute_gk_kernel_2!(gk::CuDeviceArray{T, 1}, ss::CuDeviceArray{T, 1}, 
    return nothing
 end
 
-function run_step_kernel!(gk::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}, tau::T, N::Int64) where {T<:AbstractFloat}
+function run_step_kernel!(gk::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1}, tau::T, N::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if 0<index <= N
+        if pins[index]
+            return nothing
+        end
         j = 3*index - 2
         @inbounds fx,fy,fz = cross_product(m[j],m[j+1],m[j+2],h[j],h[j+1],h[j+2])
         factor = 0.25*(fx*fx+fy*fy+fz*fz)*tau^2
@@ -93,7 +96,7 @@ function run_step(sim::AbstractSim, driver::EnergyMinimization_GPU)
 
   blk, thr = CuArrays.cudims(sim.nxyz)
   @cuda blocks=blk threads=thr run_step_kernel!(driver.gk, sim.spin,
-                               driver.field, driver.tau, sim.nxyz)
+                               driver.field, sim.pins, driver.tau, sim.nxyz)
   driver.steps += 1
   #max_length_error = error_length_m(sim.spin, sim.nxyz)
   if driver.steps%10 == 0

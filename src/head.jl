@@ -38,6 +38,15 @@ NumberOrArray = Union{Number, Array}
 
 
 """
+    ArrayOrFunction
+
+Similar to Union `NumberOrArrayOrFunction`, the Union `ArrayOrFunction` is designed to deal with cases that
+an array or a function is needed.
+"""
+ArrayOrFunction = Union{Array, Function}
+
+
+"""
     TupleOrArrayOrFunction
 
 Similar to `NumberOrArrayOrFunction`, `TupleOrArrayOrFunction` means that the input parameter could be a tuple or
@@ -74,6 +83,7 @@ mutable struct MicroSim <: AbstractSim
   field::Array{Float64, 1}
   energy::Array{Float64, 1}
   Ms::Array{Float64, 1}
+  pins::Array{Bool, 1}
   nxyz::Int64
   name::String
   interactions::Array

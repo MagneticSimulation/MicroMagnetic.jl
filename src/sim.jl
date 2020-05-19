@@ -17,6 +17,7 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.energy = zeros(Float64,nxyz)
 
     sim.Ms = zeros(Float64, nxyz)
+    sim.pins = zeros(Bool, nxyz)
     sim.save_data = save_data
 
     if save_data
@@ -84,6 +85,26 @@ function set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
     return true
 end
 
+
+"""
+    set_pins(sim::MicroSim, ids::ArrayOrFunction)
+
+Pinning the spins at the given ids.
+
+```julia
+function pinning_boundary(i,j,k,dx,dy,dz)
+    if i == 1 || i == 100
+        return true
+    end
+    return false
+end
+set_pins(sim, pinning_boundary)
+```
+"""
+function set_pins(sim::MicroSim, ids::ArrayOrFunction)
+    init_scalar!(sim.pins, sim.mesh, ids)
+    return true
+end
 
 function set_ux(sim::AbstractSim, init_ux)
     init_scalar!(sim.driver.ux, sim.mesh, init_ux)

@@ -13,6 +13,7 @@ mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   field::CuArray{T, 1}
   energy::CuArray{T, 1}
   Ms::CuArray{T, 1}
+  pins::CuArray{Bool, 1}
   total_energy::T
   nxyz::Int64
   blocks::Int64
