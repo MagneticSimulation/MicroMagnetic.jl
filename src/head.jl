@@ -112,6 +112,26 @@ mutable struct BulkDMI <: MicroEnergy
    name::String
 end
 
+mutable struct DMI <: MicroEnergy
+    gamma_A::Float64
+    alpha_A::Float64
+    alpha_S::Float64
+    beta_A::Float64
+    beta_S::Float64
+    xi_11::Float64
+    xi_12::Float64
+    xi_13::Float64
+    xi_21::Float64
+    xi_22::Float64
+    xi_23::Float64
+    xi_31::Float64
+    xi_32::Float64
+    xi_33::Float64
+    field::Array{Float64, 1}
+    energy::Array{Float64, 1}
+    name::String
+end
+
 mutable struct InterfacialDMI <: MicroEnergy
    D::Float64
    field::Array{Float64, 1}

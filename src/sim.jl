@@ -376,8 +376,12 @@ or
 function add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
     if type == "interfacial"
         return add_dmi_interfacial(sim, D, name=name)
+    elseif type == "bulk"
+        return add_dmi(sim, (D,D,D), name=name)
+    else
+        error("Supported DMI type:", "interfacial", "bulk")
     end
-   return add_dmi(sim, (D,D,D), name=name)
+
 end
 
 function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
@@ -394,6 +398,32 @@ function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
         push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
     end
     return dmi
+end
+
+"""
+    add_dmi(sim::AbstractSim;  name="dmi")
+
+Add DMI to the system. Example:
+
+```julia
+   add_dmi(sim, (1e-3, 1e-3, 0))
+```
+"""
+function add_dmi(sim::AbstractSim, name="dmi")
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  z = 0.0
+  dmi =  DMI(z,z,z,z,z,z,z,z,z,z,z,z,z,z, field, energy, name)
+  push!(sim.interactions, dmi)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
+  return dmi
 end
 
 """

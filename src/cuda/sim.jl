@@ -333,6 +333,26 @@ function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi")
     return dmi
 end
 
+function add_dmi_interfacial(sim::MicroSimGPU, Dfun::Function; name="dmi")
+    nxyz = sim.nxyz
+    T = _cuda_using_double.x ? Float64 : Float32
+    Ds = zeros(T, sim.nxyz)
+    init_scalar!(Ds, sim.mesh, Dfun)
+    Ds_gpu = CuArray(Ds)
+    field = zeros(T, 3*nxyz)
+    energy = zeros(T, nxyz)
+    dmi =  SpatialInterfacialDMIGPU(Ds_gpu, field, energy, T(0.0), name)
+    push!(sim.interactions, dmi)
+
+    if sim.save_data
+        push!(sim.saver.headers, string("E_",name))
+        push!(sim.saver.units, "J")
+        id = length(sim.interactions)
+        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+    end
+    return dmi
+end
+
 
 function add_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
   nxyz = sim.nxyz
