@@ -1,4 +1,30 @@
 """
+Compute the LLG equation without precession term
+    dm/dt =  - alpha*gamma_L* m x (m x H)
+where gamma_L = gamma/(1+alpha^2).
+"""
+function llg_rhs(dm_dt::Array{Float64, 1}, m::Array{Float64, 1}, h::Array{Float64, 1},
+                 alpha::Float64, gamma::Float64, N::Int64)
+  for i = 0:N-1
+    j = 3*i+1
+
+    a = -gamma/(1+alpha*alpha)
+
+	f1,f2,f3 = 0.0,0.0,0.0
+
+	mm = m[j]*m[j] + m[j+1]*m[j+1] + m[j+2]*m[j+2]
+    mh = m[j]*h[j] + m[j+1]*h[j+1] + m[j+2]*h[j+2]
+    h1 = mm*h[j] - mh*m[j]
+    h2 = mm*h[j+1] - mh*m[j+1]
+    h3 = mm*h[j+2] - mh*m[j+2]
+
+	dm_dt[j] = a * (f1 - h1 * alpha);
+    dm_dt[j+1] = a * (f2 - h2 * alpha);
+    dm_dt[j+2] = a * (f3 - h3 * alpha);
+  end
+end
+
+"""
 Compute the standard LLG equation,
     dm/dt = - gamma_L * (m x H) - alpha*gamma_L* m x (m x H)
 where gamma_L = gamma/(1+alpha^2).

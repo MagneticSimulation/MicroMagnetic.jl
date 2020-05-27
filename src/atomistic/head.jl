@@ -9,6 +9,7 @@ mutable struct AtomicSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   field::CuArray{T, 1}
   energy::CuArray{T, 1}
   mu_s::CuArray{T, 1}
+  pins::CuArray{Bool, 1}
   total_energy::T
   nxyz::Int64
   blocks::Int64

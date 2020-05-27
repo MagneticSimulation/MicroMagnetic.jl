@@ -70,7 +70,7 @@ if JuMag._cuda_available.x
     @testset "STT GPU" begin
         mesh =  FDMeshGPU(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
         #relax_system(mesh)
-        run_dynamics_stt(mesh)
+        #run_dynamics_stt(mesh)
         run_dynamics_stt(mesh, integrator="DormandPrince")
     end
 end

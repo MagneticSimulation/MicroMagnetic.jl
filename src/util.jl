@@ -62,3 +62,41 @@ function fftfreq(N; d=1)
     end
     return f
 end
+
+
+function partial_xy(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy = mesh.dx, mesh.dy
+    ngbs = mesh.ngbs
+    nxyz = mesh.nxyz
+    pxm = zeros(T, 3*nxyz)
+    pym = zeros(T, 3*nxyz)
+    for i = 1:nxyz
+      j = 3*i-2
+      #x-direction
+      i1 = ngbs[1,i]
+      i2 = ngbs[2,i]
+      factor = i1*i2>0 ? 1/(2*dx) : 1/dx
+      i1 < 0 && (i1 = i)
+      i2 < 0 && (i2 = i)
+      j1 = 3*i1-2
+      j2 = 3*i2-2
+      pxm[j] = (m[j2] - m[j1]) * factor
+      pxm[j+1]  = (m[j2+1] - m[j1+1]) * factor
+      pxm[j+2]  = (m[j2+2] - m[j1+2]) * factor
+
+
+      #y-direction
+      i1 = ngbs[3,i]
+      i2 = ngbs[4,i]
+      factor = i1*i2>0 ? 1/(2*dy) : 1/dy
+      i1 < 0 && (i1 = i)
+      i2 < 0 && (i2 = i)
+      j1 = 3*i1-2
+      j2 = 3*i2-2
+      pym[j] = (m[j2] - m[j1]) * factor
+      pym[j+1]  = (m[j2+1] - m[j1+1]) * factor
+      pym[j+2]  = (m[j2+2] - m[j1+2]) * factor
+  end
+  return  pxm, pym
+end

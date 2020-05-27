@@ -240,8 +240,6 @@ function llg_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::
     mesh = sim.mesh
     effective_field(sim, spin, t)
 
-    ut = driver.ufun(t)
-
     blk, thr = CuArrays.cudims(N)
     @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field, sim.pins,
                                                  driver.alpha, driver.gamma, true, N)

@@ -112,12 +112,13 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         field = CuArrays.zeros(Float, 3*nxyz)
         aj = CuArrays.zeros(Float, nxyz)
         fun = t::Float64 -> 1.0
+        p = (0,0,1)
         if integrator == "DormandPrince"
-            dopri5 = DormandPrinceGPU(nxyz, llg_stt_call_back_gpu, tol)
+            dopri5 = DormandPrinceGPU(nxyz, llg_cpp_call_back_gpu, tol)
         else
             error(@sprintf("Unsupported combination driver %s and %s.", driver, integrator))
         end
-        return LLG_CPP_GPU(Float(0.5), Float(0), Float(2.21e5), aj, Float(0), dopri5, tol, field)
+        return LLG_CPP_GPU(Float(0.5), Float(0), Float(2.21e5), aj, Float(0), dopri5, tol, p, field)
     elseif driver=="LLG_STT_CPP"
         tol = 1e-6
         ux = CuArrays.zeros(Float, nxyz)

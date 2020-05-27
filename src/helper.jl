@@ -399,3 +399,27 @@ function compute_guiding_centre(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFl
     end
     return Rxs, Rys
 end
+
+#F_i = \vec{p} \cdot (\vec{m} \times \partial_i \vec{m})
+function compute_cpp_force(m::Array{T, 1}, mesh::Mesh; p=(0,1,0)) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy = mesh.dx, mesh.dy
+    nxyz = mesh.nxyz
+    ngbs = mesh.ngbs
+
+    pxm, pym = partial_xy(m, mesh)
+    fx = zeros(T, nxyz)
+    fy = zeros(T, nxyz)
+    for i = 1:nxyz
+      j = 3*i-2
+      mx, my, mz = m[j], m[j+1], m[j+2]
+      fx[i] = p[1]* cross_x(mx, my, mz, pxm[j], pxm[j+1], pxm[j+2])
+      fx[i] += p[2]* cross_y(mx, my, mz, pxm[j], pxm[j+1], pxm[j+2])
+      fx[i] += p[3]* cross_z(mx, my, mz, pxm[j], pxm[j+1], pxm[j+2])
+
+      fy[i] = p[1]* cross_x(mx, my, mz, pym[j], pym[j+1], pym[j+2])
+      fy[i] += p[2]* cross_y(mx, my, mz, pym[j], pym[j+1], pym[j+2])
+      fy[i] += p[3]* cross_z(mx, my, mz, pym[j], pym[j+1], pym[j+2])
+    end
+    return fx, fy
+end

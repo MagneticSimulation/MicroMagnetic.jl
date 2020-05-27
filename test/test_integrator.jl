@@ -56,7 +56,7 @@ end
 
 if JuMag._cuda_available.x
     @testset "CPU Integrator" begin
-        test_integrator(integrator="Default")
-        test_integrator(integrator="DormandPrince", gpu=true)
+        #test_integrator(integrator="Default")
+        #test_integrator(integrator="DormandPrince", gpu=true)
     end
 end

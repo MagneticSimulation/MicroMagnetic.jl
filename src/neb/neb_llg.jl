@@ -10,7 +10,7 @@ function neb_llg_call_back(neb::NEB, dm_dt::Array{Float64, 1}, spin::Array{Float
   neb.field[:, 1] .= 0
   neb.field[:, neb.N] .= 0
   field = reshape(neb.field, 3*neb.nxyz)
-  llg_rhs(dm_dt, spin, field, 1.0, 2.21e5, false, neb.nxyz)
+  llg_rhs(dm_dt, spin, field, 1.0, 2.21e5, neb.nxyz)
   return nothing
 end
 

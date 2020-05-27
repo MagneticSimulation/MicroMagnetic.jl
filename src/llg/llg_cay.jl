@@ -83,7 +83,7 @@ function llg_cay_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, t::Float6
 
   omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
   effective_field(sim, sim.spin, t)
-  llg_rhs_Cay(dw_dt, sim.spin, sim.field, omega, sim.pins, im.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
+  llg_rhs_Cay(dw_dt, sim.spin, sim.field, omega, sim.pins, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
 
   return nothing
 
