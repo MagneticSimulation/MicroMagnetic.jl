@@ -29,7 +29,7 @@ function stochastic_field_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}
             @inbounds scale = CUDAnative.sqrt(factor*T_local/Ms_local)
             @inbounds h[j+1] = eta[j+1]*scale
             @inbounds h[j+2] = eta[j+2]*scale
-            @inbounds h[j+3] = eta[j+2]*scale
+            @inbounds h[j+3] = eta[j+3]*scale
             @inbounds energy[index] = -mu0*Ms_local*volume*(m[j+1]*h[j+1] + m[j+2]*h[j+2] + m[j+3]*h[j+3])
         else
             @inbounds energy[index] = 0
