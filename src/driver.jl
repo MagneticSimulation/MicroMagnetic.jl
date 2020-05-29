@@ -26,11 +26,26 @@ mutable struct LLG_STT <: Driver
 end
 
 function create_driver(driver::String, integrator::String, nxyz::Int64)
+    supported_drivers = ["SD", "LLG", "LLG_STT"]
+    if !(driver in supported_drivers)
+        error("Supported drivers for CPU: ", join(supported_drivers, " "))
+    end
+
     if driver=="SD" #Steepest Descent
         gk = zeros(Float64,3*nxyz)
         return EnergyMinimization(gk, 0.0, 1e-4, 1e-12, 0)
-    elseif driver=="LLG"
-        if integrator == "RungeKutta"
+    end
+
+    supported_integrators = ["Heun", "RungeKutta", "DormandPrince", "DormandPrinceCayley"]
+    if !(integrator in supported_integrators)
+        error("Supported integrators for CPU: ", join(supported_integrators, " "))
+    end
+
+    if driver=="LLG"
+        if integrator == "Heun"
+            henu = ModifiedEuler(nxyz, llg_call_back, 1e-14)
+            return LLG(true, 0.1, 2.21e5, henu)
+        elseif integrator == "RungeKutta"
             rungekutta = RungeKutta(nxyz, llg_call_back, 5e-13)
             return LLG(true, 0.1, 2.21e5, rungekutta)
         elseif integrator == "DormandPrince"

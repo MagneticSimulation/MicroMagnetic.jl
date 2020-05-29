@@ -21,7 +21,7 @@ function test_integrator(;integrator="RungeKutta", gpu=false)
     set_Ms(sim, 8e5)
     sim.driver.alpha = 0.05
     sim.driver.gamma = 2.21e5
-    if integrator=="Default"
+    if integrator=="DormandPrinceCayley" || integrator=="DormandPrince"
         sim.driver.ode.tol = 1e-6
     end
     add_zeeman(sim, (0, 0, 1e5))
@@ -34,9 +34,9 @@ function test_integrator(;integrator="RungeKutta", gpu=false)
     t = sim.driver.ode.t
     println("Running at time=", t)
 
-    run_until(sim, t+5e-10)
-    t = sim.driver.ode.t
-    println("Running at time=", t)
+    #run_until(sim, t+5e-10)
+    #t = sim.driver.ode.t
+    #println("Running at time=", t)
 
     ts = Array([t])
     mx, my, mz = analytical(0.05, 2.21e5, 1e5, ts)
@@ -47,16 +47,18 @@ function test_integrator(;integrator="RungeKutta", gpu=false)
 end
 
 @testset "CPU Integrator" begin
-    test_integrator(integrator="Default")
-    #test_integrator(integrator="RungeKutta")
-    #println("Test 'RungeKutta' Done!")
+    test_integrator(integrator="Heun")
+    test_integrator(integrator="RungeKutta")
     test_integrator(integrator="DormandPrince")
+    test_integrator(integrator="DormandPrinceCayley")
 
 end
 
 if JuMag._cuda_available.x
     @testset "CPU Integrator" begin
-        #test_integrator(integrator="Default")
-        #test_integrator(integrator="DormandPrince", gpu=true)
+        test_integrator(integrator="Heun", gpu=true)
+        test_integrator(integrator="RungeKutta", gpu=true)
+        test_integrator(integrator="DormandPrince", gpu=true)
+        #test_integrator(integrator="DormandPrinceCayley", gpu=true)
     end
 end

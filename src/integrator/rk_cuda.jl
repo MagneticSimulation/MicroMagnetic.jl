@@ -1,25 +1,27 @@
 #implement the classical Runge-Kutta method for testing purpose
 
-mutable struct RungeKutta <: Integrator
+
+mutable struct RungeKuttaGPU{T<:AbstractFloat}  <: Integrator
    t::Float64
    step::Float64
    nsteps::Int64
-   k1::Array{Float64, 1}
-   k2::Array{Float64, 1}
-   k3::Array{Float64, 1}
-   k4::Array{Float64, 1}
+   k1::CuArray{T, 1}
+   k2::CuArray{T, 1}
+   k3::CuArray{T, 1}
+   k4::CuArray{T, 1}
    rhs_fun::Function
 end
 
-function RungeKutta(nxyz::Int64, rhs_fun, step::Float64)
-  k1 = zeros(Float64,3*nxyz)
-  k2 = zeros(Float64,3*nxyz)
-  k3 = zeros(Float64,3*nxyz)
-  k4 = zeros(Float64,3*nxyz)
-  return RungeKutta(0.0, step, 0, k1, k2, k3, k4, rhs_fun)
+function RungeKuttaGPU(nxyz::Int64, rhs_fun, step::Float64)
+    Float = _cuda_using_double.x ? Float64 : Float32
+    k1 = CuArrays.zeros(Float,3*nxyz)
+    k2 = CuArrays.zeros(Float,3*nxyz)
+    k3 = CuArrays.zeros(Float,3*nxyz)
+    k4 = CuArrays.zeros(Float,3*nxyz)
+    return RungeKuttaGPU(0.0, step, 0, k1, k2, k3, k4, rhs_fun)
 end
 
-function advance_step(sim::AbstractSim, integrator::RungeKutta)
+function advance_step(sim::AbstractSim, integrator::RungeKuttaGPU)
     h = integrator.step
 	k1 =  integrator.k1
 	k2 =  integrator.k2

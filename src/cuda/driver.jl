@@ -79,7 +79,7 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         return EnergyMinimization_GPU(gk, ss, sf, ff, field, Float(0.0), Float(1e-2), Float(1e-10), 0)
     end
 
-    supported_integrators = ["DormandPrince", "DormandPrinceCayley"]
+    supported_integrators = ["Heun", "RungeKutta", "DormandPrince", "DormandPrinceCayley"]
     if !(integrator in supported_integrators)
         error("Supported integrators for GPU: ", join(supported_integrators, " "))
     end
@@ -87,7 +87,11 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
     if driver=="LLG"
         tol = 1e-6
         field = CuArrays.zeros(Float, 3*nxyz)
-        if integrator == "DormandPrince"
+        if integrator == "Heun"
+            dopri5 = ModifiedEulerGPU(nxyz, llg_call_back_gpu, 1e-14)
+        elseif integrator == "RungeKutta"
+            dopri5 = RungeKuttaGPU(nxyz, llg_call_back_gpu, 5e-14)
+        elseif integrator == "DormandPrince"
             dopri5 = DormandPrinceGPU(nxyz, llg_call_back_gpu, tol)
         else
             dopri5 = DormandPrinceCayleyGPU(nxyz, llg_cayley_call_back_gpu, tol)
@@ -101,7 +105,11 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         uz = CuArrays.zeros(Float, nxyz)
         hstt = CuArrays.zeros(Float, 3*nxyz)
         fun = t::Float64 -> 1.0
-        if integrator == "DormandPrince"
+        if integrator == "Heun"
+            dopri5 = ModifiedEulerGPU(nxyz, llg_stt_call_back_gpu, 1e-14)
+        elseif integrator == "RungeKutta"
+            dopri5 = RungeKuttaGPU(nxyz, llg_stt_call_back_gpu, 5e-14)
+        elseif integrator == "DormandPrince"
             dopri5 = DormandPrinceGPU(nxyz, llg_stt_call_back_gpu, tol)
         else
             dopri5 = DormandPrinceCayleyGPU(nxyz, llg_stt_cayley_call_back_gpu, tol)
@@ -113,7 +121,11 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         aj = CuArrays.zeros(Float, nxyz)
         fun = t::Float64 -> 1.0
         p = (0,0,1)
-        if integrator == "DormandPrince"
+        if integrator == "Heun"
+            dopri5 = ModifiedEulerGPU(nxyz, llg_cpp_call_back_gpu, 1e-14)
+        elseif integrator == "RungeKutta"
+            dopri5 = RungeKuttaGPU(nxyz, llg_cpp_call_back_gpu, 5e-14)
+        elseif integrator == "DormandPrince"
             dopri5 = DormandPrinceGPU(nxyz, llg_cpp_call_back_gpu, tol)
         else
             error(@sprintf("Unsupported combination driver %s and %s.", driver, integrator))
@@ -129,7 +141,11 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         field = CuArrays.zeros(Float, 3*nxyz)
         fun = t::Float64 -> 1.0
         p = (0,0,1)
-        if integrator == "DormandPrince"
+        if integrator == "Heun"
+            dopri5 = ModifiedEuler(nxyz, llg_stt_call_back_gpu, 1e-14)
+        elseif integrator == "RungeKutta"
+            dopri5 = RungeKuttaGPU(nxyz, llg_stt_call_back_gpu, 5e-14)
+        elseif integrator == "DormandPrince"
             dopri5 = DormandPrinceGPU(nxyz, llg_stt_cpp_call_back_gpu, tol)
         else
             dopri5 = DormandPrinceCayleyGPU(nxyz, llg_stt_cpp_cayley_call_back_gpu, tol)
