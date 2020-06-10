@@ -50,12 +50,12 @@ function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7
         x = (i+eps)*dx-x0
         y = (j+eps)*dy-y0
         r = sqrt(x^2+y^2)
-        if x^2+y^2 <= 4*R^2
+        if x^2+y^2 <= 2*R^2
             theta = 2*atan(sinh(R/w)/sinh(r/w))
             if p == 1
                 theta = theta + pi
             end
-            if c == -1
+            if c == 1
                 theta = -theta
             end
             if type == "N"
