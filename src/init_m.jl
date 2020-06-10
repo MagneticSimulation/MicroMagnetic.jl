@@ -24,7 +24,7 @@ ratio : ratio=w/R where w is the width of domain wall. By default ratio = 0.7
 
 p : polarity, +1 --> core up; -1 --> core down
 
-c : chirality, +1 --> clockwise; -1 --> counter-clockwise
+c : chirality, +1 --> lefthand,for positive D; -1 --> righthand,for negative D
 
 type : "B" or "N", representing Bloch or Neel skyrmions.
 
