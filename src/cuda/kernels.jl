@@ -93,9 +93,9 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
           id = (k==1) ? index - nxy + nxyz : index - nxy
           idm = 3*id
           @inbounds if Ms[id]>0
-              @inbounds fx += az*exch*(m[idm-2] - mx)
-              @inbounds fy += az*exch*(m[idm-1] - my)
-              @inbounds fz += az*exch*(m[idm] - mz)
+            @inbounds fx += az*exch*(m[idm-2] - mx)
+            @inbounds fy += az*exch*(m[idm-1] - my)
+            @inbounds fz += az*exch*(m[idm] - mz)
           end
       end
 
@@ -632,7 +632,6 @@ function cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}
    return nothing
 end
 
-
 function titled_cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Kc::T, 
                         axis1::T,axis2::T,axis3::T,axis4::T,axis5::T,axis6::T,axis7::T,axis8::T,axis9::T,
@@ -643,32 +642,26 @@ function titled_cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArra
         j = 3*(index-1)
         @inbounds Ms_local = Ms[index]
         if Ms_local == 0.0
-        @inbounds energy[index] = 0
-        @inbounds h[j+1] = 0
-        @inbounds h[j+2] = 0
-        @inbounds h[j+3] = 0
+        @inbounds energy[index] = 0.0
+        @inbounds h[j+1] = 0.0
+        @inbounds h[j+2] = 0.0
+        @inbounds h[j+3] = 0.0
         return nothing
         end
         Ms_inv::T = 4.0*Kc/(mu0*Ms_local)
-       #=  @inbounds mxp = axis[1]*m[j+1] + axis[2]*m[j+2] + axis[3]*m[j+3]
-        @inbounds myp = axis[4]*m[j+1] + axis[5]*m[j+2] + axis[6]*m[j+3]
-        @inbounds mzp = axis[7]*m[j+1] + axis[8]*m[j+2] + axis[9]*m[j+3] =#
         @inbounds mxp = axis1*m[j+1] + axis2*m[j+2] + axis3*m[j+3]
         @inbounds myp = axis4*m[j+1] + axis5*m[j+2] + axis6*m[j+3]
         @inbounds mzp = axis7*m[j+1] + axis8*m[j+2] + axis9*m[j+3]
-        @inbounds mxp2 = mxp*mxp
-        @inbounds myp2 = myp*myp
-        @inbounds mzp2 = mzp*mzp
-        @inbounds mxp3 = mxp*mxp2
-        @inbounds myp3 = myp*myp2
-        @inbounds mzp3 = mzp*mzp2
+        @inbounds mxp3 = mxp*mxp*mxp
+        @inbounds myp3 = myp*myp*myp
+        @inbounds mzp3 = mzp*mzp*mzp
         @inbounds h[j+1] = Ms_inv*(mxp3*axis1+myp3*axis4+mzp3*axis7)
         @inbounds h[j+2] = Ms_inv*(mxp3*axis2+myp3*axis5+mzp3*axis8)
         @inbounds h[j+3] = Ms_inv*(mxp3*axis3+myp3*axis6+mzp3*axis9)
-        @inbounds energy[index] = -Kc*(mxp2*mxp2+myp2*myp2+mzp2*mzp2)*volume
+        @inbounds energy[index] = -Kc*(mxp*mxp3+mxp*mxp3+mxp*mxp3)*volume
         end
     return nothing
-    end
+end
 
 function exchange_kernel_rkky!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
