@@ -73,7 +73,7 @@ function addto(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
         end
         return nothing
     end
-    blk, thr = CuArrays.cudims(a)
+    blk, thr = cudims(a)
     @cuda blocks=blk threads=thr __kernel!(a,b, length(a))
     return nothing
 end
@@ -88,7 +88,7 @@ function abs!(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
         return nothing
     end
     N = length(a)
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr __kernel!(a, b, N)
     return nothing
 end
@@ -102,7 +102,7 @@ function abs!(a::CuArray{T,1})  where {T<:AbstractFloat}
         return nothing
     end
     N = length(a)
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr __kernel!(a, N)
     return nothing
 end
@@ -185,7 +185,7 @@ function omega_to_spin(omega::CuArray{T, 1}, spin::CuArray{T, 1}, spin_next::CuA
       end
       return nothing
   end
-  blk, thr = CuArrays.cudims(N)
+  blk, thr = cudims(N)
   @cuda blocks=blk threads=thr __kernal!(omega, spin, spin_next, N)
   return nothing
 end
@@ -202,7 +202,7 @@ function compute_dm!(dm::CuArray{T, 1}, m1::CuArray{T, 1}, m2::CuArray{T, 1}, N:
      end
      return nothing
   end
-  blk, thr = CuArrays.cudims(N)
+  blk, thr = cudims(N)
   @cuda blocks=blk threads=thr __kernal!(dm, m1, m2, N)
   return nothing
 end
@@ -223,7 +223,7 @@ function normalise(a::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
        end
        return nothing
     end
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr __kernal!(a, N)
 
    return nothing

@@ -54,8 +54,8 @@ function init_demag_gpu(sim::MicroSimGPU, Nx::Int, Ny::Int, Nz::Int)
 
   tensor = CuArrays.zeros(Float, nx, ny, nz)
 
-  blk1, thr1 = CuArrays.cudims(tensor)
-  blk2, thr2 = CuArrays.cudims(mx_gpu)
+  blk1, thr1 = cudims(tensor)
+  blk2, thr2 = cudims(mx_gpu)
 
   #Nxx
   @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xx!(tensor, dx, dy, dz, Nx, Ny, Nz)
@@ -155,8 +155,8 @@ function init_demag_gpu_II(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
 
   tensor = CuArrays.zeros(Float, nx, ny, nz)
 
-  blk1, thr1 = CuArrays.cudims(tensor)
-  blk2, thr2 = CuArrays.cudims(mx_gpu)
+  blk1, thr1 = cudims(tensor)
+  blk2, thr2 = cudims(mx_gpu)
 
   #Nxx
   @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xx!(tensor, dx, dy, dz, Nx, Ny, Nz)
@@ -212,7 +212,7 @@ function effective_field(demag::DemagGPU, sim::MicroSimGPU, spin::CuArray{T, 1},
   fill!(demag.my, 0)
   fill!(demag.mz, 0)
 
-  blocks_n, threads_n = CuArrays.cudims(demag.mx)
+  blocks_n, threads_n = cudims(demag.mx)
   @cuda blocks = blocks_n threads=threads_n distribute_m_kernel!(spin, demag.mx, demag.my, demag.mz, sim.Ms, nx, ny, nz)
 
   #synchronize()
@@ -231,7 +231,7 @@ function effective_field(demag::DemagGPU, sim::MicroSimGPU, spin::CuArray{T, 1},
 
   @cuda blocks = blocks_n threads=threads_n collect_h_kernel!(sim.field, demag.mx, demag.my, demag.mz, nx, ny, nz)
 
-  blocks_n, threads_n = CuArrays.cudims(sim.nxyz)
+  blocks_n, threads_n = cudims(sim.nxyz)
   @cuda blocks=blocks_n threads=threads_n compute_energy_kernel!(sim.energy, spin, sim.field, sim.Ms, mesh.volume, sim.nxyz)
   return nothing
 end
@@ -251,7 +251,7 @@ function effective_field(demag::DemagGPUII, sim::MicroSim, spin::Array{Float64, 
   fill!(demag.my, 0)
   fill!(demag.mz, 0)
 
-  blocks_n, threads_n = CuArrays.cudims(demag.mx)
+  blocks_n, threads_n = cudims(demag.mx)
   @cuda blocks = blocks_n threads=threads_n distribute_m_kernel_II!(demag.spin, demag.mx, demag.my, demag.mz, nx, ny, nz)
 
   #synchronize()

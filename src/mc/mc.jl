@@ -298,7 +298,7 @@ end
 
 
 function run_single_step(sim::MonteCarlo, bias::Int64)
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
 
     mesh = sim.mesh
 

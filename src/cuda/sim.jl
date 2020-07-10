@@ -47,7 +47,7 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince"
         end
     end
 
-    blocks, threads = CuArrays.cudims(nxyz)
+    blocks, threads = cudims(nxyz)
     sim.blocks = blocks
     sim.threads = threads
     sim.name = name

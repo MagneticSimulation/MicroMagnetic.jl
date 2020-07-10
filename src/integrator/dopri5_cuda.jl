@@ -150,7 +150,7 @@ function dopri5_step_inner_GPU(sim::AbstractSim, step::Float64, t::Float64)
   ode = sim.driver.ode
 
   N = length(sim.spin)
-  blk, thr = CuArrays.cudims(sim.spin)
+  blk, thr = cudims(sim.spin)
 
   sim.spin .= sim.prespin
   ode.rhs_fun(sim, ode.k1, sim.spin, t) #compute k1

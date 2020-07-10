@@ -39,13 +39,23 @@ export init_m0,
        interpolate_m,save_ovf,read_ovf,
        fftfreq
 
-
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT
 
 function cuda_using_double(flag = true)
    _cuda_using_double[] = flag
    return nothing
 end
+
+
+
+#this function is copied from CuArrays (v.1.7.3) which is gone in the new version
+#In the future, we will turn to CUDA since CuArrays, CUDAnative are deprecated
+function cudims(n::Integer)
+  threads = min(n, 256)
+  return ceil(Int, n / threads), threads
+end
+
+cudims(a::AbstractArray) = cudims(length(a))
 
 include("const.jl")
 include("mesh.jl")

@@ -62,7 +62,7 @@ end
 function uniform_random_sphere(spin::CuArray{T, 1}, rnd::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
 
     rand!(rnd)
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr uniform_random_sphere_kernel!(spin, rnd, N)
 
     return  nothing
@@ -71,7 +71,7 @@ end
 function uniform_random_circle_xy(spin::CuArray{T, 1}, rnd::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
 
     rand!(rnd)
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr uniform_random_circle_xy_kernel!(spin, rnd, N)
 
     return  nothing
@@ -80,7 +80,7 @@ end
 function compute_site_energy_exch_dmi(sim::MonteCarlo, energy::ExchangeMC, bias::Int64, mesh::CubicMeshGPU)
     exch = sim.exch
     dmi = sim.dmi
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
     @cuda blocks=blk threads=thr add_dE_exch_dmi_cubic_mesh_kernel!(sim.spin, sim.nextspin,
                                         sim.shape,
                                         sim.energy, mesh.ngbs, mesh.nngbs,
@@ -92,7 +92,7 @@ end
 function compute_site_energy_exch_dmi(sim::MonteCarlo, energy::NearestExchangeMC, bias::Int64, mesh::TriangularMeshGPU)
     exch = sim.exch
     dmi = sim.dmi
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
     @cuda blocks=blk threads=thr add_dE_exch_dmi_triangular_mesh_kernel!(sim.spin, sim.nextspin,
                                         sim.shape,
                                         sim.energy, mesh.ngbs,
@@ -105,7 +105,7 @@ end
 function compute_site_energy_zeeman_anis(sim::MonteCarlo, energy::UniformAnisotropyMC, bias::Int64, mesh::CubicMeshGPU)
     zee = sim.zee
     anis = sim.anis
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
     @cuda blocks=blk threads=thr dE_zeeman_anisotropy_cubic_mesh_kernel!(sim.spin,
                                         sim.nextspin, sim.shape,
                                         sim.energy, mesh.ngbs,
@@ -117,7 +117,7 @@ end
 function compute_site_energy_zeeman_anis(sim::MonteCarlo, energy::UniformAnisotropyMC, bias::Int64, mesh::TriangularMeshGPU)
     zee = sim.zee
     anis = sim.anis
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
     @cuda blocks=blk threads=thr dE_zeeman_anisotropy_triangular_mesh_kernel!(sim.spin,
                                         sim.nextspin, sim.shape,
                                         sim.energy, mesh.ngbs,
@@ -129,7 +129,7 @@ end
 function compute_site_energy_zeeman_anis(sim::MonteCarlo, energy::KagomeAnisotropyMC, bias::Int64, mesh::TriangularMeshGPU)
     zee = sim.zee
     anis = sim.anis
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
     @cuda blocks=blk threads=thr dE_zeeman_kagome_anisotropy_triangular_mesh_kernel!(sim.spin,
                                         sim.nextspin, sim.shape,
                                         sim.energy, mesh.ngbs,
@@ -150,7 +150,7 @@ function compute_system_energy(sim::MonteCarlo, energy::UniformAnisotropyMC, mes
 
     zee = sim.zee
     anis = sim.anis
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
     @cuda blocks=blk threads=thr total_E_zeeman_anisotropy_kernel!(sim.spin,
                                         sim.shape,
                                         sim.energy,
@@ -166,7 +166,7 @@ function compute_system_energy(sim::MonteCarlo, energy::ExchangeMC, mesh::CubicM
 
     exch = sim.exch
     dmi = sim.dmi
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
     @cuda blocks=blk threads=thr add_total_E_exch_dmi_cubic_mesh_kernel!(sim.spin,
                                         sim.shape,
                                         sim.energy, mesh.ngbs, mesh.nngbs,
@@ -182,7 +182,7 @@ function compute_system_energy(sim::MonteCarlo, energy::NearestExchangeMC, mesh:
 
     exch = sim.exch
     dmi = sim.dmi
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
     @cuda blocks=blk threads=thr add_total_E_exch_dmi_triangular_mesh_kernel!(sim.spin,
                                         sim.shape,
                                         sim.energy, mesh.ngbs,
