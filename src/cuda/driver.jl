@@ -71,11 +71,11 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
     Float = _cuda_using_double.x ? Float64 : Float32
 
     if driver == "SD"
-        gk = CuArrays.zeros(Float,3*nxyz)
-        field = CuArrays.zeros(Float,3*nxyz)
-        ss = CuArrays.zeros(Float, nxyz)
-        sf = CuArrays.zeros(Float, nxyz)
-        ff = CuArrays.zeros(Float, nxyz)
+        gk = CUDA.zeros(Float,3*nxyz)
+        field = CUDA.zeros(Float,3*nxyz)
+        ss = CUDA.zeros(Float, nxyz)
+        sf = CUDA.zeros(Float, nxyz)
+        ff = CUDA.zeros(Float, nxyz)
         return EnergyMinimization_GPU(gk, ss, sf, ff, field, Float(0.0), Float(1e-2), Float(1e-10), 0)
     end
 
@@ -86,7 +86,7 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
 
     if driver=="LLG"
         tol = 1e-6
-        field = CuArrays.zeros(Float, 3*nxyz)
+        field = CUDA.zeros(Float, 3*nxyz)
         if integrator == "Heun"
             dopri5 = ModifiedEulerGPU(nxyz, llg_call_back_gpu, 1e-14)
         elseif integrator == "RungeKutta"
@@ -99,11 +99,11 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         return LLG_GPU(true, Float(0.1), Float(2.21e5), dopri5, tol, field)
     elseif driver=="LLG_STT"
         tol = 1e-6
-        field = CuArrays.zeros(Float, 3*nxyz)
-        ux = CuArrays.zeros(Float, nxyz)
-        uy = CuArrays.zeros(Float, nxyz)
-        uz = CuArrays.zeros(Float, nxyz)
-        hstt = CuArrays.zeros(Float, 3*nxyz)
+        field = CUDA.zeros(Float, 3*nxyz)
+        ux = CUDA.zeros(Float, nxyz)
+        uy = CUDA.zeros(Float, nxyz)
+        uz = CUDA.zeros(Float, nxyz)
+        hstt = CUDA.zeros(Float, 3*nxyz)
         fun = t::Float64 -> 1.0
         if integrator == "Heun"
             dopri5 = ModifiedEulerGPU(nxyz, llg_stt_call_back_gpu, 1e-14)
@@ -117,8 +117,8 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         return LLG_STT_GPU(Float(0.5), Float(0), Float(2.21e5), dopri5, tol, ux, uy, uz, hstt, field, fun)
     elseif driver=="LLG_CPP"
         tol = 1e-6
-        field = CuArrays.zeros(Float, 3*nxyz)
-        aj = CuArrays.zeros(Float, nxyz)
+        field = CUDA.zeros(Float, 3*nxyz)
+        aj = CUDA.zeros(Float, nxyz)
         fun = t::Float64 -> 1.0
         p = (0,0,1)
         if integrator == "Heun"
@@ -133,12 +133,12 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         return LLG_CPP_GPU(Float(0.5), Float(0), Float(2.21e5), aj, Float(0), dopri5, tol, p, field)
     elseif driver=="LLG_STT_CPP"
         tol = 1e-6
-        ux = CuArrays.zeros(Float, nxyz)
-        uy = CuArrays.zeros(Float, nxyz)
-        uz = CuArrays.zeros(Float, nxyz)
-        aj = CuArrays.zeros(Float, nxyz)
-        hstt = CuArrays.zeros(Float, 3*nxyz)
-        field = CuArrays.zeros(Float, 3*nxyz)
+        ux = CUDA.zeros(Float, nxyz)
+        uy = CUDA.zeros(Float, nxyz)
+        uz = CUDA.zeros(Float, nxyz)
+        aj = CUDA.zeros(Float, nxyz)
+        hstt = CUDA.zeros(Float, 3*nxyz)
+        field = CUDA.zeros(Float, 3*nxyz)
         fun = t::Float64 -> 1.0
         p = (0,0,1)
         if integrator == "Heun"

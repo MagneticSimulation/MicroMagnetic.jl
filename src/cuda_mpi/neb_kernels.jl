@@ -1,5 +1,5 @@
 using LinearAlgebra
-using CUDAnative, CuArrays
+using CUDA
 
 function compute_distance(neb::NEB_GPU_MPI)
     nxyz = neb.sim.nxyz

@@ -66,7 +66,7 @@ function field_stt_kernal!(m::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1}, M
 
     if 0< index <= N
         fx, fy, fz = T(0), T(0), T(0)
-        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
         #x-direction
         i1 = _x_minus_one(i, index, nx, ny, nz, xperiodic, Ms)

@@ -1,5 +1,5 @@
 using LinearAlgebra
-using CuArrays
+using CUDA
 
 mutable struct NEB_GPU{T<:AbstractFloat} <: AbstractSim
     N::Int64 #number of images in this process
@@ -39,13 +39,13 @@ function NEB_GPU(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spri
 
     neb.driver = create_neb_driver_gpu(driver, nxyz,N)
 
-    neb.image_l = CuArrays.zeros(Float, 3*sim.nxyz)
-    neb.spin = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
-    neb.prespin = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
-    neb.image_r = CuArrays.zeros(Float, 3*sim.nxyz)
-    neb.field = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
-    neb.tangent = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
-    neb.energy = CuArrays.zeros(Float, neb.N+2)
+    neb.image_l = CUDA.zeros(Float, 3*sim.nxyz)
+    neb.spin = CUDA.zeros(Float, 3*sim.nxyz*neb.N)
+    neb.prespin = CUDA.zeros(Float, 3*sim.nxyz*neb.N)
+    neb.image_r = CUDA.zeros(Float, 3*sim.nxyz)
+    neb.field = CUDA.zeros(Float, 3*sim.nxyz*neb.N)
+    neb.tangent = CUDA.zeros(Float, 3*sim.nxyz*neb.N)
+    neb.energy = CUDA.zeros(Float, neb.N+2)
     neb.energy_cpu = zeros(Float, neb.N+2)
     neb.distance = zeros(Float, neb.N+1)
 
@@ -137,23 +137,23 @@ function init_images(neb::NEB_GPU, init_m::Any, intervals::Any)
         M = interpolate_m(m1, m2, Int(intervals[id]))
         #M = interpolate_m_spherical(m1,m2,Int(intervals[i]))
         if  image_id == 1
-            CuArrays.@sync copyto!(neb.image_l, M[:, 1])
+            CUDA.@sync copyto!(neb.image_l, M[:, 1])
         end
         for j=1:intervals[id]+1
             #images[:,n]=M[:,j]
             if  2 <= image_id <= N+1
                 k = local_image_id-1
                 b = view(neb.spin, k*dof+1:(k+1)*dof)
-                CuArrays.@sync copyto!(b, M[:, j])
+                CUDA.@sync copyto!(b, M[:, j])
                 local_image_id += 1
             end
             image_id += 1
         end
     end
     m = init_m0_Ms(sim, init_m[end])
-    CuArrays.@sync copyto!(neb.image_r, m)
+    CUDA.@sync copyto!(neb.image_r, m)
 
-    CuArrays.@sync copyto!(neb.prespin, neb.spin)
+    CUDA.@sync copyto!(neb.prespin, neb.spin)
     return nothing
 end
 
@@ -161,7 +161,7 @@ function effective_field_NEB(neb::NEB_GPU, spin::CuArray{T, 1})  where {T<:Abstr
 
     #neb.spin[:] = spin[:], we already copy spin to neb.spin in dopri5
     compute_micromagnetic_field(neb)
-  
+
     compute_field_related_to_tangent(neb)
     return 0
   end
@@ -170,7 +170,7 @@ function effective_field_NEB(neb::NEB_GPU, spin::CuArray{T, 1})  where {T<:Abstr
 
 
 function compute_micromagnetic_field(neb::NEB_GPU)
-    CuArrays.@sync fill!(neb.field, 0.0)
+    CUDA.@sync fill!(neb.field, 0.0)
     sim = neb.sim
     dof = 3*sim.nxyz
     for n = 1:neb.N
@@ -186,7 +186,7 @@ function compute_micromagnetic_field(neb::NEB_GPU)
     end
 
     compute_system_energy_two_ends(neb)
-    CuArrays.@sync copyto!(neb.energy, neb.energy_cpu)
+    CUDA.@sync copyto!(neb.energy, neb.energy_cpu)
    return nothing
 end
 
@@ -254,9 +254,9 @@ function neb_llg_call_back_gpu(neb::NEB_GPU, dm_dt::CuArray{T, 1}, spin::CuArray
 
 
 function relax(neb::NEB_GPU; maxsteps=10000, stopping_dmdt=0.05, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks")
-    if save_vtk_every>0 && !isdir(vtk_folder) 
+    if save_vtk_every>0 && !isdir(vtk_folder)
     end
-    if save_ovf_every>0 && !isdir(ovf_folder) 
+    if save_ovf_every>0 && !isdir(ovf_folder)
       mkdir(ovf_folder)
     end
     N = neb.N

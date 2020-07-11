@@ -14,16 +14,16 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince"
     nxyz = mesh.nx*mesh.ny*mesh.nz
 
     sim.nxyz = nxyz
-    sim.spin = CuArrays.zeros(Float, 3*nxyz)
-    sim.prespin = CuArrays.zeros(Float,3*nxyz)
-    sim.field = CuArrays.zeros(Float,3*nxyz)
-    sim.energy = CuArrays.zeros(Float,nxyz)
+    sim.spin = CUDA.zeros(Float, 3*nxyz)
+    sim.prespin = CUDA.zeros(Float,3*nxyz)
+    sim.field = CUDA.zeros(Float,3*nxyz)
+    sim.energy = CUDA.zeros(Float,nxyz)
     if isa(mesh, FDMeshGPU)
-        sim.Ms = CuArrays.zeros(Float, nxyz)
+        sim.Ms = CUDA.zeros(Float, nxyz)
     else
-        sim.mu_s = CuArrays.zeros(Float, nxyz)
+        sim.mu_s = CUDA.zeros(Float, nxyz)
     end
-    sim.pins = CuArrays.zeros(Bool, nxyz)
+    sim.pins = CUDA.zeros(Bool, nxyz)
     sim.total_energy = 0.0
     sim.interactions = []
     sim.save_data = save_data
@@ -204,7 +204,7 @@ function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch")
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
-  Spatial_A = CuArrays.zeros(Float, nxyz)
+  Spatial_A = CUDA.zeros(Float, nxyz)
   init_scalar!(Spatial_A , sim.mesh, A)
   exch = ExchangeGPU(Spatial_A, field, energy, Float(0.0), name)
 
@@ -225,8 +225,8 @@ function add_thermal_noise(sim::MicroSimGPU, T::NumberOrArrayOrFunction; name="t
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
-  Spatial_T = CuArrays.zeros(Float, nxyz)
-  eta = CuArrays.zeros(Float, 3*nxyz)
+  Spatial_T = CUDA.zeros(Float, nxyz)
+  eta = CUDA.zeros(Float, 3*nxyz)
   init_scalar!(Spatial_T , sim.mesh, T)
   thermal = StochasticFieldGPU(Spatial_T, eta, field, energy, Float(0.0), -1, name)
 
@@ -246,7 +246,7 @@ function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
-  Spatial_A = CuArrays.zeros(Float, 3*nxyz)
+  Spatial_A = CUDA.zeros(Float, 3*nxyz)
   init_vector!(Spatial_A , sim.mesh, A)
   exch = Vector_ExchangeGPU(Spatial_A , field, energy, Float(0.0), name)
   push!(sim.interactions, exch)

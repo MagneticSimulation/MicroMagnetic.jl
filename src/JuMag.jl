@@ -2,9 +2,7 @@
 module JuMag
 
 using Printf
-using CUDAnative
-using CuArrays
-using CuArrays.CUDAdrv
+using CUDA
 
 const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)
@@ -48,8 +46,8 @@ end
 
 
 
-#this function is copied from CuArrays (v.1.7.3) which is gone in the new version
-#In the future, we will turn to CUDA since CuArrays, CUDAnative are deprecated
+#this function is copied from CUDA (v.1.7.3) which is gone in the new version
+#In the future, we will turn to CUDA since CuArray, CUDAnative are deprecated
 function cudims(n::Integer)
   threads = min(n, 256)
   return ceil(Int, n / threads), threads
@@ -83,10 +81,10 @@ include("ovf2.jl")
 include("init_m.jl")
 include("tools.jl")
 
-#_cuda_available[] = CuArrays.functional()
+#_cuda_available[] = CUDA.functional()
 
 if !_cuda_available.x
-    @warn "CuArrays does not work!"
+    @warn "CUDA does not work!"
 end
 
 
@@ -148,12 +146,12 @@ if _mpi_available.x && _cuda_available.x
             MPI.Init()
         end
         comm = MPI.COMM_WORLD
-        CUDAnative.device!(MPI.Comm_rank(comm) % length(devices()))
+        CUDA.device!(MPI.Comm_rank(comm) % length(devices()))
     end
 end
 
 function __init__()
-    _cuda_available[] = CuArrays.functional()
+    _cuda_available[] = CUDA.functional()
     if !_cuda_available.x
         @warn "CUDA is not available!"
     end

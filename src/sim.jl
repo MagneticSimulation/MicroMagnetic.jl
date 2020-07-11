@@ -569,7 +569,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
 
   if _cuda_available.x && (isa(sim, MicroSimGPU) || isa(sim, AtomicSimGPU))
       T = _cuda_using_double.x ? Float64 : Float32
-      dm = CuArrays.zeros(T, 3*sim.nxyz)
+      dm = CUDA.zeros(T, 3*sim.nxyz)
   else
       dm = zeros(Float64,3*sim.nxyz)
   end

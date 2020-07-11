@@ -1,5 +1,5 @@
 using LinearAlgebra
-using CUDAnative, CuArrays
+using CUDA
 
 function compute_distance_kernel!(ds::CuDeviceArray{T, 1}, m1::CuDeviceArray{T, 1},
                                   m2::CuDeviceArray{T, 1},  N::Int64) where {T<:AbstractFloat}
@@ -16,8 +16,8 @@ function compute_distance_kernel!(ds::CuDeviceArray{T, 1}, m1::CuDeviceArray{T, 
         b = mx2*mz1 - mx1*mz2   #m1xm2, y
         c = -mx2*my1 + mx1*my2  #m1xm2, z
         mm = mx1*mx2 + my1*my2 + mz1*mz2
-        d = CUDAnative.sqrt(a*a+b*b+c*c)
-        @inbounds ds[index] = CUDAnative.atan2(d, mm)
+        d = CUDA.sqrt(a*a+b*b+c*c)
+        @inbounds ds[index] = CUDA.atan2(d, mm)
     end
     return nothing
 end

@@ -83,7 +83,7 @@ function abs!(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
     function __kernel!(a, b, n)
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x
         if 0<i<=n
-            @inbounds a[i] = CUDAnative.abs(b[i])
+            @inbounds a[i] = CUDA.abs(b[i])
         end
         return nothing
     end
@@ -97,7 +97,7 @@ function abs!(a::CuArray{T,1})  where {T<:AbstractFloat}
     function __kernel!(a, n)
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x
         if 0 < i <= n
-            @inbounds a[i] = CUDAnative.abs(a[i])
+            @inbounds a[i] = CUDA.abs(a[i])
         end
         return nothing
     end
@@ -198,7 +198,7 @@ function compute_dm!(dm::CuArray{T, 1}, m1::CuArray{T, 1}, m2::CuArray{T, 1}, N:
          @inbounds mx = a[j] - b[j]
          @inbounds my = a[j+1] - b[j+1]
          @inbounds mz = a[j+2] - b[j+2]
-         @inbounds c[i] = CUDAnative.sqrt(mx*mx + my*my + mz*mz)
+         @inbounds c[i] = CUDA.sqrt(mx*mx + my*my + mz*mz)
      end
      return nothing
   end
@@ -215,7 +215,7 @@ function normalise(a::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
            j = 3*i - 2
 		   @inbounds m2 = a[j]*a[j] + a[j+1]*a[j+1] + a[j+2]*a[j+2]
            if m2>0
-               @inbounds length = CUDAnative.rsqrt(m2)
+               @inbounds length = CUDA.rsqrt(m2)
                @inbounds a[j] *= length
                @inbounds a[j+1] *= length
                @inbounds a[j+2] *= length
