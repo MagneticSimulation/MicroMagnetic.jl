@@ -5,12 +5,7 @@ test:1.4:
   extends:
     - .julia:1.4
     - .test
+    - .coverage
   tags:
     - nvidia
   image: nvidia/cuda:latest
-
-
-coverage:
-  extends:
-    - .julia:1.4
-    - .coverage
