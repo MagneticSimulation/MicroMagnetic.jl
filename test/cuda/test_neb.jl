@@ -8,21 +8,43 @@ function test_neb_gpu()
     m2=[0,1.0,0]
     m3=[0,0,1.0]
 
-    mxy=JuMag.rotation_operator(m1,m2,pi/4)
-    mxz=JuMag.rotation_operator(m1,m3,pi/4)
-    myz=JuMag.rotation_operator(m2,m3,pi/4)
-    @test isapprox(mxy,[sqrt(2)/2,sqrt(2)/2,0])
-    @test isapprox(mxz,[sqrt(2)/2,0,sqrt(2)/2])
-    @test isapprox(myz,[0,sqrt(2)/2,sqrt(2)/2])
-    interplotion1=JuMag.interpolate_m([1.0,0,0],[0,1.0,0],1)
-    interplotion2=JuMag.interpolate_m([1.0,0,0],[1.0,0,0],1)
-    interplotion3=JuMag.interpolate_m([0,0,1.0],[0,0,1.0],1)
-    @test isapprox(interplotion1[:,1],[1.0,0,0])
-    @test isapprox(interplotion1[:,2],[sqrt(2)/2,sqrt(2)/2,0])
-    @test isapprox(interplotion2[:,1],[1.0,0,0])
-    @test isapprox(interplotion2[:,2],[1.0,0,0])
-    @test isapprox(interplotion3[:,1],[0,0,1.0])
-    @test isapprox(interplotion3[:,2],[0,0,1.0])
+    mxy=JuMag.rotate_to(m1,m2,pi/4)
+    mxz=JuMag.rotate_to(m1,m3,pi/4)
+    myz=JuMag.rotate_to(m2,m3,pi/4)
+
+    function test_rotation_operator()
+        @test isapprox(JuMag.rotation_operator(m1,m3,pi/2),m2)
+        @test isapprox(JuMag.rotation_operator(m1,m3,pi/4),[sqrt(2)/2,sqrt(2)/2,0])
+        @test isapprox(JuMag.rotation_operator(m3,m1,pi/2),-m2)
+    end
+    function test_rotate_to()
+        @test isapprox(mxy,[sqrt(2)/2,sqrt(2)/2,0])
+        @test isapprox(mxz,[sqrt(2)/2,0,sqrt(2)/2])
+        @test isapprox(myz,[0,sqrt(2)/2,sqrt(2)/2])
+    end
+    test_rotation_operator()
+    @info("test_rotation_operator passed!")
+    test_rotate_to()
+    @info("test_rotate_to passed!")
+    function test_interpolation()
+        interplotion1=JuMag.interpolate_m([1.0,0,0],[0,1.0,0],1)
+        interplotion2=JuMag.interpolate_m([1.0,0,0],[1.0,0,0],1)
+        interplotion3=JuMag.interpolate_m([0,0,1.0],[0,0,1.0],1)
+        @test isapprox(interplotion1[:,1],[1.0,0,0])
+        @test isapprox(interplotion1[:,2],[sqrt(2)/2,sqrt(2)/2,0])
+        @test isapprox(interplotion2[:,1],[1.0,0,0])
+        @test isapprox(interplotion2[:,2],[1.0,0,0])
+        @test isapprox(interplotion3[:,1],[0,0,1.0])
+        @test isapprox(interplotion3[:,2],[0,0,1.0])
+
+        m1 = [0.061446725558210215, 0.32475341620029013, 0.9438005714050057]
+        m2 = [0, 0, 1.0]
+        m_neb = JuMag.interpolate_m(m1, m2, 1)
+        println("Input: ", m1)
+        println("interpolate_m1: ", m_neb)
+        p = JuMag.interpolate_m_spherical(m1, m2, 1)
+        println("interpolate_m2: ", p)
+    end
     function init_m(i,j,k,dx,dy,dz)
         return (1,0,0)
     end
