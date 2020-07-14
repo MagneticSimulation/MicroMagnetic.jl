@@ -62,13 +62,13 @@ end
 function compute_tau(driver::EnergyMinimization_GPU, m_pre::CuArray{T, 1}, m::CuArray{T, 1},
                      h::CuArray{T, 1}, N::Int64)  where {T<:AbstractFloat}
   if driver.steps == 0
-      blk, thr = CuArrays.cudims(N)
+      blk, thr = cudims(N)
       @cuda blocks=blk threads=thr compute_gk_kernel_1!(driver.gk, m, h, N)
       driver.tau  = driver.min_tau
       return nothing
   end
 
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr compute_gk_kernel_2!(driver.gk,
                                  driver.ss, driver.sf, driver.ff,
                                  m, m_pre, h, N)
@@ -94,7 +94,7 @@ function run_step(sim::AbstractSim, driver::EnergyMinimization_GPU)
 
   sim.prespin .= sim.spin
 
-  blk, thr = CuArrays.cudims(sim.nxyz)
+  blk, thr = cudims(sim.nxyz)
   @cuda blocks=blk threads=thr run_step_kernel!(driver.gk, sim.spin,
                                driver.field, sim.pins, driver.tau, sim.nxyz)
   driver.steps += 1

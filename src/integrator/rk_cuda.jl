@@ -14,10 +14,10 @@ end
 
 function RungeKuttaGPU(nxyz::Int64, rhs_fun, step::Float64)
     Float = _cuda_using_double.x ? Float64 : Float32
-    k1 = CuArrays.zeros(Float,3*nxyz)
-    k2 = CuArrays.zeros(Float,3*nxyz)
-    k3 = CuArrays.zeros(Float,3*nxyz)
-    k4 = CuArrays.zeros(Float,3*nxyz)
+    k1 = CUDA.zeros(Float,3*nxyz)
+    k2 = CUDA.zeros(Float,3*nxyz)
+    k3 = CUDA.zeros(Float,3*nxyz)
+    k4 = CUDA.zeros(Float,3*nxyz)
     return RungeKuttaGPU(0.0, step, 0, k1, k2, k3, k4, rhs_fun)
 end
 

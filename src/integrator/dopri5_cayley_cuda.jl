@@ -25,16 +25,16 @@ end
 
 function DormandPrinceCayleyGPU(nxyz::Int64, rhs_fun, tol::Float64)
   Float = _cuda_using_double.x ? Float64 : Float32
-  omega = CuArrays.zeros(Float,3*nxyz)
-  omega_t = CuArrays.zeros(Float,3*nxyz)
-  dw_dt = CuArrays.zeros(Float,3*nxyz)
-  k1 = CuArrays.zeros(Float,3*nxyz)
-  k2 = CuArrays.zeros(Float,3*nxyz)
-  k3 = CuArrays.zeros(Float,3*nxyz)
-  k4 = CuArrays.zeros(Float,3*nxyz)
-  k5 = CuArrays.zeros(Float,3*nxyz)
-  k6 = CuArrays.zeros(Float,3*nxyz)
-  k7 = CuArrays.zeros(Float,3*nxyz)
+  omega = CUDA.zeros(Float,3*nxyz)
+  omega_t = CUDA.zeros(Float,3*nxyz)
+  dw_dt = CUDA.zeros(Float,3*nxyz)
+  k1 = CUDA.zeros(Float,3*nxyz)
+  k2 = CUDA.zeros(Float,3*nxyz)
+  k3 = CUDA.zeros(Float,3*nxyz)
+  k4 = CUDA.zeros(Float,3*nxyz)
+  k5 = CUDA.zeros(Float,3*nxyz)
+  k6 = CUDA.zeros(Float,3*nxyz)
+  k7 = CUDA.zeros(Float,3*nxyz)
   facmax = 5.0
   facmin = 0.2
   safety = 0.824
@@ -111,7 +111,7 @@ function dopri5_step(sim::MicroSimGPU, step::Float64, t::Float64)
   ode = sim.driver.ode
 
   N = length(ode.omega)
-  blk, thr = CuArrays.cudims(ode.omega)
+  blk, thr = cudims(ode.omega)
 
   fill!(ode.omega, 0) # we always have y=0
   ode.rhs_fun(sim, ode.k1, t, ode.omega) #compute k1
@@ -200,7 +200,7 @@ function interpolation_dopri5(ode::DormandPrinceCayleyGPU, t::Float64)
     b7 = x*x*(x-1) + x2*10*(7414447 - 829305*x)/29380423
 
     N = length(ode.omega)
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr rk__step6__kernel!(ode.omega_t,
                                  b1, ode.k1, b3, ode.k3,
                                  b4, ode.k4, b5, ode.k5,

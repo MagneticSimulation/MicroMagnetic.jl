@@ -44,7 +44,7 @@ function llg_cayley_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1}, t::
     omega_to_spin(omega, sim.prespin, sim.spin, N)
     effective_field(sim, sim.spin, t)
 
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr llg_rhs_cayley_kernal!(dw_dt, sim.spin, driver.field,
                                                         omega, sim.pins, driver.alpha, driver.gamma,
                                                         driver.precession, N)
@@ -112,7 +112,7 @@ end
 function llg_rhs_stt_cayley_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1}, h_stt::CuArray{T, 1},
                  omega::CuArray{T, 1}, alpha::T, beta::T, gamma::T, N::Int64) where {T<:AbstractFloat}
 
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr llg_rhs_stt_cayley_kernal!(dw_dt, m, h, h_stt, omega, alpha, beta, gamma, N)
     return nothing
 end
@@ -200,7 +200,7 @@ end
 
 function llg_rhs_stt_cpp_cayley_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1}, h_stt::CuArray{T, 1},
                  omega::CuArray{T, 1}, aj::CuArray{T, 1}, pins::CuArray{Bool, 1}, p::Tuple, alpha::T, beta::T, bj::T, gamma::T, N::Int64) where {T<:AbstractFloat}
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     px, py, pz = T(p[1]), T(p[2]), T(p[3])
     @cuda blocks=blk threads=thr llg_rhs_stt_cpp_cayley_kernal!(dw_dt, m, h, h_stt, omega, aj, pins, px, py, pz, alpha, beta, bj, gamma, N)
     return nothing

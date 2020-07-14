@@ -13,7 +13,7 @@ function effective_field(zeeman::ZeemanGPU, sim::AtomicSimGPU, spin::CuArray{T, 
     end
 
     N = sim.nxyz
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr __kernel!(spin, sim.field, zeeman.cufield, sim.energy, sim.mu_s, N)
 
     return nothing
@@ -47,7 +47,7 @@ function effective_field(anis::AnisotropyGPU, sim::AtomicSimGPU, spin::CuArray{T
 
     N = sim.nxyz
     axis = anis.axis
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr __kernel!(spin, sim.field, sim.energy, anis.Ku, axis[1], axis[2], axis[3], sim.mu_s, N)
 
     return nothing
@@ -90,7 +90,7 @@ function effective_field(exch::HeisenbergExchange, sim::AtomicSimGPU, spin::CuAr
     end
 
     N = sim.nxyz
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     ngbs = sim.mesh.ngbs
     n_ngbs = sim.mesh.n_ngbs
     @cuda blocks=blk threads=thr __kernel!(spin, sim.field, sim.energy, exch.Js, ngbs, n_ngbs, sim.mu_s, N)

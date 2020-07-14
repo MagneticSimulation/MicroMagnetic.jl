@@ -9,21 +9,21 @@ function MonteCarlo(mesh::Mesh; name="mc", mc_2d=false)
     nxyz = mesh.nx*mesh.ny*mesh.nz
     sim.nxyz = nxyz
 
-    sim.shape = CuArrays.ones(Bool, nxyz)
-    sim.spin = CuArrays.zeros(Float, 3*nxyz)
-    sim.nextspin = CuArrays.zeros(Float,3*nxyz)
-    sim.rnd = CuArrays.zeros(Float,3*nxyz)
-    sim.energy = CuArrays.zeros(Float,nxyz)
-    sim.delta_E = CuArrays.zeros(Float,nxyz)
+    sim.shape = CUDA.ones(Bool, nxyz)
+    sim.spin = CUDA.zeros(Float, 3*nxyz)
+    sim.nextspin = CUDA.zeros(Float,3*nxyz)
+    sim.rnd = CUDA.zeros(Float,3*nxyz)
+    sim.energy = CUDA.zeros(Float,nxyz)
+    sim.delta_E = CUDA.zeros(Float,nxyz)
     sim.steps = 0
     sim.name = name
     sim.T = 300
     if isa(sim.mesh, CubicMeshGPU)
-        sim.exch = ExchangeMC(CuArrays.zeros(Float, mesh.n_ngbs), CuArrays.zeros(Float, mesh.n_ngbs))
-        sim.dmi = DMI_MC(CuArrays.zeros(Float, (3, mesh.n_ngbs)), CuArrays.zeros(Float, (3, mesh.n_ngbs)))
+        sim.exch = ExchangeMC(CUDA.zeros(Float, mesh.n_ngbs), CUDA.zeros(Float, mesh.n_ngbs))
+        sim.dmi = DMI_MC(CUDA.zeros(Float, (3, mesh.n_ngbs)), CUDA.zeros(Float, (3, mesh.n_ngbs)))
     elseif isa(sim.mesh, TriangularMeshGPU)
-        sim.exch = NearestExchangeMC(CuArrays.zeros(Float, mesh.n_ngbs))
-        sim.dmi = Nearest_DMI_MC(CuArrays.zeros(Float, (3, mesh.n_ngbs)))
+        sim.exch = NearestExchangeMC(CUDA.zeros(Float, mesh.n_ngbs))
+        sim.dmi = Nearest_DMI_MC(CUDA.zeros(Float, (3, mesh.n_ngbs)))
     else
         error("Only support CubicMeshGPU and TriangularMeshGPU.")
     end
@@ -298,7 +298,7 @@ end
 
 
 function run_single_step(sim::MonteCarlo, bias::Int64)
-    blk, thr = CuArrays.cudims(sim.nxyz)
+    blk, thr = cudims(sim.nxyz)
 
     mesh = sim.mesh
 

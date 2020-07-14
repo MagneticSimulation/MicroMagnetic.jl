@@ -1,6 +1,6 @@
 using MPI
 using LinearAlgebra
-using CuArrays
+using CUDA
 
 mutable struct NEB_GPU_MPI{T<:AbstractFloat} <: AbstractSim
     comm_rank::Int64
@@ -63,15 +63,15 @@ function NEB_MPI(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spri
 
     neb.driver = create_neb_driver_mpi(driver, nxyz, N)
 
-    neb.image_l = CuArrays.zeros(Float, 3*sim.nxyz)
+    neb.image_l = CUDA.zeros(Float, 3*sim.nxyz)
     neb.image_lc = zeros(Float, 3*sim.nxyz)
-    neb.spin = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
-    neb.prespin = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
-    neb.image_r = CuArrays.zeros(Float, 3*sim.nxyz)
+    neb.spin = CUDA.zeros(Float, 3*sim.nxyz*neb.N)
+    neb.prespin = CUDA.zeros(Float, 3*sim.nxyz*neb.N)
+    neb.image_r = CUDA.zeros(Float, 3*sim.nxyz)
     neb.image_rc = zeros(Float, 3*sim.nxyz)
-    neb.field = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
-    neb.tangent = CuArrays.zeros(Float, 3*sim.nxyz*neb.N)
-    neb.energy = CuArrays.zeros(Float, neb.N+2)
+    neb.field = CUDA.zeros(Float, 3*sim.nxyz*neb.N)
+    neb.tangent = CUDA.zeros(Float, 3*sim.nxyz*neb.N)
+    neb.energy = CUDA.zeros(Float, neb.N+2)
     neb.energy_cpu = zeros(Float, neb.N+2)
     neb.distance = zeros(Float, neb.N+1)
 
@@ -162,14 +162,14 @@ function init_images(neb::NEB_GPU_MPI, init_m::Any, intervals::Any)
         M = interpolate_m(m1, m2, Int(intervals[id]))
         #M = interpolate_m_spherical(m1,m2,Int(intervals[i]))
         if  rank == 0 && image_id == 1
-            CuArrays.@sync copyto!(neb.image_l, M[:, 1])
+            CUDA.@sync copyto!(neb.image_l, M[:, 1])
         end
         for j=1:intervals[id]+1
             #images[:,n]=M[:,j]
             if  start+1 <= image_id <= stop+1
                 k = local_image_id-1
                 b = view(neb.spin, k*dof+1:(k+1)*dof)
-                CuArrays.@sync copyto!(b, M[:, j])
+                CUDA.@sync copyto!(b, M[:, j])
                 local_image_id += 1
             end
             image_id += 1
@@ -178,10 +178,10 @@ function init_images(neb::NEB_GPU_MPI, init_m::Any, intervals::Any)
 
     if rank == size - 1
         m = init_m0_Ms(sim, init_m[end])
-        CuArrays.@sync copyto!(neb.image_r, m)
+        CUDA.@sync copyto!(neb.image_r, m)
     end
 
-    CuArrays.@sync copyto!(neb.prespin, neb.spin)
+    CUDA.@sync copyto!(neb.prespin, neb.spin)
     MPI.Barrier(MPI.COMM_WORLD)
     return nothing
 end
@@ -213,7 +213,7 @@ function update_images_between_processes(neb::NEB_GPU_MPI)
 
     if rank > 0
         b = view(neb.spin, 1:dof)
-        CuArrays.@sync copyto!(neb.image_lc, b)
+        CUDA.@sync copyto!(neb.image_lc, b)
         sreq = MPI.Isend(neb.image_lc, left_id, rank+64, MPI.COMM_WORLD)
         #MPI.Wait!(sreq)
     end
@@ -221,14 +221,14 @@ function update_images_between_processes(neb::NEB_GPU_MPI)
     if rank < size - 1
         rreq = MPI.Irecv!(neb.image_rc, right_id, right_id+64, MPI.COMM_WORLD)
         MPI.Wait!(rreq)
-        CuArrays.@sync copyto!(neb.image_r, neb.image_rc)
+        CUDA.@sync copyto!(neb.image_r, neb.image_rc)
     end
 
     MPI.Barrier(MPI.COMM_WORLD)
 
     if rank < size - 1
         b = view(neb.spin, (N-1)*dof+1:N*dof)
-        CuArrays.@sync copyto!(neb.image_rc, b)
+        CUDA.@sync copyto!(neb.image_rc, b)
         sreq = MPI.Isend(neb.image_rc, right_id, rank+128, MPI.COMM_WORLD)
         #MPI.Wait!(sreq)
     end
@@ -236,7 +236,7 @@ function update_images_between_processes(neb::NEB_GPU_MPI)
     if rank > 0
         rreq = MPI.Irecv!(neb.image_lc, left_id, left_id+128, MPI.COMM_WORLD)
         MPI.Wait!(rreq)
-        CuArrays.@sync copyto!(neb.image_l, neb.image_lc)
+        CUDA.@sync copyto!(neb.image_l, neb.image_lc)
     end
 
     MPI.Barrier(MPI.COMM_WORLD)
@@ -244,7 +244,7 @@ function update_images_between_processes(neb::NEB_GPU_MPI)
 end
 
 function compute_micromagnetic_field(neb::NEB_GPU_MPI)
-    CuArrays.@sync fill!(neb.field, 0.0)
+    CUDA.@sync fill!(neb.field, 0.0)
     sim = neb.sim
     dof = 3*sim.nxyz
     for n = 1:neb.N
@@ -260,7 +260,7 @@ function compute_micromagnetic_field(neb::NEB_GPU_MPI)
     end
 
     compute_system_energy_two_ends(neb)
-    CuArrays.@sync copyto!(neb.energy, neb.energy_cpu)
+    CUDA.@sync copyto!(neb.energy, neb.energy_cpu)
    return nothing
 end
 

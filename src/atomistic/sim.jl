@@ -53,7 +53,7 @@ function add_exch(sim::AtomicSimGPU, J::Array; name="exch")
     field = zeros(Float, 3*nxyz)
     energy = zeros(Float, nxyz)
     n_ngbs = sim.mesh.n_ngbs
-    Js = CuArrays.zeros(Float, n_ngbs)
+    Js = CUDA.zeros(Float, n_ngbs)
 
     if length(J) != n_ngbs
         @error("The length of given Js is $(length(Js)) but we need an array with $a.")

@@ -2,12 +2,11 @@ using JuMag
 using Printf
 using Test
 using MPI
-using CuArrays
+
 
 MPI.Init()
 
 JuMag.cuda_using_double(true)
-CuArrays.allowscalar(false)
 
 JuMag.using_multiple_gpus() #comment out this line if you have multiple gpus
 
