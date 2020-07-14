@@ -256,20 +256,30 @@ end
 
 #rotate m1 in the m1_m2 plane by theta. If m1 is parallel to m2 (m1 x m2 = 0), the plane
 #is determined by m1 and ez (unless m1 itself is ez).
-function rotation_operator(m1::Array{T,1}, m2::Array{T,1}, theta::T) where T<:AbstractFloat ##return m'=retate(m1,theta)
+function rotate_to(m1::Array{T,1}, m2::Array{T,1}, theta::T) where T<:AbstractFloat
+    normalise(m1, 1)
+    normalise(m2, 1)
+    if m1 == m2
+      return m1
+    end
+    m = get_rotation_axis(m1,m2)
+    return rotation_operator(m1,m,theta)
+end
+
+function get_rotation_axis(m1::Array{T,1}, m2::Array{T,1})where T<:AbstractFloat
     m = LinearAlgebra.cross(m1, m2)
-    if m == [0,0,0]
-        if m1 == m2
-            return m1
+    if m == [0.0,0,0]
+        if m1 == [0,0,1.0]
+            m = [1.0,0,0]
         else
-            if m1 == [0,0,1.0]
-                m = [1.0,0,0]
-            else
-                m = LinearAlgebra.cross(m1,[0,0,1.0])
-            end
+            m = LinearAlgebra.cross(m1,[0,0,1.0])
         end
-  end
-  normalise(m, 1)
+    end
+    normalise(m, 1)
+    return m
+end
+##rotate m1 with normalised axis m, angle theta
+function rotation_operator(m1::Array{T,1}, m::Array{T,1}, theta::T) where T<:AbstractFloat
   st, ct = sin(theta), cos(theta)
   a11 = ct+(1-ct)*m[1]^2
   a12 = (1-ct)*m[1]*m[2] - st*m[3]
@@ -306,7 +316,7 @@ function interpolate_m(m1::Array{T,1}, m2::Array{T,1}, N::Int) where T<:Abstract
             theta = acos(amp)
             dtheta = theta/(N+1)
             angle = (i-1)*dtheta
-            m[k,i],m[k+1,i],m[k+2,i]=rotation_operator(b1[:,j],b2[:,j],angle)
+            m[k,i],m[k+1,i],m[k+2,i]=rotate_to(b1[:,j],b2[:,j],angle)
         end
     end
     return m
