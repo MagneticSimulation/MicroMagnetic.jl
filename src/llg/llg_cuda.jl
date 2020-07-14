@@ -49,7 +49,7 @@ function llg_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::CuAr
     driver = sim.driver
     effective_field(sim, spin, t)
 
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field, sim.pins,
                                                  driver.alpha, driver.gamma, driver.precession, N)
     return nothing
@@ -66,7 +66,7 @@ function field_stt_kernal!(m::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1}, M
 
     if 0< index <= N
         fx, fy, fz = T(0), T(0), T(0)
-        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
         #x-direction
         i1 = _x_minus_one(i, index, nx, ny, nz, xperiodic, Ms)
@@ -125,7 +125,7 @@ function compute_field_stt_gpu(m::CuArray{T, 1}, h_stt::CuArray{T, 1}, Ms::CuArr
                            dx::T, dy::T, dz::T, nx::Int64, ny::Int64, nz::Int64,
                            xperiodic::Bool, yperiodic::Bool, zperiodic::Bool, N::Int64) where {T<:AbstractFloat}
 
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr field_stt_kernal!(m, h_stt, Ms,
                            ux, uy, uz, ut, dx, dy, dz, nx, ny, nz,
                            xperiodic, yperiodic, zperiodic,N)
@@ -183,7 +183,7 @@ function llg_stt_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::
                        mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny, mesh.nz,
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, N)
 
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field, sim.pins,
                                                  driver.alpha, driver.gamma, true, N)
     synchronize()
@@ -240,7 +240,7 @@ function llg_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::
     mesh = sim.mesh
     effective_field(sim, spin, t)
 
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field, sim.pins,
                                                  driver.alpha, driver.gamma, true, N)
     synchronize()
@@ -262,7 +262,7 @@ function llg_stt_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, sp
                        mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny, mesh.nz,
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, N)
 
-    blk, thr = CuArrays.cudims(N)
+    blk, thr = cudims(N)
     @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field,
                                                  driver.alpha, driver.gamma, true, N)
     synchronize()

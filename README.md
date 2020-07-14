@@ -11,17 +11,21 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 ### Features
 
 - Support classical spin dynamics and micromagnetic simulations.
-- Easily switch between GPU and CPU.
+- Support both CPU and GPU, which can be easily switched.
 - Easily switch between single and double using `JuMag.cuda_using_double(false)`
 - ...
 
 ## Installation
 
+Install JuMag is straightforward as long as  Julia is installed, and it is equally easy in Windows, Linux and Mac.  
+
+
+
 Requirements:
 
-- Julia 1.2 (or above) (<http://julialang.org/downloads/>)
+- Julia 1.4 (or above) (<http://julialang.org/downloads/>)
 - Some packages such as FFTW, WriteVTK and NPZ
-- CUDA-related packages such as CuArrays and CUDAnative (optional for GPU support)
+- CUDA.jl ([https://github.com/JuliaGPU/CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)) (Needed for GPU support)
 
 In [Julia](http://julialang.org), packages can be easily installed using
 
@@ -57,7 +61,7 @@ julia> using JuMag
 If your internet is very slow to install Julia packages, it is possible to solve the issue by using the Pkg mirrors
 
 ```
-(v1.1) pkg> add PkgMirrors
+(v1.4) pkg> add PkgMirrors
 julia> using PkgMirrors
 julia> PkgMirrors.availables()
 2-element Array{String,1}:
@@ -67,3 +71,5 @@ julia> PkgMirrors.setmirror("USTC")
 [ Info: PkgMirror USTC activated.
 PkgMirrors.Types.PkgMirror("USTC", "https://mirrors.ustc.edu.cn/julia")
 ```
+
+Alternatively,  running Julia in a Juno ([https://junolab.org/](https://junolab.org/)) terminal if you have a fast proxy.

@@ -1,4 +1,4 @@
-using CuArrays.CUFFT
+using CUDA.CUFFT
 using FFTW
 using LinearAlgebra
 
@@ -6,7 +6,7 @@ function newell_f_gpu(x::Float64, y::Float64, z::Float64)::Float64
    x2 = x*x;
    y2 = y*y;
    z2 = z*z;
-   R = CUDAnative.sqrt(x2+y2+z2);
+   R = CUDA.sqrt(x2+y2+z2);
    if R == 0.0
      return 0.0;
    end
@@ -14,15 +14,15 @@ function newell_f_gpu(x::Float64, y::Float64, z::Float64)::Float64
    f = 1.0/6*(2*x2-y2-z2)*R
 
    if x2>0
-    f -= x*y*z*CUDAnative.atan(y*z/(x*R));
+    f -= x*y*z*CUDA.atan(y*z/(x*R));
    end
 
    if x2+z2>0
-     f += 0.5*y*(z2-x2)*CUDAnative.asinh(y/(CUDAnative.sqrt(x2+z2)))
+     f += 0.5*y*(z2-x2)*CUDA.asinh(y/(CUDA.sqrt(x2+z2)))
    end
 
    if x2+y2>0
-     f += 0.5*z*(y2-x2)*CUDAnative.asinh(z/(CUDAnative.sqrt(x2+y2)))
+     f += 0.5*z*(y2-x2)*CUDA.asinh(z/(CUDA.sqrt(x2+y2)))
    end
   return f;
 end
@@ -33,27 +33,27 @@ function newell_g_gpu(x::Float64, y::Float64, z::Float64)::Float64
    y2 = y*y;
    z2 = z*z;
 
-   R = CUDAnative.sqrt(x2+y2+z2);
+   R = CUDA.sqrt(x2+y2+z2);
    if R == 0.0
      return 0.0;
    end
 
    g = -1.0/3*x*y*R;
 
-   if z2>0   g -= 1.0/6*z2*z*CUDAnative.atan(x*y/(z*R)) end
-   if y2>0   g -= 0.5*y2*z*CUDAnative.atan(x*z/(y*R)) end
-   if x2>0   g -= 0.5*x2*z*CUDAnative.atan(y*z/(x*R)) end
+   if z2>0   g -= 1.0/6*z2*z*CUDA.atan(x*y/(z*R)) end
+   if y2>0   g -= 0.5*y2*z*CUDA.atan(x*z/(y*R)) end
+   if x2>0   g -= 0.5*x2*z*CUDA.atan(y*z/(x*R)) end
 
    if x2+y2>0
-     g += x*y*z*CUDAnative.asinh(z/(CUDAnative.sqrt(x2+y2)))
+     g += x*y*z*CUDA.asinh(z/(CUDA.sqrt(x2+y2)))
     end
 
    if y2+z2>0
-     g += 1.0/6*y*(3*z2-y2)*CUDAnative.asinh(x/(CUDAnative.sqrt(y2+z2)))
+     g += 1.0/6*y*(3*z2-y2)*CUDA.asinh(x/(CUDA.sqrt(y2+z2)))
    end
 
    if x2+z2>0
-     g += 1.0/6*x*(3*z2-x2)*CUDAnative.asinh(y/(CUDAnative.sqrt(x2+z2)))
+     g += 1.0/6*x*(3*z2-x2)*CUDA.asinh(y/(CUDA.sqrt(x2+z2)))
    end
 
   return g;
@@ -154,7 +154,7 @@ function compute_tensors_kernel_xx!(tensor, dx::Float64, dy::Float64, dz::Float6
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx, ny, nz = size(tensor)
     if 0 < index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        i,j,k = Tuple(CUDA.CartesianIndices(tensor)[index])
         sum = 0.0
         for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
                 x = (i-1 + p*nx)*dx
@@ -172,7 +172,7 @@ function compute_tensors_kernel_yy!(tensor, dx::Float64, dy::Float64, dz::Float6
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx, ny, nz = size(tensor)
     if 0 < index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        i,j,k = Tuple(CUDA.CartesianIndices(tensor)[index])
         sum = 0.0
         for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
                 x = (i-1 + p*nx)*dx
@@ -190,7 +190,7 @@ function compute_tensors_kernel_zz!(tensor, dx::Float64, dy::Float64, dz::Float6
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx, ny, nz = size(tensor)
     if 0 < index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        i,j,k = Tuple(CUDA.CartesianIndices(tensor)[index])
         sum = 0.0
         for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
                 x = (i-1 + p*nx)*dx
@@ -208,7 +208,7 @@ function compute_tensors_kernel_xy!(tensor, dx::Float64, dy::Float64, dz::Float6
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx, ny, nz = size(tensor)
     if 0 < index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        i,j,k = Tuple(CUDA.CartesianIndices(tensor)[index])
         sum = 0.0
         for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
                 x = (i-1 + p*nx)*dx
@@ -226,7 +226,7 @@ function compute_tensors_kernel_xz!(tensor, dx::Float64, dy::Float64, dz::Float6
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx, ny, nz = size(tensor)
     if 0 < index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        i,j,k = Tuple(CUDA.CartesianIndices(tensor)[index])
         sum = 0.0
         for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
                 x = (i-1 + p*nx)*dx
@@ -244,7 +244,7 @@ function compute_tensors_kernel_yz!(tensor, dx::Float64, dy::Float64, dz::Float6
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx, ny, nz = size(tensor)
     if 0 < index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices(tensor)[index])
+        i,j,k = Tuple(CUDA.CartesianIndices(tensor)[index])
         sum = 0.0
         for p = -Nx:Nx, q=-Ny:Ny, s= -Nz:Nz
                 x = (i-1 + p*nx)*dx
@@ -262,7 +262,7 @@ function fill_tensors_kernel!(long_tensor, tensor, tx::Bool, ty::Bool, tz::Bool)
     lnx, lny, lnz = size(long_tensor)
     nx, ny, nz = size(tensor)
     if 0 < index <= lnx*lny*lnz
-        i,j,k = Tuple(CuArrays.CartesianIndices(long_tensor)[index])
+        i,j,k = Tuple(CUDA.CartesianIndices(long_tensor)[index])
         if (lnx%2 == 0 && i == nx+1) || (lny%2 == 0 && j == ny+1) || (lnz%2 == 0 && k == nz+1)
           return nothing
         end
@@ -281,7 +281,7 @@ function distribute_m_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, Ms, nx::Int64,ny::I
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx_fft, ny_fft, nz_fft = size(mx_gpu)
     if 0 < index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 		p = 3*index-2
         @inbounds mx_gpu[i,j,k] = m_gpu[p]*Ms[index]
         @inbounds my_gpu[i,j,k] = m_gpu[p+1]*Ms[index]
@@ -294,7 +294,7 @@ function distribute_m_kernel_II!(m_gpu, mx_gpu, my_gpu, mz_gpu, nx::Int64,ny::In
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     nx_fft, ny_fft, nz_fft = size(mx_gpu)
     if 0 < index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
         mx_gpu[i,j,k] = m_gpu[3*index-2]
         my_gpu[i,j,k] = m_gpu[3*index-1]
         mz_gpu[i,j,k] = m_gpu[3*index]
@@ -305,7 +305,7 @@ end
 function collect_h_kernel!(h, hx, hy, hz, nx::Int64,ny::Int64,nz::Int64)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if 0< index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 		p = 3*index-2
         @inbounds h[p] = -1.0*hx[i,j,k]
         @inbounds h[p+1] = -1.0*hy[i,j,k]

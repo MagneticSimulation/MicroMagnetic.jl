@@ -1,4 +1,4 @@
-using CUDAnative, CuArrays
+using CUDA
 
 function zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         h_static::CuDeviceArray{T, 1}, energy::CuDeviceArray{T, 1},
@@ -26,7 +26,7 @@ function stochastic_field_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}
         @inbounds Ms_local = Ms[index]
         @inbounds T_local = Temp[index]
         if Ms_local>0
-            @inbounds scale = CUDAnative.sqrt(factor*T_local/Ms_local)
+            @inbounds scale = CUDA.sqrt(factor*T_local/Ms_local)
             @inbounds h[j+1] = eta[j+1]*scale
             @inbounds h[j+2] = eta[j+2]*scale
             @inbounds h[j+3] = eta[j+3]*scale
@@ -71,7 +71,7 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   az = 2 / (dz * dz)
 
   if 0 < index <= nxyz
-      i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+      i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
       @inbounds mx = m[indexm-2]
@@ -171,7 +171,7 @@ function exchange_vector_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
     az = 2 / (dz * dz)
 
     if 0 < index <= nxyz
-        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
         indexm = 3*index
         @inbounds mx = m[indexm-2]
@@ -273,7 +273,7 @@ function bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   nxyz = nxy * nz
 
   if 0< index <= nxyz
-      i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+      i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
       @inbounds mx = m[indexm-2]
@@ -359,7 +359,7 @@ function interfacial_dmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   nxyz = nxy * nz
 
   if 0 < index <= nxyz
-      i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+      i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
       @inbounds mx = m[indexm-2]
@@ -431,7 +431,7 @@ function spatial_interfacial_dmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArra
   nxyz = nxy * nz
 
   if 0< index <= nxyz
-      i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+      i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
       @inbounds mx = m[indexm-2]
@@ -504,7 +504,7 @@ function spatial_bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   nxyz = nxy * nz
 
   if 0< index <= nxyz
-      i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+      i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
       @inbounds mx = m[indexm-2]
@@ -633,9 +633,9 @@ function cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}
 end
 
 function titled_cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
-                        energy::CuDeviceArray{T, 1}, Kc::T, 
+                        energy::CuDeviceArray{T, 1}, Kc::T,
                         axis1::T,axis2::T,axis3::T,axis4::T,axis5::T,axis6::T,axis7::T,axis8::T,axis9::T,
-                        Ms::CuDeviceArray{T, 1}, volume::T, nxyz::Int64) where {T<:AbstractFloat}                       
+                        Ms::CuDeviceArray{T, 1}, volume::T, nxyz::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if index <= nxyz
         mu0 = 4*pi*1e-7
@@ -668,7 +668,7 @@ function exchange_kernel_rkky!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         sigma::T, nx::Int64, ny::Int64, nz::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if index <= nx*ny*nz
-        i,j,k = Tuple(CuArrays.CartesianIndices((nx,ny,nz))[index])
+        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
         @inbounds energy[index] = 0
         @inbounds h[3*index-2] = 0
         @inbounds h[3*index-1] = 0

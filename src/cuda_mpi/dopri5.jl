@@ -5,7 +5,7 @@
 #   - A simulation instance with field "spin" and "prespin"
 #   - A call back function
 using MPI
-using CuArrays
+using CUDA
 
 function dopri5_step_inner_GPU_MPI(neb::NEB_GPU_MPI, step::Float64, t::Float64)
     max_error = dopri5_step_inner_GPU(neb, step, t)

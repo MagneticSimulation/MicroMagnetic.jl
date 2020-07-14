@@ -1,11 +1,11 @@
 using LinearAlgebra
-using CUDAnative, CuArrays
+using CUDA
 
 function compute_distance(neb::NEB_GPU_MPI)
     nxyz = neb.sim.nxyz
     N = neb.N
     dof = 3*nxyz
-    blk, thr = CuArrays.cudims(nxyz)
+    blk, thr = cudims(nxyz)
     ds = neb.sim.energy #we borrow the sim.energy
     for n=0:N
        m1 = n==0 ? neb.image_l : view(neb.spin, (n-1)*dof+1:n*dof)
@@ -19,12 +19,12 @@ end
 function compute_tangents(neb::NEB_GPU_MPI)
     N = neb.N
     nxyz = neb.sim.nxyz
-    blk, thr = CuArrays.cudims(3*nxyz)
+    blk, thr = cudims(3*nxyz)
     @cuda blocks=blk threads=thr compute_tangents_kernel!(neb.tangent, neb.spin,
                                                            neb.image_l, neb.image_r,
                                                            neb.energy, N, nxyz)
 
-    blk, thr = CuArrays.cudims(N*nxyz)
+    blk, thr = cudims(N*nxyz)
     @cuda blocks=blk threads=thr neb_projection_kernel!(neb.tangent, neb.spin, N*nxyz)
 
     dof = 3*nxyz
@@ -36,4 +36,3 @@ function compute_tangents(neb::NEB_GPU_MPI)
 
    return nothing
 end
-

@@ -20,8 +20,8 @@ end
 
 function ModifiedEulerGPU(nxyz::Int64, rhs_fun, step::Float64)
   Float = _cuda_using_double.x ? Float64 : Float32
-  k1 = CuArrays.zeros(Float,3*nxyz)
-  k2 = CuArrays.zeros(Float,3*nxyz)
+  k1 = CUDA.zeros(Float,3*nxyz)
+  k2 = CUDA.zeros(Float,3*nxyz)
   return ModifiedEulerGPU(0.0, step, 0, k1, k2, rhs_fun)
 end
 
@@ -41,7 +41,7 @@ function advance_step(sim::AbstractSim, integrator::ModifiedEulerGPU)
     sim.spin .+= (1/2*h) .* (k1 .+ k2)
 
     normalise(sim.spin, sim.nxyz)
-    
+
     #nsteps is very important in the presence of stochastic field,
     #note that the stochastic field is constant in calculating k1 and k2
     integrator.nsteps += 1

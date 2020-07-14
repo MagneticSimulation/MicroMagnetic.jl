@@ -1,4 +1,4 @@
-using CuArrays.CUFFT
+using CUDA.CUFFT
 using FFTW
 using LinearAlgebra
 
@@ -47,15 +47,15 @@ function init_demag_gpu(sim::MicroSimGPU, Nx::Int, Ny::Int, Nz::Int)
 
   Float = _cuda_using_double.x ? Float64 : Float32
 
-  mx_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
-  my_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
-  mz_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
+  mx_gpu = CUDA.zeros(Float, nx_fft, ny_fft, nz_fft)
+  my_gpu = CUDA.zeros(Float, nx_fft, ny_fft, nz_fft)
+  mz_gpu = CUDA.zeros(Float, nx_fft, ny_fft, nz_fft)
   plan = plan_rfft(mx_gpu)
 
-  tensor = CuArrays.zeros(Float, nx, ny, nz)
+  tensor = CUDA.zeros(Float, nx, ny, nz)
 
-  blk1, thr1 = CuArrays.cudims(tensor)
-  blk2, thr2 = CuArrays.cudims(mx_gpu)
+  blk1, thr1 = cudims(tensor)
+  blk2, thr2 = cudims(mx_gpu)
 
   #Nxx
   @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xx!(tensor, dx, dy, dz, Nx, Ny, Nz)
@@ -83,12 +83,12 @@ function init_demag_gpu(sim::MicroSimGPU, Nx::Int, Ny::Int, Nz::Int)
   tensor_yz = real(plan*mz_gpu)
 
   lenx = (nx_fft%2>0) ? nx : nx+1
-  Mx = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  My = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Mz = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hx = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hy = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hz = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Mx = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  My = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Mz = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hx = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hy = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hz = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
 
   m_plan = plan_rfft(mx_gpu)
   h_plan = plan_irfft(Hx, nx_fft)
@@ -148,15 +148,15 @@ function init_demag_gpu_II(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
 
   Float = _cuda_using_double.x ? Float64 : Float32
 
-  mx_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
-  my_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
-  mz_gpu = CuArrays.zeros(Float, nx_fft, ny_fft, nz_fft)
+  mx_gpu = CUDA.zeros(Float, nx_fft, ny_fft, nz_fft)
+  my_gpu = CUDA.zeros(Float, nx_fft, ny_fft, nz_fft)
+  mz_gpu = CUDA.zeros(Float, nx_fft, ny_fft, nz_fft)
   plan = plan_rfft(mx_gpu)
 
-  tensor = CuArrays.zeros(Float, nx, ny, nz)
+  tensor = CUDA.zeros(Float, nx, ny, nz)
 
-  blk1, thr1 = CuArrays.cudims(tensor)
-  blk2, thr2 = CuArrays.cudims(mx_gpu)
+  blk1, thr1 = cudims(tensor)
+  blk2, thr2 = cudims(mx_gpu)
 
   #Nxx
   @cuda blocks=blk1 threads=thr1 compute_tensors_kernel_xx!(tensor, dx, dy, dz, Nx, Ny, Nz)
@@ -184,19 +184,19 @@ function init_demag_gpu_II(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
   tensor_yz = real(plan*mz_gpu)
 
   lenx = (nx_fft%2>0) ? nx : nx+1
-  Mx = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  My = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Mz = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hx = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hy = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
-  Hz = CuArrays.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Mx = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  My = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Mz = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hx = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hy = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
+  Hz = CUDA.zeros(Complex{Float}, lenx, ny_fft, nz_fft)
 
   m_plan = plan_rfft(mx_gpu)
   h_plan = plan_irfft(Hx, nx_fft)
 
   field = zeros(Float, 3*sim.nxyz)
   energy = zeros(Float, sim.nxyz)
-  spin = CuArrays.zeros(Float, 3*sim.nxyz)
+  spin = CUDA.zeros(Float, 3*sim.nxyz)
   demag = DemagGPUII(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
                 tensor_xy, tensor_xz, tensor_yz, spin, mx_gpu, my_gpu, mz_gpu,
                 Mx, My, Mz, Hx, Hy, Hz,
@@ -212,7 +212,7 @@ function effective_field(demag::DemagGPU, sim::MicroSimGPU, spin::CuArray{T, 1},
   fill!(demag.my, 0)
   fill!(demag.mz, 0)
 
-  blocks_n, threads_n = CuArrays.cudims(demag.mx)
+  blocks_n, threads_n = cudims(demag.mx)
   @cuda blocks = blocks_n threads=threads_n distribute_m_kernel!(spin, demag.mx, demag.my, demag.mz, sim.Ms, nx, ny, nz)
 
   #synchronize()
@@ -231,7 +231,7 @@ function effective_field(demag::DemagGPU, sim::MicroSimGPU, spin::CuArray{T, 1},
 
   @cuda blocks = blocks_n threads=threads_n collect_h_kernel!(sim.field, demag.mx, demag.my, demag.mz, nx, ny, nz)
 
-  blocks_n, threads_n = CuArrays.cudims(sim.nxyz)
+  blocks_n, threads_n = cudims(sim.nxyz)
   @cuda blocks=blocks_n threads=threads_n compute_energy_kernel!(sim.energy, spin, sim.field, sim.Ms, mesh.volume, sim.nxyz)
   return nothing
 end
@@ -251,7 +251,7 @@ function effective_field(demag::DemagGPUII, sim::MicroSim, spin::Array{Float64, 
   fill!(demag.my, 0)
   fill!(demag.mz, 0)
 
-  blocks_n, threads_n = CuArrays.cudims(demag.mx)
+  blocks_n, threads_n = cudims(demag.mx)
   @cuda blocks = blocks_n threads=threads_n distribute_m_kernel_II!(demag.spin, demag.mx, demag.my, demag.mz, nx, ny, nz)
 
   #synchronize()
