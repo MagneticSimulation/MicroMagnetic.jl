@@ -104,6 +104,7 @@ end
 mutable struct TimeZeemanGPU{T<:AbstractFloat} <: MicroEnergyGPU
    time_fun::Function
    init_field::CuArray{T, 1}
+   cufield::CuArray{T, 1}
    field::Array{T, 1}
    energy::Array{T, 1}
    total_energy::T
@@ -127,7 +128,7 @@ mutable struct CubicAnisotropyGPU{T<:AbstractFloat} <: MicroEnergyGPU
    name::String
 end
 
-mutable struct TitledCubicAnisotropyGPU{T<:AbstractFloat} <: MicroEnergyGPU
+mutable struct TiltedCubicAnisotropyGPU{T<:AbstractFloat} <: MicroEnergyGPU
    axis::Array{T, 1}
    Kc::T
    field::Array{T, 1}

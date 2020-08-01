@@ -35,7 +35,7 @@ function effective_field(zeeman::TimeZeemanGPU, sim::MicroSimGPU, spin::CuArray{
   volume = sim.mesh.volume
   blocks_n, threads_n = sim.blocks, sim.threads
   tx, ty, tz = zeeman.time_fun(t)
-  @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, sim.energy, sim.Ms, volume, T(tx), T(ty), T(tz), nxyz)
+  @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, zeeman.cufield, sim.energy, sim.Ms, volume, T(tx), T(ty), T(tz), nxyz)
   return nothing
 end
 
@@ -128,11 +128,11 @@ function effective_field(anis::CubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArr
     return nothing
 end
 
-function effective_field(anis::TitledCubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(anis::TiltedCubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   blocks_n, threads_n = sim.blocks, sim.threads
   volume = sim.mesh.volume
   axis = anis.axis
-  @cuda blocks=blocks_n threads=threads_n titled_cubic_anisotropy_kernel!(spin, sim.field, sim.energy, anis.Kc,
+  @cuda blocks=blocks_n threads=threads_n tilted_cubic_anisotropy_kernel!(spin, sim.field, sim.energy, anis.Kc,
                                        axis[1],axis[2],axis[3],axis[4],axis[5],axis[6],axis[7],axis[8],axis[9],
                                        sim.Ms, volume, sim.nxyz)
   return nothing
