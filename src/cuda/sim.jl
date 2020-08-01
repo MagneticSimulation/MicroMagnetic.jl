@@ -175,11 +175,13 @@ function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction, ft::Function; 
   nxyz = sim.nxyz
   T = _cuda_using_double.x ? Float64 : Float32
   field = zeros(T, 3*nxyz)
+  local_filed = zeros(T, 3*nxyz)
   energy = zeros(T, nxyz)
   init_vector!(field, sim.mesh, H0)
   init_field = CuArray(field)
+  cufield = CuArray(local_filed)
 
-  zeeman =  TimeZeemanGPU(ft, init_field, field, energy, T(0), name)
+  zeeman =  TimeZeemanGPU(ft, init_field, cufield, field, energy, T(0), name)
   push!(sim.interactions, zeeman)
 
   if sim.save_data
@@ -187,7 +189,7 @@ function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction, ft::Function; 
           push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
           push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
           id = length(sim.interactions)
-          fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
+          fun = o::AbstractSim ->  (o.interactions[id].cufield[1], o.interactions[id].cufield[2], o.interactions[id].cufield[3])
           push!(sim.saver.results, fun)
       end
 
@@ -403,9 +405,13 @@ end
 
 
 function add_cubic_anis(sim::AbstractSimGPU, Kc::Float64, axis1, axis2; name="cubic")
-  norm1 = axis1[1]^2+axis1[2]^2+axis1[3]^2
-  norm2 = axis1[1]^2+axis1[2]^2+axis1[3]^2
+  norm1 = sqrt(axis1[1]^2+axis1[2]^2+axis1[3]^2)
+  norm2 = sqrt(axis2[1]^2+axis2[2]^2+axis2[3]^2)
   naxis1,naxis2 = axis1./norm1,axis2./norm2
+  if abs.(sum(naxis1.*naxis2)) > 1e-10
+    println("cubic axis not normal!")
+    return nothing
+  end
   naxis3= cross_product(axis1,axis2)
 
   nxyz = sim.nxyz
@@ -418,7 +424,7 @@ function add_cubic_anis(sim::AbstractSimGPU, Kc::Float64, axis1, axis2; name="cu
   end
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
-  anis = TitledCubicAnisotropyGPU(axis, Float(Kc), field, energy, Float(0.0), name)
+  anis = TiltedCubicAnisotropyGPU(axis, Float(Kc), field, energy, Float(0.0), name)
   push!(sim.interactions, anis)
 
   if sim.save_data

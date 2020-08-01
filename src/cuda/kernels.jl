@@ -43,7 +43,7 @@ end
 
 
 function time_zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
-                        h_static::CuDeviceArray{T, 1}, energy::CuDeviceArray{T, 1},
+                        h_static::CuDeviceArray{T, 1}, cufield::CuDeviceArray{T, 1}, energy::CuDeviceArray{T, 1},
                         Ms::CuDeviceArray{T, 1}, volume::T, fx::T, fy::T, fz::T, nxyz::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if index <= nxyz
@@ -52,6 +52,9 @@ function time_zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
         @inbounds h[j+1] = h_static[j+1]*fx
         @inbounds h[j+2] = h_static[j+2]*fy
         @inbounds h[j+3] = h_static[j+3]*fz
+        @inbounds cufield[j+1] = h_static[j+1]*fx
+        @inbounds cufield[j+2] = h_static[j+2]*fy
+        @inbounds cufield[j+3] = h_static[j+3]*fz
         @inbounds energy[index] = -mu0*Ms[index]*volume*(m[j+1]*h[j+1] + m[j+2]*h[j+2] + m[j+3]*h[j+3])
     end
    return nothing
@@ -632,7 +635,7 @@ function cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}
    return nothing
 end
 
-function titled_cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
+function tilted_cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Kc::T,
                         axis1::T,axis2::T,axis3::T,axis4::T,axis5::T,axis6::T,axis7::T,axis8::T,axis9::T,
                         Ms::CuDeviceArray{T, 1}, volume::T, nxyz::Int64) where {T<:AbstractFloat}
