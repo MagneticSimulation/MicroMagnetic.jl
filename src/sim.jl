@@ -54,14 +54,14 @@ For example,use:
 A=1e-12
 ```
 to add exchange with constant 1e-12.
-Useful parameters: anis_axis=(0,0,1)--------->anistropy axis
-                   DMI_type="bulk" or "interfacial"-------->DMI type
-                   GPU = true or false --------->enable GPU
-                   demag = true or false --------->enable demag
-                   demag_pbc = (0,0,0) ---------> set virtually extra magnetization out the bondary,
-                                                  which is included when computing demag field.
-                                                  For example,set demag_pbc = (10,10,0) when simulating
-                                                  a thin film.
+Useful parameters: anis_axis=(0,0,1)------------------------------------->anistropy axis
+                   DMI_type="bulk" or "interfacial"---------------------->DMI type
+                   GPU = true or false ---------------------------------->enable GPU
+                   demag = true or false -------------------------------->enable demag
+                   demag_pbc = (0,0,0) ----------------------------------> set virtually extra magnetization out the bondary,
+                                                                           which is included when computing demag field.
+                                                                           For example,set demag_pbc = (10,10,0) when simulating
+                                                                           a thin film.
 """
 
 function Sim(;nx,ny,nz,dx=1e-9,dy=1e-9,dz=1e-9,pbc="",Ms=0,A=0,D=0,H=(0,0,0),Ku=0,anis_axis=(0,0,1),

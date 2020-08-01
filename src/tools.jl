@@ -1,4 +1,5 @@
 using FFTW
+#using PyCall
 
 function fft_m_2d(data, dx, dy, zero_padding_size)
 
@@ -215,6 +216,33 @@ function compute_magnetic_phase_fft(mx, my, dx, dy, dz, Ms; Nx=-1, Ny=-1)
     return -phi*mu0*Ms*dz/(2*Phi0)*dx*dy
 end
 
+function OVF2LTEM(fname;df=200,Ms=1e5,Nx=512, Ny=512,beta=0,gamma=0)
+    np =  pyimport("numpy")
+    mpl =  pyimport("matplotlib")
+    mpl.use("Agg")
+    mcolors = pyimport("matplotlib.colors")
+    plt = pyimport("matplotlib.pyplot")
+    colorsys = pyimport("colorsys")
+    ag = pyimport("mpl_toolkits.axes_grid1")
+
+    if endswith(fname,".ovf")
+        fname= fname[1:end-4]
+    end
+
+    path=joinpath(dirname(fname),"LTEM")
+
+    if !isdir(path)
+        mkpath(path)
+    end
+
+    phase, intensity = LTEM(fname; Ms=Ms,df=df, Nx=Nx, Ny=Ny,beta=beta,gamma=gamma)
+    fig,ax = plt.subplots(2,1)
+    ax[1,1].imshow(transpose(phase),cmap=mpl.cm.gray,origin="lower") 
+    ax[2,1].imshow(transpose(intensity),cmap=mpl.cm.gray,origin="lower")
+    plt.savefig(joinpath(path,basename(fname)*"_LTEM.png"),dpi=300)
+    plt.close()
+end
+
 #Ref: "MALTS: A tool to simulate Lorentz Transmission Electron Microscopy from micromagnetic simulations" by Stephanie K. Walton
 #df in um
 #V is the Accelerating voltage, in Kv
@@ -276,8 +304,14 @@ function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, Nx=512, Ny=512,
 
     phi = phi_M
 
-    for i=1:nx,j=1:ny
+    #=for i=1:nx,j=1:ny
         phi[Int(floor(Nx/2-nx/2+i)),Int(floor(Ny/2-ny/2+j))] += phi_E
+    end=#
+
+    for i=1:Nx,j=1:Ny
+        if abs(smx[i,j]) + abs(smy[i,j]) +abs(smz[i,j]) > 1e-5
+            phi[i,j] += phi_E
+        end
     end
     phi = mod.(phi,2*pi)
 
@@ -293,8 +327,8 @@ function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, Nx=512, Ny=512,
         local_intensity[i,j] = intensity[Int(floor(Nx/2-nx/2+i)),Int(floor(Ny/2-ny/2+j))]
     end
 
-    return local_phi, local_intensity
-    #return local_phi, intensity
+    #return local_phi, local_intensity
+    return phi_M, intensity
 end
 
 """Make_Projection: get the projection magnetization.
@@ -342,8 +376,28 @@ function trilinear_interpolation(M,x,y,z)
     return v
 end
 
+function Normal_Projection(mx,my,mz,Nx,Ny)
+    (nx,ny,nz) = size(mx)
+    smx,smy,smz = zeros(Nx,Ny),zeros(Nx,Ny),zeros(Nx,Ny)
+    startx,starty = (Nx-nx)/2,(Ny-ny)/2
+
+    for i = 1:nx, j= 1:ny
+        x,y = Int(floor(startx)+i),Int(floor(starty)+j)
+        for k = 1:nz
+            smx[x,y] += mx[i,j,k]
+            smy[x,y] += my[i,j,k]
+            smz[x,y] += mz[i,j,k]
+        end
+    end
+
+    return smx,smy,smz
+end
+
 function Make_Projection(mx::Array{Float64,3},my::Array{Float64,3},mz::Array{Float64,3};
                           Nx::Int=128,Ny::Int=128,beta::Number=0,gamma::Number=0,ItpNum::Int=0)
+    if abs(beta)<1e-6 && abs(gamma)<1e-6
+        return Normal_Projection(mx,my,mz,Nx,Ny)
+    end
 
     (nx,ny,nz) = size(mx)
     mxp,myp,mzp = zeros(Nx,Ny),zeros(Nx,Ny),zeros(Nx,Ny)
@@ -419,4 +473,300 @@ function Make_Projection(ovf::OVF2;beta=0,gamma=0,Nx=256,Ny=256,ItpNum=0)
     return Make_Projection(m,nx,ny,nz,beta=beta,gamma=gamma,Nx=Nx,Ny=Ny,ItpNum=ItpNum)
 end
 
+#TODO
+#=function div(scalar_field::Array{T,1}, mesh::Mesh) where T<:AbstractFloat
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    divM = zeros(T,3,nx,ny,nz)
 
+    divM[1,:,:,:] .+= divx(scalar_field,mesh)
+    divM[2,:,:,:] .+= divy(scalar_field,mesh)
+    divM[3,:,:,:] .+= divz(scalar_field,mesh)
+
+    return divM
+end=#
+
+function div(vector_field::Array{T,1}, mesh::Mesh) where T<:AbstractFloat
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    divM = zeros(T, nx, ny, nz)
+    b = reshape(vector_field,(3,:))
+
+    divM .+= divx(b[1,:],mesh)
+    divM .+= divy(b[2,:],mesh)
+    divM .+= divz(b[3,:],mesh)
+
+    return divM
+end
+
+function divx2(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx = mesh.dx
+    tobenamed = zeros(T, nx, ny, nz)
+
+    for i=1:nx,j=1:ny,k=1:nz
+        id = index(i, j, k, nx, ny, nz)
+        id1,id2 = index(i-1,j,k, nx,ny,nz),index(i+1,j,k, nx,ny,nz)
+        for idd in [id1,id2]
+            if idd > 0
+                tobenamed[i,j,k] += (scalar_field[idd] - scalar_field[id])/(dx*dx)
+            end
+        end
+    end
+
+    return tobenamed
+end
+
+function divy2(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dy = mesh.dy
+    tobenamed = zeros(T, nx, ny, nz)
+
+    for i=1:nx,j=1:ny,k=1:nz
+        id = index(i, j, k, nx, ny, nz)
+        id1,id2 = index(i,j-1,k, nx,ny,nz),index(i,j+1,k, nx,ny,nz)
+        for idd in [id1,id2]
+            if idd > 0
+                tobenamed[i,j,k] += (scalar_field[idd] - scalar_field[id])/(dy*dy)
+            end
+        end
+    end
+
+    return tobenamed
+end
+
+function divz2(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dz = mesh.dz
+    tobenamed = zeros(T, nx, ny, nz)
+
+    for i=1:nx,j=1:ny,k=1:nz
+        id = index(i, j, k, nx, ny, nz)
+        id1,id2 = index(i,j,k-1, nx,ny,nz),index(i,j,k+1, nx,ny,nz)
+        for idd in [id1,id2]
+            if idd > 0
+                tobenamed[i,j,k] += (scalar_field[idd] - scalar_field[id])/(dz*dz)
+            end
+        end
+    end
+
+    return tobenamed
+end
+
+function divx(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx = mesh.dx
+    tobenamed = zeros(T, nx, ny, nz)
+
+    for i=1:nx,j=1:ny,k=1:nz
+        id = index(i, j, k, nx, ny, nz)
+        id1,id2 = index(i-1,j,k, nx,ny,nz),index(i+1,j,k, nx,ny,nz)
+        if id1 > 0 && id2 >0 
+            tobenamed[i,j,k] = (scalar_field[id2] - scalar_field[id1])/(2*dx)
+        end
+        if id1 < 0
+            tobenamed[i,j,k] = (scalar_field[id2] - scalar_field[id])/(dx)
+        end
+
+        if id2 < 0
+            tobenamed[i,j,k] = (scalar_field[id] - scalar_field[id1])/(dx)
+        end
+
+    end
+
+    return tobenamed
+end
+
+function divy(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dy = mesh.dy
+    tobenamed = zeros(T, nx, ny, nz)
+
+    for i=1:nx,j=1:ny,k=1:nz
+        id = index(i, j, k, nx, ny, nz)
+        id1,id2 = index(i,j-1,k, nx,ny,nz),index(i,j+1,k, nx,ny,nz)
+        if id1 > 0 && id2 >0 
+            tobenamed[i,j,k] = (scalar_field[id2] - scalar_field[id1])/(2*dy)
+        end
+        if id1 < 0
+            tobenamed[i,j,k] = (scalar_field[id2] - scalar_field[id])/(dy)
+        end
+
+        if id2 < 0
+            tobenamed[i,j,k] = (scalar_field[id] - scalar_field[id1])/(dy)
+        end
+
+    end
+
+    return tobenamed
+end
+
+function divz(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dz = mesh.dz
+    tobenamed = zeros(T, nx, ny, nz)
+
+    for i=1:nx,j=1:ny,k=1:nz
+        id = index(i, j, k, nx, ny, nz)
+        id1,id2 = index(i,j,k-1, nx,ny,nz),index(i,j,k+1, nx,ny,nz)
+        if id1 > 0 && id2 >0 
+            tobenamed[i,j,k] = (scalar_field[id2] - scalar_field[id1])/(2*dz)
+        end
+        if id1 < 0
+            tobenamed[i,j,k] = (scalar_field[id2] - scalar_field[id])/(dz)
+        end
+
+        if id2 < 0
+            tobenamed[i,j,k] = (scalar_field[id] - scalar_field[id1])/(dz)
+        end
+
+    end
+
+    return tobenamed
+end
+
+
+function OVF2MFM(m,nx,ny,nz,dx,dy,dz,Nx,Ny,height,ratio)
+
+    hz = Int(floor(height/dz))
+
+    #Mesh = _cuda_available.x ? FDMeshGPU : FDMesh
+    #mesh = Mesh(nx=nx,ny=ny,nz=nz+z,dx=dx,dy=dy,dz=dz)
+    mesh = FDMesh(nx=nx,ny=ny,nz=nz+hz+1,dx=dx,dy=dy,dz=dz)
+
+    @printf("mesh size is : %d %d %d \n",nx,ny,nz+hz+1)
+
+    println("Creating sim...")
+
+    sim = Sim(mesh,driver = "none")
+
+    println("Done!")
+
+    println("Initializing magnetization...")
+
+    b = reshape(m,(3,nx,ny,nz))
+
+    mm = zeros(3*nx*ny*(nz+hz+1))
+
+    bb = reshape(mm,(3,nx,ny,nz+hz+1))
+
+    Ms_array=zeros(nx*ny*(nz+hz+1))
+
+    Ms = reshape(Ms_array,(nx,ny,nz+hz+1))
+
+    # find the boundry of magnetized material
+
+    for i = 1:nx,j=1:ny,k=1:nz
+
+        if abs(b[1,i,j,k])+abs(b[2,i,j,k])+abs(b[3,i,j,k]) > 1e-1
+
+           Ms[i,j,k] = 1e5
+
+           bb[1,i,j,k] = b[1,i,j,k]
+
+           bb[2,i,j,k] = b[2,i,j,k]
+
+           bb[3,i,j,k] = b[3,i,j,k]
+
+        end
+
+    end
+
+    set_Ms(sim,Ms_array)
+
+    init_m0(sim,mm)
+
+    println("Done!")
+
+    println("Initializing demag kernel...")
+
+    add_demag(sim)
+
+    println("Done!")
+
+    println("Computing demag field...")
+
+
+    effective_field(sim,sim.spin,0.0)
+
+    println("Done!")
+
+    println("Computing divergence of demag field...")                                
+
+    fieldx = reshape(sim.field,(3,:))[1,:]
+    fieldz = reshape(sim.field,(3,:))[3,:]
+
+    dFdz = divz(fieldz, sim.mesh) + ratio.*divx(fieldx, sim.mesh)
+
+    #Demagdiv = div(sim.field, sim.mesh)
+
+    println("All finished!")
+
+    #return Demagdiv[:,:,nz+z-1]
+    return dFdz[:,:,nz+hz]
+end
+
+
+"""
+
+OVF2MFM(fname::OVF2;height=100e-9)
+
+Get the simulated magnetic force microscope contrast from an ovf file.
+
+Method: Calculate the divergence of demagnetization on the platform of probe height. 
+
+
+
+                   probe |___________________________
+                                                     |
+                                                     |
+                                                     |
+                                                     |
+             _____________________________________   | height
+           /                                     /|  |
+          /                                     / |  |
+         /                                     / /   |
+        /                ____________________________|
+       /                                     / /
+      /      material                       / /
+     /                                     / /
+    /_____________________________________/ /
+    |_____________________________________|/
+
+"""
+
+function OVF2MFM(fname::String;Nx=-1,Ny=-1,height=100e-9,ratio=0.1)
+    np =  pyimport("numpy")
+    mpl =  pyimport("matplotlib")
+    mpl.use("Agg")
+    mcolors = pyimport("matplotlib.colors")
+    plt = pyimport("matplotlib.pyplot")
+    colorsys = pyimport("colorsys")
+    ag = pyimport("mpl_toolkits.axes_grid1")
+
+
+    if endswith(fname,".ovf")
+        fname= fname[1:end-4]
+    end
+
+    path=joinpath(dirname(fname),"MFM")
+
+    if !isdir(path)
+        mkpath(path)
+    end
+
+    ovf = read_ovf(fname)
+    m = ovf.data
+    nx = ovf.xnodes
+    ny = ovf.ynodes
+    nz = ovf.znodes
+    dx = ovf.xstepsize
+    dy = ovf.ystepsize
+    dz = ovf.zstepsize
+
+    @printf("data size is : %d %d %d, cell size is: %1.2ge-9 %1.2ge-9 %1.2ge-9 \n",nx,ny,nz,dx/1e-9,dy/1e-9,dz/1e-9)
+    mfm = OVF2MFM(m,nx,ny,nz,dx,dy,dz,Nx,Ny,height,ratio)
+
+    plt.imshow(np.transpose(mfm),cmap="gray",origin="lower")
+    plt.colorbar()
+    plt.savefig(@sprintf("%s_MFM_h_%g.png",joinpath(path,basename(fname)),height/1e-9),dpi=300)
+    plt.close()
+end
