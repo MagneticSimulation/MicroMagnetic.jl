@@ -35,7 +35,8 @@ export init_m0,
        compute_guiding_centre, set_aj,
        NEB,
        interpolate_m,save_ovf,read_ovf,
-       fftfreq
+       fftfreq,
+       OVF2LTEM,OVF2MFM
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT
 
