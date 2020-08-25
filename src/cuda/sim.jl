@@ -386,25 +386,26 @@ function add_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1)
   return anis
 end
 
-function add_cubic_anis(sim::AbstractSimGPU, Kc::Float64; name="cubic")
-  nxyz = sim.nxyz
-  Float = _cuda_using_double.x ? Float64 : Float32
-  field = zeros(Float, 3*nxyz)
-  energy = zeros(Float, nxyz)
-  anis = CubicAnisotropyGPU(Float(Kc), field, energy, Float(0.0), name)
-  push!(sim.interactions, anis)
+#="""
+    add_cubic_anis(sim::AbstractSimGPU, Kc::Float64, axis1::Tuple, axis2::Tuple; name="cubic")
 
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
-  end
-  return anis
-end
+Add cubic anistropy with two perpendicular axis axis1, axis2. (Only for SimGPU)
 
+axis1 is a Tuple with size (3). 
 
-function add_cubic_anis(sim::AbstractSimGPU, Kc::Float64, axis1, axis2; name="cubic")
+Make sure axis1.axis2 == 0,and the third axis will be calculated automatically.
+
+For example:
+
+```julia
+add_cubic_anis(sim, 1e3, (1, 1, 0), (1, -1, 0))
+```
+will add a cubic anistropy with axis (1, 1, 0), (1, -1, 0) and (0, 0, 1)
+"""=#
+function add_cubic_anis(sim::AbstractSimGPU, Kc::Float64; axis1::Any=nothing, axis2::Any=nothing, name="cubic")
+  axis1 = axis1 == nothing ? (1,0,0) : axis1
+  axis2 = axis2 == nothing ? (0,1,0) : axis2
+
   norm1 = sqrt(axis1[1]^2+axis1[2]^2+axis1[3]^2)
   norm2 = sqrt(axis2[1]^2+axis2[2]^2+axis2[3]^2)
   naxis1,naxis2 = axis1./norm1,axis2./norm2
@@ -424,7 +425,7 @@ function add_cubic_anis(sim::AbstractSimGPU, Kc::Float64, axis1, axis2; name="cu
   end
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
-  anis = TiltedCubicAnisotropyGPU(axis, Float(Kc), field, energy, Float(0.0), name)
+  anis = CubicAnisotropyGPU(axis, Float(Kc), field, energy, Float(0.0), name)
   push!(sim.interactions, anis)
 
   if sim.save_data

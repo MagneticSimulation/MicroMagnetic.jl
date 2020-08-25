@@ -110,6 +110,7 @@ function save_vtk_points(sim::AbstractSimGPU, fname::String; fields::Array{Strin
   vtk_point_data(vtk, b , "m")
 
   if length(fields) > 0
+    compute_fields_to_gpu(sim,sim.spin,0.0)
     fields = Set(fields)
     for i in sim.interactions
       if i.name in fields

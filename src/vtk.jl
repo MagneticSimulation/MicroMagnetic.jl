@@ -55,6 +55,7 @@ function save_vtk(sim::AbstractSim, fname::String; fields::Array{String, 1} = St
     fields = Set(fields)
     for i in sim.interactions
       if i.name in fields
+        JuMag.effective_field(i,sim,sim.spin,0.0)
         b = reshape(i.field, (3, nx, ny, nz))
         vtk_cell_data(vtk, b, i.name)
       end
@@ -81,6 +82,7 @@ function save_vtk_points(sim::AbstractSim, fname::String; fields::Array{String, 
     fields = Set(fields)
     for i in sim.interactions
       if i.name in fields
+        JuMag.effective_field(i,sim,sim.spin,0.0)
         b = reshape(i.field, (3, nx, ny, nz))
         vtk_point_data(vtk, b, i.name)
       end
@@ -89,6 +91,27 @@ function save_vtk_points(sim::AbstractSim, fname::String; fields::Array{String, 
   vtk_save(vtk)
 end
 
+function ovf2_skyrmion_number_vtk(ovfname::String, fname::String)
+    ovf = read_ovf(ovfname)
+    m = ovf.data
+    nx,ny,nz = ovf.xnodes, ovf.ynodes, ovf.znodes
+    dx,dy,dz = ovf.xstepsize, ovf.ystepsize, ovf.zstepsize
+
+    mesh = FDMesh(nx=nx, ny=ny, nz=nz, dx=dx, dy=dy, dz=dz)
+    v = zeros(nx*ny*nz)
+    compute_skyrmion_number(v, m, mesh)
+    xyz = zeros(Float32, 3, nx, ny, nz)
+
+    for k = 1:nz, j = 1:ny, i = 1:nx
+      xyz[1, i, j, k] = (i-0.5-nx/2)*dx
+      xyz[2, i, j, k] = (j-0.5-ny/2)*dy
+      xyz[3, i, j, k] = (k-0.5-nz/2)*dz
+    end
+    vtk = vtk_grid(fname, xyz)
+    b = reshape(v, (nx, ny, nz))
+    vtk_point_data(vtk, b , "skxNumber")
+    vtk_save(vtk)
+end
 """
     ovf2vtk(ovf_name, vtk_name=nothing; point_data=false, box=noting)
 
