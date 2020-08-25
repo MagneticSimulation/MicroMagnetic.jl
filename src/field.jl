@@ -62,6 +62,7 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::Array{Float
   energy = anis.energy
   Ms = sim.Ms
   Kc = anis.Kc
+  axis = anis.axis
   for i = 1:nxyz
     if Ms[i] == 0.0
       energy[i] = 0.0
@@ -70,15 +71,20 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::Array{Float
       field[3*i] = 0.0
       continue
     end
-    k = 3*(i-1)
-    mx = spin[k+1]
+    j = 3*(i-1)
     Ms_inv = 4*Kc/(Ms[i]*mu0)
-    field[k+1] = Ms_inv*spin[k+1]^3
-    field[k+2] = Ms_inv*spin[k+2]^3
-    field[k+3] = Ms_inv*spin[k+3]^3
-    energy[i] = -Kc*(spin[k+1]^4+spin[k+2]^4+spin[k+3]^4)*mesh.volume
-  end
 
+    mxp = axis[1]*spin[j+1] + axis[2]*spin[j+2] + axis[3]*spin[j+3]
+    myp = axis[4]*spin[j+1] + axis[5]*spin[j+2] + axis[6]*spin[j+3]
+    mzp = axis[7]*spin[j+1] + axis[8]*spin[j+2] + axis[9]*spin[j+3]
+    mxp3 = mxp*mxp*mxp
+    myp3 = myp*myp*myp
+    mzp3 = mzp*mzp*mzp
+    field[j+1] = Ms_inv*(mxp3*axis[1]+myp3*axis[4]+mzp3*axis[7])
+    field[j+2] = Ms_inv*(mxp3*axis[2]+myp3*axis[5]+mzp3*axis[8])
+    field[j+3] = Ms_inv*(mxp3*axis[3]+myp3*axis[6]+mzp3*axis[9])
+    energy[i] = -Kc*(mxp*mxp3+myp*myp3+mzp*mzp3)*mesh.volume
+  end
 end
 
 function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)

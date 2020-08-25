@@ -121,18 +121,10 @@ function effective_field(anis::AnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T,
 end
 
 function effective_field(anis::CubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-    blocks_n, threads_n = sim.blocks, sim.threads
-    volume = sim.mesh.volume
-    @cuda blocks=blocks_n threads=threads_n cubic_anisotropy_kernel!(spin, sim.field, sim.energy, anis.Kc,
-                                         sim.Ms, volume, sim.nxyz)
-    return nothing
-end
-
-function effective_field(anis::TiltedCubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   blocks_n, threads_n = sim.blocks, sim.threads
   volume = sim.mesh.volume
   axis = anis.axis
-  @cuda blocks=blocks_n threads=threads_n tilted_cubic_anisotropy_kernel!(spin, sim.field, sim.energy, anis.Kc,
+  @cuda blocks=blocks_n threads=threads_n cubic_anisotropy_kernel!(spin, sim.field, sim.energy, anis.Kc,
                                        axis[1],axis[2],axis[3],axis[4],axis[5],axis[6],axis[7],axis[8],axis[9],
                                        sim.Ms, volume, sim.nxyz)
   return nothing
