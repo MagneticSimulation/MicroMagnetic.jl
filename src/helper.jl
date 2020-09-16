@@ -199,6 +199,27 @@ function compute_skyrmion_number(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) whe
     return nothing
 end
 
+#shape factor is defined as (1/4*pi) \int \partial_i m * \partial_j m dx dy
+function compute_shape_factor(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    pxm, pym = partial_xy(m, mesh)
+    eta_xx = 0
+    eta_xy = 0
+    eta_yx = 0
+    eta_yy = 0
+    for k = 1:nz, j = 1:ny, i=1:nx
+        id = index(i, j, k, nx, ny, nz)
+        px_mx,px_my,px_mz = pxm[3*id-2],pxm[3*id-1],pxm[3*id]
+        py_mx,py_my,py_mz = pym[3*id-2],pym[3*id-1],pym[3*id]
+        eta_xx += dot_product(px_mx,px_my,px_mz, px_mx,px_my,px_mz)
+        eta_xy += dot_product(px_mx,px_my,px_mz, py_mx,py_my,py_mz)
+        eta_yx += dot_product(py_mx,py_my,py_mz, px_mx,px_my,px_mz)
+        eta_yy += dot_product(py_mx,py_my,py_mz, py_mx,py_my,py_mz)
+    end
+    factor = mesh.dx*mesh.dy/(4*pi)
+    return eta_xx*factor, eta_xy*factor, eta_yx*factor, eta_yy*factor
+end
+
 function compute_winding_number_xy(m::Array{T, 1}, mesh::Mesh; k=1) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     v = 0

@@ -1,3 +1,7 @@
+@inline function dot_product(x1::T, x2::T, x3::T, y1::T, y2::T, y3::T) where {T<:AbstractFloat}
+    return x1*y1 + x2*y2 + x3*y3
+end
+
 @inline function cross_x(x1::T, x2::T, x3::T, y1::T, y2::T, y3::T) where {T<:AbstractFloat}
     return -x3*y2 + x2*y3
 end
