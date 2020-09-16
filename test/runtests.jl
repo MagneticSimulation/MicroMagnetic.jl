@@ -15,7 +15,7 @@ include("test_util.jl")
 include("test_ovf.jl")
 include("test_neb.jl")
 include("test_geometry.jl")
-include("test_tools.jl")
+include("test_projection.jl")
 
 if JuMag._cuda_available.x
   JuMag.cuda_using_double()
@@ -32,4 +32,8 @@ if JuMag._cuda_available.x
   test_zeeman(gpu=true)
   mesh =  FDMeshGPU(nx=20, ny=5, nz=3, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
   test_fields(mesh, gpu=true)
+end
+
+if JuMag._pycall_available.x
+  include("test_tools.jl")
 end

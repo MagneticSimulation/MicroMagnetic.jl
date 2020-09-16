@@ -7,6 +7,7 @@ using CUDA
 const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)
 const _mpi_available = Ref(true)
+const _pycall_available = Ref(true)
 
 export init_m0,
        init_m0_random,
@@ -18,7 +19,7 @@ export init_m0,
        add_demag, add_exch_rkky, add_anis_kagome, add_anis_kagome_6fold,
        update_zeeman,update_anis, add_exch_vector,
        run_until, advance_step, relax,
-       save_vtk, save_m, ovf2vtk,
+       save_vtk, save_m, ovf2vtk,save_vtk_points,
        FDMesh,
        set_pinning, set_Ms,
        set_Ms_cylindrical,
@@ -36,8 +37,7 @@ export init_m0,
        compute_guiding_centre, set_aj,
        NEB,
        interpolate_m,save_ovf,read_ovf,
-       fftfreq,
-       OVF2LTEM,OVF2MFM
+       fftfreq
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT
 
@@ -81,7 +81,6 @@ include("neb/neb_sd.jl")
 include("neb/neb_llg.jl")
 include("ovf2.jl")
 include("init_m.jl")
-include("tools.jl")
 
 #_cuda_available[] = CUDA.functional()
 
@@ -152,6 +151,23 @@ if _mpi_available.x && _cuda_available.x
     end
 end
 
+try
+  using PyCall
+catch
+    _pycall_available[] = false
+end
+
+
+include("tools/projection.jl")
+export Make_Projection
+if _pycall_available.x
+  include("tools/xray.jl")
+  include("tools/ltem.jl")
+  include("tools/mfm.jl")
+  include("tools/plotm.jl")
+  export OVF2LTEM,OVF2MFM,OVF2XRAY,plotOVF
+end
+
 function __init__()
     _cuda_available[] = CUDA.functional()
     if !_cuda_available.x
@@ -159,6 +175,9 @@ function __init__()
     end
     if !_mpi_available.x
         @warn "MPI is not available!"
+    end
+    if !_pycall_available.x
+        @warn "PyCall is not available!"
     end
 end
 
