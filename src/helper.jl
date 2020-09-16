@@ -377,6 +377,37 @@ function compute_skyrmion_number(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractF
     return sum(v)
 end
 
+function compute_skyrmion_number_layers(fname::String)
+    ovf = read_ovf(fname)
+    m = ovf.data
+    nx,ny,nz = ovf.xnodes, ovf.ynodes, ovf.znodes
+    dx,dy,dz = ovf.xstepsize, ovf.ystepsize, ovf.zstepsize
+
+    mesh = FDMesh(nx=nx, ny=ny, nz=nz, dx=dx, dy=dy, dz=dz)
+
+    v = zeros(nx*ny*nz)
+    compute_skyrmion_number(v, m, mesh)
+
+    b = reshape(v,(nx,ny,nz))
+    n = zeros(nz)
+    for k =1:nz
+        n[k] = sum(b[:,:,k])
+    end
+
+    return n
+end
+
+function compute_skyrmion_number(fname::String)
+    ovf = read_ovf(fname)
+    m = ovf.data
+    nx,ny,nz = ovf.xnodes, ovf.ynodes, ovf.znodes
+    dx,dy,dz = ovf.xstepsize, ovf.ystepsize, ovf.zstepsize
+
+    mesh = FDMesh(nx=nx, ny=ny, nz=nz, dx=dx, dy=dy, dz=dz)
+
+    return compute_skyrmion_number(m, mesh)
+end
+
 #compute the guiding centre, Dynamics of magnetic vortices,
 #N.Papanicolaou, T.N. Tomaras 360, 425-462, (1991)
 function compute_guiding_centre(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}

@@ -54,14 +54,13 @@ For example,use:
 A=1e-12
 ```
 to add exchange with constant 1e-12.
-Useful parameters: anis_axis=(0,0,1)------------------------------------->anistropy axis
-                   DMI_type="bulk" or "interfacial"---------------------->DMI type
-                   GPU = true or false ---------------------------------->enable GPU
-                   demag = true or false -------------------------------->enable demag
-                   demag_pbc = (0,0,0) ----------------------------------> set virtually extra magnetization out the bondary,
-                                                                           which is included when computing demag field.
-                                                                           For example,set demag_pbc = (10,10,0) when simulating
-                                                                           a thin film.
+Useful parameters: 
+-anis_axis=(0,0,1) : anistropy axis
+-DMI_type="bulk" or "interfacial" : DMI type
+-GPU = true or false : enable GPU
+-demag = true or false : enable demag
+-demag_pbc = (0,0,0) : set virtually extra magnetization out the bondary, which is included when computing demag field.
+                      For example,set demag_pbc = (10,10,0) when simulating a thin film.
 """
 
 function Sim(;nx,ny,nz,dx=1e-9,dy=1e-9,dz=1e-9,pbc="",Ms=0,A=0,D=0,H=(0,0,0),Ku=0,anis_axis=(0,0,1),
@@ -566,12 +565,34 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
   return nothing
 end
 
+"""
+    add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1::Any=nothing, axis2::Any=nothing, name="cubic")
 
-function add_cubic_anis(sim::AbstractSim, Kc::Float64; name="cubic")
+add cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1)
+use axis1=(1,1,0), axis2=(1,-1,0) to set a pair of normal axis, and the third axis will be calculated automatically
+"""
+function add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1::Any=nothing, axis2::Any=nothing, name="cubic")
+  axis1 = axis1 == nothing ? (1,0,0) : axis1
+  axis2 = axis2 == nothing ? (0,1,0) : axis2
+  norm1 = sqrt(axis1[1]^2+axis1[2]^2+axis1[3]^2)
+  norm2 = sqrt(axis2[1]^2+axis2[2]^2+axis2[3]^2)
+  naxis1,naxis2 = axis1./norm1,axis2./norm2
+  if abs.(sum(naxis1.*naxis2)) > 1e-10
+    @error("cubic axis not normal!")
+    return nothing
+  end
+  naxis3= cross_product(axis1,axis2)
+  axis = zeros(Float64,9)
+  for i = 1:3
+    axis[i] = naxis1[i]
+    axis[i+3] = naxis2[i]
+    axis[i+6] = naxis3[i]
+  end
+
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
-  anis =  CubicAnisotropy(Kc, field, energy, name)
+  anis =  CubicAnisotropy(axis, Kc, field, energy, name)
   push!(sim.interactions, anis)
 
   if sim.save_data
