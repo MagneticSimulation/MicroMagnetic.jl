@@ -377,6 +377,15 @@ function compute_skyrmion_number(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractF
     return sum(v)
 end
 
+"""
+  compute_skyrmion_number_layers(ovf_name)
+
+compute the skyrmion number of each layer of the given ovf and return an array.
+
+  ```julia
+      skx_number = compute_skyrmion_number_layers("my.ovf")
+  ```
+"""
 function compute_skyrmion_number_layers(fname::String)
     ovf = read_ovf(fname)
     m = ovf.data
@@ -389,12 +398,12 @@ function compute_skyrmion_number_layers(fname::String)
     compute_skyrmion_number(v, m, mesh)
 
     b = reshape(v,(nx,ny,nz))
-    n = zeros(nz)
+    skx_number = zeros(nz)
     for k =1:nz
-        n[k] = sum(b[:,:,k])
+        skx_number[k] = sum(b[:,:,k])
     end
 
-    return n
+    return skx_number
 end
 
 function compute_skyrmion_number(fname::String)
