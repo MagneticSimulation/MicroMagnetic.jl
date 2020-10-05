@@ -192,13 +192,11 @@ end
 function read_OVF2_Binary4(io::IOStream, ovf::OVF2)
     ovf.data_type = "Binary 4"
     nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
-    spin = zeros(Float64, 3*nxyz)
+    spin = zeros(Float32, 3*nxyz)
     if read(io,Float32) == 1234567.0
-      for i = 1:3*nxyz
-        spin[i] = Float64(read(io, Float32))
-      end
+	  read!(io, spin)
     end
-    ovf.data = spin
+    ovf.data = convert(Array{Float64,1}, spin)
     return nothing
 end
 
@@ -207,9 +205,7 @@ function read_OVF2_Binary8(io::IOStream, ovf::OVF2)
     nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
     spin = zeros(Float64, 3*nxyz)
     if read(io, Float64) == 123456789012345.0
-      for i = 1:3*nxyz
-        spin[i] = read(io, Float64)
-      end
+      read!(io, spin)
     end
     ovf.data = spin
     return nothing
