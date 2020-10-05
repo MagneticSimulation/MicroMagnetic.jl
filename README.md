@@ -37,14 +37,14 @@ or
 
 ```
 julia> ]
-(v1.1) pkg> add FFTW
+(v1.4) pkg> add FFTW
 ```
 
 We don't have to install these packages for now, since the packages will be installed automatically when we install JuMag.
 To install [JuMag.jl](https://github.com/ww1g11/JuMag.jl), simply using
 
 ```
-(v1.1) pkg> add https://github.com/ww1g11/JuMag.jl
+(v1.4) pkg> add https://github.com/ww1g11/JuMag.jl
 ```
 
 Now we will see similar messages if we type `using JuMag`
@@ -55,21 +55,3 @@ julia> using JuMag
 ┌ Warning: CUDA is not available!
 └ @ JuMag ~/Softwares/JuMag.jl/src/JuMag.jl:41
 ```
-
-### Note:
-
-If your internet is very slow to install Julia packages, it is possible to solve the issue by using the Pkg mirrors
-
-```
-(v1.4) pkg> add PkgMirrors
-julia> using PkgMirrors
-julia> PkgMirrors.availables()
-2-element Array{String,1}:
- "ZJU"
- "USTC"
-julia> PkgMirrors.setmirror("USTC")
-[ Info: PkgMirror USTC activated.
-PkgMirrors.Types.PkgMirror("USTC", "https://mirrors.ustc.edu.cn/julia")
-```
-
-Alternatively,  running Julia in a Juno ([https://junolab.org/](https://junolab.org/)) terminal if you have a fast proxy.
