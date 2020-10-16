@@ -112,6 +112,9 @@ function init_hard_bubble(sim::AbstractSim; R::Float64, delta::Float64, center::
         x = (i+eps)*dx-x0
         y = (j+eps)*dy-y0
         r = sqrt(x^2+y^2)
+        if r>1.2*R
+            continue
+        end
         psi = atan(y,x)
         theta = 2*atan(exp(Q*(r-R)/delta))
         phi = S*psi + phi0

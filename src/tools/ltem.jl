@@ -1,14 +1,14 @@
 using FFTW
 using PyCall
 
-function compute_electric_phase(V, V0, dz, nz, beta)
+function compute_electric_phase(V, V0, Lz, beta)
     C = 299792458.0
     E0 = m_e*C^2
     Ek = V*c_e
     P =  sqrt(Ek^2+2*Ek*E0)/C
     lambda = 2*pi*h_bar/P #lambda in m
     CE = (2*pi/(lambda*V))*(Ek+E0)/(Ek+2*E0)
-    phi_E = CE*V0*(dz*nz)/cos(beta)
+    phi_E = CE*V0*Lz/cos(beta)
     return lambda, phi_E
 end
 
@@ -116,11 +116,11 @@ function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, Nx=-1, Ny=-1,
         mkpath(path)
     end
 
-    phase, intensity = LTEM(fname; V=V, Ms=1e5, V0=V0, df=df, alpha=alpha, Nx=Nx, Ny=Ny,beta=beta,gamma=gamma)
+    phase, intensity = LTEM(fname; V=V, Ms=Ms, V0=V0, df=df, alpha=alpha, Nx=Nx, Ny=Ny,beta=beta,gamma=gamma)
     fig,ax = plt.subplots(1,2)
-    ax[1].imshow(transpose(phase),cmap=mpl.cm.gray,origin="lower") 
+    ax[1].imshow(np.transpose(phase),cmap=mpl.cm.gray,origin="lower") 
     ax[1].set_title("phase")
-    ax[2].imshow(transpose(intensity),cmap=mpl.cm.gray,origin="lower")
+    ax[2].imshow(np.transpose(intensity),cmap=mpl.cm.gray,origin="lower")
     ax[2].set_title("intensity")
     plt.savefig(joinpath(path,basename(fname)*"_LTEM.png"),dpi=300)
     plt.close()
@@ -155,7 +155,7 @@ function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, Nx=-1, Ny=-1,be
 
     #dx=dx*cos(beta)
 
-    lambda, phi_E = compute_electric_phase(1000*V, V0, dz, nz, beta)
+    lambda, phi_E = compute_electric_phase(1000*V, V0, dz*nz, beta)
 
     #put data on the center of zero padding square
 
@@ -199,7 +199,7 @@ function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, Nx=-1, Ny=-1,be
             phi[i,j] += phi_E
         end
     end
-    phi = mod.(phi,2*pi)
+    #phi = mod.(phi,2*pi)
 
     fg = fft(exp.(1im.*phi))
 

@@ -33,7 +33,7 @@ function divergence_x(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
 
     end
 
-    return tobenamed
+    return div_x
 end
 
 function divergence_y(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
@@ -84,10 +84,31 @@ function divergence_z(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
     return div_z
 end
 
+function second_divergence_z(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dz = mesh.dz
+    div2_z = zeros(T, nx, ny, nz)
+
+    for i=1:nx,j=1:ny,k=1:nz
+        id = index(i, j, k, nx, ny, nz)
+        id1,id2 = index(i,j,k-1, nx,ny,nz),index(i,j,k+1, nx,ny,nz)
+        if id1 > 0
+            div2_z[i,j,k] += (scalar_field[id1] - scalar_field[id])/dz^2
+        end
+
+        if id2 > 0
+            div2_z[i,j,k] += (scalar_field[id2] - scalar_field[id])/dz^2
+        end
+
+    end
+
+    return div2_z
+end
+
 
 function OVF2MFM(m,nx,ny,nz,dx,dy,dz,Nx,Ny,height)
 
-    hz = Int(floor(height/dz))
+    hz = floor(Int, height/dz)
 
     mesh = FDMesh(nx=nx,ny=ny,nz=nz+hz+1,dx=dx,dy=dy,dz=dz)
 
@@ -145,7 +166,7 @@ function OVF2MFM(m,nx,ny,nz,dx,dy,dz,Nx,Ny,height)
 
     fieldz = reshape(sim.field,(3,:))[3,:]
 
-    dFdz = divergence_z(fieldz, sim.mesh)
+    dFdz = second_divergence_z(fieldz, sim.mesh)
 
     println("All finished!")
 

@@ -1,8 +1,3 @@
-function ovf_projection(fname;axis=ez,slice=-1,style = "mz")
-    ovf = read_ovf(fname)
-    return ovf_projection(ovf,axis=axis,slice=slice)
-end
-
 function ovf_projection(ovf::OVF2;axis=ez,slice=-1)
     m = ovf.data
     nx,ny,nz = ovf.xnodes,ovf.ynodes,ovf.znodes
@@ -84,7 +79,7 @@ function Normal_Projection_z(mx::Array{Float64,3}, my::Array{Float64,3}, mz::Arr
     Ny = Ny > ny ? Ny : ny
 
     smx,smy,smz = zeros(Nx,Ny),zeros(Nx,Ny),zeros(Nx,Ny)
-    startx,starty = Int(floor((Nx-nx)/2)),Int(floor((Ny-ny)/2))
+    startx,starty = floor(Int, (Nx-nx)/2), floor(Int, (Ny-ny)/2)
 
     for i = 1:nx, j= 1:ny
         x,y = startx+i,starty+j
@@ -104,7 +99,7 @@ function Normal_Projection_x(mx::Array{Float64,3}, my::Array{Float64,3}, mz::Arr
     Ny = Ny > nz ? Ny : nz
 
     smx,smy,smz = zeros(Nx,Ny),zeros(Nx,Ny),zeros(Nx,Ny)
-    startx,starty = Int(floor((Nx-ny)/2)),Int(floor((Ny-nz)/2))
+    startx,starty = floor(Int, (Nx-ny)/2), floor(Int, (Ny-nz)/2)
 
     for j = 1:ny, k= 1:nz
         x,y = startx+ny+1-j,starty+k
@@ -124,7 +119,7 @@ function Normal_Projection_y(mx::Array{Float64,3}, my::Array{Float64,3}, mz::Arr
     Ny = Ny > nz ? Ny : nz
 
     smx,smy,smz = zeros(Nx,Ny),zeros(Nx,Ny),zeros(Nx,Ny)
-    startx,starty = Int(floor((Nx-nx)/2)),Int(floor((Ny-nz)/2))
+    startx,starty = floor(Int, (Nx-nx)/2),floor(Int, (Ny-nz)/2)
 
     for i = 1:nx, k= 1:nz
         x,y = startx+i,starty+k
@@ -203,7 +198,7 @@ end
 function linear_separate(mxp,myp,mzp,mx,my,mz,x,y,Nx,Ny,beta,gamma)
     cb,sb,cg,sg = cos(beta),sin(beta),cos(gamma),sin(gamma)
     if 1 <= x <= Nx && 1 <= y <= Ny
-        xf,yf = Int(floor(x)),Int(floor(y))
+        xf,yf = floor(Int,x),floor(Int,y)
         xd,yd = x-xf,y-yf
         xp,yp = 1-xd,1-yd
         mx1,my1,mz1 = mx*cb-mz*sb, my, mz*cb+mx*sb

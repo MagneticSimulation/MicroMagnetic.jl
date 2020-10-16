@@ -221,6 +221,32 @@ function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch")
   return exch
 end
 
+function add_exch(sim::MicroSimGPU, geo::Geometry, A::Number; name="exch")
+  for interaction in sim.interactions
+      if interaction.name == name
+         update_scalar_geometry(interaction.A, geo, A)
+         return nothing
+      end
+  end
+  nxyz = sim.nxyz
+  Float = _cuda_using_double.x ? Float64 : Float32
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
+  Spatial_A = CUDA.zeros(Float, nxyz)
+  update_scalar_geometry(Spatial_A , geo, A)
+  exch = ExchangeGPU(Spatial_A, field, energy, Float(0.0), name)
+
+  push!(sim.interactions, exch)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  end
+  return exch
+end
+
 
 function add_thermal_noise(sim::MicroSimGPU, T::NumberOrArrayOrFunction; name="thermal")
   nxyz = sim.nxyz
@@ -369,6 +395,35 @@ function add_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1)
   Float = _cuda_using_double.x ? Float64 : Float32
   Kus = zeros(Float, sim.nxyz)
   init_scalar!(Kus, sim.mesh, Ku)
+  Kus =  CuArray(Kus)
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
+  lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
+  naxis = (axis[1]^2/lt,axis[2]^2/lt,axis[3]^2/lt)
+  anis = AnisotropyGPU(Kus, naxis, field, energy, Float(0.0), name)
+  push!(sim.interactions, anis)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  end
+  return anis
+end
+
+function add_anis(sim::AbstractSimGPU, geo::Geometry, Ku::Number; axis=(0,0,1), name="anis")
+
+  for interaction in sim.interactions
+      if interaction.name == name
+         update_scalar_geometry(interaction.Ku, geo, Ku)
+         return nothing
+      end
+  end
+  nxyz = sim.nxyz
+  Float = _cuda_using_double.x ? Float64 : Float32
+  Kus = zeros(Float, sim.nxyz)
+  update_scalar_geometry(Kus, geo, Ku)
   Kus =  CuArray(Kus)
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
