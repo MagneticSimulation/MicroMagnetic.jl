@@ -87,6 +87,18 @@ function Sim(;nx,ny,nz,dx=1e-9,dy=1e-9,dz=1e-9,pbc="",Ms=0,A=0,D=0,H=(0,0,0),Ku=
   return sim
 end
 
+function Sim(fname;pbc="",Ms=1e5,A=0,D=0,H=(0,0,0),Ku=0,anis_axis=(0,0,1),
+              DMI_type="bulk",driver="SD",GPU = true,name = "sim",demag=false,demag_pbc=(0,0,0))
+    ovf = read_ovf(fname)
+    m = ovf.data
+
+    sim = Sim(nx=ovf.xnodes,ny=ovf.ynodes,nz=ovf.znodes,dx=ovf.xstepsize,dy=ovf.ystepsize,dz=ovf.zstepsize,
+              pbc=pbc,Ms=Ms,A=A,D=D,H=H,Ku=Ku,anis_axis=anis_axis,
+              DMI_type=DMI_type,driver=driver,GPU = GPU,name = name,demag=demag,demag_pbc=demag_pbc)
+    init_m0(sim,m)
+    return sim
+end
+
 """
     set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
 
@@ -125,6 +137,16 @@ function set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
             sim.Ms[i] = Ms
         end
     end
+    return true
+end
+
+"""
+    set_Ms(sim::AbstractSim, geo::Geometry, Ms::Number)
+
+Set the saturation magnetization Ms within the Geometry.
+"""
+function set_Ms(sim::AbstractSim, geo::Geometry, Ms::Number)
+    update_scalar_geometry(sim.Ms, geo, Ms)
     return true
 end
 
@@ -381,6 +403,39 @@ function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   return exch
 end
 
+"""
+    add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
+
+Add exchange interaction within the Geometry, or update corresponding A if other exch is added. 
+"""
+function add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
+  for interaction in sim.interactions
+      if interaction.name == name
+         update_scalar_geometry(interaction.A, geo, A)
+         return nothing
+      end
+  end
+  nxyz = sim.nxyz
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
+  Spatial_A = zeros(Float64, nxyz)
+  update_scalar_geometry(Spatial_A, geo, A)
+  if isa(sim, MicroSim)
+    exch = Exchange(Spatial_A , field, energy, name)
+  else
+  exch = HeisenbergExchange(A, field, energy, name)
+  end
+  push!(sim.interactions, exch)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
+  return exch
+end
+
 function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="rkky")
   nxyz = sim.nxyz
   field = zeros(Float64, 3*nxyz)
@@ -527,6 +582,37 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   energy = zeros(Float64, nxyz)
   lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
   naxis = (axis[1]^2/lt, axis[2]^2/lt, axis[3]^2/lt)
+  anis =  Anisotropy(Kus, naxis, field, energy, name)
+  push!(sim.interactions, anis)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
+  return anis
+end
+
+"""
+    add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0,0,1), name="anis")
+
+Add Anisotropy within the Geometry, or update corresponding Ku if other anis is added. 
+"""
+function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0,0,1), name="anis")
+  lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
+  naxis = (axis[1]^2/lt, axis[2]^2/lt, axis[3]^2/lt)
+  for interaction in sim.interactions
+      if interaction.name == name
+         update_scalar_geometry(interaction.Ku, geo, Ku)
+         return nothing
+      end
+  end
+  nxyz = sim.nxyz
+  Kus =  zeros(Float64, nxyz)
+  update_scalar_geometry(Kus, geo, Ku)
+  field = zeros(Float64, 3*nxyz)
+  energy = zeros(Float64, nxyz)
   anis =  Anisotropy(Kus, naxis, field, energy, name)
   push!(sim.interactions, anis)
 

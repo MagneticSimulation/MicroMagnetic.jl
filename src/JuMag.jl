@@ -29,7 +29,7 @@ export init_m0,
        set_mu_s, set_mu_s_kagome,
        set_ux, set_uy, set_uz,
        write_data,
-	   compute_shape_factor,
+       create_box,create_cylinder,
        compute_system_energy,
        compute_skyrmion_number,
        compute_winding_number_3d,
@@ -39,7 +39,8 @@ export init_m0,
        interpolate_m,save_ovf,read_ovf,
        fftfreq
 
-export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT
+export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT, Gauss
+export ex,ey,ez
 
 function cuda_using_double(flag = true)
    _cuda_using_double[] = flag

@@ -18,12 +18,57 @@ mutable struct Cylinder <: Geometry
     Cylinder() = new()
 end
 
-function create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0)
+mutable struct Box <: Geometry
+    x1::Float64
+    y1::Float64
+    z1::Float64
+    x2 :: Float64
+    y2 :: Float64
+    z2 :: Float64
+    shape :: Array{Bool}
+    Box() = new()
+end
+
+function update_scalar_geometry(v::Array{T,1}, geo::Geometry, u::Number) where T<:AbstractFloat
+    lv,lg = length(v),length(geo.shape)
+    if lv != lg
+        @error("Geometry doesn't fit array!")
+    end
+    for i = 1:lv
+        if geo.shape[i]
+            v[i] = u
+        end
+    end
+end
+
+function update_scalar_geometry(v::CuArray{T,1}, geo::Geometry, u::Number) where T<:AbstractFloat
+    lv,lg = length(v),length(geo.shape)
+    if lv != lg
+        @error("Geometry doesn't fit array!")
+    end
+    for i = 1:lv
+        if geo.shape[i]
+            v[i] = u
+        end
+    end
+end
+
+"""
+    create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0)
+
+Create a cylinder with axis(one of ex,ey or ez) and radius from r1 to r2. For example:
+```julia
+    mesh = FDMesh(nx=10,ny=10,nz=10,dx=1e-9,dy=1e-9,dz=1e-9)
+    myCylinder = create_cylinder(mesh, ez, r1=10e-9, r2=10e-9)  
+```
+Usage maybe refers to function "create_box".
+"""
+function create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0, xc="unvalued", yc="unvalued", zc="unvalued")
     geo = Cylinder()
     geo.axis = axis
-    geo.xc =  mesh.nx*mesh.dx/2.0  #[0, nx*dx]
-    geo.yc =  mesh.ny*mesh.dy/2.0  #[0, ny*dy]
-    geo.zc =  mesh.nz*mesh.dz/2.0  #[0, nz*dz]
+    geo.xc =  xc == "unvalued" ? mesh.nx*mesh.dx/2.0 : xc  #[0, nx*dx]
+    geo.yc =  yc == "unvalued" ? mesh.ny*mesh.dy/2.0 : yc  #[0, ny*dy]
+    geo.zc =  zc == "unvalued" ? mesh.nz*mesh.dz/2.0 : zc  #[0, nz*dz]
     geo.shape = zeros(Bool, mesh.nxyz)
     if axis == ez
         R = min(geo.xc, geo.yc)
@@ -77,5 +122,40 @@ function create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0)
             end
         end
     end
+    return geo
+end
+
+"""
+    create_box(mesh::Mesh; x1=0, y1=0, z1=0, x2=0, y2=0, z2=0)
+
+Create a cuboid from (x1,y1,z1) to (x2,y2,z2). For example:
+```julia
+    mesh = FDMesh(nx=10,ny=10,nz=10,dx=1e-9,dy=1e-9,dz=1e-9)
+    myBox = create_box(mesh, x1=0, y1=0, z1=0, x2=5e-9, y2=10e-9, z2=10e-9)  
+```
+Then, one can use functions to set parameters within the box. For example:
+```julia
+    sim = Sim(mesh)
+    set_Ms(sim, myBox, 1e5) 
+    add_exch(sim, myBox, 1e-12)
+```
+Other area are not effected by these functions.
+"""
+function create_box(mesh::Mesh; x1=0, y1=0, z1=0, x2=0, y2=0, z2=0)
+    geo = Box()
+    geo.x1,geo.y1,geo.z1 = x1,y1,z1
+    geo.x2,geo.y2,geo.z2 = x2,y2,z2
+    geo.shape = zeros(Bool, mesh.nxyz)
+
+    for i=1:mesh.nx, j=1:mesh.ny, k=1:mesh.nz
+        x = (i-0.5)*mesh.dx
+        y = (j-0.5)*mesh.dy
+        z = (k-0.5)*mesh.dz
+        id = index(i,j,k, mesh.nx, mesh.ny, mesh.nz)
+        if x1<=x<=x2 && y1<=y<=y2 && z1<=z<=z2
+            geo.shape[id] = true
+        end
+    end
+
     return geo
 end
