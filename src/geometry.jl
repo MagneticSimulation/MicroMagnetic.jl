@@ -54,9 +54,13 @@ function update_scalar_geometry(v::CuArray{T,1}, geo::Geometry, u::Number) where
 end
 
 """
-    create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0)
+    create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0, xc="unvalued", yc="unvalued", zc="unvalued")
 
-Create a cylinder with axis(one of ex,ey or ez) and radius from r1 to r2. For example:
+Create a cylinder from a mesh.
+axis: one of ex,ey or ez.
+center: xc,yc,zc. Set as the center of mesh by default.
+radius: from r1 to r2. 
+For example:
 ```julia
     mesh = FDMesh(nx=10,ny=10,nz=10,dx=1e-9,dy=1e-9,dz=1e-9)
     myCylinder = create_cylinder(mesh, ez, r1=10e-9, r2=10e-9)  
