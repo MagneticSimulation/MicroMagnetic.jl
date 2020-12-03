@@ -72,13 +72,13 @@ function write_OVF2_Header(io::IOStream, ovf::OVF2)
     hdr(io, "meshtype", "rectangular")
     hdr(io, "meshunit", "m")
 
-	hdr(io, "xmin", 0)
-	hdr(io, "ymin", 0)
-	hdr(io, "zmin", 0)
+  hdr(io, "xmin", 0)
+  hdr(io, "ymin", 0)
+  hdr(io, "zmin", 0)
 
-	hdr(io, "xmax", nx*dx)
-	hdr(io, "ymax", ny*dy)
-	hdr(io, "zmax", nz*dz)
+  hdr(io, "xmax", nx*dx)
+  hdr(io, "ymax", ny*dy)
+  hdr(io, "zmax", nz*dz)
 
     ##hdr(io, "valuedim", length(sim.interactions))
     hdr(io, "valuedim", 3)
@@ -185,18 +185,20 @@ function read_ovf(sim::AbstractSim, fname::String)
     if nxyz != sim.nxyz
         error("The ovf does not match the sim.mesh")
     end
-    copyto!(sim.prespin, ovf.data)
+    # copyto!(sim.prespin, ovf.data)
     copyto!(sim.spin, ovf.data)
 end
 
 function read_OVF2_Binary4(io::IOStream, ovf::OVF2)
     ovf.data_type = "Binary 4"
     nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
-    spin = zeros(Float32, 3*nxyz)
+    spin = zeros(Float64, 3*nxyz)
     if read(io,Float32) == 1234567.0
-	  read!(io, spin)
+      for i = 1:3*nxyz
+        spin[i] = Float64(read(io, Float32))
+      end
     end
-    ovf.data = convert(Array{Float64,1}, spin)
+    ovf.data = spin
     return nothing
 end
 
@@ -205,7 +207,9 @@ function read_OVF2_Binary8(io::IOStream, ovf::OVF2)
     nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
     spin = zeros(Float64, 3*nxyz)
     if read(io, Float64) == 123456789012345.0
-      read!(io, spin)
+      for i = 1:3*nxyz
+        spin[i] = read(io, Float64)
+      end
     end
     ovf.data = spin
     return nothing
@@ -278,4 +282,42 @@ function read_ovf(fname::String; T::DataType=Float64)
         end
     end
     return ovf
+end
+
+function save_ovf(sim::AbstractSimGPU, fname::String; dataformat::String = "auto")
+  T = _cuda_using_double.x ? Float64 : Float32
+
+  if dataformat == "auto"
+    dataformat = _cuda_using_double.x ? "Binary 8" : "Binary 4"
+  end
+
+  mesh = sim.mesh
+  nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
+  nxyz = nx*ny*nz
+
+  ovf = OVF2{T}()
+  ovf.xnodes = mesh.nx
+  ovf.ynodes = mesh.ny
+  ovf.znodes = mesh.nz
+  ovf.xstepsize = mesh.dx
+  ovf.ystepsize = mesh.dy
+  ovf.zstepsize = mesh.dz
+  ovf.data_type = dataformat
+  ovf.name = sim.name
+  ovf.data = zeros(T,3*nxyz)
+  copyto!(ovf.data, sim.spin)
+
+  save_ovf(ovf,fname)
+end
+
+
+function read_ovf(sim::AbstractSimGPU, fname::String)
+  T = _cuda_using_double.x ? Float64 : Float32
+  ovf  = read_ovf(fname, T=T)
+  nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
+  if nxyz != sim.nxyz
+      error("The ovf does not match the sim.mesh")
+  end
+  # copyto!(sim.prespin, ovf.data)
+  copyto!(sim.spin, ovf.data)
 end

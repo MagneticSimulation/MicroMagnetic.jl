@@ -1,181 +1,62 @@
-abstract type Driver end
+const mu_0 = 4 * pi * 1e-7
+const mu_B = 9.27400949e-24
+const k_B = 1.3806505e-23
+const c_e = 1.602176565e-19
+const eV = 1.602176565e-19
+const meV = 1.602176565e-22
+const m_e = 9.10938291e-31
+const g_e = 2.0023193043737
+const h_bar = 1.05457172647e-34
+const gamma = g_e * mu_B / h_bar
+const mu_s_1 = g_e * mu_B * 1.0  # for S=1, 1.856952823077189e-23
+const h_bar_gamma = h_bar * gamma
+const mT = 0.001 / (4*pi*1e-7)
+
+
 abstract type AbstractSim end
-abstract type MicroEnergy end
-abstract type Integrator end
-abstract type IntegratorCayley <:Integrator end
+abstract type AbstractSimGPU <:AbstractSim end
+abstract type MonteCarloEnergy end
 
-"""
-    NumberOrArrayOrFunction
-
-In Micromagnetics, typical parameters such as saturation magnetization `Ms` and exchange stiffness constant `A` are constant.
-However, there are many cases that a spatial `Ms` is needed. For instance, if the simulated system is a circular disk the Ms
-in the corners should be set to zero. If the simulated system contains mutiple materials, the exchange constant `A` should be
-spatial as well. The Union `NumberOrArrayOrFunction` is designed to deal with such situations. As indicated from its name, it
-means that the input parameter could be a number or an array or a function:
-  - Number: should be Real.
-  - Array: the length of the array should be `N` where `N` is the total spin number of the system.
-  - Function: the parameter of the function should be `(i,j,k,dx,dy,dz)` where `i,j,k` is the cell index and `dx,dy,dz` is the cellsize.
-    The return value of the function should be a real number. For example,
-
-    ```julia
-    function circular_Ms(i,j,k,dx,dy,dz)
-        if (i-50.5)^2 + (j-50.5)^2 <= 50^2
-            return 8.6e5
-        end
-        return 0.0
-    end
-    ```
-"""
-NumberOrArrayOrFunction = Union{Number, Array, Function}
-
-"""
-    NumberOrArray
-
-Similar to Union `NumberOrArrayOrFunction`, the Union `NumberOrArray` is designed to deal with cases that a number
-or an array is needed.
-"""
-NumberOrArray = Union{Number, Array}
-
-
-"""
-    ArrayOrFunction
-
-Similar to Union `NumberOrArrayOrFunction`, the Union `ArrayOrFunction` is designed to deal with cases that
-an array or a function is needed.
-"""
-ArrayOrFunction = Union{Array, Function}
-
-
-"""
-    TupleOrArrayOrFunction
-
-Similar to `NumberOrArrayOrFunction`, `TupleOrArrayOrFunction` means that the input parameter could be a tuple or
-an array or a function:
-  - Tuple: should be Real with length 3. For example, `(0,0,1e5)`.
-  - Array: the length of the array should be `3N` where `N` is the total spin number of the system.
-  - Function: the parameter of the function should be `(i,j,k,dx,dy,dz)` and the return value should be a tuple with length 3.
-    For example,
-    ```julia
-    function uniform_m0(i,j,k,dx,dy,dz)
-        return (0,0,1)
-    end
-    ```
-"""
-TupleOrArrayOrFunction = Union{Tuple, Array, Function}
-
-
-mutable struct DataSaver
-  name::String
-  t::Float64
-  nsteps::Int64
-  header_saved::Bool
-  headers::Array  #string or tuple<string> array
-  units::Array #string or tuple<string> array
-  results::Array  #function array
+mutable struct ZeemanMC{TF<:AbstractFloat}
+    H::CuArray{TF, 1}#h1,h2,h3
 end
 
-mutable struct MicroSim <: AbstractSim
-  mesh::FDMesh
-  driver::Driver
-  saver::DataSaver
-  spin::Array{Float64, 1}
-  prespin::Array{Float64, 1}
-  field::Array{Float64, 1}
-  energy::Array{Float64, 1}
-  Ms::Array{Float64, 1}
-  pins::Array{Bool, 1}
+mutable struct Anis6Fold2DMC{TF<:AbstractFloat} <: MonteCarloEnergy
+    K::CuArray{TF, 1}#k1,k2
+end
+
+mutable struct ExchangeMC{TF<:AbstractFloat} <: MonteCarloEnergy
+    J::CuArray{TF, 1} #nearest exchange constant
+end
+
+mutable struct MonteCarlo{TF<:AbstractFloat} <:AbstractSimGPU
+  mesh::Mesh
+  exch::MonteCarloEnergy
+  # dmi::MonteCarloEnergy
+  zee::ZeemanMC
+  anis::MonteCarloEnergy
+  # saver::DataSaver
+  spin::CuArray{TF, 1}
+  nextspin::CuArray{TF, 1}
+  rnd::CuArray{TF, 1}
+  energy::CuArray{TF, 1}
+  energy2::CuArray{TF, 1}
+  delta_E::CuArray{TF, 1}
+  EnMean::Float64
+  En2Mean::Float64
   nxyz::Int64
+  steps::Int64
   name::String
-  interactions::Array
-  save_data::Bool
-  MicroSim() = new()
+  T::Float64
+  Qdens::CuArray{TF, 1}
+  spin2::CuArray{TF, 1}
+  Q::Float64
+  mxMean::TF
+  myMean::TF
+  mzMean::TF
+  mx2Mean::TF
+  my2Mean::TF
+  mz2Mean::TF
+  MonteCarlo{T}() where {T<:AbstractFloat} = new()
 end
 
-mutable struct Exchange <: MicroEnergy
-   A::Array{Float64, 1}
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct Vector_Exchange <: MicroEnergy
-   A::Array{Float64, 1}
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct ExchangeRKKY <: MicroEnergy
-   sigma::Float64
-   Delta::Float64
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct BulkDMI <: MicroEnergy
-   Dx::Float64
-   Dy::Float64
-   Dz::Float64
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct DMI <: MicroEnergy
-    gamma_A::Float64
-    alpha_A::Float64
-    alpha_S::Float64
-    beta_A::Float64
-    beta_S::Float64
-    xi_11::Float64
-    xi_12::Float64
-    xi_13::Float64
-    xi_21::Float64
-    xi_22::Float64
-    xi_23::Float64
-    xi_31::Float64
-    xi_32::Float64
-    xi_33::Float64
-    field::Array{Float64, 1}
-    energy::Array{Float64, 1}
-    name::String
-end
-
-mutable struct InterfacialDMI <: MicroEnergy
-   D::Float64
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-
-mutable struct Anisotropy <: MicroEnergy
-   Ku::Array{Float64, 1}
-   axis::Tuple
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct CubicAnisotropy <: MicroEnergy
-   axis::Array{Float64, 1}
-   Kc::Float64
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct Zeeman <: MicroEnergy
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct TimeZeeman <: MicroEnergy
-   time_fun::Function
-   init_field::Array{Float64, 1}
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
