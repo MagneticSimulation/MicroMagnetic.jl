@@ -70,7 +70,7 @@ function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7
             end
 
             for k=1:nz
-                id = index(i,j,k,dx,dy,dz)
+                id = index(i,j,k,nx,ny,nz)
                 if Ms[id] == 0
                     continue
                 end
