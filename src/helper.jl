@@ -244,8 +244,9 @@ function compute_winding_number_yz(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) w
             v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
         v[id] /= (4*pi);
-
+    end
     return nothing;
+end
 
 function compute_winding_number_zx(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
@@ -271,7 +272,6 @@ function compute_winding_number_zx(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) w
             v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
         v[id] /= (4*pi);
-
     end
     return nothing;
 end
@@ -327,6 +327,46 @@ function winding_number_3d(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     v = zeros(T, nx*ny*nz)
     compute_winding_number_3d(v, m, mesh)
     return sum(v)
+end
+
+#compute the center of a single BP or a BP pair
+function compute_BP_center(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    v = zeros(T, nx*ny*nz)
+    compute_winding_number_3d(v, m, mesh)
+    Rx, Ry, Rz = 0,0,0
+    Px, Py, Pz = 0,0,0
+    rho_p = 0
+    rho_n = 0
+    for k = 1:nz, j = 1:ny, i=1:nx
+      id = index(i, j, k, nx, ny, nz)
+      rho = v[id]
+      tx = i*dx*rho
+      ty = j*dy*rho
+      tz = k*dz*rho
+      if rho>0
+        rho_p += rho
+        Rx += tx
+        Ry += ty
+        Rz += tz
+      else
+        rho_n += rho
+        Px += tx
+        Py += ty
+        Pz += tz
+      end
+    end
+
+    if rho_p == 0
+      rho_p = 1
+    end
+
+    if rho_n == 0
+      rho_n = 1
+    end
+    
+    return Rx/rho_p, Ry/rho_p, Rz/rho_p, Px/rho_n, Py/rho_n, Pz/rho_n
 end
 
 
