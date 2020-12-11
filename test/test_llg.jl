@@ -19,7 +19,7 @@ function test_llg()
 
     set_Ms(sim, 8e5)
     sim.driver.alpha = 0.05
-    sim.driver.gamma = 2.21e5
+    sim.driver.gamma = -2.21e5
     sim.driver.ode.tol = 1e-8
 
     add_zeeman(sim, (0, 0, 1e5))
@@ -38,7 +38,7 @@ function test_llg()
 
     println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
     ts = Array([3e-10])
-    mx, my, mz = analytical(0.05, 2.21e5, 1e5, ts)
+    mx, my, mz = analytical(0.05, -2.21e5, 1e5, ts)
     println(mx[1]-sim.spin[1])
     println(my[1]-sim.spin[2])
     println(mz[1]-sim.spin[3])

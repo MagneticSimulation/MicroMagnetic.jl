@@ -170,7 +170,6 @@ function compute_dm_step(m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64)
   return max_dm
 end
 
-
 function compute_skyrmion_number(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     for k = 1:nz, j = 1:ny, i=1:nx
@@ -220,49 +219,21 @@ function compute_shape_factor(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloa
     return eta_xx*factor, eta_xy*factor, eta_yx*factor, eta_yy*factor
 end
 
-function compute_winding_number_xy(m::Array{T, 1}, mesh::Mesh; k=1) where {T<:AbstractFloat}
+
+function compute_winding_number_yz(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
-    v = 0
-    for j = 1:ny, i=1:nx
-        id = index(i, j, k, nx, ny, nz)
-        mx,my,mz = m[3*id-2],m[3*id-1],m[3*id]
-        sx1,sy1,sz1 = T(0),T(0),T(0)
-        sx2,sy2,sz2 = T(0),T(0),T(0)
-        id1 = 3*_x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
-        if id1>0 && id2>0
-            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
-            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            v += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
-        end
-
-        id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
-        if id1>0 && id2>0
-            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
-            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            v += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
-        end
-
-    end
-    return v/(4*pi);
-end
-
-
-function compute_winding_number_yz(m::Array{T, 1}, mesh::Mesh; i=1) where {T<:AbstractFloat}
-    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
-    v = 0
-    for k=1:nz, j=1:ny
+    for k = 1:nz, j = 1:ny, i=1:nx
         id = index(i, j, k, nx, ny, nz)
         mx,my,mz = m[3*id-2],m[3*id-1],m[3*id]
         sx1,sy1,sz1 = T(0),T(0),T(0)
         sx2,sy2,sz2 = T(0),T(0),T(0)
         id1 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
         id2 = 3*_z_minus_one(k, id, nx, ny, nz, mesh.zperiodic)
+        v[id] = 0
         if id1>0 && id2>0
             sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
             sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            v += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+            v[id]  += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
 
         id1 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
@@ -270,28 +241,26 @@ function compute_winding_number_yz(m::Array{T, 1}, mesh::Mesh; i=1) where {T<:Ab
         if id1>0 && id2>0
             sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
             sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            v += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+            v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
+        v[id] /= (4*pi);
 
-    end
-    return v/(4*pi);
-end
+    return nothing;
 
-
-function compute_winding_number_xz(m::Array{T, 1}, mesh::Mesh; j=1) where {T<:AbstractFloat}
+function compute_winding_number_zx(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
-    v = 0
-    for k=1:nz, i=1:nx
+    for k = 1:nz, j = 1:ny, i=1:nx
         id = index(i, j, k, nx, ny, nz)
         mx,my,mz = m[3*id-2],m[3*id-1],m[3*id]
         sx1,sy1,sz1 = T(0),T(0),T(0)
         sx2,sy2,sz2 = T(0),T(0),T(0)
         id1 = 3*_z_minus_one(k, id, nx, ny, nz, mesh.zperiodic)
         id2 = 3*_x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
+        v[id] = 0
         if id1>0 && id2>0
             sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
             sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            v += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+            v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
 
         id1 = 3*_z_plus_one(k, id, nx, ny, nz, mesh.zperiodic)
@@ -299,80 +268,71 @@ function compute_winding_number_xz(m::Array{T, 1}, mesh::Mesh; j=1) where {T<:Ab
         if id1>0 && id2>0
             sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
             sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            v += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+            v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
+        v[id] /= (4*pi);
 
     end
-    return v/(4*pi);
+    return nothing;
 end
 
-
-#for a cubic mesh, each cube has six faces (12 triangles)
-#Here we can construct an Octahedron for each site, so we have 8 triangles, we only need two?
+#We define the winding number density as
+# \rho = \nabla G = \partial_x G_x + \partial_y G_y + \partial_z G_z
+# where G_x, G_y, G_z are the skyrmion number defined in yz, zx, xy-plane.
 function compute_winding_number_3d(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    ngbs = mesh.ngbs
+    vx = zeros(T, ny*ny*nz)
+    vy = zeros(T, ny*ny*nz)
+    vz = zeros(T, ny*ny*nz)
+    compute_winding_number_yz(vx, m, mesh)
+    compute_winding_number_zx(vy, m, mesh)
+    compute_skyrmion_number(vz, m, mesh) #compute_winding_number_xy
+
     for k = 1:nz, j = 1:ny, i=1:nx
         id = index(i, j, k, nx, ny, nz)
         v[id] = 0
 
-        mx,my,mz = m[3*id-2],m[3*id-1],m[3*id]
-        sx1,sy1,sz1 = T(0),T(0),T(0)
-        sx2,sy2,sz2 = T(0),T(0),T(0)
-        sx3,sy3,sz3 = T(0),T(0),T(0)
+        #x-direction
+        i1 = ngbs[1,id]
+        i2 = ngbs[2,id]
+        factor = i1*i2>0 ? 1/(2*dx) : 1/dx
+        i1 < 0 && (i1 = id)
+        i2 < 0 && (i2 = id)
+        v[id] += (vx[i2] - vx[i1]) * factor*dx;
 
-        #(-x, -y, -z) triangle
-        id1 = 3*_x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
-        id3 = 3*_z_minus_one(k, id, nx, ny, nz, mesh.zperiodic)
-        if id1>0 && id2>0 && id3>0
-            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
-            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            sx3,sy3,sz3 = m[id3-2],m[id3-1],m[id3]
-            v[id] += Berg_Omega(sx1, sy1, sz1, sx2, sy2, sz2, sx3, sy3, sz3)
-        end
+        #y-direction
+        i1 = ngbs[3,id]
+        i2 = ngbs[4,id]
+        factor = i1*i2>0 ? 1/(2*dy) : 1/dy
+        i1 < 0 && (i1 = id)
+        i2 < 0 && (i2 = id)
+        v[id] += (vy[i2] - vy[i1]) * factor*dy;
 
-        #(+x, +y, +z) triangle
-        id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
-        id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
-        id3 = 3*_z_plus_one(k, id, nx, ny, nz, mesh.zperiodic)
-        if id1>0 && id2>0 && id3>0
-            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
-            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
-            sx3,sy3,sz3 = m[id3-2],m[id3-1],m[id3]
-            v[id] -= Berg_Omega(sx1, sy1, sz1, sx2, sy2, sz2, sx3, sy3, sz3)
-        end
+        #z-direction
+        i1 = ngbs[5,id]
+        i2 = ngbs[6,id]
+        factor = i1*i2>0 ? 1/(2*dz) : 1/dz
+        i1 < 0 && (i1 = id)
+        i2 < 0 && (i2 = id)
+        v[id] += (vz[i2] - vz[i1]) * factor*dz;
 
-        v[id] /= (2*pi);
     end
     return nothing
 end
 
-function compute_winding_number_3d(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
-    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
-    v = zeros(T, 3*ny*ny*nz)
-    compute_winding_number_3d(v, m, mesh)
-    return sum(v)
-end
-
 function winding_number_3d(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
-    v = 0
-    v -= compute_winding_number_xy(m, mesh, k=1)
-    v += compute_winding_number_xy(m, mesh, k=nz)
-
-    v -= compute_winding_number_yz(m, mesh, i=1)
-    v += compute_winding_number_yz(m, mesh, i=nx)
-
-    v -= compute_winding_number_xz(m, mesh, j=1)
-    v += compute_winding_number_xz(m, mesh, j=ny)
-
-    return v
+    v = zeros(T, nx*ny*nz)
+    compute_winding_number_3d(v, m, mesh)
+    return sum(v)
 end
 
 
 function compute_skyrmion_number(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
-    v = zeros(T, 3*ny*ny*nz)
+    v = zeros(T, nx*ny*nz)
     compute_skyrmion_number(v, m, mesh)
     return sum(v)
 end
