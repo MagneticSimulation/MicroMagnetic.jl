@@ -220,6 +220,32 @@ function compute_shape_factor(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloa
 end
 
 
+#shape factor is defined as (1/4*pi) \int \partial_i m * \partial_j m dx dy
+function compute_shape_factor(m::Array{T, 1}, geo::Geometry, mesh::Mesh) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    pxm, pym = partial_xy(m, mesh)
+    eta_xx = 0
+    eta_xy = 0
+    eta_yx = 0
+    eta_yy = 0
+    for k = 1:nz, j = 1:ny, i=1:nx
+        id = index(i, j, k, nx, ny, nz)
+        if !geo.shape[id]
+          continue;
+        end
+        px_mx,px_my,px_mz = pxm[3*id-2],pxm[3*id-1],pxm[3*id]
+        py_mx,py_my,py_mz = pym[3*id-2],pym[3*id-1],pym[3*id]
+        eta_xx += dot_product(px_mx,px_my,px_mz, px_mx,px_my,px_mz)
+        eta_xy += dot_product(px_mx,px_my,px_mz, py_mx,py_my,py_mz)
+        eta_yx += dot_product(py_mx,py_my,py_mz, px_mx,px_my,px_mz)
+        eta_yy += dot_product(py_mx,py_my,py_mz, py_mx,py_my,py_mz)
+    end
+    factor = mesh.dx*mesh.dy/(4*pi*nz)
+    return eta_xx*factor, eta_xy*factor, eta_yx*factor, eta_yy*factor
+end
+
+
+
 function compute_winding_number_yz(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     for k = 1:nz, j = 1:ny, i=1:nx
@@ -322,6 +348,7 @@ function compute_winding_number_3d(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) w
     return nothing
 end
 
+
 function winding_number_3d(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     v = zeros(T, nx*ny*nz)
@@ -365,8 +392,33 @@ function compute_BP_center(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     if rho_n == 0
       rho_n = 1
     end
-    
+
     return Rx/rho_p, Ry/rho_p, Rz/rho_p, Px/rho_n, Py/rho_n, Pz/rho_n
+end
+
+function compute_BP_center(fname::String)
+    ovf = read_ovf(fname)
+    m = ovf.data
+    nx,ny,nz = ovf.xnodes, ovf.ynodes, ovf.znodes
+    dx,dy,dz = ovf.xstepsize, ovf.ystepsize, ovf.zstepsize
+
+    mesh = FDMesh(nx=nx, ny=ny, nz=nz, dx=dx, dy=dy, dz=dz)
+
+    return compute_BP_center(m, mesh)
+end
+
+
+function compute_skyrmion_number(m::Array{T, 1}, geo::Geometry, mesh::Mesh) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    v = zeros(T, nx*ny*nz)
+    compute_skyrmion_number(v, m, mesh)
+    for k = 1:nz, j = 1:ny, i=1:nx
+        id = index(i, j, k, nx, ny, nz)
+        if !geo.shape[id]
+          v[id] = 0
+        end
+    end
+    return sum(v)/nz
 end
 
 
@@ -374,7 +426,7 @@ function compute_skyrmion_number(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractF
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     v = zeros(T, nx*ny*nz)
     compute_skyrmion_number(v, m, mesh)
-    return sum(v)
+    return sum(v)/nz
 end
 
 """
