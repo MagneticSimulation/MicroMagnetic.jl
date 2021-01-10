@@ -6,6 +6,22 @@ abstract type Geometry end
           ez = 3
       end
 
+mutable struct Point
+    x::Float64
+    y::Float64
+    z::Float64
+end
+
+mutable struct Box3D <: Geometry
+    p1::Point
+    p2::Point
+    dx::Float64
+    dy::Float64
+    dz::Float64
+    shape :: Array{Bool}
+    Box3D() = new()
+end
+
 mutable struct Cylinder <: Geometry
     axis::Axis
     r1::Float64  #radius of one surface (+z, +y, +x)
@@ -59,11 +75,11 @@ end
 Create a cylinder from a mesh.
 axis: one of ex,ey or ez.
 center: xc,yc,zc. Set as the center of mesh by default.
-radius: from r1 to r2. 
+radius: from r1 to r2.
 For example:
 ```julia
     mesh = FDMesh(nx=10,ny=10,nz=10,dx=1e-9,dy=1e-9,dz=1e-9)
-    myCylinder = create_cylinder(mesh, ez, r1=10e-9, r2=10e-9)  
+    myCylinder = create_cylinder(mesh, ez, r1=10e-9, r2=10e-9)
 ```
 Usage maybe refers to function "create_box".
 """
@@ -135,12 +151,12 @@ end
 Create a cuboid from (x1,y1,z1) to (x2,y2,z2). For example:
 ```julia
     mesh = FDMesh(nx=10,ny=10,nz=10,dx=1e-9,dy=1e-9,dz=1e-9)
-    myBox = create_box(mesh, x1=0, y1=0, z1=0, x2=5e-9, y2=10e-9, z2=10e-9)  
+    myBox = create_box(mesh, x1=0, y1=0, z1=0, x2=5e-9, y2=10e-9, z2=10e-9)
 ```
 Then, one can use functions to set parameters within the box. For example:
 ```julia
     sim = Sim(mesh)
-    set_Ms(sim, myBox, 1e5) 
+    set_Ms(sim, myBox, 1e5)
     add_exch(sim, myBox, 1e-12)
 ```
 Other area are not effected by these functions.
