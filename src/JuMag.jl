@@ -37,7 +37,8 @@ export init_m0,
        compute_guiding_centre, set_aj,
        NEB,
        interpolate_m,save_ovf,read_ovf,
-       fftfreq
+       fftfreq,
+       ex,ey,ez,sum_ovf
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT, Gauss
 export ex,ey,ez
@@ -166,7 +167,8 @@ if _pycall_available.x
   include("tools/ltem.jl")
   include("tools/mfm.jl")
   include("tools/plotm.jl")
-  export OVF2LTEM,OVF2MFM,OVF2XRAY,plotOVF
+  export OVF2LTEM,OVF2MFM,OVF2XRAY, 
+          plot_ovf_slice, plot_ovf_projection
 end
 
 function __init__()

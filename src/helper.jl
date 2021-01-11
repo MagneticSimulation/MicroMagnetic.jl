@@ -244,8 +244,10 @@ function compute_winding_number_yz(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) w
             v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
         end
         v[id] /= (4*pi);
+    end
 
     return nothing;
+end
 
 function compute_winding_number_zx(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz

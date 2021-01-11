@@ -8,10 +8,37 @@ function savem()
     save_ovf(sim,"test_tools")
 end
 
+function is_very_close(a, b)
+    if abs(a-b) < 1e-12
+        return true
+    else
+        return false
+    end
+end
+
+function test_sum()
+    ovf = read_ovf("test_tools")
+    mx, my, mz = sum_ovf(ovf,axis=ez)
+    @test is_very_close(mx[1],16*cos(5/3*pi))
+    @test is_very_close(my[1],16*sin(5/3*pi))
+    @test is_very_close(mx[1],0)
+
+    mx, my, mz = sum_ovf(ovf,axis=ex)
+    @test is_very_close(mx[1],-32*sin(5/3*pi))
+    @test is_very_close(my[1],0)
+    @test is_very_close(mz[1],-32*cos(5/3*pi))
+
+    mx, my, mz = sum_ovf(ovf,axis=ey)
+    @test is_very_close(mx[1],64*cos(5/3*pi))
+    @test is_very_close(my[1],0)
+    @test is_very_close(mz[1],-64*sin(5/3*pi))
+end
+
 savem()
 OVF2XRAY("test_tools")
 OVF2MFM("test_tools")
-plotOVF("test_tools")
+plot_ovf_slice("test_tools", component="all", quiver=true)
+plot_ovf_projection("test_tools", component="all", quiver=true)
 
 
 #TODO:phase test

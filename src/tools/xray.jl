@@ -1,85 +1,5 @@
 using FFTW
 using PyCall
-
-function fft_m_2d(data, dx, dy, zero_padding_size)
-
-    N = zero_padding_size
-    nx, ny = size(data)
-    Nx = N > nx ? N : nx
-    Ny = N > ny ? N : ny
-
-    new_data = zeros(Nx, Ny)
-    for i=1:nx, j=1:ny
-        new_data[i,j] = data[i,j]
-    end
-
-    fft_m = fftshift(fft(new_data))
-
-    idx = floor(Int,nx/2+1)
-    idy = floor(Int,ny/2+1)
-
-    kx = fftshift(fftfreq(Nx, d=dx)*2*pi)
-    ky = fftshift(fftfreq(Ny, d=dy)*2*pi)
-
-    Intensity = (abs.(fft_m)).^2
-
-    return kx, ky, Intensity
-end
-
-
-function fft_m2(spin, nx, ny, nz, dx, dy, dz, axis; zero_padding_size=-1)
-    if !(axis in [ex,ey,ez])
-        error("axis should be one of 'ex', 'ey' and 'ez'!!!")
-    end
-
-    m = reshape(spin,(3, nx, ny, nz))
-
-    idx = floor(Int,nx/2+1)
-    idy = floor(Int,ny/2+1)
-    idz = floor(Int,nz/2+1)
-
-    N = zero_padding_size
-    Nx = N > nx ? N : nx
-    Ny = N > ny ? N : ny
-    Nz = N > nz ? N : nz
-
-    kx = fftshift(fftfreq(Nx, d=dx)*2*pi)
-    ky = fftshift(fftfreq(Ny, d=dy)*2*pi)
-    kz = fftshift(fftfreq(Nz, d=dz)*2*pi)
-
-
-    if axis == ez
-        Intensity = zeros(Nx, Ny)
-        for k = 1:nz
-            mx,my,mz = m[1,:,:,k],m[2,:,:,k],m[3,:,:,k]
-            pmx,pmy,pmz = Normal_Projection_z(mx,my,mz)
-            kx, ky, I = fft_m_2d(pmz, dx, dy, zero_padding_size)
-            Intensity .+= I
-        end
-        return kx, ky, Intensity./nz
-    elseif axis == ey
-        Intensity = zeros(Nx, Nz)
-        for j = 1:ny
-            mx,my,mz = m[1,:,j,:],m[2,:,j,:],m[3,:,j,:]
-            pmx,pmy,pmz = Normal_Projection_y(mx,my,mz)
-            kx, kz, I = fft_m_2d(pmz, dx, dz, zero_padding_size)
-            Intensity .+= I
-        end
-        return kx, kz, Intensity./ny
-    elseif axis == ex
-        Intensity = zeros(Ny, Nz)
-        for i = 1:nx
-            mx,my,mz = m[1,i,:,:],m[2,i,:,:],m[3,i,:,:]
-            pmx,pmy,pmz = Normal_Projection_x(mx,my,mz)
-            ky, kz, I = fft_m_2d(pmz, dy, dz, zero_padding_size)
-            Intensity .+= I
-        end
-        #Intensity[idy,idz] = 0
-        return ky, kz, Intensity./nx
-    end
-
-    return nothing
-end
 """
     OVF2XRAY(fname; xlim="none", ylim="none", axis=ez, zero_padding_size=-1)
 
@@ -89,7 +9,7 @@ And return the intensity array.
 
 The plot boundary can be set by using "xlim = [-1e9,1e9]" "ylim = [-1e9,1e9]"
 """
-function OVF2XRAY(fname; xlim="none", ylim="none", axis=ez, zero_padding_size=-1)
+function OVF2XRAY(fname; xlim="none", ylim="none", axis=ez, N=-1)
     np =  pyimport("numpy")
     mpl =  pyimport("matplotlib")
     mpl.use("Agg")
@@ -105,7 +25,25 @@ function OVF2XRAY(fname; xlim="none", ylim="none", axis=ez, zero_padding_size=-1
     nxyz = nx*ny*nz
     spin = ovf.data
 
-    kx, ky, Intensity = fft_m2(spin, nx, ny, nz, dx, dy, dz, axis, zero_padding_size=zero_padding_size)
+    mxp, myp, mzp = sum_ovf(ovf, axis=ez)
+    lx, ly = size(mzp)
+    if N > 0
+        mzp = np.pad(mzp, ((0,N-lx),(0,N-ly)),"constant")
+        mzp = np.roll(mzp, (-floor(int, nx/2), -floor(int, ny/2)))
+    end
+    Nx, Ny = size(mzp)
+    if axis == ez
+        Dx, Dy = dx, dy
+    elseif axis == ex
+        Dx, Dy = dy, dz
+    elseif axis == ey
+        Dx, Dy = dx, dz
+    end
+
+    Intensity = np.real(np.fft.fft2(mzp))
+    Intensity = fftshift(Intensity)
+    kx = fftshift(fftfreq(Nx, d=Dx)*2*pi)
+    ky = fftshift(fftfreq(Ny, d=Dy)*2*pi)
 
     if endswith(fname,".ovf")
         fname= fname[1:end-4]
