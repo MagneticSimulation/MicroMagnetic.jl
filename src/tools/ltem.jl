@@ -1,5 +1,5 @@
 using FFTW
-using PyCall
+#using PyCall
 
 function compute_electric_phase(V, V0, Lz, beta)
     C = 299792458.0
@@ -118,7 +118,7 @@ function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, Nx=-1, Ny=-1,
 
     phase, intensity = LTEM(fname; V=V, Ms=Ms, V0=V0, df=df, alpha=alpha, Nx=Nx, Ny=Ny,beta=beta,gamma=gamma)
     fig,ax = plt.subplots(1,2)
-    ax[1].imshow(np.transpose(phase),cmap=mpl.cm.gray,origin="lower") 
+    ax[1].imshow(np.transpose(phase),cmap=mpl.cm.gray,origin="lower")
     ax[1].set_title("phase")
     ax[2].imshow(np.transpose(intensity),cmap=mpl.cm.gray,origin="lower")
     ax[2].set_title("intensity")
