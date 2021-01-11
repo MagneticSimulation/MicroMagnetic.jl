@@ -15,7 +15,6 @@ include("test_util.jl")
 include("test_ovf.jl")
 include("test_neb.jl")
 include("test_geometry.jl")
-include("test_projection.jl")
 
 if JuMag._cuda_available.x
   JuMag.cuda_using_double()
