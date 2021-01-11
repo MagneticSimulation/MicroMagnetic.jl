@@ -159,7 +159,7 @@ Then, one can use functions to set parameters within the box. For example:
     set_Ms(sim, myBox, 1e5)
     add_exch(sim, myBox, 1e-12)
 ```
-Other area are not effected by these functions.
+Other area will not be effected by these functions.
 """
 function create_box(mesh::Mesh; x1=0, y1=0, z1=0, x2=0, y2=0, z2=0)
     geo = Box()

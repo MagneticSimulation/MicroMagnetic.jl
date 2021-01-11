@@ -1,4 +1,4 @@
-#using PyCall
+using PyCall
 
 function m2rgb(mx,my,mz,rotation)
     np =  pyimport("numpy")
@@ -136,18 +136,4 @@ function plot_ovf_projection(fname; angle=0, tilt_axis="alpha", component = "mz"
     plt.tight_layout()
     plt.savefig(joinpath(path,basename(fname))*"_$component.png",dpi=300)
     plt.close()
-<<<<<<< HEAD
 end
-=======
-end
-
-function plot_folder(folder;axis=ez,slice=-1,style = "mz",norm=nothing, cmap="coolwarm",quiver=false,quiver_interval=3,quiver_size=45)
-    files = readdir(folder)
-    for f in files
-        if endswith(f,".ovf")
-            plotOVF(joinpath(folder,f),
-                axis=axis,slice=slice,style = style,norm=norm, cmap=cmap,quiver=quiver,quiver_interval=quiver_interval,quiver_size=quiver_size)
-        end
-    end
-end
->>>>>>> a546f78bd8c06dfedfbd04589ad42b18d487251d
