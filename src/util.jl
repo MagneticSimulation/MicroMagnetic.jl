@@ -104,3 +104,64 @@ function partial_xy(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
   end
   return  pxm, pym
 end
+
+
+function partial_x(u::Array{T, 1}, mesh::Mesh, Ms::Array{T, 1}) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy = mesh.dx, mesh.dy
+    ngbs = mesh.ngbs
+    nxyz = mesh.nxyz
+    px = zeros(T, nxyz)
+    for i = 1:nxyz
+      #x-direction
+      i1 = ngbs[1,i]
+      i2 = ngbs[2,i]
+      i1>0 && Ms[i1]<0 && (i1 = -1)
+      i2>0 && Ms[i2]<0 && (i2 = -1)
+      factor = i1*i2>0 ? 1/(2*dx) : 1/dx
+      i1 < 0 && (i1 = i)
+      i2 < 0 && (i2 = i)
+      px[i] = (u[i2] - u[i1]) * factor
+    end
+  return px
+end
+
+function partial_y(u::Array{T, 1}, mesh::Mesh, Ms::Array{T, 1}) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy = mesh.dx, mesh.dy
+    ngbs = mesh.ngbs
+    nxyz = mesh.nxyz
+    py = zeros(T, nxyz)
+    for i = 1:nxyz
+      #y-direction
+      i1 = ngbs[3,i]
+      i2 = ngbs[4,i]
+      i1>0 && Ms[i1]<0 && (i1 = -1)
+      i2>0 && Ms[i2]<0 && (i2 = -1)
+      factor = i1*i2>0 ? 1/(2*dy) : 1/dy
+      i1 < 0 && (i1 = i)
+      i2 < 0 && (i2 = i)
+      py[i] = (u[i2] - u[i1]) * factor
+    end
+  return py
+end
+
+function partial_z(u::Array{T, 1}, mesh::Mesh, Ms::Array{T, 1}) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    ngbs = mesh.ngbs
+    nxyz = mesh.nxyz
+    pz = zeros(T, nxyz)
+    for i = 1:nxyz
+      #y-direction
+      i1 = ngbs[5,i]
+      i2 = ngbs[6,i]
+      i1>0 && Ms[i1]<0 && (i1 = -1)
+      i2>0 && Ms[i2]<0 && (i2 = -1)
+      factor = i1*i2>0 ? 1/(2*dz) : 1/dz
+      i1 < 0 && (i1 = i)
+      i2 < 0 && (i2 = i)
+      pz[i] = (u[i2] - u[i1]) * factor
+    end
+  return pz
+end

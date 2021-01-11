@@ -54,7 +54,7 @@ For example,use:
 A=1e-12
 ```
 to add exchange with constant 1e-12.
-Useful parameters: 
+Useful parameters:
 -anis_axis=(0,0,1) : anistropy axis
 -DMI_type="bulk" or "interfacial" : DMI type
 -GPU = true or false : enable GPU
@@ -173,6 +173,10 @@ end
 
 function set_ux(sim::AbstractSim, init_ux)
     init_scalar!(sim.driver.ux, sim.mesh, init_ux)
+end
+
+function set_ux_bounary(sim::AbstractSim, ux)
+    return set_ux_bounary_implement(sim, ux)
 end
 
 function set_uy(sim::AbstractSim, init_uy)
@@ -406,7 +410,7 @@ end
 """
     add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
 
-Add exchange interaction within the Geometry, or update corresponding A if other exch is added. 
+Add exchange interaction within the Geometry, or update corresponding A if other exch is added.
 """
 function add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
   for interaction in sim.interactions
@@ -597,7 +601,7 @@ end
 """
     add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0,0,1), name="anis")
 
-Add Anisotropy within the Geometry, or update corresponding Ku if other anis is added. 
+Add Anisotropy within the Geometry, or update corresponding Ku if other anis is added.
 """
 function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0,0,1), name="anis")
   lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)

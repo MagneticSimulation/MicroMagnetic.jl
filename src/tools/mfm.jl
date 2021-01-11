@@ -1,4 +1,4 @@
-using PyCall
+#using PyCall
 
 function divergence(vector_field::Array{T,1}, mesh::Mesh) where T<:AbstractFloat
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
@@ -20,7 +20,7 @@ function divergence_x(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
     for i=1:nx,j=1:ny,k=1:nz
         id = index(i, j, k, nx, ny, nz)
         id1,id2 = index(i-1,j,k, nx,ny,nz),index(i+1,j,k, nx,ny,nz)
-        if id1 > 0 && id2 >0 
+        if id1 > 0 && id2 >0
             div_x[i,j,k] = (scalar_field[id2] - scalar_field[id1])/(2*dx)
         end
         if id1 < 0
@@ -44,7 +44,7 @@ function divergence_y(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
     for i=1:nx,j=1:ny,k=1:nz
         id = index(i, j, k, nx, ny, nz)
         id1,id2 = index(i,j-1,k, nx,ny,nz),index(i,j+1,k, nx,ny,nz)
-        if id1 > 0 && id2 >0 
+        if id1 > 0 && id2 >0
             div_y[i,j,k] = (scalar_field[id2] - scalar_field[id1])/(2*dy)
         end
         if id1 < 0
@@ -68,7 +68,7 @@ function divergence_z(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
     for i=1:nx,j=1:ny,k=1:nz
         id = index(i, j, k, nx, ny, nz)
         id1,id2 = index(i,j,k-1, nx,ny,nz),index(i,j,k+1, nx,ny,nz)
-        if id1 > 0 && id2 >0 
+        if id1 > 0 && id2 >0
             div_z[i,j,k] = (scalar_field[id2] - scalar_field[id1])/(2*dz)
         end
         if id1 < 0
@@ -162,7 +162,7 @@ function OVF2MFM(m,nx,ny,nz,dx,dy,dz,Nx,Ny,height)
 
     effective_field(sim,sim.spin,0.0)
 
-    println("Computing divergence of demag field...")                                
+    println("Computing divergence of demag field...")
 
     fieldz = reshape(sim.field,(3,:))[3,:]
 
@@ -181,7 +181,7 @@ Get the simulated magnetic force microscope contrast from an ovf file.
 
 And return the contrast matrix.
 
-Method: Calculate the divergence of demagnetization on the platform of probe height. 
+Method: Calculate the divergence of demagnetization on the platform of probe height.
 
 
 
