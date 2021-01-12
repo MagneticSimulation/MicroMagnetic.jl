@@ -221,6 +221,31 @@ function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch")
   return exch
 end
 
+"""
+    add_exch_anis(sim::MicroSimGPU, kea::NumberOrArrayOrFunction; name="exch_anis")
+
+Add exchange anistropy to the system.
+Ref: 10.1103/PhysRevResearch.2.043386
+"""
+function add_exch_anis(sim::MicroSimGPU, kea::NumberOrArrayOrFunction; name="exch_anis")
+  nxyz = sim.nxyz
+  Float = _cuda_using_double.x ? Float64 : Float32
+  field = zeros(Float, 3*nxyz)
+  energy = zeros(Float, nxyz)
+  Spatial_kea = CUDA.zeros(Float, nxyz)
+  init_scalar!(Spatial_kea , sim.mesh, kea)
+  exch = ExchangeAnistropyGPU(Spatial_kea, field, energy, Float(0.0), name)
+  push!(sim.interactions, exch)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+  end
+  return exch
+end
+
 function add_exch(sim::MicroSimGPU, geo::Geometry, A::Number; name="exch")
   for interaction in sim.interactions
       if interaction.name == name
