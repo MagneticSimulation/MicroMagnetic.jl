@@ -159,10 +159,9 @@ catch
     _pycall_available[] = false
 end
 
-
-include("tools/projection.jl")
 export Make_Projection
 if _pycall_available.x
+  include("tools/projection.jl")
   include("tools/xray.jl")
   include("tools/ltem.jl")
   include("tools/mfm.jl")
