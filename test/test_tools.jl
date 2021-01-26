@@ -35,6 +35,7 @@ function test_sum()
 end
 
 savem()
+OVF2LTEM("test_tools",N=128)
 OVF2XRAY("test_tools")
 OVF2MFM("test_tools")
 plot_ovf_slice("test_tools", component="all", quiver=true)

@@ -23,6 +23,22 @@ function m2rgb(mx,my,mz,rotation)
     return data_rgb
 end
 
+"""
+  plot_ovf_slice(fname; slice="center", component = "mz", cmap="coolwarm", rotation = 0, quiver=false, quiver_interval=5, quiver_size=30, quiver_color="w")
+
+Plot a certain slice of the given ovf file.
+
+Parameters
+-----------------
+fname: file name
+slice: layer number.
+component: Can be chosen from "mx","my","mz" and "all".
+rotation: Rotation angle of the hsv color space in degree.
+quiver: Show arrow or not.
+quiver_interval: Show one arrow every () cells.
+quiver_size: Quiver size.
+quiver_color
+"""
 function plot_ovf_slice(fname; slice="center", component = "mz", cmap="coolwarm", rotation = 0, quiver=false, quiver_interval=5, quiver_size=30, quiver_color="w")
     np =  pyimport("numpy")
     mpl =  pyimport("matplotlib")
@@ -78,12 +94,27 @@ function plot_ovf_slice(fname; slice="center", component = "mz", cmap="coolwarm"
         mkpath(path)
     end
     plt.tight_layout()
-    plt.savefig(joinpath(path,basename(fname))*"_$component.png",dpi=300)
+    plt.savefig(joinpath(path,basename(fname))*"_slice_$component.png",dpi=300)
     plt.close()
 
 end
 
-function plot_ovf_projection(fname; angle=0, tilt_axis="alpha", component = "mz", cmap="coolwarm", rotation = 0, quiver=false, quiver_interval=5, quiver_size=30, quiver_color="w", N=128)
+"""
+  plot_ovf_projection(fname; tilt_angle=0, tilt_axis="alpha", component = "mz", cmap="coolwarm", rotation = 0, quiver=false, quiver_interval=5, quiver_size=30, quiver_color="w", N=128)
+
+Plot the averaged magnetization from the given ovf file.
+
+Based on radon transform.
+
+Parameters
+--------------------
+tilt_axis: Can be "alpha"(x-axis) or "beta"(y-axis).
+tilt_angle: Tile angle in degree.
+
+Other parameters are same with function "plot_ovf_slice"
+"""
+
+function plot_ovf_projection(fname; tilt_angle=0, tilt_axis="alpha", component = "mz", cmap="coolwarm", rotation = 0, quiver=false, quiver_interval=5, quiver_size=30, quiver_color="w", N=128)
     np =  pyimport("numpy")
     mpl =  pyimport("matplotlib")
     mpl.use("Agg")
@@ -91,7 +122,7 @@ function plot_ovf_projection(fname; angle=0, tilt_axis="alpha", component = "mz"
     plt = pyimport("matplotlib.pyplot")
 
     ovf = read_ovf(fname)
-    mxp,myp,mzp = radon_transform_ovf(ovf, angle, tilt_axis, N=N)
+    mxp,myp,mzp = radon_transform_ovf(ovf, tilt_angle, tilt_axis, N=N)
     if component == "mz"
         plt.imshow(np.transpose(mzp), origin="lower", cmap="coolwarm")
         plt.colorbar()
@@ -134,6 +165,6 @@ function plot_ovf_projection(fname; angle=0, tilt_axis="alpha", component = "mz"
         mkpath(path)
     end
     plt.tight_layout()
-    plt.savefig(joinpath(path,basename(fname))*"_$component.png",dpi=300)
+    plt.savefig(joinpath(path,basename(fname))*"_radon_$component.png",dpi=300)
     plt.close()
 end

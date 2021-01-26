@@ -8,7 +8,7 @@ function compute_electric_phase(V, V0, Lz, beta)
     P =  sqrt(Ek^2+2*Ek*E0)/C
     lambda = 2*pi*h_bar/P #lambda in m
     CE = (2*pi/(lambda*V))*(Ek+E0)/(Ek+2*E0)
-    phi_E = CE*V0*Lz/cos(beta)
+    phi_E = CE*V0*Lz/cos(deg2rad(beta))
     return lambda, phi_E
 end
 
@@ -97,7 +97,7 @@ V: the Accelerating voltage in Kv
 
 V0: the mean inner potential (MIP)
 """
-function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, Nx=-1, Ny=-1,beta=0,gamma=0)
+function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, N=-1,tilt_axis="beta",tilt_angle=0)
     np =  pyimport("numpy")
     mpl =  pyimport("matplotlib")
     mpl.use("Agg")
@@ -116,11 +116,11 @@ function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, Nx=-1, Ny=-1,
         mkpath(path)
     end
 
-    phase, intensity = LTEM(fname; V=V, Ms=Ms, V0=V0, df=df, alpha=alpha, Nx=Nx, Ny=Ny,beta=beta,gamma=gamma)
+    phase, intensity = LTEM(fname; V=V, Ms=Ms, V0=V0, df=df, alpha=alpha, N=N, tilt_axis=tilt_axis, tilt_angle=tilt_angle)
     fig,ax = plt.subplots(1,2)
-    ax[1].imshow(np.transpose(phase),cmap=mpl.cm.gray,origin="lower")
+    ax[1].imshow(np.transpose(fftshift(phase)),cmap=mpl.cm.gray,origin="lower")
     ax[1].set_title("phase")
-    ax[2].imshow(np.transpose(intensity),cmap=mpl.cm.gray,origin="lower")
+    ax[2].imshow(np.transpose(fftshift(intensity)),cmap=mpl.cm.gray,origin="lower")
     ax[2].set_title("intensity")
     plt.savefig(joinpath(path,basename(fname)*"_LTEM.png"),dpi=300)
     plt.close()
@@ -135,7 +135,7 @@ end
 #alpha: beam divergence angle
 #axis="x" is the normal direction
 #beta is the angle between electron beam and the normal  axis, in radian
-function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, Nx=-1, Ny=-1,beta=0,gamma=0)
+function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, N=128,tilt_axis="beta",tilt_angle=0)
     ovf = read_ovf(fname)
     nx = ovf.xnodes
     ny = ovf.ynodes
@@ -147,37 +147,39 @@ function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, Nx=-1, Ny=-1,be
     spin = ovf.data
     m = reshape(spin,(3, nx, ny, nz))
 
-    Nx = Nx > nx ? Nx : nx
-    Ny = Ny > ny ? Ny : ny
+    if nx > N || ny > N
+        @error("Please add zero padding!")
+    end
 
-    sum_mx,sum_my,sum_mz = Make_Projection(ovf,beta=beta,gamma=gamma,Nx=Nx,Ny=Ny)
+    sum_mx,sum_my,sum_mz = radon_transform_ovf(ovf,tilt_angle,tilt_axis,N=N)
+    print(size(sum_mx))
     smx,smy,smz = sum_mx/nz,sum_my/nz,sum_mz/nz
 
     #dx=dx*cos(beta)
 
-    lambda, phi_E = compute_electric_phase(1000*V, V0, dz*nz, beta)
+    lambda, phi_E = compute_electric_phase(1000*V, V0, dz*nz, tilt_angle)
 
     #put data on the center of zero padding square
 
-    fft_mx = fft(smx)
-    fft_my = fft(smy)
+    fft_mx = fft(ifftshift(smx))
+    fft_my = fft(ifftshift(smy))
 
-    kx = fftfreq(Nx, d=dx)
-    ky = fftfreq(Ny, d=dy)
+    kx = fftfreq(N, d=dx)
+    ky = fftfreq(N, d=dy)
 
-    fft_mx_ky = zeros(Complex{Float64}, (Nx,Ny))
-    fft_my_kx = zeros(Complex{Float64}, (Nx,Ny))
-    for i=1:Nx, j=1:Ny
+    fft_mx_ky = zeros(Complex{Float64}, (N,N))
+    fft_my_kx = zeros(Complex{Float64}, (N,N))
+    for i=1:N, j=1:N
         fft_mx_ky[i,j] = fft_mx[i,j]*ky[j]
         fft_my_kx[i,j] = fft_my[i,j]*kx[i]
     end
 
-    Phi_M = zeros(Complex{Float64}, (Nx,Ny))
-    T = zeros(Complex{Float64}, (Nx,Ny))
-    E = zeros(Nx,Ny)
+    Phi_M = zeros(Complex{Float64}, (N,N))
+    T = zeros(Complex{Float64}, (N,N))
+    E = zeros(N,N)
     df = df*1e-6
 
-    for i=1:Nx, j=1:Ny
+    for i=1:N, j=1:N
         k2 = kx[i]^2 + ky[j]^2
         k = sqrt(k2)
         T[i,j] = exp(-pi*1im*(df*lambda*k2))
@@ -194,11 +196,11 @@ function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, Nx=-1, Ny=-1,be
 
     #if i,j within material boundary, add electric phase
 
-    for i=1:Nx,j=1:Ny
+    #=for i=1:N,j=1:N
         if abs(smx[i,j]) + abs(smy[i,j]) +abs(smz[i,j]) > 1e-5
             phi[i,j] += phi_E
         end
-    end
+    end=#
     #phi = mod.(phi,2*pi)
 
     fg = fft(exp.(1im.*phi))
