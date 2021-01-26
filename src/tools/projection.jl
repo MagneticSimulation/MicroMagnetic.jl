@@ -44,17 +44,17 @@ end
 function radon_transform_ovf(ovf::OVF2, angle::Number, tilt_axis; N=128)
     np = pyimport("numpy")
     if angle == 0
-        return sum_z(ovf)
+        smx,smy,smz = sum_z(ovf)
+        new_smx = pad_2d_vec(smx, N)
+        new_smy = pad_2d_vec(smy, N)
+        new_smz = pad_2d_vec(smz, N)
+        return new_smx,new_smy,new_smz
     end
     m = ovf.data
     nx,ny,nz = ovf.xnodes,ovf.ynodes,ovf.znodes
-    b = reshape(m,(3,nx,ny,nz))
-    px, py, pz = floor(Int, (N-nx)/2), floor(Int, (N-ny)/2), floor(Int, (N-nz)/2)
-    print("px,py,pz:",px,py,pz)
-    mx,my,mz = b[1,:,:,:],b[2,:,:,:],b[3,:,:,:]
-    mx = np.pad(mx, ((px,px),(py,py),(pz,pz)), "constant")
-    my = np.pad(my, ((px,px),(py,py),(pz,pz)), "constant")
-    mz = np.pad(mz, ((px,px),(py,py),(pz,pz)), "constant")
+    b = reshape(m,(3,nx,ny,nz))    
+    mag_pad = pad_3d_vec(b, N)
+    mx,my,mz = mag_pad[1,:,:,:],mag_pad[2,:,:,:],mag_pad[3,:,:,:]
     mxp = radon_3d_scalar(mx, angle, tilt_axis)
     myp = radon_3d_scalar(my, angle, tilt_axis)
     mzp = radon_3d_scalar(mz, angle, tilt_axis)
@@ -64,6 +64,42 @@ function radon_transform_ovf(ovf::OVF2, angle::Number, tilt_axis; N=128)
     local_mz = COS * mzp + SIN * myp
 
     return local_mx,local_my,local_mz
+end
+
+function pad_3d_vec(v, N)
+    np = pyimport("numpy")
+    l = length(size(v))
+    if l == 4
+        (dims,nx,ny,nz) = size(v)
+        n1,n2,n3 = floor(int,(N-nx)/2), floor(int,(N-ny)/2), floor(int,(N-nz)/2)
+        v_new = zeros(dims,N,N,N)
+        for dim =1:dims
+            v_new[dim,:,:,:] .= np.pad(v[dim,:,:,:], ((n1,n1),(n2,n2),(n3,n3)), "constant")
+        end
+    elseif l == 3
+        (nx,ny,nz) = size(v)
+        n1,n2,n3 = floor(int,(N-nx)/2), floor(int,(N-ny)/2), floor(int,(N-nz)/2)
+        v_new= np.pad(v, ((n1,n1),(n2,n2),(n3,n3)), "constant")
+    end
+    return v_new
+end
+
+function pad_2d_vec(v, N)
+    np = pyimport("numpy")
+    l = length(size(v))
+    if l == 3
+        (dims,nx,ny) = size(v)
+        n1,n2 = floor(int,(N-nx)/2), floor(int,(N-ny)/2)
+        v_new = zeros(dims,N,N)
+        for dim =1:dims
+            v_new[dim,:,:] .= np.pad(v[dim,:,:], ((n1,n1),(n2,n2)), "constant")
+        end
+    elseif l == 2
+        (nx,ny) = size(v)
+        n1,n2 = floor(Int,(N-nx)/2), floor(Int,(N-ny)/2)
+        v_new= np.pad(v, ((n1,n1),(n2,n2)), "constant")
+    end
+    return v_new
 end
 
 function sum_ovf(ovf; axis=ez)

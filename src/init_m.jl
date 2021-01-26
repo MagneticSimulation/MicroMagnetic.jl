@@ -87,12 +87,17 @@ function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7
 end
 
 """
-####################################################################################################
-# Initialize a bubble with arbitrary topological charge                                            #
-# Ref: J.Appl.Phys.120,233901(2016)                                                                #
-# Parameters: R:radius in nanometer; delta: domain wall width= sqrt(A/k); center=(100e-9,100e-9);  #
-#             S: winding number; Q:polarity or "topological quantities"; phi0= initial phase       #                                                              
-####################################################################################################
+  init_hard_bubble(sim::AbstractSim; R::Float64, delta::Float64, center::Any="default", S::Int=10, Q::Int=-1, phi0::Float64=pi/2)
+
+Initialize a bubble with arbitrary topological charge                                            
+Ref: J.Appl.Phys.120,233901(2016)                                                                
+Parameters: R:radius in nanometer; 
+            delta: domain wall width= sqrt(A/k);
+            center=(100e-9,100e-9);  
+            S: winding number; 
+            Q:polarity or "topological quantities"; 
+            phi0= initial phase                                                                    
+
 """
 
 function init_hard_bubble(sim::AbstractSim; R::Float64, delta::Float64, center::Any="default", S::Int=10, Q::Int=-1, phi0::Float64=pi/2)

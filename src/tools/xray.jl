@@ -26,7 +26,7 @@ function OVF2XRAY(fname; xlim="none", ylim="none", axis=ez, N=-1)
     nxyz = nx*ny*nz
     spin = ovf.data
 
-    mxp, myp, mzp = sum_ovf(ovf, axis=ez)
+    mxp, myp, mzp = sum_ovf(ovf, axis=axis)
     lx, ly = size(mzp)
     if N > 0
         mzp = np.pad(mzp, ((0,N-lx),(0,N-ly)),"constant")
