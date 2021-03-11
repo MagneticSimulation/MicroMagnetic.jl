@@ -11,7 +11,7 @@ const _pycall_available = Ref(true)
 
 export init_m0,
        init_m0_random,
-       init_m0_skyrmion,
+       init_m0_skyrmion,init_m0_skyrmion_lattice,
        add_zeeman,
        add_dmi,
        add_exch, add_exch_kagome,
