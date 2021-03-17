@@ -1,4 +1,5 @@
 using PyCall
+using PaddedViews
 
 """
 This part is based on radon from skimage.transform. So you need to install skikit-image.
@@ -19,21 +20,40 @@ s:The scalar field, which should be 3-d padded. The shape should be (N,N,N).
 angle: tilt_angle in degrees.
 tilt_axis: Should be "alpha" or "beta"
 """
-function radon_3d_scalar(s, angle::Number, tilt_axis)
+
+function vector_padding(v::Array{T,4}, Nx::Int, Ny::Int, Nz::Int) where {T<:Number}
+    (dims,nx,ny,nz) = size(v)
+    xp = floor(Int,(Nx-nx)/2)
+    yp = floor(Int,(Ny-ny)/2)
+    zp = floor(Int,(Nz-nz)/2)
+    b_new = Array{T}(PaddedView(0,v,(1:dims,1:Nx,1:Ny,1:Nz),(1:dims,xp+1:xp+nx, yp+1:yp+ny, zp+1:zp+nz)))
+    return b_new #return 4-d array
+end
+
+function vector_crop(v::Array{T,4}, nx::Int,ny::Int,nz::Int)  where {T<:Number}
+    (dims,Nx,Ny,Nz) = size(v)
+    xp = floor(Int,(Nx-nx)/2)
+    yp = floor(Int,(Ny-ny)/2)
+    zp = floor(Int,(Nz-nz)/2)
+    b_new = v[:, xp+1:xp+nx, yp+1:yp+ny, zp+1:zp+nz]
+    return b_new #return 4-d array
+end
+
+function radon_3d_scalar(s::Array{T,3}, angle::Number, tilt_axis::String) where {T<:AbstractFloat}
     np = pyimport("numpy")
     trans = pyimport("skimage.transform")
     radon = trans.radon
     (nx,ny,nz) = size(s)
-    projection = zeros(nx,nx)
+    projection = zeros(T,nx,nx)
     angle = angle-90
     angle = np.array([angle])
     if lowercase(tilt_axis) == "alpha"
         for i = 1:nx
-            projection[i,:] = radon(s[i,:,:], angle, circle=true) 
+            copyto!(view(projection,i,:), radon(s[i,:,:], angle, circle=true))
         end
     elseif lowercase(tilt_axis) == "beta"
         for i = 1:ny
-            projection[:,i] = radon(s[:,i,:], angle, circle=true) 
+            copyto!(view(projection,:,i), radon(s[:,i,:], angle, circle=true))
         end
     else
         @error("\"tilt_axis\" should be \"alpha\" or \"beta\"")
@@ -41,65 +61,49 @@ function radon_3d_scalar(s, angle::Number, tilt_axis)
     return projection
 end
 
-function radon_transform_ovf(ovf::OVF2, angle::Number, tilt_axis; N=128)
+function radon_3d_scalar(s::Array{T,3}, angle::Number, tilt_axis::String) where {T<:Complex}
     np = pyimport("numpy")
-    if angle == 0
-        smx,smy,smz = sum_z(ovf)
-        new_smx = pad_2d_vec(smx, N)
-        new_smy = pad_2d_vec(smy, N)
-        new_smz = pad_2d_vec(smz, N)
-        return new_smx,new_smy,new_smz
+    trans = pyimport("skimage.transform")
+    radon = trans.radon
+    (nx,ny,nz) = size(s)
+    projection = zeros(T,nx,nx)
+    angle = angle-90
+    angle = np.array([angle])
+    if lowercase(tilt_axis) == "alpha"
+        for i = 1:nx
+            real_part = radon(real.(s[i,:,:]), angle, circle=true)
+            imag_part = radon(imag.(s[i,:,:]), angle, circle=true)
+            copyto!(view(projection,i,:), real_part+im*imag_part)
+        end
+    elseif lowercase(tilt_axis) == "beta"
+        for i = 1:ny
+            real_part = radon(real.(s[:,i,:]), angle, circle=true)
+            imag_part = radon(imag.(s[:,i,:]), angle, circle=true)
+            copyto!(view(projection,:,i), real_part+im*imag_part)
+        end
+    else
+        @error("\"tilt_axis\" should be \"alpha\" or \"beta\"")
     end
-    m = ovf.data
-    nx,ny,nz = ovf.xnodes,ovf.ynodes,ovf.znodes
-    b = reshape(m,(3,nx,ny,nz))    
-    mag_pad = pad_3d_vec(b, N)
-    mx,my,mz = mag_pad[1,:,:,:],mag_pad[2,:,:,:],mag_pad[3,:,:,:]
-    mxp = radon_3d_scalar(mx, angle, tilt_axis)
-    myp = radon_3d_scalar(my, angle, tilt_axis)
-    mzp = radon_3d_scalar(mz, angle, tilt_axis)
+    return projection
+end
+
+function vector_field_projection(v::Array{T,4}, angle::Number, tilt_axis::String) where {T<:Number}
+    (three, N, _, _) = size(v)
+    vnew = zeros(T,3,N,N)
+    xp = radon_3d_scalar(v[1,:,:,:], angle, tilt_axis)
+    yp = radon_3d_scalar(v[2,:,:,:], angle, tilt_axis)
+    zp = radon_3d_scalar(v[3,:,:,:], angle, tilt_axis)
     COS, SIN = cos(deg2rad(angle)), sin(deg2rad(angle))
-    local_mx = mxp
-    local_my = COS * myp - SIN * mzp
-    local_mz = COS * mzp + SIN * myp
-
-    return local_mx,local_my,local_mz
-end
-
-function pad_3d_vec(v, N)
-    np = pyimport("numpy")
-    l = length(size(v))
-    if l == 4
-        (dims,nx,ny,nz) = size(v)
-        n1,n2,n3 = floor(int,(N-nx)/2), floor(int,(N-ny)/2), floor(int,(N-nz)/2)
-        v_new = zeros(dims,N,N,N)
-        for dim =1:dims
-            v_new[dim,:,:,:] .= np.pad(v[dim,:,:,:], ((n1,n1),(n2,n2),(n3,n3)), "constant")
-        end
-    elseif l == 3
-        (nx,ny,nz) = size(v)
-        n1,n2,n3 = floor(int,(N-nx)/2), floor(int,(N-ny)/2), floor(int,(N-nz)/2)
-        v_new= np.pad(v, ((n1,n1),(n2,n2),(n3,n3)), "constant")
+    if tilt_axis == "alpha"
+        copyto!(view(vnew,1,:,:), xp)
+        copyto!(view(vnew,2,:,:), COS * yp - SIN * zp)
+        copyto!(view(vnew,3,:,:), COS * zp + SIN * yp)
+    elseif tilt_axis == "beta"
+        copyto!(view(vnew,1,:,:), COS * xp - SIN * zp)
+        copyto!(view(vnew,2,:,:), yp)
+        copyto!(view(vnew,3,:,:), COS * zp + SIN * xp)
     end
-    return v_new
-end
-
-function pad_2d_vec(v, N)
-    np = pyimport("numpy")
-    l = length(size(v))
-    if l == 3
-        (dims,nx,ny) = size(v)
-        n1,n2 = floor(int,(N-nx)/2), floor(int,(N-ny)/2)
-        v_new = zeros(dims,N,N)
-        for dim =1:dims
-            v_new[dim,:,:] .= np.pad(v[dim,:,:], ((n1,n1),(n2,n2)), "constant")
-        end
-    elseif l == 2
-        (nx,ny) = size(v)
-        n1,n2 = floor(Int,(N-nx)/2), floor(Int,(N-ny)/2)
-        v_new= np.pad(v, ((n1,n1),(n2,n2)), "constant")
-    end
-    return v_new
+    return vnew
 end
 
 function sum_ovf(ovf; axis=ez)

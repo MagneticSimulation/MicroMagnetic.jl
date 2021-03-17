@@ -1,5 +1,71 @@
+using NPZ
 using FFTW
-#using PyCall
+using Printf
+
+function vector_potential_constant(Ms::Float64, d::Float64)
+    mu0 = 4*pi*1e-7
+    Phi0 = 2.067833e-15
+    return mu0*Ms/(2*Phi0*d)
+end
+
+function cross_product(v1::Array{T,4},v2::Array{T,4}) where {T<:Number}
+    (three, nx, ny, nz) = size(v1)
+    v3 = zeros(T, size(v1))
+
+    for i = 1:nx, j=1:ny, k=1:nz
+        v3[1,i,j,k] = cross_x(v1[1,i,j,k], v1[2,i,j,k], v1[3,i,j,k], v2[1,i,j,k], v2[2,i,j,k], v2[3,i,j,k])
+        v3[2,i,j,k] = cross_y(v1[1,i,j,k], v1[2,i,j,k], v1[3,i,j,k], v2[1,i,j,k], v2[2,i,j,k], v2[3,i,j,k])
+        v3[3,i,j,k] = cross_z(v1[1,i,j,k], v1[2,i,j,k], v1[3,i,j,k], v2[1,i,j,k], v2[2,i,j,k], v2[3,i,j,k])
+    end
+    return v3
+end
+
+function get_magnetic_phase(m::Array{T,4}; alphas::Union{Array, Tuple}=[0],betas::Union{Array, Tuple}=[],N=256) where {T<:Number}
+
+    a = compute_vector_potential(m, N=N)
+    for alpha in alphas
+        phase = vector_field_projection(a, alpha, "alpha")[3,:,:]
+        npzwrite(@sprintf("ALPHA_%g.npy",alpha),phase)
+    end
+    for beta in betas
+        phase = vector_field_projection(a, beta, "beta")[3,:,:]
+        npzwrite(@sprintf("BETA_%g.npy",beta),phase)
+    end
+end
+
+function compute_vector_potential(m::Array{T,4}; N=256)  where {T<:Number}
+    m = vector_padding(m,N,N,N)
+    m = Array{Float32}(m)
+    m = ifftshift(m, (2,3,4))
+    mk = fft(m, (2,3,4))
+    k = get_kernel_k(N)
+    vector_potential_k = cross_product(mk,k)
+    vector_potential = ifft(vector_potential_k, (2,3,4))
+    return fftshift(real.(vector_potential), (2,3,4))
+end
+
+function get_kernel_k(N::Int)
+    r = FFTW.fftfreq(N)
+    kernel_k = zeros(ComplexF32, (3,N,N,N))
+    for i = 1:N
+        x2 = r[i]^2
+        for j = 1:N
+            y2 = r[j]^2
+            for k = 1:N
+                z2 = r[k]^2
+                r2 = sqrt(x2+y2+z2)
+
+                kernel_k[1,i,j,k] = -1im*r[i]/r2
+                kernel_k[2,i,j,k] = -1im*r[j]/r2
+                kernel_k[3,i,j,k] = -1im*r[k]/r2
+            end
+        end
+    end
+    kernel_k[1,1,1,1] = 0
+    kernel_k[2,1,1,1] = 0
+    kernel_k[3,1,1,1] = 0
+    return kernel_k        
+end
 
 function compute_electric_phase(V, V0, Lz, beta)
     C = 299792458.0
@@ -12,69 +78,6 @@ function compute_electric_phase(V, V0, Lz, beta)
     return lambda, phi_E
 end
 
-function compute_magnetic_phase_direct(mx, my, dx, dy, dz, Ms, i0, j0)  #slow, for testing purpose
-    Nx, Ny = size(mx)
-    mu0 = 4*pi*1e-7
-    Phi0 = 2.067833e-15
-
-    phi = 0
-    for i=1:Nx, j=1:Ny
-        x = (i0-i)*dx
-        y = (j0-j)*dy
-        r = sqrt(x^2+y^2)
-        if  r > 0.001*min(dx, dy)
-            phi += (y*mx[i,j] -  x*my[i,j])/r^2
-        end
-    end
-    return -phi*mu0*Ms*dz/(2*Phi0)*dx*dy
-end
-
-
-function compute_magnetic_phase_fft(mx, my, dx, dy, dz, Ms; Nx=-1, Ny=-1)
-    mu0 = 4*pi*1e-7
-    Phi0 = 2.067833e-15
-    nx, ny =  size(mx)
-
-    Nx = Nx < 0 ? nx : Nx
-    Ny = Ny < 0 ? ny : Ny
-
-    Lx = Nx + nx - 1
-    Ly = Ny + ny - 1
-    new_mx = zeros(Lx, Ly)
-    new_my = zeros(Lx, Ly)
-    for i=1:nx, j=1:ny
-        new_mx[i,j] = mx[i,j]
-        new_my[i,j] = my[i,j]
-    end
-
-    F(x::Number, y::Number) = y == 0 ? 0 : y/(x^2+y^2)
-    G(x::Number, y::Number) = x == 0 ? 0 : x/(x^2+y^2)
-
-    fs = zeros(Lx, Ly)
-    gs = zeros(Lx, Ly)
-    for i=1:Lx, j=1:Ly
-        fs[i,j] = F((-(Lx-1)/2+i-1)*dx, (-(Ly-1)/2+j-1)*dy)
-        gs[i,j] = G((-(Lx-1)/2+i-1)*dx, (-(Ly-1)/2+j-1)*dy)
-    end
-
-    fft_mx = fft(new_mx)
-    fft_my = fft(new_my)
-    fft_fs = fft(fs)
-    fft_gs = fft(gs)
-
-    fft_phi = zeros(Complex{Float64}, (Lx,Ly))
-    for i=1:Lx, j=1:Ly
-        fft_phi[i,j] = fft_mx[i,j]*fft_fs[i,j] - fft_my[i,j]*fft_gs[i,j]
-    end
-
-    phi_all = real.(ifft(fft_phi))
-    phi = zeros(Nx, Ny)
-    for i=1:Nx, j=1:Ny
-        phi[i,j] = phi_all[i+nx-1, j+ny-1]
-    end
-
-    return -phi*mu0*Ms*dz/(2*Phi0)*dx*dy
-end
 
 """
         OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, Nx=-1, Ny=-1,beta=0,gamma=0)
@@ -97,7 +100,7 @@ V: the Accelerating voltage in Kv
 
 V0: the mean inner potential (MIP)
 """
-function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, N=-1,tilt_axis="beta",tilt_angle=0)
+#=function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, N=-1,tilt_axis="beta",tilt_angle=0)
     np =  pyimport("numpy")
     mpl =  pyimport("matplotlib")
     mpl.use("Agg")
@@ -126,7 +129,7 @@ function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, N=-1,tilt_axi
     plt.close()
 
     return phase, intensity
-end
+end=#
 
 #Ref: "MALTS: A tool to simulate Lorentz Transmission Electron Microscopy from micromagnetic simulations" by Stephanie K. Walton
 #df in um
@@ -135,7 +138,7 @@ end
 #alpha: beam divergence angle
 #axis="x" is the normal direction
 #beta is the angle between electron beam and the normal  axis, in radian
-function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, N=128,tilt_axis="beta",tilt_angle=0)
+#=function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, N=128,tilt_axis="beta",tilt_angle=0)
     ovf = read_ovf(fname)
     nx = ovf.xnodes
     ny = ovf.ynodes
@@ -151,28 +154,20 @@ function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, N=128,tilt_axis
         @error("Please add zero padding!")
     end
 
-    sum_mx,sum_my,sum_mz = radon_transform_ovf(ovf,tilt_angle,tilt_axis,N=N)
-    print(size(sum_mx))
-    smx,smy,smz = sum_mx/nz,sum_my/nz,sum_mz/nz
+    mp = radon_transform_ovf(ovf, tilt_angle, tilt_axis,N=N)
+    sum_mx, sum_my, sum_mz = mp[1,:,:], mp[2,:,:], mp[3,:,:]
+    smx, smy, smz = sum_mx/nz, sum_my/nz, sum_mz/nz
 
-    #dx=dx*cos(beta)
+    phi_M = compute_magnetic_phase_fft(smx, smy, dx, dy, dz, Ms)
 
     lambda, phi_E = compute_electric_phase(1000*V, V0, dz*nz, tilt_angle)
 
     #put data on the center of zero padding square
 
-    fft_mx = fft(ifftshift(smx))
-    fft_my = fft(ifftshift(smy))
 
     kx = fftfreq(N, d=dx)
     ky = fftfreq(N, d=dy)
 
-    fft_mx_ky = zeros(Complex{Float64}, (N,N))
-    fft_my_kx = zeros(Complex{Float64}, (N,N))
-    for i=1:N, j=1:N
-        fft_mx_ky[i,j] = fft_mx[i,j]*ky[j]
-        fft_my_kx[i,j] = fft_my[i,j]*kx[i]
-    end
 
     Phi_M = zeros(Complex{Float64}, (N,N))
     T = zeros(Complex{Float64}, (N,N))
@@ -184,15 +179,8 @@ function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, N=128,tilt_axis
         k = sqrt(k2)
         T[i,j] = exp(-pi*1im*(df*lambda*k2))
         E[i,j] = exp(-(pi*alpha*df*k)^2)
-        if k2 > 0
-            Phi_M[i,j] = 1im*(c_e/h_bar)*mu_0*Ms*(nz*dz)*(fft_mx_ky[i,j]-fft_my_kx[i,j])/k2
-        end
     end
-    Phi_M[1,1]=0
 
-    phi_M = real.(ifft(Phi_M))
-
-    phi = phi_M
 
     #if i,j within material boundary, add electric phase
 
@@ -209,4 +197,4 @@ function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, N=128,tilt_axis
 
     #return phi_M, intensity
     return phi, intensity
-end
+end=#
