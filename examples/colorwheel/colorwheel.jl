@@ -22,7 +22,9 @@ function save_colorwheel()
 
     init_m0(sim,m0_fun)
     save_ovf(sim,"colorwheel")
-    plotOVF("colorwheel.ovf",style="rgb")
+    plotOVF("colorwheel.ovf", component="all")
+
+    rm("colorwheel.ovf")
 end
 
 save_colorwheel()

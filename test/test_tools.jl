@@ -1,12 +1,15 @@
 using JuMag
 using Test
 using Printf
+using PyCall
+using NPZ
 
 function savem()
     sim = Sim(nx=32,ny=64,nz=16,Ms=1e5,GPU=false)
     init_m0(sim,(cos(5/3*pi),sin(5/3*pi),0))
     save_ovf(sim,"test_tools")
 end
+
 
 function is_very_close(a, b)
     if abs(a-b) < 1e-12
@@ -34,12 +37,30 @@ function test_sum()
     @test is_very_close(mz[1],-64*sin(5/3*pi))
 end
 
+function test_projection()
+    ovf = read_ovf("test_tools")
+    m = reshape(ovf.data, (3,32,64,16))
+    m_padded = JuMag.vector_padding(m, 128,128,128)
+    m = JuMag.vector_field_projection(m_padded, 0.0, "alpha")
+    mx, my, mz = m[1,:,:], m[2,:,:], m[3,:,:]
+    @test abs(mx[48,64] - 0) < 1e-6
+    @test abs(mx[49,64] - 16*cos(5/3*pi)) < 1e-6
+    @test abs(my[48,64] - 0) < 1e-6
+    @test abs(my[49,64] - 16*sin(5/3*pi)) < 1e-6
+    @test abs(mz[48,64] - 0)< 1e-6
+    @test abs(mz[49,64] - 0) < 1e-6
+end
+
+
+
+
 savem()
-OVF2LTEM("test_tools",N=128)
+test_projection()
+
+#OVF2LTEM("test_tools",N=128)
 OVF2XRAY("test_tools")
 OVF2MFM("test_tools")
-plot_ovf_slice("test_tools", component="all", quiver=true)
-plot_ovf_projection("test_tools", component="all", quiver=true)
+rm("test_tools.ovf")
 
 
 #TODO:phase test

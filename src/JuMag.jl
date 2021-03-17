@@ -38,7 +38,7 @@ export init_m0,
        NEB,
        interpolate_m,save_ovf,read_ovf,
        fftfreq,
-       ex,ey,ez,sum_ovf
+       ex,ey,ez
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT, Gauss
 export ex,ey,ez
@@ -159,15 +159,14 @@ catch
     _pycall_available[] = false
 end
 
-export Make_Projection
 if _pycall_available.x
   include("tools/projection.jl")
-  include("tools/xray.jl")
+  include("tools/plot.jl")
   include("tools/ltem.jl")
   include("tools/mfm.jl")
-  include("tools/plotm.jl")
-  export OVF2LTEM,OVF2MFM,OVF2XRAY, 
-          plot_ovf_slice, plot_ovf_projection
+  include("tools/xray.jl")
+  export vector_field_projection, get_magnetic_phase, OVF2LTEM,OVF2MFM,OVF2XRAY, 
+          plotOVF, plot_ovf_projection
 end
 
 function __init__()

@@ -102,7 +102,7 @@ Use 3-Q approximation to approach skyrmion lattice.
 lambda: period
 
 p: polarity. 1(up) or -1(down)
-c: chirality. "r" (left-handed) or "l"(right-handed)
+c: chirality. "r" (left-handed) or "l"(left-handed)
 type: "B"(Bloch) or "N"(Neel)
 """
 
