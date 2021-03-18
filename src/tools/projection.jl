@@ -18,7 +18,7 @@ Return a projection of a 3-d scalar field.
 ------------------------------------------
 s:The scalar field, which should be 3-d padded. The shape should be (N,N,N).
 angle: tilt_angle in degrees.
-tilt_axis: Should be "alpha" or "beta"
+tilt_axis: Should be "x" or "y"
 """
 
 function vector_padding(v::Array{T,4}, Nx::Int, Ny::Int, Nz::Int) where {T<:Number}
@@ -40,6 +40,7 @@ function vector_crop(v::Array{T,4}, nx::Int,ny::Int,nz::Int)  where {T<:Number}
 end
 
 function radon_3d_scalar(s::Array{T,3}, angle::Number, tilt_axis::String) where {T<:AbstractFloat}
+    # Note: Array s is expected to be odd-number-sized. For example: (3, 129,129,129) !
     np = pyimport("numpy")
     trans = pyimport("skimage.transform")
     radon = trans.radon
@@ -47,11 +48,11 @@ function radon_3d_scalar(s::Array{T,3}, angle::Number, tilt_axis::String) where 
     projection = zeros(T,nx,nx)
     angle = angle-90
     angle = np.array([angle])
-    if lowercase(tilt_axis) == "alpha"
+    if lowercase(tilt_axis) == "x"
         for i = 1:nx
             copyto!(view(projection,i,:), radon(s[i,:,:], angle, circle=true))
         end
-    elseif lowercase(tilt_axis) == "beta"
+    elseif lowercase(tilt_axis) == "y"
         for i = 1:ny
             copyto!(view(projection,:,i), radon(s[:,i,:], angle, circle=true))
         end
@@ -69,39 +70,50 @@ function radon_3d_scalar(s::Array{T,3}, angle::Number, tilt_axis::String) where 
     projection = zeros(T,nx,nx)
     angle = angle-90
     angle = np.array([angle])
-    if lowercase(tilt_axis) == "alpha"
+    if lowercase(tilt_axis) == "x"
         for i = 1:nx
             real_part = radon(real.(s[i,:,:]), angle, circle=true)
             imag_part = radon(imag.(s[i,:,:]), angle, circle=true)
             copyto!(view(projection,i,:), real_part+im*imag_part)
         end
-    elseif lowercase(tilt_axis) == "beta"
+    elseif lowercase(tilt_axis) == "y"
         for i = 1:ny
             real_part = radon(real.(s[:,i,:]), angle, circle=true)
             imag_part = radon(imag.(s[:,i,:]), angle, circle=true)
             copyto!(view(projection,:,i), real_part+im*imag_part)
         end
     else
-        @error("\"tilt_axis\" should be \"alpha\" or \"beta\"")
+        @error("\"tilt_axis\" should be \"x\" or \"y\"")
     end
     return projection
 end
 
+"""
+    vector_field_projection(v::Array{T,4}, angle::Number, tilt_axis::String) where {T<:Number}
+
+return a projection vector of the input array.
+
+Input size: (3,N,N,N)
+output size: (3, N, N)
+angle: Number from -90 to 90
+tilt_axis: "x" or "y"
+"""
+
 function vector_field_projection(v::Array{T,4}, angle::Number, tilt_axis::String) where {T<:Number}
     (three, N, _, _) = size(v)
     vnew = zeros(T,3,N,N)
-    xp = radon_3d_scalar(v[1,:,:,:], angle, tilt_axis)
-    yp = radon_3d_scalar(v[2,:,:,:], angle, tilt_axis)
-    zp = radon_3d_scalar(v[3,:,:,:], angle, tilt_axis)
+    xp = JuMag.radon_3d_scalar(v[1,:,:,:], angle, tilt_axis)
+    yp = JuMag.radon_3d_scalar(v[2,:,:,:], angle, tilt_axis)
+    zp = JuMag.radon_3d_scalar(v[3,:,:,:], angle, tilt_axis)
     COS, SIN = cos(deg2rad(angle)), sin(deg2rad(angle))
-    if tilt_axis == "alpha"
+    if tilt_axis == "x"
         copyto!(view(vnew,1,:,:), xp)
         copyto!(view(vnew,2,:,:), COS * yp - SIN * zp)
-        copyto!(view(vnew,3,:,:), COS * zp + SIN * yp)
-    elseif tilt_axis == "beta"
+        copyto!(view(vnew,3,:,:), -COS * zp - SIN * yp)
+    elseif tilt_axis == "y"
         copyto!(view(vnew,1,:,:), COS * xp - SIN * zp)
         copyto!(view(vnew,2,:,:), yp)
-        copyto!(view(vnew,3,:,:), COS * zp + SIN * xp)
+        copyto!(view(vnew,3,:,:), -COS * zp - SIN * xp)
     end
     return vnew
 end

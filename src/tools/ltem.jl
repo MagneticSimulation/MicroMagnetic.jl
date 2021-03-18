@@ -20,18 +20,47 @@ function cross_product(v1::Array{T,4},v2::Array{T,4}) where {T<:Number}
     return v3
 end
 
+"""
+    get_magnetic_phase(m::Array{T,4}; alphas::Union{Array, Tuple}=[0],betas::Union{Array, Tuple}=[],N=256) where {T<:Number}
+
+Get the LTEM phase shift from a magnetization array.
+
+Input: (3, nx, ny, nz)
+
+alphas: Tilt angles with axis X
+
+betas: Tilt angles with axis Y
+
+N: zeros padding size
+
+"""
+
 function get_magnetic_phase(m::Array{T,4}; alphas::Union{Array, Tuple}=[0],betas::Union{Array, Tuple}=[],N=256) where {T<:Number}
 
     a = compute_vector_potential(m, N=N)
+
     for alpha in alphas
-        phase = vector_field_projection(a, alpha, "alpha")[3,:,:]
-        npzwrite(@sprintf("ALPHA_%g.npy",alpha),phase)
+        phase = vector_field_projection(a, alpha, "x")[3,:,:]
+        npzwrite(@sprintf("X_%g.npy",alpha),phase)
     end
     for beta in betas
-        phase = vector_field_projection(a, beta, "beta")[3,:,:]
-        npzwrite(@sprintf("BETA_%g.npy",beta),phase)
+        phase = vector_field_projection(a, beta, "y")[3,:,:]
+        npzwrite(@sprintf("Y_%g.npy",beta),phase)
     end
 end
+
+"""
+    compute_vector_potential(m::Array{T,4}; N=256)  where {T<:Number}
+
+Compute the magnetic vector potential from a magnetization array.
+
+Input: (3, nx, ny, nz)
+
+output: (3, N, N, N)
+
+N: zeros padding size
+
+"""
 
 function compute_vector_potential(m::Array{T,4}; N=256)  where {T<:Number}
     m = vector_padding(m,N,N,N)
@@ -100,7 +129,7 @@ V: the Accelerating voltage in Kv
 
 V0: the mean inner potential (MIP)
 """
-#=function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, N=-1,tilt_axis="beta",tilt_angle=0)
+#=function OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, N=-1,tilt_axis="y",tilt_angle=0)
     np =  pyimport("numpy")
     mpl =  pyimport("matplotlib")
     mpl.use("Agg")
@@ -138,7 +167,7 @@ end=#
 #alpha: beam divergence angle
 #axis="x" is the normal direction
 #beta is the angle between electron beam and the normal  axis, in radian
-#=function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, N=128,tilt_axis="beta",tilt_angle=0)
+#=function LTEM(fname; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, N=128,tilt_axis="y",tilt_angle=0)
     ovf = read_ovf(fname)
     nx = ovf.xnodes
     ny = ovf.ynodes
