@@ -2,8 +2,10 @@ using JuMag
 using Printf
 #using NPZ
 
+JuMag.cuda_using_double(true);
+
 function creat_sim()
-    mesh =  FDMesh(nx=200, ny=1, nz=1, dx=4e-9, dy=4e-9, dz=4e-9)
+    mesh =  FDMeshGPU(nx=200, ny=1, nz=1, dx=4e-9, dy=4e-9, dz=4e-9)
     sim = Sim(mesh, name="neb", driver="SD")
     set_Ms(sim, 8.6e5)
 
@@ -21,14 +23,14 @@ function init_m(i,j,k,dx,dy,dz)
     elseif i>110
         return (1, 0, 0)
     end
-    return (0,1,0)
+    return (0.01,1,0.3)
 end
 
 sim = creat_sim()
 
 init_images = [(-1, 0, 0), init_m, (1, 0, 0)]
 
-neb = NEB(sim, init_images, [6, 6]; name="dw", driver="LLG")
+neb = NEB_GPU(sim, init_images, [6, 6]; name="dw", driver="LLG", clib_image=-5)
 neb.spring_constant = 1e6
 #println(neb.images)
 

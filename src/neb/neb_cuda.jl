@@ -4,6 +4,7 @@ using CUDA
 mutable struct NEB_GPU{T<:AbstractFloat} <: AbstractSim
     N::Int64 #number of images in this process
     nxyz::Int64 # nxyz = neb.sim.nxyz*N
+    clib_image:: Int64
     sim::AbstractSim
     driver::NEBDriver
     image_l::CuArray{T, 1}
@@ -22,7 +23,7 @@ mutable struct NEB_GPU{T<:AbstractFloat} <: AbstractSim
     NEB_GPU{T}() where {T<:AbstractFloat} = new()
 end
 
-function NEB_GPU(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_constant=1.0e5, driver="LLG")
+function NEB_GPU(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_constant=1.0e5, driver="LLG", clib_image=-1)
     Float = _cuda_using_double.x ? Float64 : Float32
     neb = NEB_GPU{Float}()
 
@@ -36,6 +37,7 @@ function NEB_GPU(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spri
     neb.nxyz = sim.nxyz*neb.N
     neb.sim = sim
     neb.name = name
+    neb.clib_image = clib_image
 
     neb.driver = create_neb_driver_gpu(driver, nxyz,N)
 
@@ -198,8 +200,14 @@ function compute_field_related_to_tangent(neb::NEB_GPU)
    for n = 1:neb.N
        f = view(neb.field, (n-1)*dof+1:n*dof)
        t = view(neb.tangent, (n-1)*dof+1:n*dof)
-       ft = neb.spring_constant*(neb.distance[n+1]-neb.distance[n]) - LinearAlgebra.dot(f, t)
+      
+       if n == neb.clib_image
+        ft =  - 2*LinearAlgebra.dot(f, t)
+       else
+        ft = neb.spring_constant*(neb.distance[n+1]-neb.distance[n]) - LinearAlgebra.dot(f, t)
+       end
        f .+=  ft.*t
+
    end
 
    return nothing
