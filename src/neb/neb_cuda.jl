@@ -256,16 +256,17 @@ end
 
 function neb_llg_call_back_gpu(neb::NEB_GPU, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64)  where {T<:AbstractFloat}
     effective_field_NEB(neb, spin)
-    neb_llg_rhs_gpu(dm_dt, spin, neb.field, 2.21e5, neb.nxyz)
+    neb_llg_rhs_gpu(dm_dt, spin, neb.field, neb.sim.pins, 2.21e5, neb.nxyz, neb.sim.nxyz)
     return nothing
   end
 
 
 function relax(neb::NEB_GPU; maxsteps=10000, stopping_dmdt=0.05, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks")
     if save_vtk_every>0 && !isdir(vtk_folder)
+       mkdir(vtk_folder)
     end
     if save_ovf_every>0 && !isdir(ovf_folder)
-      mkdir(ovf_folder)
+       mkdir(ovf_folder)
     end
     N = neb.N
     sim = neb.sim
@@ -357,7 +358,7 @@ function save_ovf(neb::NEB_GPU, fname::String;ovf_format::String="binary")
     save_ovf(sim, @sprintf("%s_%d",fname,neb.N+1); dataformat=ovf_format)
 end
 
-function save_vtk(neb::NEB_GPU, name::String)
+function save_vtk(neb::NEB_GPU, fname::String)
   sim = neb.sim
   dof = 3*sim.nxyz
 

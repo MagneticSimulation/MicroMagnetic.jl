@@ -5,7 +5,7 @@ using Printf
 JuMag.cuda_using_double(true);
 
 function creat_sim()
-    mesh =  FDMeshGPU(nx=200, ny=1, nz=1, dx=4e-9, dy=4e-9, dz=4e-9)
+    mesh =  FDMesh(nx=200, ny=1, nz=1, dx=4e-9, dy=4e-9, dz=4e-9)
     sim = Sim(mesh, name="neb", driver="SD")
     set_Ms(sim, 8.6e5)
 
@@ -30,7 +30,7 @@ sim = creat_sim()
 
 init_images = [(-1, 0, 0), init_m, (1, 0, 0)]
 
-neb = NEB_GPU(sim, init_images, [6, 6]; name="dw", driver="LLG", clib_image=-5)
+neb = NEB(sim, init_images, [6, 6]; name="dw", driver="LLG")
 neb.spring_constant = 1e6
 #println(neb.images)
 

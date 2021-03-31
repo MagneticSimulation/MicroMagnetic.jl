@@ -113,11 +113,23 @@ function compute_tangents(neb::NEB_GPU)
 end
 
 #compute LLG equation with alpha=1
-function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
-                        h::CuDeviceArray{T, 1}, gamma::T, N::Int64) where {T<:AbstractFloat}
+function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, 
+                        h::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1}, 
+                        gamma::T, N::Int64, nxyz::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if 0 < index <= N
         j = 3*index-2
+        k = index%nxyz
+        if k == 0
+            k = nxyz
+        end
+        if pins[k]
+            @inbounds dw_dt[j] = 0
+            @inbounds dw_dt[j+1] = 0
+            @inbounds dw_dt[j+2] = 0
+            return nothing
+        end
+        
         @inbounds mx = m[j]
         @inbounds my = m[j+1]
         @inbounds mz = m[j+2]
@@ -134,10 +146,10 @@ function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
     return nothing
 end
 
-function neb_llg_rhs_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1},
-                 gamma::T, N::Int64) where {T<:AbstractFloat}
+function neb_llg_rhs_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1}, 
+                 pins::CuArray{Bool, 1}, gamma::T, N::Int64, nxyz::Int64) where {T<:AbstractFloat}
 
     blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr neb_llg_rhs_kernel!(dw_dt, m, h, gamma, N)
+    @cuda blocks=blk threads=thr neb_llg_rhs_kernel!(dw_dt, m, h, pins, gamma, N, nxyz)
     return nothing
 end
