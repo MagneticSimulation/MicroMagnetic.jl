@@ -82,7 +82,7 @@ function get_kernel_k(N::Int)
             y2 = r[j]^2
             for k = 1:N
                 z2 = r[k]^2
-                r2 = sqrt(x2+y2+z2)
+                r2 = x2+y2+z2
 
                 kernel_k[1,i,j,k] = -1im*r[i]/r2
                 kernel_k[2,i,j,k] = -1im*r[j]/r2
