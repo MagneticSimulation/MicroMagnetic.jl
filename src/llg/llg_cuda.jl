@@ -266,11 +266,11 @@ function llg_stt_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, sp
     @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field, sim.pins,
                                                  driver.alpha, driver.gamma, true, N)
     synchronize()
-    @cuda blocks=blk threads=thr add_stt_rhs_kernal!(dm_dt, spin, driver.h_stt, driver.alpha, driver.beta, N)
+    @cuda blocks=blk threads=thr add_stt_rhs_kernal!(dm_dt, spin, driver.h_stt, sim.pins, driver.alpha, driver.beta, N)
 
     synchronize()
     px, py, pz = T(driver.p[1]), T(driver.p[2]), T(driver.p[3])
-    @cuda blocks=blk threads=thr add_cpp_rhs_kernal!(dm_dt, spin, driver.alpha, driver.aj, driver.bj, px, py, pz, N)
+    @cuda blocks=blk threads=thr add_cpp_rhs_kernal!(dm_dt, spin, sim.pins, driver.alpha, driver.aj, driver.bj, px, py, pz, N)
 
     return nothing
 

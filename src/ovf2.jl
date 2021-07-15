@@ -22,7 +22,7 @@ For example:
         save_ovf(sim, "m0")
     ```
 """
-function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "Binary 4")
+function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "Binary 8")
     mesh = sim.mesh
     nxyz = mesh.nx*mesh.ny*mesh.nz
 
@@ -38,15 +38,16 @@ function save_ovf(sim::AbstractSim, fname::String; dataformat::String = "Binary 
     ovf.data = zeros(Float64,3*nxyz)
     copyto!(ovf.data, sim.spin)
 
-    save_ovf(ovf,fname)
+    save_ovf(ovf, fname, dataformat=dataformat)
 end
 
-function save_ovf(ovf, fname)
+function save_ovf(ovf, fname; dataformat::String = "Binary 8")
     if !endswith(fname,".ovf")
         fname = fname* ".ovf"
     end
 
     io = open(fname, "w")
+    ovf.data_type = dataformat
     write_OVF2_Header(io, ovf)
     write_OVF2_Data(io, ovf)
     hdr(io, "End", "Segment")
@@ -278,4 +279,28 @@ function read_ovf(fname::String; T::DataType=Float64)
         end
     end
     return ovf
+end
+
+
+function ovf2npy(ovf_name, npy_name=nothing; box=nothing)
+    if npy_name == nothing
+        npy_name = endswith(ovf_name, ".ovf") ? ovf_name[1:end-4]*".npy" : ovf_name*".npy"
+    end
+    ovf = read_ovf(ovf_name)
+    nx,ny,nz = ovf.xnodes,ovf.ynodes,ovf.znodes
+    if box != nothing
+        nx = box[2]-box[1]+1
+        ny = box[4]-box[3]+1
+        nz = box[6]-box[5]+1
+    end
+
+    data = reshape(ovf.data, (3, ovf.xnodes, ovf.ynodes, ovf.znodes))
+    b = data
+    if box != nothing
+        b = data[:, box[1]:box[2], box[3]:box[4], box[5]:box[6]]
+    end
+
+    b = reshape(b, 3*nx*ny*nz)
+
+    npzwrite(npy_name, b)
 end
