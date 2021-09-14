@@ -161,7 +161,7 @@ end
 
 if _pycall_available.x
   include("tools/projection.jl")
-  #include("tools/plot.jl")
+  include("tools/plot.jl")
   include("tools/ltem.jl")
   include("tools/mfm.jl")
   include("tools/xray.jl")
