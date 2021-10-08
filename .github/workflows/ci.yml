@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v2.3.4
+    - name: Test
+      run: |
+        julia --project -e 'using Pkg;  
+                            Pkg.instantiate();
+                            Pkg.build();
+                            Pkg.test(;coverage=true);'
