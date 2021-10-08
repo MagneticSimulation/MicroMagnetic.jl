@@ -22,9 +22,9 @@ function test_set_Ms_cylindrical(;gpu=false)
     Ms = 8.6e5
     sim = Sim(mesh)
     set_Ms_cylindrical(sim, Ms, r1=5e-9, r2=5e-9)
-    @test sim.Ms[1] == 0
-    @test sim.Ms[12] > 8e5
-    println(sim.Ms[12])
+    ms = Array(sim.Ms)
+    @test ms[1] == 0
+    @test ms[12] > 8e5
 end
 
 function test_functions_in_geometry(;gpu=false)
