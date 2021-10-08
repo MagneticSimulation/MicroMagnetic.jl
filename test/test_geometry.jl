@@ -62,6 +62,6 @@ if JuMag._cuda_available.x
   @testset "Geometry" begin
       test_geo(gpu=true)
       test_set_Ms_cylindrical(gpu=true)
-      test_functions_in_geometry(;gpu=true)
+      #test_functions_in_geometry(;gpu=true)
   end
 end
