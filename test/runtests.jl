@@ -34,5 +34,5 @@ if JuMag._cuda_available.x
 end
 
 if JuMag._pycall_available.x
-  include("test_tools.jl")
+  #include("test_tools.jl")
 end
