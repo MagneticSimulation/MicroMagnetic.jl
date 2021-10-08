@@ -13,7 +13,7 @@ function compute_field_macro_uniform(mesh, Nx, Ny, Nz; gpu=false)
     else
         JuMag.effective_field(sim, sim.spin, 0.0)
     end
-    return sim.field/Ms
+    return Array(sim.field)/Ms
 end
 
 
@@ -35,7 +35,7 @@ function compute_field_macro(mesh, Nx, Ny, Nz; gpu=false)
     else
         JuMag.effective_field(sim, sim.spin, 0.0)
     end
-    return sim.field/Ms
+    return Array(sim.field)/Ms
 end
 
 function test_field_macro(;gpu=false)

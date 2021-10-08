@@ -22,9 +22,12 @@ function test_anis(;gpu=false)
         JuMag.effective_field(sim, sim.spin, 0.0)
     end
 
-    @test isapprox(anis.field[1], 1/(JuMag.mu_0*Ms)*4*Kc*0.6^3)
-    @test isapprox(anis.field[2], 1/(JuMag.mu_0*Ms)*4*Kc*0.8^3)
-    @test isapprox(anis.field[3], 1/(JuMag.mu_0*Ms)*4*Kc*0^3)
+    field = Array(anis.field)
+    energy = 
+
+    @test isapprox(field[1], 1/(JuMag.mu_0*Ms)*4*Kc*0.6^3)
+    @test isapprox(field[2], 1/(JuMag.mu_0*Ms)*4*Kc*0.8^3)
+    @test isapprox(field[3], 1/(JuMag.mu_0*Ms)*4*Kc*0^3)
     @test isapprox(anis.energy[1], -Kc*(0.6^4+0.8^4)*1e-27)
 end
 
