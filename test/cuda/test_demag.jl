@@ -13,7 +13,7 @@ add_demag(sim)
 JuMag.effective_field(sim, sim.spin, 0.0)
 expected = [-170551.8913984, 0,0,-170551.8913984,0,0]
 @test isapprox(Array(sim.field), expected, rtol=1e-6)
-println(sim.field)
+#println(sim.field)
 
 mesh =  FDMeshGPU(nx=3, ny=2, nz=1)
 Ms = 8.6e5
@@ -60,6 +60,6 @@ sim = Sim(mesh)
 set_Ms(sim, Ms)
 
 init_m0(sim, (0.5,0.6,0.7))
-demag=add_demag_gpu(sim)
+demag = add_demag_gpu(sim)
 JuMag.effective_field(sim, sim.spin, 0.0)
-@test isapprox(demag.field, expected, rtol=1e-6)
+@test isapprox(Array(demag.field), expected, rtol=1e-6)

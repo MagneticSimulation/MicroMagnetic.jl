@@ -28,4 +28,4 @@ sim.driver.precession = false
 
 add_exch(sim, 1.3e-11)
 JuMag.effective_field(sim, sim.spin, 0.0)
-println(sim.spin)
+#println(sim.spin)
