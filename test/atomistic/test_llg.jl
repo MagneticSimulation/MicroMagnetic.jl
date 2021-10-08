@@ -35,17 +35,18 @@ function test_llg()
     end
 
     println(sim.driver.ode.t)
+    spin = Array(sim.spin)
 
-    println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
+    #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
     ts = Array([3e-10])
     mx, my, mz = analytical(0.05, 2.21e5/mu_0, 0.1, ts)
-    println(mx[1]-sim.spin[1])
-    println(my[1]-sim.spin[2])
-    println(mz[1]-sim.spin[3])
+    println(mx[1]-spin[1])
+    println(my[1]-spin[2])
+    println(mz[1]-spin[3])
 
-    @test abs(mx[1]-sim.spin[1]) < 8e-7
-    @test abs(my[1]-sim.spin[2]) < 8e-7
-    @test abs(mz[1]-sim.spin[3]) < 8e-7
+    @test abs(mx[1]-spin[1]) < 8e-7
+    @test abs(my[1]-spin[2]) < 8e-7
+    @test abs(mz[1]-spin[3]) < 8e-7
 end
 
 
