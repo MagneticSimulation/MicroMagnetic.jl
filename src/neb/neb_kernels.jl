@@ -17,7 +17,7 @@ function compute_distance_kernel!(ds::CuDeviceArray{T, 1}, m1::CuDeviceArray{T, 
         c = -mx2*my1 + mx1*my2  #m1xm2, z
         mm = mx1*mx2 + my1*my2 + mz1*mz2
         d = CUDA.sqrt(a*a+b*b+c*c)
-        @inbounds ds[index] = CUDA.atan2(d, mm)
+        @inbounds ds[index] = CUDA.atan(d, mm)
     end
     return nothing
 end
@@ -113,8 +113,8 @@ function compute_tangents(neb::NEB_GPU)
 end
 
 #compute LLG equation with alpha=1
-function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, 
-                        h::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1}, 
+function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
+                        h::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1},
                         gamma::T, N::Int64, nxyz::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if 0 < index <= N
@@ -129,7 +129,7 @@ function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
             @inbounds dw_dt[j+2] = 0
             return nothing
         end
-        
+
         @inbounds mx = m[j]
         @inbounds my = m[j+1]
         @inbounds mz = m[j+2]
@@ -146,7 +146,7 @@ function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
     return nothing
 end
 
-function neb_llg_rhs_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1}, 
+function neb_llg_rhs_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1},
                  pins::CuArray{Bool, 1}, gamma::T, N::Int64, nxyz::Int64) where {T<:AbstractFloat}
 
     blk, thr = cudims(N)
