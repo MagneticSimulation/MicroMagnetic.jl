@@ -41,9 +41,11 @@ function test_integrator(;integrator="RungeKutta", gpu=false)
     ts = Array([t])
     mx, my, mz = analytical(0.05, 2.21e5, 1e5, ts)
 
-    @test abs(mx[1]-sim.spin[1]) < 8e-6
-    @test abs(my[1]-sim.spin[2]) < 8e-6
-    @test abs(mz[1]-sim.spin[3]) < 8e-6
+    m = Array(sim.spin)
+
+    @test abs(mx[1]-m[1]) < 8e-6
+    @test abs(my[1]-m[2]) < 8e-6
+    @test abs(mz[1]-m[3]) < 8e-6
 end
 
 @testset "CPU Integrator" begin

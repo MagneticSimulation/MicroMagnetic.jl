@@ -35,9 +35,9 @@ function test_functions_in_geometry(;gpu=false)
     set_Ms(sim,box,1e5)
     exch = add_exch(sim, box, 1e-12)
     anis = add_anis(sim, box, 1e5)
-    ms = reshape(sim.Ms, (5,5,5))
-    As = reshape(exch.A, (5,5,5))
-    Ku = reshape(anis.Ku, (5,5,5))
+    ms = reshape(Array(sim.Ms), (5,5,5))
+    As = reshape(Array(exch.A), (5,5,5))
+    Ku = reshape(Array(anis.Ku), (5,5,5))
     for i = 1:5, j =1, k=1
         if i<=2
             @test ms[i,j,k] == 1e5
