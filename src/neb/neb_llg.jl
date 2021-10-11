@@ -14,7 +14,8 @@ function neb_llg_call_back(neb::NEB, dm_dt::Array{Float64, 1}, spin::Array{Float
   return nothing
 end
 
-function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String,save_ovf_every::Int64,ovf_folder::String,ovf_format::String)
+function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m_every::Int64, save_vtk_every::Int64, 
+    vtk_folder::String, save_ovf_every::Int64, ovf_folder::String, type::DataType)
     N = neb.N
     sim = neb.sim
 
@@ -31,7 +32,7 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
         save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, 0)))
     end
     if save_ovf_every > 0
-        save_ovf(neb, joinpath(ovf_folder, @sprintf("%s_%d", neb.name, 0)),ovf_format=ovf_format)
+        save_ovf(neb, joinpath(ovf_folder, @sprintf("%s_%d", neb.name, 0)), type = type)
     end
 
     rk_data = neb.driver.ode
@@ -58,7 +59,7 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
             save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
         end
         if save_ovf_every > 0 && i%save_ovf_every == 0
-            save_ovf(neb, joinpath(ovf_folder, @sprintf("%s_%d", neb.name, i)),ovf_format=ovf_format)
+            save_ovf(neb, joinpath(ovf_folder, @sprintf("%s_%d", neb.name, i)), type = type)
         end
 
         if max_dmdt < stopping_dmdt*dmdt_factor
@@ -73,7 +74,7 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
                 save_vtk(neb, joinpath(vtk_folder, @sprintf("%s_%d", neb.name, i)))
             end
             if save_ovf_every > 0
-                save_ovf(neb, joinpath(ovf_folder, @sprintf("%s_%d", neb.name, i)),ovf_format=ovf_format)
+                save_ovf(neb, joinpath(ovf_folder, @sprintf("%s_%d", neb.name, i)), type = type)
             end
             break
         end

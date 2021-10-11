@@ -1,10 +1,7 @@
-function save_ovf(sim::AbstractSimGPU, fname::String; dataformat::String = "auto")
+function save_ovf(sim::AbstractSimGPU, fname::String; 
+  type::DataType = _cuda_using_double.x ? Float64 : Float32) 
+
   T = _cuda_using_double.x ? Float64 : Float32
-
-  if dataformat == "auto"
-    dataformat = _cuda_using_double.x ? "Binary 8" : "Binary 4"
-  end
-
   mesh = sim.mesh
   nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
   nxyz = nx*ny*nz
@@ -16,12 +13,12 @@ function save_ovf(sim::AbstractSimGPU, fname::String; dataformat::String = "auto
   ovf.xstepsize = mesh.dx
   ovf.ystepsize = mesh.dy
   ovf.zstepsize = mesh.dz
-  ovf.data_type = dataformat
-  ovf.name = sim.name
+  ovf.type = type
+  ovf.name = fname
   ovf.data = zeros(T,3*nxyz)
   copyto!(ovf.data, sim.spin)
 
-  save_ovf(ovf,fname)
+  save_ovf(ovf, fname)
 end
 
 
@@ -30,7 +27,7 @@ function read_ovf(sim::AbstractSimGPU, fname::String)
   ovf  = read_ovf(fname, T=T)
   nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
   if nxyz != sim.nxyz
-      error("The ovf does not match the sim.mesh")
+      error("The ovf does not match sim.mesh")
   end
   copyto!(sim.prespin, ovf.data)
   copyto!(sim.spin, ovf.data)

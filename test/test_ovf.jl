@@ -1,54 +1,65 @@
 using JuMag
 using Test
 
-mesh = FDMesh(nx = 2, ny = 1, nz = 1, dx = 1e-9, dy = 1e-9, dz = 1e-9)
-sim = Sim(mesh, name = "test_ovf1")
-set_Ms(sim, 8.0e5)
-m_ovf = [0.6,0.8,0,0.6,0.8,0]
-init_m0(sim, m_ovf)
-save_ovf(sim, "test_ovf_bin", dataformat = "Binary 8")
-save_ovf(sim, "test_ovf_text", dataformat = "Text")
-
-function test_read_ovf_with_sim(ovf_name)
-    sim = Sim(mesh, name = "test_ovf3")
+function init_saving(mesh, m)
+    sim = Sim(mesh, name = "saving")
     set_Ms(sim, 8.0e5)
-    read_ovf(sim, ovf_name)
-    println("spin:",sim.spin)
-    for i =1:6
-        @test sim.spin[i] == m_ovf[i]
-    end
+    init_m0(sim, m)
+    save_ovf(sim, "Float64", type = Float64)
+    save_ovf(sim, "Float32", type = Float32)
+    save_ovf(sim, "String", type = String)
 end
 
-function test_read_ovf(ovf_name)
-    ovf = read_ovf(ovf_name)
+function test_reading(fname, mesh, m)
+    ovf = read_ovf(fname)
     @test length(ovf.data) == 6
-    for i =1:6
-        @test ovf.data[i] ==m_ovf[i]
-    end
+    @test maximum(abs.(ovf.data-m)) < 1e-6
 end
 
-function test_save_ovf_without_sim(ovfname)
-    ovf=read_ovf(ovfname)
-    save_ovf(ovf,ovfname*"_binary")
-    ovf.data_type="Text"
-    save_ovf(ovf,ovfname*"text")
-    ovf_bin=read_ovf(ovfname*"_binary")
-    ovf_text=read_ovf(ovfname*"text")
-    @test length(ovf_bin.data) == 6
-    @test length(ovf_text.data) == 6
-    for i =1:6
-        @test ovf_bin.data[i] ==m_ovf[i]
-        @test ovf_text.data[i] ==m_ovf[i]
-    end
+function test_sim_reading(fname, mesh, m)
+    sim = Sim(mesh, name = "reading")
+    set_Ms(sim, 8.0e5)
+    read_ovf(sim, fname)
+    println("spin:",sim.spin)
+    @test maximum(abs.(sim.spin-m)) < 1e-6
+end
+
+function test_copying(fname, mesh, m)
+    ovf = read_ovf(fname)
+    save_ovf(ovf, fname*"_copy_float64")
+
+    ovf = read_ovf(fname*"_copy_float64")
+    @test length(ovf.data) == 6
+    @test maximum(abs.(ovf.data-m)) < 1e-6
+    rm(fname*"_copy_float64.ovf")
+
+    ovf = read_ovf(fname)
+    save_ovf(ovf, fname*"_copy_string", type = String)
+    ovf = read_ovf(fname*"_copy_string")
+    @test length(ovf.data) == 6
+    @test maximum(abs.(ovf.data-m)) < 1e-6
+    rm(fname*"_copy_string.ovf")
+end
+
+function test_mag2ovf(m::Array, nx::Int, ny::Int, nz::Int)
+    mag2ovf(m, nx, ny, nz, fname = "test")
+    ovf = read_ovf("test")
+    @test(isapprox(ovf.data, m, atol=1e-6))
+    @test(ovf.xnodes == nx)
+    @test(ovf.ynodes == ny)
+    @test(ovf.znodes == nz)
+    rm("test.ovf")
 end
 
 @testset "Test ovfs" begin
-    test_read_ovf_with_sim("test_ovf_bin")
-    test_read_ovf_with_sim("test_ovf_text")
-    test_read_ovf("test_ovf_bin")
-    test_read_ovf("test_ovf_text")
-    test_save_ovf_without_sim("test_ovf_bin")
-    test_save_ovf_without_sim("test_ovf_text")
-end
+    m = [0.6, 0.8, 0, 0.6, 0.8, 0]
+    mesh = FDMesh(nx = 2, ny = 1, nz = 1, dx = 1e-9, dy = 1e-9, dz = 1e-9)
+    init_saving(mesh, m)
+    for fname in ["Float64", "Float32", "String"]
+        test_reading(fname, mesh, m)
+        test_sim_reading(fname, mesh, m)
+        test_copying(fname, mesh, m)
+    end
 
-#JuMag.cuda_using_double(true)
+    test_mag2ovf(m, 2, 1, 1)
+end
