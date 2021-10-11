@@ -341,21 +341,24 @@ function relax(neb::NEB_GPU; maxsteps=10000, stopping_dmdt=0.05, save_m_every = 
 end
 
 #TODO: merge save_ovf and save_vtk???
-function save_ovf(neb::NEB_GPU, fname::String;ovf_format::String="binary")
+function save_ovf(neb::NEB_GPU, fname::String; 
+    type::DataType = _cuda_using_double.x ? Float64 : Float32)
+
   sim = neb.sim
   dof = 3*sim.nxyz
 
   id_start = 0
   sim.spin .= neb.image_l
-  save_ovf(sim, @sprintf("%s_0",fname); dataformat=ovf_format)
+  save_ovf(sim, @sprintf("%s_0",fname); type = type)
 
   for n = 1:neb.N
       b = view(neb.spin, (n-1)*dof+1:n*dof)
       sim.spin .= b
-      save_ovf(sim, @sprintf("%s_%d",fname,n); dataformat=ovf_format)
+      save_ovf(sim, @sprintf("%s_%d",fname,n); type = type)
   end
+  
     sim.spin .= neb.image_r
-    save_ovf(sim, @sprintf("%s_%d",fname,neb.N+1); dataformat=ovf_format)
+    save_ovf(sim, @sprintf("%s_%d",fname,neb.N+1); type = type)
 end
 
 function save_vtk(neb::NEB_GPU, fname::String)
