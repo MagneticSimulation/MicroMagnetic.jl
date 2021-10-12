@@ -97,3 +97,54 @@ function effective_field(exch::HeisenbergExchange, sim::AtomicSimGPU, spin::CuAr
 
     return nothing
 end
+
+
+function effective_field(dmi::HeisenbergBulkDMI, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+
+    function __kernel!(m, h, energy, D, ngbs, n_ngbs, mu_s, N)
+        i = (blockIdx().x-1) * blockDim().x + threadIdx().x
+        
+        ax = (1.0,-1.0, 0.0, 0.0, 0.0, 0.0)
+        ay = (0.0, 0.0, 1.0,-1.0, 0.0, 0.0)
+        az = (0.0, 0.0, 0.0, 0.0, 1.0,-1.0)
+
+        if 0 < i <= N
+            j = 3*(i-1)
+            @inbounds ms_local = mu_s[i]
+            if ms_local == 0.0
+                @inbounds energy[i] = 0
+                @inbounds h[j+1] = 0
+                @inbounds h[j+2] = 0
+                @inbounds h[j+3] = 0
+                return nothing
+            end
+            ms_inv = T(1/ms_local)
+
+            fx, fy, fz = T(0), T(0), T(0)
+
+            for k = 1:n_ngbs
+                @inbounds id = ngbs[k, i]
+                if id>0 && mu_s[id] > 0
+                    x = 3*id-2
+                    @inbounds fx += D*cross_x(ax[k],ay[k],az[k],m[x],m[x+1],m[x+2]);
+                    @inbounds fy += D*cross_y(ax[k],ay[k],az[k],m[x],m[x+1],m[x+2]);
+                    @inbounds fz += D*cross_z(ax[k],ay[k],az[k],m[x],m[x+1],m[x+2]);
+                end
+            end
+            @inbounds energy[i] = -0.5*(fx*m[j+1] + fy*m[j+2] + fz*m[j+3])
+            @inbounds h[j+1] = fx*ms_inv
+            @inbounds h[j+2] = fy*ms_inv
+            @inbounds h[j+3] = fz*ms_inv
+        end
+
+        return nothing
+    end
+
+    N = sim.nxyz
+    blk, thr = cudims(N)
+    ngbs = sim.mesh.ngbs
+    n_ngbs = sim.mesh.n_ngbs
+    @cuda blocks=blk threads=thr __kernel!(spin, sim.field, sim.energy, dmi.D, ngbs, n_ngbs, sim.mu_s, N)
+
+    return nothing
+end
