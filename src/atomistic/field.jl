@@ -148,3 +148,27 @@ function effective_field(dmi::HeisenbergBulkDMI, sim::AtomicSimGPU, spin::CuArra
 
     return nothing
 end
+
+
+function effective_field(stochastic::StochasticFieldGPU, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+    nxyz = sim.nxyz
+    integrator = sim.driver.ode
+  
+    if integrator.nsteps > stochastic.nsteps
+        randn!(stochastic.eta)
+        stochastic.nsteps = integrator.nsteps
+    end
+  
+    mu0 = 4*pi*1e-7
+    dt = integrator.step
+    gamma = sim.driver.gamma
+    alpha = sim.driver.alpha
+    k_B = 1.3806505e-23
+    factor = 2*alpha*k_B/(gamma*dt)
+
+    volume = 1.0/mu0 # we need this factor to make the energy density correctly
+  
+    blocks_n, threads_n = sim.blocks, sim.threads
+    @cuda blocks=blocks_n threads=threads_n stochastic_field_kernel!(spin, sim.field, stochastic.eta, stochastic.T, sim.energy, sim.mu_s, factor, volume, nxyz)
+    return nothing
+  end
