@@ -85,6 +85,31 @@ function add_exch(sim::AtomicSimGPU, J::Number; name="exch")
     add_exch(sim, Js, name=name)
 end
 
+
+"""
+    add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
+
+Add bulk dmi energy to the system.
+"""
+function add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
+    nxyz = sim.nxyz
+    Float = _cuda_using_double.x ? Float64 : Float32
+    field = zeros(Float, 3*nxyz)
+    energy = zeros(Float, nxyz)
+    n_ngbs = sim.mesh.n_ngbs
+
+    dmi = HeisenbergBulkDMI(Float(D), field, energy, Float(0.0), name)
+
+    push!(sim.interactions, dmi)
+    if sim.save_data
+        push!(sim.saver.headers, string("E_",name))
+        push!(sim.saver.units, "J")
+        id = length(sim.interactions)
+        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+    end
+end
+
+
 """
     add_exch_kagome(sim::AtomicSimGPU, Jxy::Number, Jz::Number; name="exch")
 

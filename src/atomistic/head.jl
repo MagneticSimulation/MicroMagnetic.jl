@@ -28,6 +28,14 @@ mutable struct HeisenbergExchange{T<:AbstractFloat} <: InteractionGPU
    name::String
 end
 
+mutable struct HeisenbergBulkDMI{T<:AbstractFloat} <: InteractionGPU
+   D::T 
+   field::Array{T, 1}
+   energy::Array{T, 1}
+   total_energy::T
+   name::String
+end
+
 mutable struct KagomeAnisotropy{T<:AbstractFloat} <: InteractionGPU
    Ku::T
    ax1::Tuple

@@ -2,10 +2,12 @@ using JuMag
 using Printf
 using NPZ
 
-mesh =  CubicMesh(nx=100, ny=100, nz=1, pbc="xy")
+JuMag.cuda_using_double(true)
+
+mesh =  CubicMeshGPU(nx=200, ny=200, nz=1, pbc="xy")
 
 function m0_fun(i,j,k, dx, dy, dz)
-  r2 = (i-50)^2 + (j-50)^2
+  r2 = (i-100)^2 + (j-100)^2
   if r2 < 10^2
     return (0.1, 0, -1)
   end
@@ -28,10 +30,10 @@ function relax_system()
   relax(sim, maxsteps=2000, stopping_dmdt=1e-4, save_vtk_every = 100)
   #println(sim.spin)
   npzwrite("m0.npy", sim.spin)
-  #save_vtk(sim, "skx", fields=["exch", "dmi"])
+  save_vtk(sim, "skx", fields=["exch", "dmi"])
 end
 
-function relax_system_sdm()
+function relax_system_sd()
   sim = Sim(mesh, driver="SD", name="sim_sd")
   set_mu_s(sim, 1.0)
   sim.driver.max_tau = 1.0
@@ -41,10 +43,11 @@ function relax_system_sdm()
   add_dmi(sim, 0.09, name="dmi")
 
   init_m0(sim, m0_fun)
-  relax(sim, maxsteps=2000, stopping_dmdt=0.01, save_vtk_every = 10)
+  relax(sim, maxsteps=2000, stopping_dmdt=100, save_vtk_every = 10)
   #println(sim.spin)
-  npzwrite("m2.npy", sim.spin)
-  #save_vtk(sim, "skx", fields=["exch", "dmi"])
+  npzwrite("m2.npy", Array(sim.spin))
+  save_vtk(sim, "skx_sd", fields=["exch", "dmi"])
 end
 
-relax_system()
+#relax_system()
+relax_system_sd()
