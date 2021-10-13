@@ -121,6 +121,11 @@ set_Ms(sim, circular_Ms)
 """
 function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     init_scalar!(sim.Ms, sim.mesh, Ms)
+
+    if any(isnan, sim.Ms)
+        error("NaN is given by the input Ms!")
+    end
+
     return true
 end
 
@@ -243,6 +248,11 @@ function init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
           sim.prespin[3*i] = 0
       end
   end
+
+  if any(isnan, sim.prespin)
+    error("NaN is given by the input m0!")
+  end
+
   sim.spin[:] .= sim.prespin[:]
 end
 
