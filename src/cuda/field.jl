@@ -22,7 +22,7 @@ function effective_field(stochastic::StochasticFieldGPU, sim::MicroSimGPU, spin:
   dt = integrator.step
   gamma = sim.driver.gamma
   alpha = sim.driver.alpha
-  k_B = 1.3806505e-23
+  k_B = stochastic.k_B
   factor = 2*alpha*k_B/(mu_0*volume*gamma*dt)
 
   blocks_n, threads_n = sim.blocks, sim.threads

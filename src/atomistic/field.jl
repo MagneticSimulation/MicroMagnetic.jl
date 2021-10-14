@@ -163,7 +163,7 @@ function effective_field(stochastic::StochasticFieldGPU, sim::AtomicSimGPU, spin
     dt = integrator.step
     gamma = sim.driver.gamma
     alpha = sim.driver.alpha
-    k_B = 1.3806505e-23
+    k_B = stochastic.k_B
     factor = 2*alpha*k_B/(gamma*dt)
 
     volume = 1.0/mu0 # we need this factor to make the energy density correctly
