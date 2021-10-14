@@ -273,7 +273,7 @@ function add_exch(sim::MicroSimGPU, geo::Geometry, A::Number; name="exch")
 end
 
 
-function add_thermal_noise(sim::MicroSimGPU, T::NumberOrArrayOrFunction; name="thermal")
+function add_thermal_noise(sim::MicroSimGPU, T::NumberOrArrayOrFunction; name="thermal", k_B=k_B)
   nxyz = sim.nxyz
   Float = _cuda_using_double.x ? Float64 : Float32
   field = zeros(Float, 3*nxyz)
@@ -281,7 +281,7 @@ function add_thermal_noise(sim::MicroSimGPU, T::NumberOrArrayOrFunction; name="t
   Spatial_T = CUDA.zeros(Float, nxyz)
   eta = CUDA.zeros(Float, 3*nxyz)
   init_scalar!(Spatial_T , sim.mesh, T)
-  thermal = StochasticFieldGPU(Spatial_T, eta, field, energy, Float(0.0), -1, name)
+  thermal = StochasticFieldGPU(Spatial_T, eta, field, energy, Float(0.0), -1, name, k_B)
 
   push!(sim.interactions, thermal)
 
