@@ -63,6 +63,11 @@ function set_Ms(sim::MicroSimGPU, Ms::NumberOrArrayOrFunction)
     Float = _cuda_using_double.x ? Float64 : Float32
     Ms_a = zeros(Float, sim.nxyz)
     init_scalar!(Ms_a, sim.mesh, Ms)
+
+    if any(isnan, Ms_a)
+      error("NaN is given by the input Ms!")
+    end
+
     copyto!(sim.Ms, Ms_a)
     return true
 end
@@ -113,6 +118,11 @@ function init_m0(sim::AbstractSimGPU, m0::TupleOrArrayOrFunction; norm=true)
           spin[3*i] = 0
       end
   end
+
+  if any(isnan, spin)
+    error("NaN is given by the input m0!")
+  end
+
   copyto!(sim.spin, spin)
   copyto!(sim.prespin, sim.spin)
   return true
