@@ -440,6 +440,53 @@ function compute_guiding_centre(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFl
     return Rxs, Rys
 end
 
+
+function compute_guiding_center(m::Array{T, 1}, mesh::Mesh; x_start=1, x_stop=-1, y_start = 1, y_stop=-1, z=1) where {T<:AbstractFloat}
+    nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy = mesh.dx, mesh.dy
+
+    if (x_stop < 0)
+        x_stop = nx
+    end
+
+    if (y_stop < 0)
+        y_stop = ny
+    end
+
+    total_charge, Rx, Ry = 0.0, 0.0, 0.0
+    for j = y_start:y_stop, i = x_start:x_stop
+        id = index(i, j, z, nx, ny, nz)
+        mx,my,mz = m[3*id-2],m[3*id-1],m[3*id]
+        sx1,sy1,sz1 = T(0),T(0),T(0)
+        sx2,sy2,sz2 = T(0),T(0),T(0)
+        id1 = 3*_x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
+        id2 = 3*_y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
+        charge = 0
+        if id1>0 && id2>0
+            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+            charge += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+        end
+
+        id1 = 3*_x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
+        id2 = 3*_y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
+        if id1>0 && id2>0
+            sx1,sy1,sz1 = m[id1-2],m[id1-1],m[id1]
+            sx2,sy2,sz2 = m[id2-2],m[id2-1],m[id2]
+            charge += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+        end
+
+        total_charge += charge
+        Rx += i * dx * charge;
+        Ry += j * dy * charge;
+    end
+    
+    if total_charge == 0.0
+        total_charge = 1.0
+    end
+    return Rx/total_charge, Ry/total_charge
+end
+
 #F_i = \vec{p} \cdot (\vec{m} \times \partial_i \vec{m})
 function compute_cpp_force(m::Array{T, 1}, mesh::Mesh; p=(0,1,0)) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
