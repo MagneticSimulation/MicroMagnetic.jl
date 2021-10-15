@@ -35,6 +35,7 @@ export init_m0,
        compute_winding_number_3d,
        winding_number_3d,
        compute_guiding_centre, set_aj,
+       compute_guiding_center,
        NEB,
        interpolate_m,save_ovf,read_ovf,
        fftfreq,
@@ -47,8 +48,6 @@ function cuda_using_double(flag = true)
    _cuda_using_double[] = flag
    return nothing
 end
-
-
 
 #this function is copied from CUDA (v.1.7.3) which is gone in the new version
 #In the future, we will turn to CUDA since CuArray, CUDAnative are deprecated
