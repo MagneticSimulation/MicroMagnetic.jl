@@ -2,6 +2,8 @@
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
 
 Create a simulation instance for given mesh.
+
+
 """
 function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
 
@@ -42,61 +44,6 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
    sim.interactions = []
    #println(sim)
    return sim
-end
-
-"""
-    Sim(;nx,ny,nz,dx=1e-9,dy=1e-9,dz=1e-9,pbc="",Ms=0,A=0,D=0,H=(0,0,0),Ku=0,anis_axis=(0,0,1),
-              DMI_type="bulk",driver="SD",GPU = true,name = "sim",demag=false,demag_pbc=(0,0,0))
-
-Create a simulation with interactions.
-For example,use:
-```julia
-A=1e-12
-```
-to add exchange with constant 1e-12.
-Useful parameters:
--anis_axis=(0,0,1) : anistropy axis
--DMI_type="bulk" or "interfacial" : DMI type
--GPU = true or false : enable GPU
--demag = true or false : enable demag
--demag_pbc = (0,0,0) : set virtually extra magnetization out the bondary, which is included when computing demag field.
-                      For example,set demag_pbc = (10,10,0) when simulating a thin film.
-"""
-
-function Sim(;nx,ny,nz,dx=1e-9,dy=1e-9,dz=1e-9,pbc="",Ms=0,A=0,D=0,H=(0,0,0),Ku=0,anis_axis=(0,0,1),
-              DMI_type="bulk",driver="SD",GPU = true,name = "sim",demag=false,demag_pbc=(0,0,0))
-  Mesh = GPU ? FDMeshGPU : FDMesh
-  mesh = Mesh(nx=nx,ny=ny,nz=nz,dx=dx,dy=dy,dz=dz,pbc=pbc)
-  sim = Sim(mesh,driver = driver,name = name)
-  set_Ms(sim,Ms)
-  if A != 0
-    add_exch(sim,A)
-  end
-  if D != 0
-    add_dmi(sim,D,type=DMI_type)
-  end
-  if Ku != 0
-    add_anis(sim,Ku,axis = anis_axis)
-  end
-  if H != (0,0,0)
-    add_zeeman(sim,H)
-  end
-  if demag
-    add_demag(sim,Nx=demag_pbc[1],Ny=demag_pbc[2],Nz=demag_pbc[3])
-  end
-  return sim
-end
-
-function Sim(fname;pbc="",Ms=1e5,A=0,D=0,H=(0,0,0),Ku=0,anis_axis=(0,0,1),
-              DMI_type="bulk",driver="SD",GPU = true,name = "sim",demag=false,demag_pbc=(0,0,0))
-    ovf = read_ovf(fname)
-    m = ovf.data
-
-    sim = Sim(nx=ovf.xnodes,ny=ovf.ynodes,nz=ovf.znodes,dx=ovf.xstepsize,dy=ovf.ystepsize,dz=ovf.zstepsize,
-              pbc=pbc,Ms=Ms,A=A,D=D,H=H,Ku=Ku,anis_axis=anis_axis,
-              DMI_type=DMI_type,driver=driver,GPU = GPU,name = name,demag=demag,demag_pbc=demag_pbc)
-    init_m0(sim,m)
-    return sim
 end
 
 """

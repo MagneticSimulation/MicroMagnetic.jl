@@ -140,6 +140,20 @@ function effective_field(anis::CubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArr
   return nothing
 end
 
+"""
+    effective_field(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+
+GPU version effective_field function.
+
+For example:
+
+```julia
+#sim = Sim(GPUmesh)
+effective_field(sim, sim.spin, 0.0)
+```
+
+After running this function, the effective field is calculated and saved in sim.driver.field, which is a CPU array.
+"""
 function effective_field(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   fill!(sim.driver.field, 0.0)
   for interaction in sim.interactions
@@ -149,6 +163,13 @@ function effective_field(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) w
   return 0
 end
 
+"""
+    compute_system_energy(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+
+Calculate the total energy of sim, which will be saved in sim.total_energy.
+
+Parameters is same with function effective_field above.
+"""
 function compute_system_energy(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   sim.total_energy = 0
   for interaction in sim.interactions
@@ -159,7 +180,12 @@ function compute_system_energy(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Floa
   return 0
 end
 
+"""
+    compute_fields_to_gpu(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
 
+Calculate the effective field for every interactions of sim.
+Fields will be saved in sim.interaction.field, and energy will be saved in sim.interaction.energy, which both are CPU array.
+"""
 function compute_fields_to_gpu(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   for interaction in sim.interactions
     effective_field(interaction, sim, spin, t)

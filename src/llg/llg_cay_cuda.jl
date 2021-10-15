@@ -1,4 +1,4 @@
-function llg_rhs_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
+function llg_rhs_cayley_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                         h::CuDeviceArray{T, 1}, omega::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1},
                         alpha::T, gamma::T, precession::Bool, N::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -45,7 +45,7 @@ function llg_cayley_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1}, t::
     effective_field(sim, sim.spin, t)
 
     blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr llg_rhs_cayley_kernal!(dw_dt, sim.spin, driver.field,
+    @cuda blocks=blk threads=thr llg_rhs_cayley_kernel!(dw_dt, sim.spin, driver.field,
                                                         omega, sim.pins, driver.alpha, driver.gamma,
                                                         driver.precession, N)
 
@@ -53,7 +53,7 @@ function llg_cayley_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1}, t::
 end
 
 
-function llg_rhs_stt_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
+function llg_rhs_stt_cayley_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                      h::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1},
                      omega::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1}, alpha::T, beta::T,
                      gamma::T, N::Int64) where { T<:AbstractFloat }
@@ -113,7 +113,7 @@ function llg_rhs_stt_cayley_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArr
                  omega::CuArray{T, 1}, alpha::T, beta::T, gamma::T, N::Int64) where {T<:AbstractFloat}
 
     blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr llg_rhs_stt_cayley_kernal!(dw_dt, m, h, h_stt, omega, alpha, beta, gamma, N)
+    @cuda blocks=blk threads=thr llg_rhs_stt_cayley_kernel!(dw_dt, m, h, h_stt, omega, alpha, beta, gamma, N)
     return nothing
 end
 
@@ -134,7 +134,7 @@ function llg_stt_cayley_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1},
 
 end
 
-function llg_rhs_stt_cpp_cayley_kernal!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
+function llg_rhs_stt_cpp_cayley_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                      h::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1},
                      omega::CuDeviceArray{T, 1}, aj::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1},
                      px::T, py::T, pz::T, alpha::T, beta::T, bj::T,
@@ -202,7 +202,7 @@ function llg_rhs_stt_cpp_cayley_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::C
                  omega::CuArray{T, 1}, aj::CuArray{T, 1}, pins::CuArray{Bool, 1}, p::Tuple, alpha::T, beta::T, bj::T, gamma::T, N::Int64) where {T<:AbstractFloat}
     blk, thr = cudims(N)
     px, py, pz = T(p[1]), T(p[2]), T(p[3])
-    @cuda blocks=blk threads=thr llg_rhs_stt_cpp_cayley_kernal!(dw_dt, m, h, h_stt, omega, aj, pins, px, py, pz, alpha, beta, bj, gamma, N)
+    @cuda blocks=blk threads=thr llg_rhs_stt_cpp_cayley_kernel!(dw_dt, m, h, h_stt, omega, aj, pins, px, py, pz, alpha, beta, bj, gamma, N)
     return nothing
 end
 
