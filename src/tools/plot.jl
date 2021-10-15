@@ -1,15 +1,30 @@
 using PyCall
 
-function m2rgb(mx,my,mz,rotation)
+
+"""
+    mag_to_rgb(mx,my,mz,rotation)
+
+Compute rgb array  
+
+Input:  m : Tuple(mx, my, mz), where mx is a 2d array sized (nx,ny)
+        ra : rgb rotation angle in rad
+
+output: rgb array with size (3, nx, ny)
+
+"""
+
+function mag_to_rgb(m::Tuple, ra::Number)
     np =  pyimport("numpy")
     mpl =  pyimport("matplotlib")
     plt = pyimport("matplotlib.pyplot")
     colorsys = pyimport("colorsys")
 
+    (mx, my, mz) = m
+
     nx,ny = size(mx)
     data_hsv = zeros(nx,ny,3)
     for i =1:nx,j=1:ny
-        data_hsv[i,j,1] = atan(my[i,j],mx[i,j]) + pi + rotation
+        data_hsv[i,j,1] = atan(my[i,j],mx[i,j]) + pi + ra
         data_hsv[i,j,1] = mod(data_hsv[i,j,1], 2*pi)
 
         data_hsv[i,j,2] = sqrt(mx[i,j]^2+my[i,j]^2)
@@ -23,61 +38,33 @@ function m2rgb(mx,my,mz,rotation)
     return data_rgb
 end
 
-function plot_m(fname, mx, my, mz, component, rotation, quiver_args)
+function show_mag(m::Union{Tuple, Array{T, 2}}, fname::String; ra=0) where T <: AbstractFloat
     np =  pyimport("numpy")
     mpl =  pyimport("matplotlib")
     mpl.use("Agg")
     mcolors = pyimport("matplotlib.colors")
     plt = pyimport("matplotlib.pyplot")
 
-    if component == "mz"
-        plt.imshow(np.transpose(mz), origin="lower", cmap="coolwarm")
+    if m isa Array
+        plt.imshow(np.transpose(m), origin="lower", cmap="coolwarm")
         plt.colorbar()
-    elseif component == "mx"
-        plt.imshow(np.transpose(mx), origin="lower", cmap="coolwarm")
-        plt.colorbar()
-    elseif component == "my"
-        plt.imshow(np.transpose(my), origin="lower", cmap="coolwarm")
-        plt.colorbar()
-    elseif component == "all"
-        max_value = maximum([maximum(mx),maximum(my),maximum(mz)])
-        mx /= max_value
-        my /= max_value
-        mz /= max_value
-        data_rgb = m2rgb(mx,my,mz,rotation)
+    elseif m isa Tuple
+        max_value = maximum([maximum(m[1]), maximum(m[2]), maximum(m[3])])
+        mx = m[1]/max_value
+        my = m[2]/max_value
+        mz = m[3]/max_value
+        data_rgb = mag_to_rgb((mx,my,mz), ra)
         ls = mcolors.LightSource()
         plt.imshow(data_rgb, origin="lower", interpolation="bicubic")
+    else
+        @error("Input must be a 2d array or a tuple of three 2d array!")
     end
 
     plt.xticks([])
     plt.yticks([])
 
-    if quiver_args[:quiver]
-        x,y = size(mx)
-        interval = quiver_args[:interval]
-        X,Y = np.meshgrid([1:interval:x],[1:interval:y])
-        norm_constant = max(maximum(abs.(mx)), maximum(abs.(my)))
-        mx ./= norm_constant
-        my ./= norm_constant
-        plt.axes().set_aspect("equal")
-        prog = "plt.quiver(X,Y,transpose(mx[1:interval:end,1:interval:end]),transpose(my[1:interval:end,1:interval:end])"
-        delete!(quiver_args, :quiver)
-        delete!(quiver_args, :interval)
-        for (key,value) in quiver_args
-            if typeof(value) == String
-                prog *= ", $key = \"$value\""
-            else 
-                prog *= ", $key = $value" 
-            end
-        end
-
-        prog *= ")"
-        print(prog)
-        eval(Meta.parse(prog))
-    end
-
-    if endswith(fname,".ovf")
-        fname= fname[1:end-4]
+    if endswith(fname, ".ovf")
+        fname = fname[1:end-4]
     end
 
     path=dirname(fname)
@@ -85,43 +72,52 @@ function plot_m(fname, mx, my, mz, component, rotation, quiver_args)
     if !isdir(path)
         mkpath(path)
     end
-    
+
     plt.tight_layout()
-    plt.savefig(joinpath(path,basename(fname))*"_slice_$component.png",dpi=300)
+    plt.savefig(joinpath(path,basename(fname))*".png",dpi=300)
     plt.close()
 end
 
-
 """
-  plotOVF(fname; slice="center", component = "mz", cmap="coolwarm", rotation = 0, quiver=false, quiver_interval=5, quiver_size=30, quiver_color="w")
+    show_mag(fname::String; layer=0, rgb=false, component = 3, ra = 0)
 
-Plot a certain slice of the given ovf file.
+Show the magnetization of an ovf file.
 
-Parameters
------------------
-fname: file name
-slice: layer number.
-component: Can be chosen from "mx","my","mz" and "all".
-rotation: Rotation angle of the hsv color space in degree.
-quiver_args: A dictionary used in python plt.quiver function.
-    For example: quiver_args=Dict(:quiver => true, :interval =>1, color => "w", scale =>20) will execute 
-                plt.quiver(mx[::interval,::interval],my[::interval,::interval],color="w", scale=20)
+Parameters:
+
+    fname : .ovf file name including relative path.
+
+Optional:
+
+    layer : Which layer to be shown. Integer from 1 to nz.
+
+    component : 1 or 2 or 3, representing mx, my, and mz respectively.
+
+    rgb : If true, this function will use the rgb colorwheel.
+
+    ra : rgb rotation angle in rad.
+
+Example:
+```julia
+    show_mag("example.ovf", rgb=true)
+```
 """
-function plotOVF(fname; slice="center", component = "mz", cmap="coolwarm", rotation = 0, 
-    quiver_args::Dict=Dict(:quiver =>false))
+function show_mag(fname::String; layer=0, rgb=false, component = 3, ra = 0)
+
     ovf = read_ovf(fname)
     m = ovf.data
     nx, ny, nz = ovf.xnodes, ovf.ynodes, ovf.znodes
     b = reshape(m, (3,nx,ny,nz))
-    if slice == "center"
-        slice = ceil(Int, nz/2)
+    if layer == 0
+        layer = ceil(Int, nz/2)
     end
-    mx, my, mz = b[1, :, :, slice], b[2, :, :, slice], b[3, :, :, slice]
-
-    #= quiver_args = Dict(:quiver => quiver, :interval => quiver_interval,
-                        :scale => quiver_size, :color => quiver_color) =#
-
-    plot_m(fname, mx, my, mz, component, rotation, quiver_args)
+    mx, my, mz = b[1, :, :, layer], b[2, :, :, layer], b[3, :, :, layer]
+    
+    if rgb
+        show_mag((mx,my,mz), fname, ra=ra)
+    else
+        show_mag(b[component, :, :, layer], fname)
+    end
 end
 
 """

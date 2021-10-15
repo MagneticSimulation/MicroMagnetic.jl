@@ -1,9 +1,9 @@
 """
-CUDA kernal to compute the standard LLG equation,
+CUDA kernel to compute the standard LLG equation,
     dm/dt = - gamma_L * (m x H) - alpha*gamma_L* m x (m x H)
 where gamma_L = gamma/(1+alpha^2).
 """
-function llg_rhs_kernal!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
+function llg_rhs_kernel!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                         h::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1}, alpha::T,
                         gamma::T, precession::Bool, N::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -50,15 +50,15 @@ function llg_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::CuAr
     effective_field(sim, spin, t)
 
     blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field, sim.pins,
+    @cuda blocks=blk threads=thr llg_rhs_kernel!(dm_dt, spin, driver.field, sim.pins,
                                                  driver.alpha, driver.gamma, driver.precession, N)
     return nothing
 end
 
 """
-CUDA kernal to compute tau = (u.nabla) m.
+CUDA kernel to compute tau = (u.nabla) m.
 """
-function field_stt_kernal!(m::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
+function field_stt_kernel!(m::CuDeviceArray{T, 1}, h_stt::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
                            ux::CuDeviceArray{T, 1}, uy::CuDeviceArray{T, 1}, uz::CuDeviceArray{T, 1}, ut::T,
                            dx::T, dy::T, dz::T, nx::Int64, ny::Int64, nz::Int64,
                            xperiodic::Bool, yperiodic::Bool, zperiodic::Bool, N::Int64)  where {T<:AbstractFloat}
@@ -118,7 +118,7 @@ end
 
 
 """
-Wrapper for function field_stt_kernal! [to compute tau = (u.nabla) m]
+Wrapper for function field_stt_kernel! [to compute tau = (u.nabla) m]
 """
 function compute_field_stt_gpu(m::CuArray{T, 1}, h_stt::CuArray{T, 1}, Ms::CuArray{T, 1},
                            ux::CuArray{T, 1}, uy::CuArray{T, 1}, uz::CuArray{T, 1}, ut::T,
@@ -126,7 +126,7 @@ function compute_field_stt_gpu(m::CuArray{T, 1}, h_stt::CuArray{T, 1}, Ms::CuArr
                            xperiodic::Bool, yperiodic::Bool, zperiodic::Bool, N::Int64) where {T<:AbstractFloat}
 
     blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr field_stt_kernal!(m, h_stt, Ms,
+    @cuda blocks=blk threads=thr field_stt_kernel!(m, h_stt, Ms,
                            ux, uy, uz, ut, dx, dy, dz, nx, ny, nz,
                            xperiodic, yperiodic, zperiodic,N)
 
@@ -134,11 +134,11 @@ function compute_field_stt_gpu(m::CuArray{T, 1}, h_stt::CuArray{T, 1}, Ms::CuArr
 end
 
 """
-CUDA kernal to compute the STT torque and add it to dm/dt:
+CUDA kernel to compute the STT torque and add it to dm/dt:
     dm/dt += (1+alpha*beta)/(1+alpha^2)*tau - (beta-alpha)/(1+alpha^2)*(m x tau)
 where tau = (u.nabla) m, here tau is represented by h_stt.
 """
-function add_stt_rhs_kernal!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
+function add_stt_rhs_kernel!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                         h_stt::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1}, alpha::T,
                         beta::T,  N::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -184,21 +184,21 @@ function llg_stt_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, N)
 
     blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field, sim.pins,
+    @cuda blocks=blk threads=thr llg_rhs_kernel!(dm_dt, spin, driver.field, sim.pins,
                                                  driver.alpha, driver.gamma, true, N)
     synchronize()
-    @cuda blocks=blk threads=thr add_stt_rhs_kernal!(dm_dt, spin, driver.h_stt, sim.pins, driver.alpha, driver.beta, N)
+    @cuda blocks=blk threads=thr add_stt_rhs_kernel!(dm_dt, spin, driver.h_stt, sim.pins, driver.alpha, driver.beta, N)
 
     return nothing
 
 end
 
 """
-CUDA kernal to compute the STT torque for CPP case and add it to dm/dt:
+CUDA kernel to compute the STT torque for CPP case and add it to dm/dt:
     dm/dt += (a_J+alpha*b_J)/(1+alpha^2)*p_perp - (b_J-alpha*a_J)/(1+alpha^2)*(m x p_perp)
 where p_perp = p - (m.p)m
 """
-function add_cpp_rhs_kernal!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1},
+function add_cpp_rhs_kernel!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1},
                         alpha::T, a_J::CuDeviceArray{T, 1}, bj::T, px::T, py::T, pz::T,
                         N::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -241,11 +241,11 @@ function llg_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::
     effective_field(sim, spin, t)
 
     blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field, sim.pins,
+    @cuda blocks=blk threads=thr llg_rhs_kernel!(dm_dt, spin, driver.field, sim.pins,
                                                  driver.alpha, driver.gamma, true, N)
     synchronize()
     px, py, pz = T(driver.p[1]), T(driver.p[2]), T(driver.p[3])
-    @cuda blocks=blk threads=thr add_cpp_rhs_kernal!(dm_dt, spin, sim.pins, driver.alpha, driver.aj, driver.bj, px, py, pz, N)
+    @cuda blocks=blk threads=thr add_cpp_rhs_kernel!(dm_dt, spin, sim.pins, driver.alpha, driver.aj, driver.bj, px, py, pz, N)
 
     return nothing
 
@@ -263,14 +263,14 @@ function llg_stt_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, sp
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, N)
 
     blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr llg_rhs_kernal!(dm_dt, spin, driver.field, sim.pins,
+    @cuda blocks=blk threads=thr llg_rhs_kernel!(dm_dt, spin, driver.field, sim.pins,
                                                  driver.alpha, driver.gamma, true, N)
     synchronize()
-    @cuda blocks=blk threads=thr add_stt_rhs_kernal!(dm_dt, spin, driver.h_stt, sim.pins, driver.alpha, driver.beta, N)
+    @cuda blocks=blk threads=thr add_stt_rhs_kernel!(dm_dt, spin, driver.h_stt, sim.pins, driver.alpha, driver.beta, N)
 
     synchronize()
     px, py, pz = T(driver.p[1]), T(driver.p[2]), T(driver.p[3])
-    @cuda blocks=blk threads=thr add_cpp_rhs_kernal!(dm_dt, spin, sim.pins, driver.alpha, driver.aj, driver.bj, px, py, pz, N)
+    @cuda blocks=blk threads=thr add_cpp_rhs_kernel!(dm_dt, spin, sim.pins, driver.alpha, driver.aj, driver.bj, px, py, pz, N)
 
     return nothing
 

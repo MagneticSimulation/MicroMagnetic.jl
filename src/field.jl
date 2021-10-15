@@ -404,7 +404,29 @@ function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::Array{Float64
   end
 end
 
+"""
+    effective_field(sim::AbstractSim, spin::Array{Float64, 1}, t::Float64)
 
+Calculate the effective field of a CPU Sim.
+
+Parameters:
+
+  sim : AbstractSim struct whose field is to be calculated.
+
+  spin : 1-d array that matches sim.mesh. 
+
+  t : Time in second. This term is used when TimeZeeman is added into sim.
+
+For example:
+
+  ```julia
+    #sim = Sim(CPUmesh)
+    effective_field(sim, sim.spin, 0.0)
+  ```
+
+After running this function, the effective field is calculated and saved in sim.field, 
+and the total energy is saved in sim.energy.
+"""
 function effective_field(sim::AbstractSim, spin::Array{Float64, 1}, t::Float64)
   fill!(sim.field, 0.0)
   fill!(sim.energy, 0.0)

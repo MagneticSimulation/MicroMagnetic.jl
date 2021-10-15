@@ -22,7 +22,7 @@ function save_colorwheel()
 
     init_m0(sim,m0_fun)
     save_ovf(sim,"colorwheel")
-    plotOVF("colorwheel.ovf", component="all")
+    JuMag.show_mag("colorwheel.ovf", rgb=true)
 
     rm("colorwheel.ovf")
 end
