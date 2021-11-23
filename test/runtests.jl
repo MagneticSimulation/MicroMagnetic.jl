@@ -33,6 +33,4 @@ if JuMag._cuda_available.x
   test_fields(mesh, gpu=true)
 end
 
-if JuMag._pycall_available.x
-  #include("test_tools.jl")
-end
+include("test_radon.jl")

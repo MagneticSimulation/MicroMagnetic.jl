@@ -39,13 +39,14 @@ function get_magnetic_phase(m::Array{T,4}; alphas::Union{Array, Tuple}=[0],betas
 
     a = compute_vector_potential(m, N=N)
 
-    for alpha in alphas
-        phase = vector_field_projection(a, alpha, "x")[3,:,:]
-        npzwrite(@sprintf("X_%g.npy",alpha),phase)
+    phase = vector_field_projection(a, alphas, "x")
+    for i = 1:length(alphas)
+        npzwrite(@sprintf("X_%g.npy",alphas[i]),phase[:,:,i])
     end
-    for beta in betas
-        phase = vector_field_projection(a, beta, "y")[3,:,:]
-        npzwrite(@sprintf("Y_%g.npy",beta),phase)
+
+    phase = vector_field_projection(a, betas, "x")
+    for i = 1:length(betas)
+        npzwrite(@sprintf("X_%g.npy",betas[i]),phase[:,:,i])
     end
 end
 

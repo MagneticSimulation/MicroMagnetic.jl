@@ -1,6 +1,8 @@
-#using PyCall
+using PyCall
+using JuMag
+using Printf
 
-function divergence(vector_field::Array{T,1}, mesh::Mesh) where T<:AbstractFloat
+function divergence(vector_field::Array{T,1}, mesh::FDMesh) where T<:AbstractFloat
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     divM = zeros(T, nx, ny, nz)
     b = reshape(vector_field,(3,:))
@@ -12,7 +14,7 @@ function divergence(vector_field::Array{T,1}, mesh::Mesh) where T<:AbstractFloat
     return divM
 end
 
-function divergence_x(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
+function divergence_x(scalar_field::Array{T,1}, mesh::FDMesh) where T<:AbstractFloat
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     dx = mesh.dx
     div_x = zeros(T, nx, ny, nz)
@@ -36,7 +38,7 @@ function divergence_x(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
     return div_x
 end
 
-function divergence_y(scalar_field::Array{T,1}, mesh) where T<:AbstractFloat
+function divergence_y(scalar_field::Array{T,1}, mesh::FDMesh) where T<:AbstractFloat
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     dy = mesh.dy
     div_y = zeros(T, nx, ny, nz)

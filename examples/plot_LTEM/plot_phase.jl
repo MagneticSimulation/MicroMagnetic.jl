@@ -5,7 +5,9 @@ using NPZ
 # create a uniform slab 
 
 function savem()
-    sim = Sim(nx=32,ny=64,nz=16,Ms=1e5,GPU=false)
+    mesh = FDMesh(nx=32,ny=64,nz=16)
+    sim = Sim(mesh)
+    set_Ms(sim, 1e5)
     init_m0(sim,(cos(5/3*pi),sin(5/3*pi),0))
     save_ovf(sim,"test_tools")
 end
@@ -35,4 +37,4 @@ savem()
 
 gen_magnetic_phase()
 
-show_phase("ALPHA_0.npy")
+show_phase("X_0.npy")

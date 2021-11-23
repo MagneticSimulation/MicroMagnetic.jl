@@ -7,7 +7,6 @@ using CUDA
 const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)
 const _mpi_available = Ref(true)
-const _pycall_available = Ref(true)
 
 export init_m0,
        init_m0_random,
@@ -153,21 +152,17 @@ if _mpi_available.x && _cuda_available.x
     end
 end
 
-try
-  using PyCall
-catch
-    _pycall_available[] = false
+include("ltem/ltem.jl")
+include("ltem/warp.jl")
+include("ltem/projection.jl")
+
+export vector_field_projection, get_magnetic_phase, radon,radon_3d, warp
+
+function load_tools()
+    module_path = dirname(pathof(JuMag))
+    include(module_path * "/Tools/Tools.jl")
 end
 
-if _pycall_available.x
-  include("tools/projection.jl")
-  include("tools/plot.jl")
-  include("tools/ltem.jl")
-  include("tools/mfm.jl")
-  include("tools/xray.jl")
-  export vector_field_projection, get_magnetic_phase, OVF2LTEM,OVF2MFM,OVF2XRAY, 
-          plotOVF, plot_ovf_projection
-end
 
 function __init__()
     _cuda_available[] = CUDA.functional()
@@ -176,9 +171,6 @@ function __init__()
     end
     if !_mpi_available.x
         @warn "MPI is not available!"
-    end
-    if !_pycall_available.x
-        @warn "PyCall is not available!"
     end
 end
 
