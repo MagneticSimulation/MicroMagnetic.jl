@@ -1,5 +1,6 @@
 using FFTW
 using PyCall
+using JuMag
 
 """
     OVF2XRAY(fname; axis=ez, N=-1)

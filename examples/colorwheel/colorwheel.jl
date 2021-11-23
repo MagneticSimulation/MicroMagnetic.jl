@@ -1,5 +1,4 @@
 using JuMag
-using PyCall
 
 function save_colorwheel()
     mesh = FDMeshGPU(nx=100,ny=100,nz=1)
@@ -22,7 +21,9 @@ function save_colorwheel()
 
     init_m0(sim,m0_fun)
     save_ovf(sim,"colorwheel")
-    JuMag.show_mag("colorwheel.ovf", rgb=true)
+
+    JuMag.load_tools()
+    JuMag.Tools.show_mag("colorwheel.ovf", rgb=true)
 
     rm("colorwheel.ovf")
 end

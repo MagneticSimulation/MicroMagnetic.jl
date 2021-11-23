@@ -1,4 +1,5 @@
 using PyCall
+using JuMag
 
 
 """
