@@ -2,10 +2,73 @@ using NPZ
 using FFTW
 using Printf
 
-function vector_potential_constant(Ms::Float64, d::Float64)
-    mu0 = 4*pi*1e-7
-    Phi0 = 2.067833e-15
-    return mu0*Ms/(2*Phi0*d)
+"""
+    compute_phase(A::Array{T,4}; alpha::Real=0.0, beta::Real=0.0, gamma::Real=0.0) where {T<:AbstractFloat}
+
+Compute the magnetic phase from magnetic vector potential
+
+Parameters
+------------------------------
+A: 4D array sized (3, N, N, N). Magnetic vector potential.
+alpha, beta, gamma: Euler angles in rad around Z,Y,X axis, respectively.
+                    Check https://en.wikipedia.org/wiki/Rotation_matrix for the detailed definition.
+
+Outputs
+----------------------------
+phi: 2D array sized (N,N). Magnetic phase.
+
+"""
+function compute_phase(A::Array{T,4}; alpha::Real=0.0, beta::Real=0.0, gamma::Real=0.0) where {T<:AbstractFloat}
+    return -1 .* radon_vecfld(A, alpha, beta, gamma)
+end
+
+"""
+    compute_magnetic_phase(m::Array{T,4}; alpha::Real=0.0, beta::Real=0.0, gamma::Real=0.0, 
+    N::Int=-1) where {T<:AbstractFloat}
+
+Compute the magnetic phase from magnetization array.
+
+Parameters
+------------------------------
+m: 4D array sized (3, nx, ny, nz). Magnetization array.
+alpha, beta, gamma: Euler angles in rad around Z,Y,X axis, respectively.
+N: Padding size
+
+Outputs
+----------------------------
+phi: 2D array sized (N,N). Magnetic phase.
+
+"""
+function compute_magnetic_phase(m::Array{T,4}; alpha::Real=0.0, beta::Real=0.0, gamma::Real=0.0, 
+    N::Int=-1) where {T<:AbstractFloat}
+    if N < 0
+        (_, nx, ny, nz) = size(m)
+        N = 2*max(nx, ny, nz)
+    end
+
+    A = compute_vector_potential(m, N)
+    return compute_phase(A, alpha=alpha, beta=beta, gamma=gamma)
+end
+
+"""
+    compute_vector_potential(m::Array{T,4}, N::Int)  where {T<:AbstractFloat}
+
+Compute the magnetic vector potential from a magnetization array.
+
+Input: (3, nx, ny, nz)
+
+output: (3, N, N, N)
+
+"""
+function compute_vector_potential(m::Array{T,4}, N::Int)  where {T<:AbstractFloat}
+    m = vector_padding(m,N,N,N)
+    m = Array{Float32}(m)
+    m = ifftshift(m, (2,3,4))
+    mk = fft(m, (2,3,4))
+    k = get_kernel_k(N)
+    vector_potential_k = cross_product(mk,k)
+    vector_potential = ifft(vector_potential_k, (2,3,4))
+    return fftshift(real.(vector_potential), (2,3,4))
 end
 
 function cross_product(v1::Array{T,4},v2::Array{T,4}) where {T<:Number}
@@ -18,60 +81,6 @@ function cross_product(v1::Array{T,4},v2::Array{T,4}) where {T<:Number}
         v3[3,i,j,k] = cross_z(v1[1,i,j,k], v1[2,i,j,k], v1[3,i,j,k], v2[1,i,j,k], v2[2,i,j,k], v2[3,i,j,k])
     end
     return v3
-end
-
-"""
-    get_magnetic_phase(m::Array{T,4}; alphas::Union{Array, Tuple}=[0],betas::Union{Array, Tuple}=[],N=256) where {T<:Number}
-
-Get the LTEM phase shift from a magnetization array.
-
-Input: (3, nx, ny, nz)
-
-alphas: Tilt angles with axis X
-
-betas: Tilt angles with axis Y
-
-N: zeros padding size
-
-"""
-
-function get_magnetic_phase(m::Array{T,4}; alphas::Union{Array, Tuple}=[0],betas::Union{Array, Tuple}=[],N=256) where {T<:Number}
-
-    a = compute_vector_potential(m, N=N)
-
-    phase = vector_field_projection(a, alphas, "x")
-    for i = 1:length(alphas)
-        npzwrite(@sprintf("X_%g.npy",alphas[i]),phase[:,:,i])
-    end
-
-    phase = vector_field_projection(a, betas, "x")
-    for i = 1:length(betas)
-        npzwrite(@sprintf("X_%g.npy",betas[i]),phase[:,:,i])
-    end
-end
-
-"""
-    compute_vector_potential(m::Array{T,4}; N=256)  where {T<:Number}
-
-Compute the magnetic vector potential from a magnetization array.
-
-Input: (3, nx, ny, nz)
-
-output: (3, N, N, N)
-
-N: zeros padding size
-
-"""
-
-function compute_vector_potential(m::Array{T,4}; N=256)  where {T<:Number}
-    m = vector_padding(m,N,N,N)
-    m = Array{Float32}(m)
-    m = ifftshift(m, (2,3,4))
-    mk = fft(m, (2,3,4))
-    k = get_kernel_k(N)
-    vector_potential_k = cross_product(mk,k)
-    vector_potential = ifft(vector_potential_k, (2,3,4))
-    return fftshift(real.(vector_potential), (2,3,4))
 end
 
 function get_kernel_k(N::Int)
@@ -108,6 +117,14 @@ function compute_electric_phase(V, V0, Lz, beta)
     return lambda, phi_E
 end
 
+
+
+
+#= function vector_potential_constant(Ms::Float64, d::Float64)
+    mu0 = 4*pi*1e-7
+    Phi0 = 2.067833e-15
+    return mu0*Ms/(2*Phi0*d)
+end =#
 
 """
         OVF2LTEM(fname;df=200, Ms=1e5, V=300, V0=-26, alpha=1e-5, Nx=-1, Ny=-1,beta=0,gamma=0)

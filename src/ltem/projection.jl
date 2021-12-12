@@ -1,25 +1,5 @@
 using PaddedViews
 
-"""
-This part is based on radon from skimage.transform. So you need to install skikit-image.
-
-The operation is :
-
-```julia
-using Conda
-Conda.install("skikit-image")
-```
-"""
-
-
-"""
-Return a projection of a 3-d scalar field.
-------------------------------------------
-s:The scalar field, which should be 3-d padded. The shape should be (N,N,N).
-angle: tilt_angle in degrees.
-tilt_axis: Should be "x" or "y"
-"""
-
 function vector_padding(v::Array{T,4}, Nx::Int, Ny::Int, Nz::Int) where {T<:Number}
     (dims,nx,ny,nz) = size(v)
     xp = floor(Int,(Nx-nx)/2)
@@ -38,84 +18,41 @@ function vector_crop(v::Array{T,4}, nx::Int,ny::Int,nz::Int)  where {T<:Number}
     return b_new #return 4-d array
 end
 
-function radon(A::Array{T, 2}, thetas) where {T<:AbstractFloat}
+function radon(A::Array{T, 2}, theta::Float64) where {T<:AbstractFloat}
     """
     Perform radon transform.
 
-    thetas are polar angles of projection backplane in degree
+    theta is polar angles in rad, with clockwise as positive direction
     """
-    mrad = -1 * deg2rad.(thetas)
-    nx,ny = size(A)
-    N = max(nx,ny)
-    L = length(thetas)
-    sinogram = zeros(T, N, L)
-    for a = 1:L
-        new_img = warp(A, mrad[a])
-        for i = 1:N
-            sinogram[i, a] += sum(new_img[i, :])
-        end
-    end
+
+    new_img = warp(A, theta)
+    sinogram = sum(new_img[:, :], dims=2)[:, 1]
+
     return sinogram
 end
 
-function radon_3d(A::Array{T,3}, angles, tilt_axis::String) where {T<:AbstractFloat}
+function radon_3d_object(A::Array{T, 3}, alpha::Float64, beta::Float64, gamma::Float64) where T<:Number
     """
-    Global coordinates: x y z . The project ray is always from z+ to z-.
-    Local coordinates: u v w
-    
-    Definition of angles: When the sight is along rotate axis, the angle from z+ direction to w+ direction in counter-clockwise.
+    Tilt a 3D object with Euler angles, and sum along z-direction
     """
-    (nx,ny,nz) = size(A)
-    (L,) = length(angles)
-    sinogram_3d = zeros(T, nx, nx, L)
 
-    if lowercase(tilt_axis) == "x"
-        for i = 1:nx
-            copyto!(view(sinogram_3d, i, :, :), radon(A[i, :, :], angles ) )
-        end
-    elseif lowercase(tilt_axis) == "y"
-        for j = 1:ny
-            copyto!(view(sinogram_3d, :, j, :), radon(A[:, j, :], -1 * angles) )
-        end
-    else
-        @error("\"tilt_axis\" should be \"x\" or \"y\"")
-    end
-    return sinogram_3d
+    new_obj = tilt(A, alpha, beta, gamma)
+    projection = sum(new_obj, dims=3)[:,:,1]
+
+    return projection
 end
 
-function radon_3d(s::Array{T,3}, angles, tilt_axis::String) where {T<:Complex}
-    return radon_3d(real.(s),angles,tilt_axis) + 1im*radon_3d(imag.(s),angles,tilt_axis)
-end
 
-"""
-    vector_field_projection(v::Array{T,4}, angle::Number, tilt_axis::String) where {T<:Number}
+function radon_vecfld(v::Array{T,4}, alpha::Float64=0.0, beta::Float64=0.0, gamma::Float64=0.0) where {T<:Number}
+    """
+    Return the projection component of a tilted vector field.
+    """
+    projection_x= radon_3d_object(v[1,:,:,:], alpha, beta, gamma)
+    projection_y= radon_3d_object(v[2,:,:,:], alpha, beta, gamma)
+    projection_z= radon_3d_object(v[3,:,:,:], alpha, beta, gamma)
 
-return a projection vector of the input array.
-
-Input size: (3,N,N,N)
-output size: (3, N, N)
-angle: Number from -90 to 90
-tilt_axis: "x" or "y"
-"""
-
-function vector_field_projection(v::Array{T,4}, angles, tilt_axis::String) where {T<:Number}
-    (three, N, _, _) = size(v)
-    (L,) = length(angles)
-    phi = zeros(T,N,N,L)
-    COS, SIN = cos.(deg2rad.(angles)), sin.(deg2rad.(angles))
-    if lowercase(tilt_axis) == "x"
-        sinogram_y = radon_3d(v[2,:,:,:], angles, tilt_axis)
-        sinogram_z = radon_3d(v[3,:,:,:], angles, tilt_axis)
-        for i = 1:L
-            copyto!(view(phi,:,:,i), -COS[i] * sinogram_z[:,:,i] + SIN[i] * sinogram_y[:,:,i])
-        end
-    elseif lowercase(tilt_axis) == "y"
-        sinogram_x = radon_3d(v[1,:,:,:], angles, tilt_axis)
-        sinogram_z = radon_3d(v[3,:,:,:], angles, tilt_axis)
-        for i = 1:L
-            copyto!(view(phi,:,:,i), -COS[i] * sinogram_z[:,:,i] - SIN[i] * sinogram_x[:,:,i])
-        end
-    end
+    M = Euler(alpha, beta, gamma)
+    phi = M[3,1] .* projection_x + M[3,2] .* projection_y + M[3,3] .* projection_z
     return phi
 end
 

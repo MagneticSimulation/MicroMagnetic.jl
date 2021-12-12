@@ -33,6 +33,16 @@ For example:
     init_m0_skyrmion(sim, (50e-9,50e-9), 2e-8, ratio=0.5, p=-1, c=1, type="B")
 ```
 """
+
+function init_m0_skyrmion(sim::AbstractSim)
+    mesh = sim.mesh
+    nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
+    dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
+    xc, yc = dx*(nx+1)/2, dy*(ny+1)/2
+    R = 1/2 * min(nx*dx, ny*dy)
+    init_m0_skyrmion(sim, (xc,yc), R)
+end
+
 function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7, p=-1, c=1, type="B")
     if type!="N" && type!="B"
         @info("add_skyrmion: type should be \"N\" or \"B\" ")
@@ -43,7 +53,8 @@ function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7
     mesh = sim.mesh
     nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
     dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
-    b = reshape(sim.spin,(3,nx,ny,nz))
+    m = Array(sim.spin)
+    b = reshape(m, (3,nx,ny,nz))
     Ms= sim.Ms
 
     eps = 1e-6
@@ -82,7 +93,8 @@ function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7
         end
     end
     #normalise(sim.spin, sim.nxyz)
-    copyto!(sim.prespin, sim.spin)
+    copyto!(sim.prespin, m)
+    copyto!(sim.spin, m)
     return nothing
 end
 
