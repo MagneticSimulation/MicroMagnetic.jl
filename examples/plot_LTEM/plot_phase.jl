@@ -17,7 +17,16 @@ end
 function gen_magnetic_phase()
     ovf = read_ovf("test_tools")
     m = reshape(ovf.data, (3,32,64,16))
-    get_magnetic_phase(m, alphas=[0.0, 45], betas=[0.0, 45], N=256)
+    A = compute_vector_potential(m, 62*2)
+    phase = compute_phase(A, gamma=0.0)
+    npzwrite("phase_gamma_0.npy", phase)
+
+    phase = compute_phase(A, gamma=pi/3)
+    npzwrite("phase_gamma_60.npy", phase)
+
+    # Or
+    phase = compute_magnetic_phase(m, gamma=pi/3)
+    npzwrite("phase2_gamma_60.npy", phase)
 end
 
 # plot phase map
@@ -37,4 +46,6 @@ savem()
 
 gen_magnetic_phase()
 
-show_phase("X_0.npy")
+show_phase("phase_gamma_0.npy")
+show_phase("phase_gamma_60.npy")
+show_phase("phase2_gamma_60.npy")

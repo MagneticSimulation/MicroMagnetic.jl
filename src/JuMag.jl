@@ -152,11 +152,13 @@ if _mpi_available.x && _cuda_available.x
     end
 end
 
-include("ltem/ltem.jl")
-include("ltem/warp.jl")
+include("ltem/interpolation.jl")
+include("ltem/tilt.jl")
 include("ltem/projection.jl")
+include("ltem/ltem.jl")
 
-export vector_field_projection, get_magnetic_phase, radon,radon_3d, warp
+export radon, radon_3d_object, radon_vecfld, Euler, tilt, warp, tilt_vecfld,
+    compute_phase, compute_magnetic_phase, compute_vector_potential
 
 function load_tools()
     module_path = dirname(pathof(JuMag))
