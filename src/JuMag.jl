@@ -160,9 +160,14 @@ include("ltem/ltem.jl")
 export radon, radon_3d_object, radon_vecfld, Euler, tilt, warp, tilt_vecfld,
     compute_phase, compute_magnetic_phase, compute_vector_potential
 
+
+const _tools_loaded = Ref(false)
 function load_tools()
-    module_path = dirname(pathof(JuMag))
-    include(module_path * "/Tools/Tools.jl")
+    if !_tools_loaded[]
+        module_path = dirname(pathof(JuMag))
+        include(module_path * "/Tools/Tools.jl")
+        _tools_loaded[] = true
+    end
 end
 
 

@@ -663,7 +663,12 @@ Fields can be stored in vtks by:
 relax(sim, save_vtk_every = 10, fields = ["demag", "exch", "anis"])
 ```
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks", fields::Array{String, 1} = String[])
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_every = -1, 
+    save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks", fields::Array{String, 1} = String[])
+
+    #= if !sim.save_data  
+        save_m_every = -1
+    end =#
 
   llg_driver = false
 
@@ -724,11 +729,14 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
       save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
     end
 
-    if llg_driver
-        sim.saver.t = driver.ode.t
+    if sim.save_data
+        if llg_driver 
+            sim.saver.t = driver.ode.t
+        end
+
+        sim.saver.nsteps += 1
     end
 
-    sim.saver.nsteps += 1
     if max_dmdt < stopping_dmdt*dmdt_factor
       @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
       if save_m_every>0
