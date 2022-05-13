@@ -62,7 +62,7 @@ end
 
 Save an ovf2 file by an OVF2 struct.
 """
-
+#FIXME: type is not used.
 function save_ovf(ovf::OVF2, fname::String; type::DataType = ovf.type)
     if !endswith(fname,".ovf")
         fname = fname* ".ovf"

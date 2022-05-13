@@ -56,6 +56,7 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince"
 
 end
 
+
 """
     set_Ms(sim::MicroSimGPU, Ms::NumberOrArrayOrFunction)
 """
@@ -569,3 +570,6 @@ function add_demag_gpu(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
   end
   return demag
 end
+
+
+
