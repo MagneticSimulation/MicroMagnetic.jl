@@ -22,7 +22,7 @@ export init_m0,
        FDMesh,
        set_pinning, set_Ms,
        set_Ms_cylindrical,
-       Sim,
+       Sim, StdSim,
        CubicMesh,
        TriangularMesh,
        set_mu_s, set_mu_s_kagome,
@@ -82,6 +82,7 @@ include("neb/neb_sd.jl")
 include("neb/neb_llg.jl")
 include("ovf2.jl")
 include("init_m.jl")
+#include("main.jl")
 
 #_cuda_available[] = CUDA.functional()
 

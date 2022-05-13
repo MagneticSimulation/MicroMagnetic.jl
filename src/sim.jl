@@ -855,3 +855,34 @@ end
 function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
     run_until(sim, t_end, sim.driver.ode, save_data)
 end
+
+
+
+function StdSim(mesh; Ms=8e5, A=1.3e-11, D=0, Ku=0, axis=(0,0,1), H=(0,0,0), m0=(0,0,1), demag=false, name="relax")
+  
+    sim = Sim(mesh, driver="SD", name = name)
+  
+    set_Ms(sim, Ms)
+  
+    init_m0(sim, m0)
+  
+    add_exch(sim, A)
+  
+    add_zeeman(sim, H)
+  
+    if abs(D)>0
+      add_dmi(sim, D)
+    end
+  
+    if abs(Ku)>0
+      add_anis(sim, Ku, axis=axis)
+    end
+    
+    if demag
+      add_demag(sim)
+    end
+  
+    return sim
+    
+  end
+
