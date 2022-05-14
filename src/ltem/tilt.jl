@@ -1,4 +1,20 @@
-function warp(img::Array{T,2}, rad::Float64) where {T<:AbstractFloat}
+"""
+    warp(img::Array{T,2}, theta::Real) where {T<:Number}
+
+Warp a 2D scalar field.
+positive direction: counter-clockwise
+
+Parameters
+------------------------------
+img: 2D array sized (N, N). 
+theta: Polar angle in rad.
+
+Outputs
+----------------------------
+new_img: 2D array sized (N, N)
+
+"""
+function warp(img::Array{T,2}, theta::Real) where {T<:Number}
     """
     warp image with counter-clockwise
     ij = R * xy
@@ -7,7 +23,7 @@ function warp(img::Array{T,2}, rad::Float64) where {T<:AbstractFloat}
     nx, ny = size(img)
     N = max(nx, ny)
     new_img = zeros(T, N, N)
-    COS, SIN = cos(rad), sin(rad)
+    COS, SIN = cos(theta), sin(theta)
 
     xc, yc = (N+1)/2, (N+1)/2
     for i = 1:nx, j=1:ny
@@ -25,6 +41,8 @@ function warp(img::Array{T,2}, rad::Float64) where {T<:AbstractFloat}
     end
     return new_img
 end
+
+
 
 function RZ(alpha)
     M = zeros(3,3)
@@ -57,15 +75,83 @@ function Euler(alpha::Float64, beta::Float64, gamma::Float64)
     return(RZ(alpha) * RY(beta) * RX(gamma))
 end
 
-function tilt(obj::Array{T,3}, alpha::Float64, beta::Float64, gamma::Float64) where {T<:AbstractFloat}
-    """
-    Return tilted 3-d object.
-    --------------------
-    Parameters
-    --------------------
-    obj: 3D array. Scalar field to be tilt.
-    alpha, beta, gamma: Euler angles around z,y,x axis respectively.
-    """
+
+
+
+"""
+    tilt_x(obj::Array{T,3}, gamma::Real) where {T<:Number}
+
+Tilt a 3D scalar field around x-axis, following Euler angle
+
+Parameters
+------------------------------
+obj: 3D array sized (N, N, N). 
+gamma: Euler angles in rad.
+
+Outputs
+----------------------------
+new_obj: 3D array sized (N,N,N). Scalar field after rotation
+
+"""
+function tilt_x(obj::Array{T,3}, gamma::Real) where {T<:Number}
+    nx, ny, nz = size(obj)
+    N = max(nx, ny, nz)
+    new_obj = zeros(T, N, N, N)
+    for i = 1:N
+        new_obj[i, :, :] = warp(obj[i, :, :], gamma)
+    end
+
+    return new_obj
+end
+
+
+
+
+
+"""
+    tilt_y(obj::Array{T,3}, beta::Real) where {T<:Number}
+
+Tilt a 3D scalar field around y-axis, following Euler angle
+
+Parameters
+------------------------------
+obj: 3D array sized (N, N, N). 
+beta: Euler angles in rad.
+
+Outputs
+----------------------------
+new_obj: 3D array sized (N,N,N). Scalar field after rotation
+
+"""
+function tilt_y(obj::Array{T,3}, beta::Real) where {T<:Number}
+    nx, ny, nz = size(obj)
+    N = max(nx, ny, nz)
+    new_obj = zeros(T, N, N, N)
+    for j = 1:N
+        new_obj[:, j, :] = warp(obj[:, j, :], -1*beta)
+    end
+    return new_obj
+end
+
+
+
+
+"""
+    tilt_Euler(obj::Array{T,3}, alpha::Real, beta::Real, gamma::Real) where {T<:Number}
+
+Tilt a 3D scalar field by Euler angle
+
+Parameters
+------------------------------
+obj: 3D array sized (N, N, N). 
+alpha,beta,gamma: Euler angles in rad around Z-axis, Y-axis and X-axis respectively.
+
+Outputs
+----------------------------
+new_obj: 3D array sized (N,N,N). Scalar field after rotation
+
+"""
+function tilt_Euler(obj::Array{T,3}, alpha::Real, beta::Real, gamma::Real) where {T<:Number}
     nx, ny, nz = size(obj)
     N = max(nx, ny, nz)
     new_obj = zeros(T, N, N, N)
@@ -90,32 +176,34 @@ function tilt(obj::Array{T,3}, alpha::Float64, beta::Float64, gamma::Float64) wh
     return new_obj
 end
 
-function tilt(obj::Array{Complex{T},3}, alpha::Float64, beta::Float64, gamma::Float64) where {T<:AbstractFloat}
-    return tilt(real.(obj), alpha, beta, gamma) + 1im .* tilt(imag.(obj), alpha, beta, gamma)
-end
 
-function warp(img::Array{Complex{T},2}, rad::Float64) where {T<:AbstractFloat}
-    return warp(real.(img), rad) + 1im .* warp(imag.(img), rad)
-end
 
-function tilt_vecfld(v::Array{T,4}, alpha::Float64, beta::Float64, gamma::Float64) where {T<:Number}
-    """
-    Tilt a 3-d vector field with Euler angles.
-    """
-    (dims, nx, ny, nz) = size(v)
+"""
+    tilt_vecfld(v::Array{T,4}, alpha::Real, beta::Real, gamma::Real) where {T<:Number}
+
+Tilt a 3D VECTOR field by Euler angle
+
+Parameters
+------------------------------
+obj: 4D array sized (3,N, N, N). 
+alpha,beta,gamma: Euler angles in rad around Z-axis, Y-axis and X-axis respectively.
+
+Outputs
+----------------------------
+vnew: 4D array sized (3,N,N,N). Scalar field after rotation
+
+"""
+function tilt_vecfld(v::Array{T,4}, alpha::Real, beta::Real, gamma::Real) where {T<:Number}
     vx, vy, vz = v[1,:,:,:], v[2,:,:,:], v[3,:,:,:]
     vxn = tilt(vx, alpha, beta, gamma)
     vyn = tilt(vy, alpha, beta, gamma)
     vzn = tilt(vz, alpha, beta, gamma)
     
-    M = Euler(alpha, beta, gamma)
-    vnew_x = M[1,1] .* vxn + M[1,2] .* vyn + M[1,3] .* vzn
-    vnew_y = M[2,1] .* vxn + M[2,2] .* vyn + M[2,3] .* vzn
-    vnew_z = M[3,1] .* vxn + M[3,2] .* vyn + M[3,3] .* vzn
-
     vnew = zeros(T, size(v))
-    copyto!(view(vnew, 1, :, :, :), vnew_x)
-    copyto!(view(vnew, 2, :, :, :), vnew_y)
-    copyto!(view(vnew, 3, :, :, :), vnew_z)
+    M = Euler(alpha, beta, gamma)
+    vnew[1,:,:,:] = M[1,1] .* vxn + M[1,2] .* vyn + M[1,3] .* vzn
+    vnew[2,:,:,:] = M[2,1] .* vxn + M[2,2] .* vyn + M[2,3] .* vzn
+    vnew[3,:,:,:] = M[3,1] .* vxn + M[3,2] .* vyn + M[3,3] .* vzn
+
     return vnew
 end

@@ -3,107 +3,53 @@ using FFTW
 using Printf
 
 """
-    compute_phase(A::Array{T,4}; alpha::Real=0.0, beta::Real=0.0, gamma::Real=0.0) where {T<:AbstractFloat}
-
-Compute the magnetic phase from magnetic vector potential
-
-Parameters
-------------------------------
-A: 4D array sized (3, N, N, N). Magnetic vector potential.
-alpha, beta, gamma: Euler angles in rad around Z,Y,X axis, respectively.
-                    Check https://en.wikipedia.org/wiki/Rotation_matrix for the detailed definition.
-
-Outputs
-----------------------------
-phi: 2D array sized (N,N). Magnetic phase.
-
-"""
-function compute_phase(A::Array{T,4}; alpha::Real=0.0, beta::Real=0.0, gamma::Real=0.0) where {T<:AbstractFloat}
-    return -1 .* radon_vecfld(A, alpha, beta, gamma)
-end
-
-"""
-    compute_magnetic_phase(m::Array{T,4}; alpha::Real=0.0, beta::Real=0.0, gamma::Real=0.0, 
-    N::Int=-1) where {T<:AbstractFloat}
+    compute_magnetic_phase(m::Array{T,4}, theta::Real, axis::String;
+N1::Int=-1, N2::Int=-1, Ms=1/mu_0, d::Real=1.0) where {T<:AbstractFloat}
 
 Compute the magnetic phase from magnetization array.
 
 Parameters
 ------------------------------
 m: 4D array sized (3, nx, ny, nz). Magnetization array.
-alpha, beta, gamma: Euler angles in rad around Z,Y,X axis, respectively.
-N: Padding size
+theta: Euler angle.
+axis: rotation axis chosen from "X" or "Y"
+N1: padding size when calculating projection
+N2: padding size of Fourier transfrom kernel, by default 2*N1
 
 Outputs
 ----------------------------
 phi: 2D array sized (N,N). Magnetic phase.
 
 """
-function compute_magnetic_phase(m::Array{T,4}; alpha::Real=0.0, beta::Real=0.0, gamma::Real=0.0, 
-    N::Int=-1) where {T<:AbstractFloat}
-    if N < 0
-        (_, nx, ny, nz) = size(m)
-        N = 2*max(nx, ny, nz)
+function compute_magnetic_phase(m::Array{T,4}, theta::Real, axis::String;
+    N1::Int=-1, N2::Int=-1, Ms=1/mu_0, d::Real=1.0) where {T<:AbstractFloat}
+    (_, nx, ny, nz) = size(m)
+    max_n = max(nx,ny,nz)
+    N1 = N1 > max_n ? N1 : max_n
+    N2 = N2 > N1 ? N2 : N1
+
+    m = pad(m, (3,N1,N1,N1))
+    mx, my, mz = radon3d_xyz(m, theta, axis)
+    mx_pad, my_pad = pad(mx, (N2,N2)), pad(my, (N2, N2))
+
+    mx_pad = ifftshift(mx_pad, (1,2))
+    mx_k = fft(mx_pad, (1,2))
+
+    my_pad = ifftshift(my_pad, (1,2))
+    my_k = fft(my_pad, (1,2))
+
+    ks = fftfreq(N2)
+    phi_k = zeros(ComplexF32, N2, N2)
+    for i=1:N2, j=1:N2
+        k2 = ks[i]^2 + ks[j]^2
+        # Akz need a -1, but projection also need a -1
+        phi_k[i,j] = 1im * (mx_k[i,j] * ks[j] - my_k[i,j] * ks[i]) / k2
     end
-
-    A = compute_vector_potential(m, N)
-    return compute_phase(A, alpha=alpha, beta=beta, gamma=gamma)
-end
-
-"""
-    compute_vector_potential(m::Array{T,4}, N::Int)  where {T<:AbstractFloat}
-
-Compute the magnetic vector potential from a magnetization array.
-
-Input: (3, nx, ny, nz)
-
-output: (3, N, N, N)
-
-"""
-function compute_vector_potential(m::Array{T,4}, N::Int)  where {T<:AbstractFloat}
-    m = vector_padding(m,N,N,N)
-    m = Array{Float32}(m)
-    m = ifftshift(m, (2,3,4))
-    mk = fft(m, (2,3,4))
-    k = get_kernel_k(N)
-    vector_potential_k = cross_product(mk,k)
-    vector_potential = ifft(vector_potential_k, (2,3,4))
-    return fftshift(real.(vector_potential), (2,3,4))
-end
-
-function cross_product(v1::Array{T,4},v2::Array{T,4}) where {T<:Number}
-    (three, nx, ny, nz) = size(v1)
-    v3 = zeros(T, size(v1))
-
-    for i = 1:nx, j=1:ny, k=1:nz
-        v3[1,i,j,k] = cross_x(v1[1,i,j,k], v1[2,i,j,k], v1[3,i,j,k], v2[1,i,j,k], v2[2,i,j,k], v2[3,i,j,k])
-        v3[2,i,j,k] = cross_y(v1[1,i,j,k], v1[2,i,j,k], v1[3,i,j,k], v2[1,i,j,k], v2[2,i,j,k], v2[3,i,j,k])
-        v3[3,i,j,k] = cross_z(v1[1,i,j,k], v1[2,i,j,k], v1[3,i,j,k], v2[1,i,j,k], v2[2,i,j,k], v2[3,i,j,k])
-    end
-    return v3
-end
-
-function get_kernel_k(N::Int)
-    r = FFTW.fftfreq(N)
-    kernel_k = zeros(ComplexF32, (3,N,N,N))
-    for i = 1:N
-        x2 = r[i]^2
-        for j = 1:N
-            y2 = r[j]^2
-            for k = 1:N
-                z2 = r[k]^2
-                r2 = x2+y2+z2
-
-                kernel_k[1,i,j,k] = -1im*r[i]/r2
-                kernel_k[2,i,j,k] = -1im*r[j]/r2
-                kernel_k[3,i,j,k] = -1im*r[k]/r2
-            end
-        end
-    end
-    kernel_k[1,1,1,1] = 0
-    kernel_k[2,1,1,1] = 0
-    kernel_k[3,1,1,1] = 0
-    return kernel_k        
+    phi_k[1,1] = 0.0
+    Phi0 = 2.067833e-18
+    coeff = mu_0 * Ms * d^2 * pi/Phi0
+    phi = coeff .* real.(ifft(phi_k, (1,2)))
+    return fftshift(phi)
 end
 
 function compute_electric_phase(V, V0, Lz, beta)
