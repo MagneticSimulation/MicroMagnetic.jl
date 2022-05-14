@@ -158,8 +158,7 @@ include("ltem/tilt.jl")
 include("ltem/projection.jl")
 include("ltem/ltem.jl")
 
-export radon, radon_3d_object, radon_vecfld, Euler, tilt, warp, tilt_vecfld,
-    compute_phase, compute_magnetic_phase, compute_vector_potential
+export compute_magnetic_phase
 
 
 const _tools_loaded = Ref(false)

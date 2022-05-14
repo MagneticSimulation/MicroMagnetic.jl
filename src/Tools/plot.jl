@@ -15,9 +15,6 @@ output: rgb array with size (3, nx, ny)
 """
 
 function mag_to_rgb(m::Tuple, ra::Number)
-    np =  pyimport("numpy")
-    mpl =  pyimport("matplotlib")
-    plt = pyimport("matplotlib.pyplot")
     colorsys = pyimport("colorsys")
 
     (mx, my, mz) = m

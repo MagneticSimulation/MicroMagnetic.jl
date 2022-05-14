@@ -1,3 +1,5 @@
+using PaddedViews
+
 function inbounds(x, y, Nx, Ny)
     x1, x2 = floor(Int, x), floor(Int, x) + 1
     y1, y2 = floor(Int, y), floor(Int, y) + 1
@@ -128,3 +130,34 @@ function around_points(x::Real, y::Real, A::Array{T, 2}) where {T<:AbstractFloat
     end
     return points
 end
+
+function padding_location(n, N)
+    n1 = div(N-n, 2) + 1
+    if N%2 == 0 && n%2 == 1
+        n1 += 1
+    end
+    n2 = n1 + n - 1
+    return n1, n2
+end
+function pad(v::Array{T}, ndims::Tuple) where {T<:Number}
+    odims = size(v)
+    ndim1, ndim2 = [], []
+    for i in 1:length(odims)
+        push!(ndim1, 1:ndims[i])
+        x1,x2 = padding_location(odims[i], ndims[i])
+        push!(ndim2, x1:x2)
+    end
+    return Array{T}(
+        PaddedView(0, v, Tuple(ndim1), Tuple(ndim2))
+    )
+end
+
+# function crop(v::Array{T}, ndims::Tuple)  where {T<:Number}
+#     odims = size(v)
+#     ndim1 = []
+#     for i in 1:length(odims)
+#         x1, x2 = padding_location(ndims[i], odims[i])
+#         push!(ndim1, x1:x2)
+#     end
+#     return v[ndim1]
+# end
