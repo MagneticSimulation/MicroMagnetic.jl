@@ -158,7 +158,7 @@ include("ltem/tilt.jl")
 include("ltem/projection.jl")
 include("ltem/ltem.jl")
 
-export compute_magnetic_phase
+export compute_magnetic_phase, warp, radon
 
 
 const _tools_loaded = Ref(false)
