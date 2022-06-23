@@ -1,6 +1,9 @@
 using Test
 using JuMag
 
+warp = JuMag.warp
+radon = JuMag.radon
+
 function test_warp()
     a=zeros(4,4)
     a[2,2] = 1

@@ -179,8 +179,13 @@ function llg_stt_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::
     effective_field(sim, spin, t)
 
     ut = driver.ufun(t)
-    compute_field_stt_gpu(spin, driver.h_stt, sim.Ms, driver.ux, driver.uy, driver.uz, T(ut),
-                       mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny, mesh.nz,
+    if isa(sim, AtomicSimGPU)
+      ms = sim.mu_s
+    else
+      ms = sim.Ms
+    end
+    compute_field_stt_gpu(spin, driver.h_stt, ms, driver.ux, driver.uy, driver.uz, T(ut),
+                       T(mesh.dx),T(mesh.dy), T(mesh.dz), mesh.nx, mesh.ny, mesh.nz,
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, N)
 
     blk, thr = cudims(N)
@@ -259,7 +264,7 @@ function llg_stt_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, sp
 
     ut = driver.ufun(t)
     compute_field_stt_gpu(spin, driver.h_stt, sim.Ms, driver.ux, driver.uy, driver.uz, T(ut),
-                       mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny, mesh.nz,
+                       T(mesh.dx), T(mesh.dy), T(mesh.dz), mesh.nx, mesh.ny, mesh.nz,
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, N)
 
     blk, thr = cudims(N)
