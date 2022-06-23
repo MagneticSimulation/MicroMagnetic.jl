@@ -13,7 +13,7 @@ elseif k<160
 end
 
 function relax_system()
-    mesh =  TriangularMesh(nx=1, ny=1, nz=300, dz=1e-9)
+    mesh =  TriangularMeshGPU(nx=1, ny=1, nz=300, dz=1e-9)
     sim = Sim(mesh, name="dw_atomic")
     set_mu_s(sim, 2.0*mu_B)
     sim.driver.alpha = 0.5
@@ -27,13 +27,15 @@ function relax_system()
 
     dmdt_factor = (2 * pi / 360) * 1e9
     println(dmdt_factor)
-    relax(sim, stopping_dmdt=0.1*dmdt_factor, maxsteps=2000, save_vtk_every=100, save_ovf_every=10000)
+    relax(sim, stopping_dmdt=0.1*dmdt_factor, maxsteps=2000, save_vtk_every=1, save_ovf_every=-1)
+    !isdir("ovfs") && mkdir("ovfs")
+    save_ovf(sim, "ovfs/dw_atomic.ovf")
 
 end
 
 
 function run_dynamics(;alpha=0.1, beta=0.0, u=50)
-    mesh =  TriangularMesh(nx=1, ny=1, nz=300, dz=1e-9)
+    mesh =  TriangularMeshGPU(nx=1, ny=1, nz=300, dz=1e-9)
     sim = Sim(mesh, name="dw_dyn", driver="LLG_STT")
     set_mu_s(sim, 2.0*mu_B)
     sim.driver.alpha = alpha
@@ -45,7 +47,7 @@ function run_dynamics(;alpha=0.1, beta=0.0, u=50)
     add_exch(sim, 40*meV)
     add_anis(sim, 0.005*40*meV, axis=(0,0,1))
 
-    ovf = read_ovf("ovfs/dw_atomic_1199.ovf")
+    ovf = read_ovf("ovfs/dw_atomic.ovf")
     init_m0(sim, ovf.data)
 
     for i=1:20
