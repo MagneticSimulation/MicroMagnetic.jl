@@ -82,7 +82,11 @@ include("neb/neb_sd.jl")
 include("neb/neb_llg.jl")
 include("ovf2.jl")
 include("init_m.jl")
+
+
 include("fem/mesh.jl")
+include("fem/sim.jl")
+include("fem/field.jl")
 #include("main.jl")
 
 export UnitTetrahedronMesh, FEMesh
