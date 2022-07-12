@@ -52,8 +52,9 @@ function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Function) where {T<:Abst
 end
 
 function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Tuple{Real,Real,Real}) where {T<:AbstractFloat}
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  b = reshape(v, 3, nxyz)
+  #nxyz = mesh.nx*mesh.ny*mesh.nz
+  N = length(v)
+  b = reshape(v, 3, div(N,3))
   b[1, :] .= init[1]
   b[2, :] .= init[2]
   b[3, :] .= init[3]

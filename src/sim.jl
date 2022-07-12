@@ -209,7 +209,13 @@ end
 Add a static Zeeman energy to the simulation.
 """
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-  nxyz = sim.nxyz
+    # FIXME: We need to unify the two variable names (nxyz and n_nodes)
+    if isa(sim, MicroSimFEM)
+        nxyz = sim.n_nodes
+    else
+        nxyz = sim.nxyz
+    end
+
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
   init_vector!(field, sim.mesh, H0)
