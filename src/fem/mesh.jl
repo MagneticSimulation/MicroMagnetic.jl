@@ -49,8 +49,7 @@ function load_mesh_netgen_neutral(fname::String)
 
     for i = 1:N
         x = split(readline(io))
-        #print(x)
-        @assert i == parse(Int64, x[1])
+        #@assert i == parse(Int64, x[1])
         mesh.cell_verts[1, i] = parse(Int64, x[2])
         mesh.cell_verts[2, i] = parse(Int64, x[3])
         mesh.cell_verts[3, i] = parse(Int64, x[4])
