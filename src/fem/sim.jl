@@ -65,3 +65,33 @@ function set_Ms(sim::MicroSimFEM, Ms::Number)
   sim.Ms .= Ms
   return true
 end
+
+
+function init_vector!(v::Array{T, 1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
+  N = mesh.number_nodes
+  b = reshape(v, 3, N)
+
+  for i = 1:N
+    x,y,z = mesh.coordinates[:,i]
+    b[:, i] .=  init(x,y,z)
+  end
+
+  if NaN in v
+      error("NaN is given by the input function.")
+  end
+  return nothing
+end
+
+function init_m0(sim::MicroSimFEM, m0::TupleOrArrayOrFunction; norm=true)
+
+  init_vector!(sim.prespin, sim.mesh, m0)
+  if norm
+      normalise(sim.prespin, sim.n_nodes)
+  end
+
+  if any(isnan, sim.prespin)
+    error("NaN is given by the input m0!")
+  end
+
+  sim.spin[:] .= sim.prespin[:]
+end

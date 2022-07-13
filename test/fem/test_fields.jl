@@ -1,5 +1,6 @@
 using JuMag
 using Test
+using DelimitedFiles
 
 function test_zeeman()
     mesh = FEMesh("octa.neutral")
@@ -16,4 +17,29 @@ function test_zeeman()
 
 end
 
+function init_m_fun(x,y,z)
+    r = sqrt(x*x+y*y+z*z)
+    return (0, sin(r), cos(r))
+end
+
+function test_init_m_function()
+    mesh = FEMesh("fields/cylinder.neutral")
+    sim = Sim(mesh)
+    set_Ms(sim, 8.6e5)
+
+    init_m0(sim, init_m_fun)
+    N = length(sim.spin)
+    println("The length of spin: ", N)
+    
+    m0 = readdlm("fields/m.txt", header=true)[1]
+    mxyz = reshape(transpose(m0[:, 4:6]), N, 1)
+    #println("max diff: ", maximum(abs.(sim.spin - mxyz)))
+    eps = 1e-6
+    @test maximum(abs.(sim.spin - mxyz)) < eps
+    #print(mxyz[1:50])
+end
+
+
+
 test_zeeman()
+test_init_m_function()
