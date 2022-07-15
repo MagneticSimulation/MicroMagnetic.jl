@@ -1,8 +1,15 @@
-function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
+function  init_scalar!(v::Array{T, 1}, mesh::FDMesh, init::Number) where {T<:AbstractFloat}
     for i = 1:mesh.nxyz
         v[i] = init
     end
     return nothing
+end
+
+function  init_scalar!(v::Array{T, 1}, mesh::FEMesh, init::Number) where {T<:AbstractFloat}
+  for i = 1:mesh.number_cells
+      v[i] = init
+  end
+  return nothing
 end
 
 function  init_scalar!(v::Array{T1, 1}, mesh::Mesh, init::Array{T2, 1}) where {T1,T2<:AbstractFloat}
@@ -45,6 +52,21 @@ function init_vector!(v::Array{T, 1}, mesh::FDMesh, init::Function) where {T<:Ab
       end
     end
   end
+  if NaN in v
+      error("NaN is given by the input function.")
+  end
+  return nothing
+end
+
+function init_vector!(v::Array{T, 1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
+  N = mesh.number_nodes
+  b = reshape(v, 3, N)
+
+  for i = 1:N
+    x,y,z = mesh.coordinates[:,i]
+    b[:, i] .=  init(x,y,z)
+  end
+
   if NaN in v
       error("NaN is given by the input function.")
   end

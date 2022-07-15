@@ -39,7 +39,26 @@ function test_init_m_function()
     #print(mxyz[1:50])
 end
 
+function test_exchange_field()
+    mesh = FEMesh("fields/cylinder.neutral")
+    sim = Sim(mesh)
+    set_Ms(sim, 8.6e5)
+
+    init_m0(sim, init_m_fun)
+
+    z = add_exch(sim, 1.3e-11)
+
+    JuMag.effective_field(sim, sim.spin, 0.0)
+    N = 3*sim.n_nodes
+
+    f0 = readdlm("fields/exch.txt", header=true)[1]
+    field = reshape(transpose(f0[:, 4:6]), N, 1)
+    eps = 5e-5
+    @test maximum(abs.(z.field - field)) < eps
+
+end
 
 
 test_zeeman()
 test_init_m_function()
+test_exchange_field()
