@@ -13,6 +13,8 @@ PaddedViews = "5432bcbf-9aad-5242-b902-cca2824c8663"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Sundials = "c3572dad-4567-51f8-b174-8c6c989267f4"
 
 [extras]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"

@@ -349,13 +349,23 @@ end
 Add exchange energy to the system.
 """
 function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
-  nxyz = sim.nxyz
+    if isa(sim, MicroSimFEM)
+        nxyz = sim.n_nodes
+        Spatial_A = zeros(Float64, sim.n_cells)
+        K_mat = spzeros(3*nxyz, 3*nxyz)
+    else
+        nxyz = sim.nxyz
+        Spatial_A = zeros(Float64, sim.nxyz)
+    end
+  
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
-  Spatial_A = zeros(Float64, nxyz)
+
   init_scalar!(Spatial_A , sim.mesh, A)
-  if isa(sim, MicroSim)
+  if isa(sim, MicroSim) 
     exch = Exchange(Spatial_A , field, energy, name)
+  elseif isa(sim, MicroSimFEM)
+    exch = ExchangeFEM(Spatial_A , field, energy, K_mat, false, name)
   else
 	exch = HeisenbergExchange(A, field, energy, name)
   end

@@ -2,9 +2,12 @@ mutable struct FEMesh <: Mesh
     number_nodes::Int64  #total node number
     number_cells::Int64  #total cell number
     number_faces_bnd::Int64 #total surface number
+    unit_length::Float64
     coordinates::Array{Float64, 2}  #coordinates array
     cell_verts::Array{Int64, 2} 
-    face_verts::Array{Int64, 2} 
+    face_verts::Array{Int64, 2}
+    volumes::Array{Float64, 1}
+    L_inv_neg::Array{Float64, 1}
     FEMesh() = new()
 end
 
@@ -23,6 +26,7 @@ function UnitTetrahedronMesh()
                   2 2 3 3;
                   3 4 4 4]
 
+    mesh.unit_length = 1.0
     return mesh
 
 end
@@ -70,6 +74,12 @@ function load_mesh_netgen_neutral(fname::String)
     return mesh
 end
 
-function FEMesh(fname::String)
-    return load_mesh_netgen_neutral(fname)
+function FEMesh(fname::String; unit_length=1e-9)
+    mesh = load_mesh_netgen_neutral(fname)
+    mesh.unit_length = unit_length
+    compute_mesh_volume!(mesh)
+    compute_L_inv_neg!(mesh)
+    return mesh
 end
+
+
