@@ -7,6 +7,7 @@ mutable struct MicroSimFEM <: AbstractSim
     field::Array{Float64, 1}
     energy::Array{Float64, 1}
     Ms::Array{Float64, 1}
+    L_mu::Array{Float64, 1}
     pins::Array{Bool, 1}
     n_nodes::Int64
     n_cells::Int64
@@ -33,6 +34,7 @@ mutable struct MicroSimFEM <: AbstractSim
     sim.energy = zeros(Float64, n_nodes)
 
     sim.Ms = zeros(Float64, n_cells)
+    sim.L_mu = zeros(Float64, 3*n_nodes)
     sim.pins = zeros(Bool, n_nodes)
     sim.save_data = save_data
 
@@ -63,6 +65,7 @@ end
 
 function set_Ms(sim::MicroSimFEM, Ms::Number)
   sim.Ms .= Ms
+  compute_L_Ms!(sim.L_mu, sim.mesh, sim.Ms)
   return true
 end
 

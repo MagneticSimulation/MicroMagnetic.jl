@@ -65,11 +65,15 @@ function effective_field(exch::ExchangeFEM, sim::MicroSimFEM, spin::Array{Float6
   field = exch.K_matrix*spin
 
   exch.field .= (field .* mesh.L_inv_neg)
-  #volume = sim.mesh.volume
-  #for i = 1:nxyz
-  #  j = 3*(i-1)
-  #zee.energy[i] = -mu0*sim.Ms[i]*volume*(spin[j+1]*field[j+1] + spin[j+2]*field[j+2] + spin[j+3]*field[j+3])
-  #end
+
+  f_Ms = exch.field .* sim.L_mu
+
+  v_coeff = mesh.unit_length*mesh.unit_length*mesh.unit_length
+  
+  for i = 1:sim.n_nodes
+    j = 3*(i-1)
+    exch.energy[i] = -0.5*mu0*(spin[j+1]*f_Ms[j+1] + spin[j+2]*f_Ms[j+2] + spin[j+3]*f_Ms[j+3])*v_coeff
+  end
 end
 
 
