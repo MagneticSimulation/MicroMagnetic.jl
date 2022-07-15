@@ -56,6 +56,11 @@ function test_exchange_field()
     eps = 5e-5
     @test maximum(abs.(z.field - field)) < eps
 
+    expected_energy = 3.18671455452e-19
+
+    println("exch energy: ",sum(z.energy))
+    @test (sum(z.energy)-expected_energy)/expected_energy<1e-10
+
 end
 
 
