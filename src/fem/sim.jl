@@ -84,3 +84,18 @@ function init_m0(sim::MicroSimFEM, m0::TupleOrArrayOrFunction; norm=true)
 
   sim.spin[:] .= sim.prespin[:]
 end
+
+
+function add_demag(sim::MicroSimFEM; name="demag")
+  demag = init_demag(sim)
+  demag.name = name
+  push!(sim.interactions, demag)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
+  end
+  return demag
+end

@@ -63,7 +63,41 @@ function test_exchange_field()
 
 end
 
+function test_demag_field()
+    mesh = FEMesh("fields/cylinder.neutral")
+    sim = Sim(mesh)
+    set_Ms(sim, 8.6e5)
+
+    init_m0(sim, init_m_fun)
+
+    demag = add_demag(sim)
+
+    JuMag.effective_field(sim, sim.spin, 0.0)
+    N = 3*sim.n_nodes
+
+    g_phi = readdlm("fields/g_phi.txt", header=true)[1]
+    g1 = g_phi[:, 4]
+    phi1 = g_phi[:, 5]
+    println("diff:", g1[1:10], demag.g1[1:10])
+    println("g1 max diff: ", maximum(abs.(demag.g1 - g1)))
+    @test maximum(abs.(demag.g1 - g1)) < 1e-9
+
+    println("phi1 max diff: ", maximum(abs.(demag.phi1 - phi1))) 
+    @test maximum(abs.(demag.phi1 - phi1)) < 5e-9
+
+    f0 = readdlm("fields/demag.txt", header=true)[1]
+    field = reshape(transpose(f0[:, 4:6]), N, 1)
+    eps = 5e-5
+    mean = sum(abs.(field))/length(field)
+    @test maximum(abs.(demag.field - field)) / mean < eps
+
+    energy = 3.97e-21
+    @test (sum(demag.energy)-energy)/energy<0.02
+
+end
+
 
 test_zeeman()
 test_init_m_function()
 test_exchange_field()
+test_demag_field()

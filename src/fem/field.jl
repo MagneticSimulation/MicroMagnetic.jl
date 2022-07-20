@@ -1,4 +1,3 @@
-
 function effective_field(zee::Zeeman, sim::MicroSimFEM, spin::Array{Float64, 1}, t::Float64)
     mu0 = 4*pi*1e-7
     #nxyz = sim.nxyz
@@ -18,7 +17,6 @@ function assemble_exch_matirx(exch::ExchangeFEM, sim::MicroSimFEM)
   K = exch.K_matrix
   A = exch.A
   Ms = sim.Ms
-
 
   for c = 1 : mesh.number_cells
 
@@ -77,3 +75,87 @@ function effective_field(exch::ExchangeFEM, sim::MicroSimFEM, spin::Array{Float6
 end
 
 
+function effective_field(demag::DemagFEM, sim::MicroSimFEM, spin::Array{Float64, 1}, t::Float64)
+  mu0 = 4*pi*1e-7
+  mesh = sim.mesh
+
+  if !demag.matrices_assembled
+    demag.matrices_assembled = true
+    assemble_matirx_DGK1K2(demag, sim)
+    #assemble_matirx_U1U2K2(demag, sim)
+    assmeble_matrix_B(demag, sim)
+  end
+  
+  # step1: phi1 = D*m
+  mul!(demag.g1,demag.D,spin)
+
+  # step2: solve K1*phi1 = g1
+  demag.phi1 = demag.K1 \ demag.g1
+
+  # step3: u1_bnd = U1*phi1
+  #mul!(demag.u1_bnd, demag.U1, demag.phi1)
+  for i = 1:mesh.number_nodes_bnd
+    id = mesh.map_b2g[i]
+    demag.u1_bnd[i] = demag.phi1[id]
+  end
+  
+  # step4: u2_bnd = B*u1_bnd
+  mul!(demag.u2_bnd, demag.B, demag.u1_bnd)
+
+  # step5: g2 = U2*u2_bnd
+  #mul!(demag.g2, demag.U2, demag.u2_bnd)
+  for i = 1:mesh.number_nodes_bnd
+    id = mesh.map_b2g[i]
+    demag.g2[id] = demag.u2_bnd[i]
+  end
+  
+  # step6: solve K2*phi2 = g2
+  demag.phi2 = demag.K2 \ demag.g2
+
+  # step7: phi = phi1 + phi2
+  demag.phi1 .+= demag.phi2
+
+  # step8: F = G*phi
+  mul!(demag.field, demag.G, demag.phi1)
+
+  demag.field .*= mesh.L_inv_neg
+
+  f_Ms = demag.field .* sim.L_mu
+
+  v_coeff = mesh.unit_length*mesh.unit_length*mesh.unit_length
+  
+  for i = 1:sim.n_nodes
+    j = 3*(i-1)
+    demag.energy[i] = -0.5*mu0*(spin[j+1]*f_Ms[j+1] + spin[j+2]*f_Ms[j+2] + spin[j+3]*f_Ms[j+3])*v_coeff
+  end
+end
+
+function init_demag(sim::MicroSimFEM)
+
+  mesh = sim.mesh
+  
+  demag = DemagFEM()
+  
+  demag.K1 = spzeros(mesh.number_nodes, mesh.number_nodes)
+  demag.K2 = spzeros(mesh.number_nodes, mesh.number_nodes)
+  demag.D = spzeros(mesh.number_nodes, 3*mesh.number_nodes)
+  demag.G = spzeros(3*mesh.number_nodes, mesh.number_nodes)
+
+  demag.B = zeros(mesh.number_nodes_bnd, mesh.number_nodes_bnd)
+  
+  demag.g1 = zeros(mesh.number_nodes)
+  demag.g2 = zeros(mesh.number_nodes)
+  demag.phi1 = zeros(mesh.number_nodes)
+  demag.phi2 = zeros(mesh.number_nodes)
+
+  demag.u1_bnd = zeros(mesh.number_nodes_bnd)
+  demag.u2_bnd = zeros(mesh.number_nodes_bnd)
+
+  demag.field = zeros(3*mesh.number_nodes)
+  demag.energy = zeros(mesh.number_nodes)
+
+  demag.matrices_assembled = false
+
+  return demag
+
+end
