@@ -17,8 +17,7 @@ mutable struct MicroSimFEM <: AbstractSim
     MicroSimFEM() = new()
   end
 
-
-  function Sim(mesh::FEMesh; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
+function Sim(mesh::FEMesh; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
 
     sim = MicroSimFEM()
 
@@ -98,4 +97,43 @@ function add_demag(sim::MicroSimFEM; name="demag")
       push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
   end
   return demag
+end
+
+
+"""
+    add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
+
+Add Anisotropy to the system, where the energy density is given by
+
+```math
+E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
+```
+"""
+function add_anis(sim::MicroSimFEM, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
+  
+  Kus =  zeros(Float64, sim.n_cells)
+  init_scalar!(Kus, sim.mesh, Ku)
+  field = zeros(Float64, 3*sim.n_nodes)
+  energy = zeros(Float64, sim.n_nodes)
+
+  lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
+  axes = zeros(Float64, 3*sim.n_cells)
+  for i = 1:sim.n_cells
+    axes[3*(i-1)+1] = axis[1]/lt
+    axes[3*(i-1)+2] = axis[2]/lt
+    axes[3*(i-1)+3] = axis[3]/lt
+  end
+
+  K_matrix = spzeros(3*sim.n_nodes, 3*sim.n_nodes)
+
+  anis =  AnisotropyFEM(Kus, axes, field, energy, K_matrix, false, name)
+  push!(sim.interactions, anis)
+
+  if sim.save_data
+      push!(sim.saver.headers, string("E_",name))
+      push!(sim.saver.units, "J")
+      id = length(sim.interactions)
+      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+  end
+  return anis
 end

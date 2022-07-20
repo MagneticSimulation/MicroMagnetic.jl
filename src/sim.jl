@@ -3,7 +3,6 @@
 
 Create a simulation instance for given mesh.
 
-
 """
 function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
 
