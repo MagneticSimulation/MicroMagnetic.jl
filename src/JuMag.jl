@@ -86,6 +86,7 @@ include("init_m.jl")
 
 include("fem/util.jl")
 include("fem/sim.jl")
+include("fem/demag.jl")
 include("fem/field.jl")
 
 #include("main.jl")

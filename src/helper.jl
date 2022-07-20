@@ -1,4 +1,4 @@
-function  init_scalar!(v::Array{T, 1}, mesh::FDMesh, init::Number) where {T<:AbstractFloat}
+function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
     for i = 1:mesh.nxyz
         v[i] = init
     end
@@ -40,7 +40,7 @@ function init_scalar!(v::Array{Bool, 1}, mesh::Mesh, init_fun::Function)
     return true
 end
 
-function init_vector!(v::Array{T, 1}, mesh::FDMesh, init::Function) where {T<:AbstractFloat}
+function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Function) where {T<:AbstractFloat}
   nxyz = mesh.nx*mesh.ny*mesh.nz
   dx,dy,dz = mesh.dx, mesh.dy, mesh.dz
   b = reshape(v, 3, nxyz)
