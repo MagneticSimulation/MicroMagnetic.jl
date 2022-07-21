@@ -27,7 +27,11 @@ function search_tau(sim::AbstractSim)
   tau1  = driver.min_tau
   tau = 0.0
   tau2 = 0.0
-  nxyz = sim.nxyz
+  if isa(sim, MicroSimFEM)
+    nxyz = sim.n_nodes
+  else
+    nxyz = sim.nxyz
+  end
   m = sim.spin
   h = sim.field
   dtau = 1e-12
@@ -130,11 +134,13 @@ function compute_tau(driver::EnergyMinimization, m_pre::Array{Float64, 1}, m::Ar
 end
 
 function run_step(sim::AbstractSim, driver::EnergyMinimization)
+  N_spins = isa(sim, MicroSimFEM) ? sim.n_nodes : sim.nxyz
+
   effective_field(sim, sim.spin, 0.0)
   if driver.steps == 0
     search_tau(sim)
   else
-    compute_tau(sim.driver, sim.prespin, sim.spin, sim.field, sim.nxyz)
+    compute_tau(sim.driver, sim.prespin, sim.spin, sim.field, N_spins)
   end
 
   sim.prespin[:] = sim.spin[:]
@@ -143,7 +149,8 @@ function run_step(sim::AbstractSim, driver::EnergyMinimization)
   m = sim.spin
   gk = driver.gk
   tau = driver.tau
-  for i=0:sim.nxyz-1
+  
+  for i=0:N_spins-1
       if sim.pins[i+1]
           continue
       end
@@ -158,9 +165,9 @@ function run_step(sim::AbstractSim, driver::EnergyMinimization)
       m[j+2] = mz/(1+factor)
   end
   driver.steps += 1
-  max_length_error = error_length_m(sim.spin, sim.nxyz)
+  max_length_error = error_length_m(sim.spin, N_spins)
   if max_length_error > 1e-15
-    normalise(m, sim.nxyz)
+    normalise(m, N_spins)
   end
   return  nothing
 end
