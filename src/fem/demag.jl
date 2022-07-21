@@ -1,8 +1,8 @@
 mutable struct DemagFEM
     D::SparseMatrixCSC{}
     G::SparseMatrixCSC{}
-    K1::SparseMatrixCSC{}
-    K2::SparseMatrixCSC{}
+    K1::Any
+    K2::Any
     B::Matrix{Float64}
     g1::Array{Float64, 1}
     g2::Array{Float64, 1}
@@ -104,8 +104,8 @@ function assemble_matirx_DGK1K2(demag::DemagFEM, sim::MicroSimFEM)
     mesh = sim.mesh
     D = demag.D
     G = demag.G
-    K1 = demag.K1
-    K2 = demag.K2
+    K1 = spzeros(mesh.number_nodes, mesh.number_nodes)
+    K2 = spzeros(mesh.number_nodes, mesh.number_nodes)
     Ms = sim.Ms
     map_g2b = mesh.map_g2b
 
@@ -148,8 +148,11 @@ function assemble_matirx_DGK1K2(demag::DemagFEM, sim::MicroSimFEM)
 
     for i = 1:mesh.number_nodes_bnd
         j = mesh.map_b2g[i]
-        demag.K2[j,j] = 1.0
+        K2[j,j] = 1.0
     end
+
+    demag.K1 = factorize(K1) #reuse the factorization to speed up the calculation
+    demag.K2 = factorize(K2)
 end
 
 function ComputeVertBSA(mesh::FEMesh)
@@ -224,3 +227,34 @@ function assmeble_matrix_B(demag::DemagFEM, sim::MicroSimFEM)
     end
 
 end
+
+
+function init_demag(sim::MicroSimFEM)
+
+    mesh = sim.mesh
+    
+    demag = DemagFEM()
+    
+    #demag.K1 = spzeros(mesh.number_nodes, mesh.number_nodes)
+    #demag.K2 = spzeros(mesh.number_nodes, mesh.number_nodes)
+    demag.D = spzeros(mesh.number_nodes, 3*mesh.number_nodes)
+    demag.G = spzeros(3*mesh.number_nodes, mesh.number_nodes)
+  
+    demag.B = zeros(mesh.number_nodes_bnd, mesh.number_nodes_bnd)
+    
+    demag.g1 = zeros(mesh.number_nodes)
+    demag.g2 = zeros(mesh.number_nodes)
+    demag.phi1 = zeros(mesh.number_nodes)
+    demag.phi2 = zeros(mesh.number_nodes)
+  
+    demag.u1_bnd = zeros(mesh.number_nodes_bnd)
+    demag.u2_bnd = zeros(mesh.number_nodes_bnd)
+  
+    demag.field = zeros(3*mesh.number_nodes)
+    demag.energy = zeros(mesh.number_nodes)
+  
+    demag.matrices_assembled = false
+  
+    return demag
+  
+  end
