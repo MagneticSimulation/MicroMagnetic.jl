@@ -250,17 +250,17 @@ Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its n
 
 """
 function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-  nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  init_vector!(field, sim.mesh, H0)
+    N_spins = isa(sim, MicroSimFEM) ? sim.n_nodes : sim.nxyz
+    field = zeros(Float64, 3*N_spins)
+    init_vector!(field, sim.mesh, H0)
 
-  for i in sim.interactions
-    if i.name == name
-      i.field[:] = field[:]
-      return nothing
+    for i in sim.interactions
+        if i.name == name
+            i.field[:] = field[:]
+            return nothing
+        end
     end
-  end
-  return nothing
+    return nothing
 end
 
 """

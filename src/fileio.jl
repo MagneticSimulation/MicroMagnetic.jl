@@ -26,6 +26,10 @@ function write_data(sim::AbstractSim)
   write_data(sim, sim.saver)
 end
 
+function save_sim_data(sim::AbstractSim)
+  write_data(sim, sim.saver)
+end
+
 function write_data(sim::AbstractSim, saver::DataSaver)
     if !saver.header_saved
       io = open(saver.name, "w");
