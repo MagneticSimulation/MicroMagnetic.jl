@@ -46,23 +46,19 @@ def plot_loop():
 
     plt.rc('font', **font)
     fig = plt.figure(facecolor='w', figsize=(4, 3))
-    axes = fig.add_subplot(111)
-    # 折线图
-    axes.plot(H, m, linestyle='-', color='slateblue', marker='o', linewidth=1.2, label='0K', markersize=1.2)
-    axes.plot(-H, -m, linestyle='-', color='slateblue', marker='o', linewidth=1.2, label='', markersize=1.2)
+    plt.plot(H, m, linestyle='-', color='slateblue', marker='o', linewidth=1.2, label='0K', markersize=1.2)
+    plt.plot(-H, -m, linestyle='-', color='slateblue', marker='o', linewidth=1.2, label='', markersize=1.2)
 
-    # 画网格线
-    axes.grid(c='lightgrey')
-    # 设置x、y轴标签
-    axes.set_ylabel(r"$m$")
-    axes.set_xlabel("H (kA)")
+    plt.grid(c='lightgrey')
+
+    plt.ylabel(r"$m$")
+    plt.xlabel("H (kA)")
     
     #l = axes.legend(loc='lower right')
-    l = axes.legend()
+    l = plt.legend()
     custom_legend(l)
     plt.tight_layout()
-    plt.savefig('./loop.png', dpi=600)
+    fig.savefig('loop.png', dpi=600)
 
 if __name__ == "__main__":
-    #beauty data
     plot_loop()
