@@ -85,6 +85,9 @@ function search_tau(sim::AbstractSim)
     end
   end
   driver.tau = (a+b)/2
+  if driver.tau < 0
+    driver.tau = -driver.tau
+  end
 end
 
 
