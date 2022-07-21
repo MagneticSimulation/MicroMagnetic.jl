@@ -16,6 +16,9 @@ include("test_ovf.jl")
 include("test_neb.jl")
 include("test_geometry.jl")
 
+include("fem/test_mesh.jl")
+include("fem/test_fields.jl")
+
 if JuMag._cuda_available.x
   JuMag.cuda_using_double()
   include("cuda/test_sim.jl")
