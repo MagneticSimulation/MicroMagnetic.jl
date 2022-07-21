@@ -16,7 +16,7 @@ function relax_sw_loop()
     set_Ms(sim, 1e6) 
 
     # We set the initial state of the system.
-    init_m0(sim, (-1,-1,0)) 
+    init_m0(sim, (1,0,0)) 
 
     # In this system, we consider three energies, i.e., exchange, demag and zeeman. 
     add_exch(sim, 1.3e-11)
