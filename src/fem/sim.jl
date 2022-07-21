@@ -94,7 +94,7 @@ function add_demag(sim::MicroSimFEM; name="demag")
       push!(sim.saver.headers, string("E_",name))
       push!(sim.saver.units, "J")
       id = length(sim.interactions)
-      push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
+      push!(sim.saver.results, o::MicroSimFEM->sum(o.interactions[id].energy))
   end
   return demag
 end
@@ -138,9 +138,25 @@ function add_anis(sim::MicroSimFEM, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   return anis
 end
 
+function average_m(sim::MicroSimFEM)
+
+  b = sim.spin .* sim.L_mu
+
+  b = reshape(b, 3, sim.n_nodes)
+
+  mx = 3*sum(b[1, :]) / sum(sim.L_mu)
+  my = 3*sum(b[2, :]) / sum(sim.L_mu)
+  mz = 3*sum(b[3, :]) / sum(sim.L_mu)
+
+  return (mx, my, mz)
+end
+
 
 function save_inp(sim::MicroSimFEM, fname::String)
   mesh = sim.mesh
+
+  #create the parent folder if necessary. TODO: copy this line to other places.
+  mkpath(dirname(fname))
 
   f = open(fname, "w")
 

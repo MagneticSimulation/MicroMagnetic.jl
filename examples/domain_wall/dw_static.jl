@@ -18,4 +18,6 @@ sim = StdSim(mesh, Ms=8e5, A=1.3e-11, Ku=1e5, axis=(1,0,0), name="DW", m0=init_d
 
 relax(sim, maxsteps=2000, stopping_dmdt=0.03, save_vtk_every = -1)
 
+save_sim_data(sim) 
+
 save_vtk(sim, "dw")
