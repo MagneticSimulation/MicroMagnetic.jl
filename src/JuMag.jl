@@ -141,26 +141,6 @@ if _cuda_available.x
            NEB_GPU
 end
 
-try
-	using MPI
-catch
-    _mpi_available[] = false
-end
-
-if _mpi_available.x && _cuda_available.x
-    include("cuda_mpi/neb.jl")
-    include("cuda_mpi/dopri5.jl")
-    include("cuda_mpi/neb_kernels.jl")
-    export NEB_MPI
-
-    function using_multiple_gpus()
-        if !MPI.Initialized()
-            MPI.Init()
-        end
-        comm = MPI.COMM_WORLD
-        CUDA.device!(MPI.Comm_rank(comm) % length(devices()))
-    end
-end
 
 include("ltem/interpolation.jl")
 include("ltem/tilt.jl")
@@ -184,9 +164,6 @@ function __init__()
     _cuda_available[] = CUDA.functional()
     if !_cuda_available.x
         @warn "CUDA is not available!"
-    end
-    if !_mpi_available.x
-        @warn "MPI is not available!"
     end
 end
 
