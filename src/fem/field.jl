@@ -144,7 +144,6 @@ function effective_field(demag::DemagFEM, sim::MicroSimFEM, spin::Array{Float64,
   if !demag.matrices_assembled
     demag.matrices_assembled = true
     assemble_matirx_DGK1K2(demag, sim)
-    #assemble_matirx_U1U2K2(demag, sim)
     assmeble_matrix_B(demag, sim)
   end
   
@@ -192,32 +191,3 @@ function effective_field(demag::DemagFEM, sim::MicroSimFEM, spin::Array{Float64,
   end
 end
 
-function init_demag(sim::MicroSimFEM)
-
-  mesh = sim.mesh
-  
-  demag = DemagFEM()
-  
-  demag.K1 = spzeros(mesh.number_nodes, mesh.number_nodes)
-  demag.K2 = spzeros(mesh.number_nodes, mesh.number_nodes)
-  demag.D = spzeros(mesh.number_nodes, 3*mesh.number_nodes)
-  demag.G = spzeros(3*mesh.number_nodes, mesh.number_nodes)
-
-  demag.B = zeros(mesh.number_nodes_bnd, mesh.number_nodes_bnd)
-  
-  demag.g1 = zeros(mesh.number_nodes)
-  demag.g2 = zeros(mesh.number_nodes)
-  demag.phi1 = zeros(mesh.number_nodes)
-  demag.phi2 = zeros(mesh.number_nodes)
-
-  demag.u1_bnd = zeros(mesh.number_nodes_bnd)
-  demag.u2_bnd = zeros(mesh.number_nodes_bnd)
-
-  demag.field = zeros(3*mesh.number_nodes)
-  demag.energy = zeros(mesh.number_nodes)
-
-  demag.matrices_assembled = false
-
-  return demag
-
-end
