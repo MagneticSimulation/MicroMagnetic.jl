@@ -3,7 +3,8 @@ using Test
 using DelimitedFiles
 
 function test_zeeman()
-    mesh = FEMesh("octa.neutral")
+    filepath = joinpath(@__DIR__, "octa.neutral")
+    mesh = FEMesh(filepath)
     sim = Sim(mesh)
     set_Ms(sim, 8.6e5)
     
@@ -22,7 +23,8 @@ function init_m_fun(x,y,z)
 end
 
 function test_init_m_function()
-    mesh = FEMesh("fields/cylinder.neutral")
+    filepath = joinpath(@__DIR__, "fields/cylinder.neutral")
+    mesh = FEMesh(filepath)
     sim = Sim(mesh)
     set_Ms(sim, 8.6e5)
 
@@ -30,7 +32,8 @@ function test_init_m_function()
     N = length(sim.spin)
     println("The length of spin: ", N)
     
-    m0 = readdlm("fields/m.txt", header=true)[1]
+    filepath = joinpath(@__DIR__, "fields/m.txt")
+    m0 = readdlm(filepath, header=true)[1]
     mxyz = reshape(transpose(m0[:, 4:6]), N, 1)
     #println("max diff: ", maximum(abs.(sim.spin - mxyz)))
     eps = 1e-6
@@ -40,7 +43,8 @@ end
 
 
 function test_zeeman_field()
-    mesh = FEMesh("fields/cylinder.neutral")
+    filepath = joinpath(@__DIR__, "fields/cylinder.neutral")
+    mesh = FEMesh(filepath)
     sim = Sim(mesh)
     set_Ms(sim, 8.6e5)
 
@@ -56,7 +60,8 @@ function test_zeeman_field()
 end
 
 function test_anis_field()
-    mesh = FEMesh("fields/cylinder.neutral")
+    filepath = joinpath(@__DIR__, "fields/cylinder.neutral")
+    mesh = FEMesh(filepath)
     sim = Sim(mesh)
     set_Ms(sim, 8.6e5)
 
@@ -67,7 +72,8 @@ function test_anis_field()
     JuMag.effective_field(sim, sim.spin, 0.0)
     N = 3*sim.n_nodes
 
-    f0 = readdlm("fields/anis.txt", header=true)[1]
+    filepath = joinpath(@__DIR__, "fields/anis.txt")
+    f0 = readdlm(filepath, header=true)[1]
     field = reshape(transpose(f0[:, 4:6]), N, 1)
     eps = 1e-6
     @test maximum(abs.(z.field - field)) < eps
@@ -82,7 +88,8 @@ end
 
 
 function test_exchange_field()
-    mesh = FEMesh("fields/cylinder.neutral")
+    filepath = joinpath(@__DIR__, "fields/cylinder.neutral")
+    mesh = FEMesh(filepath)
     sim = Sim(mesh)
     set_Ms(sim, 8.6e5)
 
@@ -93,7 +100,8 @@ function test_exchange_field()
     JuMag.effective_field(sim, sim.spin, 0.0)
     N = 3*sim.n_nodes
 
-    f0 = readdlm("fields/exch.txt", header=true)[1]
+    filepath = joinpath(@__DIR__, "fields/exch.txt")
+    f0 = readdlm(filepath, header=true)[1]
     field = reshape(transpose(f0[:, 4:6]), N, 1)
     eps = 5e-5
     @test maximum(abs.(z.field - field)) < eps
@@ -106,7 +114,8 @@ function test_exchange_field()
 end
 
 function test_demag_field()
-    mesh = FEMesh("fields/cylinder.neutral")
+    filepath = joinpath(@__DIR__, "fields/cylinder.neutral")
+    mesh = FEMesh(filepath)
     sim = Sim(mesh)
     set_Ms(sim, 8.6e5)
 
@@ -117,7 +126,8 @@ function test_demag_field()
     JuMag.effective_field(sim, sim.spin, 0.0)
     N = 3*sim.n_nodes
 
-    g_phi = readdlm("fields/g_phi.txt", header=true)[1]
+    filepath = joinpath(@__DIR__, "fields/g_phi.txt")
+    g_phi = readdlm(filepath, header=true)[1]
     g1 = g_phi[:, 4]
     phi1 = g_phi[:, 5]
     println("diff:", g1[1:10], demag.g1[1:10])
@@ -127,7 +137,8 @@ function test_demag_field()
     println("phi1 max diff: ", maximum(abs.(demag.phi1 - phi1))) 
     @test maximum(abs.(demag.phi1 - phi1)) < 5e-9
 
-    f0 = readdlm("fields/demag.txt", header=true)[1]
+    filepath = joinpath(@__DIR__, "fields/demag.txt")
+    f0 = readdlm(filepath, header=true)[1]
     field = reshape(transpose(f0[:, 4:6]), N, 1)
     eps = 5e-5
     mean = sum(abs.(field))/length(field)
