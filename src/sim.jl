@@ -557,7 +557,7 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
   lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
-  naxis = (axis[1]^2/lt, axis[2]^2/lt, axis[3]^2/lt)
+  naxis = (axis[1]/lt, axis[2]/lt, axis[3]/lt)
   anis =  Anisotropy(Kus, naxis, field, energy, name)
   push!(sim.interactions, anis)
 
@@ -577,7 +577,7 @@ Add Anisotropy within the Geometry, or update corresponding Ku if other anis is 
 """
 function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0,0,1), name="anis")
   lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
-  naxis = (axis[1]^2/lt, axis[2]^2/lt, axis[3]^2/lt)
+  naxis = (axis[1]/lt, axis[2]/lt, axis[3]/lt)
   for interaction in sim.interactions
       if interaction.name == name
          update_scalar_geometry(interaction.Ku, geo, Ku)

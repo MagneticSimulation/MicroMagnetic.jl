@@ -435,7 +435,7 @@ function add_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1)
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
   lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
-  naxis = (axis[1]^2/lt,axis[2]^2/lt,axis[3]^2/lt)
+  naxis = (axis[1]/lt,axis[2]/lt,axis[3]/lt)
   anis = AnisotropyGPU(Kus, naxis, field, energy, Float(0.0), name)
   push!(sim.interactions, anis)
 
@@ -464,7 +464,7 @@ function add_anis(sim::AbstractSimGPU, geo::Geometry, Ku::Number; axis=(0,0,1), 
   field = zeros(Float, 3*nxyz)
   energy = zeros(Float, nxyz)
   lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
-  naxis = (axis[1]^2/lt,axis[2]^2/lt,axis[3]^2/lt)
+  naxis = (axis[1]/lt,axis[2]/lt,axis[3]/lt)
   anis = AnisotropyGPU(Kus, naxis, field, energy, Float(0.0), name)
   push!(sim.interactions, anis)
 
