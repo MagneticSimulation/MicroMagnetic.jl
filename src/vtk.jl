@@ -1,5 +1,6 @@
 using WriteVTK
 using NPZ
+using Printf
 
 """
     save_m(sim::AbstractSim, fname::String; vtk::Bool = false, npy::Bool = false, vtk_folder = "vtks")
@@ -165,3 +166,4 @@ function ovf2vtk(ovf_name, vtk_name=nothing; point_data=false, box=nothing)
     vtk_save(vtk)
     return nothing
 end
+

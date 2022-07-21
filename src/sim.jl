@@ -687,6 +687,12 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
 
   llg_driver = false
 
+  if isa(sim, MicroSimFEM)
+    N_spins = sim.n_nodes
+  else
+    N_spins = sim.nxyz
+  end
+
   if isa(sim.driver, LLG) || (_cuda_available.x && isa(sim.driver, LLG_GPU))
       llg_driver = true
   end
@@ -703,7 +709,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
       T = _cuda_using_double.x ? Float64 : Float32
       dm = CUDA.zeros(T, 3*sim.nxyz)
   else
-      dm = zeros(Float64,3*sim.nxyz)
+    dm = zeros(Float64,3*N_spins)
   end
 
 
@@ -721,7 +727,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
 
       step_size = llg_driver ? driver.ode.step : driver.tau/2.21e5*2
 
-      compute_dm!(dm, sim.prespin, sim.spin, sim.nxyz)
+      compute_dm!(dm, sim.prespin, sim.spin, N_spins)
       max_dmdt = maximum(dm)/step_size
 
       t = llg_driver ? sim.driver.ode.t : 0.0

@@ -91,7 +91,7 @@ include("fem/field.jl")
 
 #include("main.jl")
 
-export UnitTetrahedronMesh, FEMesh
+export UnitTetrahedronMesh, FEMesh, save_inp
 
 #_cuda_available[] = CUDA.functional()
 
