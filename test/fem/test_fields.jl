@@ -14,7 +14,6 @@ function test_zeeman()
     @test z.field[1] == 1.0
     @test z.field[2] == 2.0
     @test z.field[3] == 1e5
-
 end
 
 function init_m_fun(x,y,z)
@@ -37,6 +36,23 @@ function test_init_m_function()
     eps = 1e-6
     @test maximum(abs.(sim.spin - mxyz)) < eps
     #print(mxyz[1:50])
+end
+
+
+function test_zeeman_field()
+    mesh = FEMesh("fields/cylinder.neutral")
+    sim = Sim(mesh)
+    set_Ms(sim, 8.6e5)
+
+    init_m0(sim, init_m_fun)
+
+    z = add_zeeman(sim, (0,0,1e5))
+
+    JuMag.effective_field(sim, sim.spin, 0.0)
+    
+    expected_energy = 1.81151949357e-21
+    println("zeeman energy: ",sum(z.energy))
+    @test abs(sum(z.energy)-expected_energy)/expected_energy<1e-10
 end
 
 function test_anis_field()
@@ -62,6 +78,8 @@ function test_anis_field()
     #@test (sum(z.energy)-expected_energy)/expected_energy<1e-10
 
 end
+
+
 
 function test_exchange_field()
     mesh = FEMesh("fields/cylinder.neutral")
@@ -123,6 +141,7 @@ end
 
 test_zeeman()
 test_init_m_function()
+test_zeeman_field()
 test_anis_field()
 test_exchange_field()
 test_demag_field()

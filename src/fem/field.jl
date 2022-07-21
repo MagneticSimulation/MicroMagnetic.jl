@@ -72,14 +72,19 @@ function assemble_anis_matirx(anis::AnisotropyFEM, sim::MicroSimFEM)
 end
 
 function effective_field(zee::Zeeman, sim::MicroSimFEM, spin::Array{Float64, 1}, t::Float64)
+  
   mu0 = 4*pi*1e-7
-  #nxyz = sim.nxyz
   field = zee.field
-  #volume = sim.mesh.volume
-  #for i = 1:nxyz
-  #  j = 3*(i-1)
-  #zee.energy[i] = -mu0*sim.Ms[i]*volume*(spin[j+1]*field[j+1] + spin[j+2]*field[j+2] + spin[j+3]*field[j+3])
-  #end
+  mesh = sim.mesh
+
+  f_Ms = field .* sim.L_mu
+
+  v_coeff = mesh.unit_length*mesh.unit_length*mesh.unit_length
+  
+  for i = 1:mesh.number_nodes
+    j = 3*(i-1)
+    zee.energy[i] = -mu0*(spin[j+1]*f_Ms[j+1] + spin[j+2]*f_Ms[j+2] + spin[j+3]*f_Ms[j+3])*v_coeff
+  end
 end
 
 function effective_field(exch::ExchangeFEM, sim::MicroSimFEM, spin::Array{Float64, 1}, t::Float64)
