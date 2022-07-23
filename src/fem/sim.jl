@@ -110,18 +110,31 @@ E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
 ```
 """
 function add_anis(sim::MicroSimFEM, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
-  
+  mesh = sim.mesh
   Kus =  zeros(Float64, sim.n_cells)
   init_scalar!(Kus, sim.mesh, Ku)
   field = zeros(Float64, 3*sim.n_nodes)
   energy = zeros(Float64, sim.n_nodes)
 
-  lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
-  axes = zeros(Float64, 3*sim.n_cells)
-  for i = 1:sim.n_cells
-    axes[3*(i-1)+1] = axis[1]/lt
-    axes[3*(i-1)+2] = axis[2]/lt
-    axes[3*(i-1)+3] = axis[3]/lt
+  if isa(axis, Tuple)
+    @info "The uniform anisotropy axis is used in the simulation!"
+    lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
+    axes = zeros(Float64, 3*sim.n_cells)
+    for i = 1:sim.n_cells
+      axes[3*(i-1)+1] = axis[1]/lt
+      axes[3*(i-1)+2] = axis[2]/lt
+      axes[3*(i-1)+3] = axis[3]/lt
+    end
+  elseif isa(axis, Array)
+    @info "The material-dependent anisotropy axes are used in the simulation!"
+    axes = zeros(Float64, 3*sim.n_cells)
+    for i = 1:sim.n_cells
+      id = mesh.material_ids[i]
+      axes[3*(i-1)+1] = axis[1, id]
+      axes[3*(i-1)+2] = axis[2, id]
+      axes[3*(i-1)+3] = axis[3, id]
+    end
+
   end
 
   K_matrix = spzeros(3*sim.n_nodes, 3*sim.n_nodes)
@@ -137,6 +150,7 @@ function add_anis(sim::MicroSimFEM, Ku::NumberOrArrayOrFunction; axis=(0,0,1), n
   end
   return anis
 end
+
 
 function average_m(sim::MicroSimFEM)
 

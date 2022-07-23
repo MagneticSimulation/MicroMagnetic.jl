@@ -27,6 +27,18 @@ function dot3(x::Array{Float64,1}, y::Array{Float64,1})
   return x[1]*y[1] + x[2]*y[2] + x[3]*y[3] 
 end
 
+function triangle_area(x1::Array{Float64,1}, x2::Array{Float64,1}, x3::Array{Float64,1})
+  a = x2 .- x1
+  b = x3 .- x2
+  c = x1 .- x3
+  s1 = norm2(a);
+  s2 = norm2(b);
+  s3 = norm2(c);
+  s = (s1 + s2 + s3) / 2.0;
+  area = sqrt(s * (s - s1) * (s - s2) * (s - s3))
+  return area
+end
+
 
 function cross3(x::Array{Float64,1}, y::Array{Float64,1})
   return [-x[3]*y[2] + x[2]*y[3], x[3]*y[1] - x[1]*y[3], -x[2]*y[1] + x[1]*y[2]]
@@ -129,6 +141,92 @@ function compute_L_Ms!(L_mu::Array{Float64,1}, mesh::FEMesh, Ms::Array{Float64,1
     L_mu[3*i+2] = nodal_Ms[i+1]
     L_mu[3*i+3] = nodal_Ms[i+1]
   end
+
+end
+
+#areas is an array
+#property is an array with the same length of areas and contain
+#the property information
+#target is used to filter areas according to property
+function max_id_with_filter(areas, property, target)
+  max_value, id = minimum(areas), -1
+  for i = 1:length(areas)
+    if areas[i] >= max_value && property[i] == target
+      max_value = areas[i]
+      id = i
+    end
+  end
+  return id
+end
+
+function compute_normal(x1::Array{Float64,1}, x2::Array{Float64,1}, x3::Array{Float64,1})
+  v1 = x2 .- x1
+  v2 = x3 .- x1
+  v = cross3(v1, v2)
+  return v/norm2(v)
+end
+
+function extract_normal_axes_by_maximum_area(mesh::FEMesh)
+
+  N_surfaces = length(Set(mesh.surface_ids)) #the total surfaces number of the defined geometry
+  N_materials = length(Set(mesh.material_ids)) #the total materials number
+
+  surface_normals = zeros(3, N_surfaces)
+  surface_node = zeros(Int64, N_surfaces) # we only need one node for each surface
+
+  areas = zeros(N_surfaces)
+  #compute the total areas of each surfaces
+  for f = 1:mesh.number_faces_bnd
+    i = mesh.face_verts[1, f]
+    j = mesh.face_verts[2, f]
+    k = mesh.face_verts[3, f]
+
+    v1 = mesh.coordinates[:, i]
+    v2 = mesh.coordinates[:, j]
+    v3 = mesh.coordinates[:, k]
+
+    id = mesh.surface_ids[f]
+    if surface_node[id] == 0  # we calculate the surface normal and store one node to surface_node array
+      surface_node[id] = i
+      surface_normals[:, id] .= compute_normal(v1, v2, v3)
+    end 
+    areas[id] += triangle_area(v1, v2, v3)
+  end
+
+    #mapping for materials and nodes
+    materials_dict = Dict{Int64, Set}()
+    for c = 1:mesh.number_cells
+      mid = mesh.material_ids[c]
+      if !haskey(materials_dict, mid)
+        materials_dict[mid] = Set{Int64}()
+      end
+      for i in mesh.cell_verts[:, c]
+          push!(materials_dict[mid], i)
+      end
+    end
+
+  #we need to group the areas according to material ids.
+  #we assume that each individual geometry does not connect to other geometries
+  #so each surface should only belongs to one material
+  map_surface2material = zeros(Int64, N_surfaces)
+  for i = 1:N_surfaces
+    for j = 1:length(materials_dict)
+      if surface_node[i] in materials_dict[j]
+        map_surface2material[i] = j
+        break
+      end
+    end
+  end
+
+
+  #finally, we find the maximum area for each material and return the corresponding normals.
+  max_normals = zeros(3, N_materials)
+  for i = 1:N_materials
+    id = max_id_with_filter(areas, map_surface2material, i)
+    max_normals[:,i] .= surface_normals[:, id]
+  end
+
+  return max_normals
 
 end
 

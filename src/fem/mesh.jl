@@ -11,6 +11,8 @@ mutable struct FEMesh <: Mesh
     map_b2g::Array{Int64, 1}
     volumes::Array{Float64, 1}
     L_inv_neg::Array{Float64, 1}
+    material_ids::Array{Int64, 1}
+    surface_ids::Array{Int64, 1}
     FEMesh() = new()
 end
 
@@ -53,10 +55,11 @@ function load_mesh_netgen_neutral(fname::String)
     N = parse(Int64, readline(io)) #then it sould be the total number of cells
     mesh.number_cells = N
     mesh.cell_verts = zeros(Float64, 4, N)
+    mesh.material_ids = zeros(Integer, N)
 
     for i = 1:N
         x = split(readline(io))
-        #@assert i == parse(Int64, x[1])
+        mesh.material_ids[i] = parse(Int64, x[1])
         mesh.cell_verts[1, i] = parse(Int64, x[2])
         mesh.cell_verts[2, i] = parse(Int64, x[3])
         mesh.cell_verts[3, i] = parse(Int64, x[4])
@@ -66,18 +69,17 @@ function load_mesh_netgen_neutral(fname::String)
     N = parse(Int64, readline(io)) #finally it sould be the total surface number
     mesh.number_faces_bnd = N
     mesh.face_verts = zeros(Int64, 3, N)
+    mesh.surface_ids = zeros(Integer, N)
 
     for i = 1:N
         x = split(readline(io))
-        #j = parse(Int64, x[1])
+        mesh.surface_ids[i] = parse(Int64, x[1])
         mesh.face_verts[1, i] = parse(Int64, x[2])
         mesh.face_verts[2, i] = parse(Int64, x[3])
         mesh.face_verts[3, i] = parse(Int64, x[4])
     end
     return mesh
 end
-
-
 
 
 function build_boundary_maps!(mesh::FEMesh)
