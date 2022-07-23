@@ -149,7 +149,6 @@ function test_demag_field()
 
 end
 
-
 test_zeeman()
 test_init_m_function()
 test_zeeman_field()
