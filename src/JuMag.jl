@@ -1,8 +1,12 @@
 #__precompile__()
 module JuMag
 
+using LinearAlgebra
+
 using Printf
 using CUDA
+
+LinearAlgebra.BLAS.set_num_threads(Threads.nthreads())
 
 const _cuda_using_double = Ref(false)
 const _cuda_available = Ref(true)
