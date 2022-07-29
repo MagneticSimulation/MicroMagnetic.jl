@@ -71,13 +71,17 @@ def main(output="hex.geo"):
 
     R = 21/2.0
     h = 7.0
-    for i in range(2):
-        x = i*25
-        theta = (np.pi/2)*(2*np.random.random()-1)
-        phi = 2*np.pi*np.random.random()
-        gamma = np.pi/3*np.random.random()
-        p = hexagonal_prism(x, 0, 0, h=h, R=R, theta=theta, phi=phi, gamma=gamma, maxh=2.0, id=i)
-        f.write(p)
+    index = 0
+    for i in range(5):
+        for j in range(5):
+            index += 1
+            x = i*25
+            y = j*25
+            theta = (np.pi/2)*(2*np.random.random()-1)
+            phi = 2*np.pi*np.random.random()
+            gamma = np.pi/3*np.random.random()
+            p = hexagonal_prism(x, y, 0, h=h, R=R, theta=theta, phi=phi, gamma=gamma, maxh=2.0, id=index)
+            f.write(p)
     f.close()  
 
 main()

@@ -158,7 +158,6 @@ end
 function ComputeVertBSA(mesh::FEMesh)
 
   vertbsa = zeros(mesh.number_nodes)
-
   for c = 1:mesh.number_cells, j = 0:3
     
     k1 =  mesh.cell_verts[(j+0)%4 + 1, c]
@@ -173,8 +172,7 @@ function ComputeVertBSA(mesh::FEMesh)
      
     omega = solid_angle_single(v1, v2, v3, v4);
 
-    vertbsa[k1] += omega;
-
+    vertbsa[k1] += omega
   end
 
   return vertbsa;
@@ -184,45 +182,45 @@ end
 function assmeble_matrix_B(demag::DemagFEM, sim::MicroSimFEM)
     mesh = sim.mesh
     B = demag.B
-    global2bnd = mesh.map_g2b
+    map_g2b = mesh.map_g2b
 
-    for n = 1 : mesh.number_nodes
+    Threads.@threads for n = 1 : mesh.number_nodes
 
         #if the node is not at the boundary, do nothing
-        if global2bnd[n] < 0
+        if map_g2b[n] < 0
             continue
         end
 
-        v = mesh.coordinates[:, n]
+        #local v = mesh.coordinates[:, n]
 
         for f = 1:mesh.number_faces_bnd
-            i = mesh.face_verts[1, f]
-            j = mesh.face_verts[2, f]
-            k = mesh.face_verts[3, f]
+            local i = mesh.face_verts[1, f]
+            local j = mesh.face_verts[2, f]
+            local k = mesh.face_verts[3, f]
 
             # skip if the node belongs to the triangle
             if n == i || n == j || n == k
                 continue
             end
 
-            v1 = mesh.coordinates[:, i]
-            v2 = mesh.coordinates[:, j]
-            v3 = mesh.coordinates[:, k]
+            local be = boundary_element(mesh.coordinates[:, n], 
+                                        mesh.coordinates[:, i],
+                                        mesh.coordinates[:, j],
+                                        mesh.coordinates[:, k])
 
-            be = boundary_element(v, v1, v2, v3)
 
-            B[global2bnd[n], global2bnd[i]] += be[1]
-            B[global2bnd[n], global2bnd[j]] += be[2]
-            B[global2bnd[n], global2bnd[k]] += be[3]
+            B[map_g2b[n], map_g2b[i]] += be[1]
+            B[map_g2b[n], map_g2b[j]] += be[2]
+            B[map_g2b[n], map_g2b[k]] += be[3]
         end
     end
 
     vertbsa = ComputeVertBSA(mesh)
 
     for n = 1 : mesh.number_nodes
-        if global2bnd[n] > 0
+        if map_g2b[n] > 0
             tmp = vertbsa[n] / (4.0 * pi) - 1.0
-            B[global2bnd[n], global2bnd[n]] += tmp
+            B[map_g2b[n], map_g2b[n]] += tmp
         end
     end
 

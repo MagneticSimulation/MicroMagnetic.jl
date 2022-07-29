@@ -144,7 +144,9 @@ function effective_field(demag::DemagFEM, sim::MicroSimFEM, spin::Array{Float64,
   if !demag.matrices_assembled
     demag.matrices_assembled = true
     assemble_matirx_DGK1K2(demag, sim)
-    assmeble_matrix_B(demag, sim)
+    @info "Start to build BEM matrix, will take a while ..."
+    time = @elapsed assmeble_matrix_B(demag, sim)
+    @info @sprintf("Building the BEM matrix is finished, it takes %0.2f seconds.", time)
   end
   
   # step1: phi1 = D*m
