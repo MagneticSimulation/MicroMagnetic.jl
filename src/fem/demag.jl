@@ -1,3 +1,5 @@
+using Printf
+
 mutable struct DemagFEM
     D::SparseMatrixCSC{}
     G::SparseMatrixCSC{}
@@ -151,8 +153,40 @@ function assemble_matirx_DGK1K2(demag::DemagFEM, sim::MicroSimFEM)
         K2[j,j] = 1.0
     end
 
-    demag.K1 = factorize(K1) #reuse the factorization to speed up the calculation
-    demag.K2 = factorize(K2)
+    try
+        demag.K1 = factorize(K1) #reuse the factorization to speed up the calculation
+    catch
+        try 
+            demag.K1 = lu(K1)
+        catch
+            demag.K1 = qr(K1)
+        end
+    end
+
+    try
+        demag.K2 = factorize(K2) #reuse the factorization to speed up the calculation
+    catch
+        try 
+            demag.K2 = lu(K2)
+        catch
+            demag.K2 = qr(K2)
+        end
+    end
+end
+
+function save_sparse_matrix(filename, M)
+    f = open(filename, "w")
+    I, J, V = findnz(M)
+    for l in 1:size(M)[1]
+        write(f, @sprintf("row %d :", l-1))
+        for i in 1:length(I)
+            if I[i] == l 
+                write(f,  @sprintf("(%d, %0.16g) ", J[i]-1, M[I[i], J[i]]))
+            end
+        end
+        write(f, "\n")
+    end
+    close(f)
 end
 
 function ComputeVertBSA(mesh::FEMesh)
