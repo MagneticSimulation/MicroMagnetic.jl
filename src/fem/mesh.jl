@@ -107,7 +107,7 @@ function build_boundary_maps!(mesh::FEMesh)
             map_b2g[map_g2b[i]] = i
         end
     end
-    mesh.map_b2g = map_g2b
+    mesh.map_b2g = map_b2g
 
 end
 
