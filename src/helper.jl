@@ -252,6 +252,38 @@ function compute_shape_factor(m::Array{T, 1}, mesh::Mesh; r=0) where {T<:Abstrac
 end
 
 
+# The tensor B is defined as
+# \mathcal{B}_{i j}=\int\left(\mathbf{m} \times \partial_i \mathbf{m}\right)_j d x d y
+function compute_tensor_B(m::Array{T, 1}, mesh::Mesh; r=-1) where {T<:AbstractFloat}
+  nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+  pxm, pym = partial_xy(m, mesh)
+  eta_xx = 0
+  eta_xy = 0
+  eta_yx = 0
+  eta_yy = 0
+  if r<0
+    r = max(nx, ny)
+  end
+  x_c = nx/2.0 + 0.5
+  y_c = ny/2.0 + 0.5
+  factor = mesh.dx*mesh.dy/nz
+  for k = 1:nz, j = 1:ny, i=1:nx
+      id = index(i, j, k, nx, ny, nz)
+
+      s = 3*id-2
+      mx, my, mz = m[s], m[s+1], m[s+2]
+      
+      if (i-x_c)^2 + (j-y_c)^2 < r^2
+        eta_xx += cross_x(mx, my, mz, pxm[s], pxm[s+1], pxm[s+2])
+        eta_xy += cross_y(mx, my, mz, pxm[s], pxm[s+1], pxm[s+2])
+        eta_yx += cross_x(mx, my, mz, pym[s], pym[s+1], pym[s+2])
+        eta_yy += cross_y(mx, my, mz, pym[s], pym[s+1], pym[s+2])
+      end
+  end
+  
+  return eta_xx*factor, eta_xy*factor, eta_yx*factor, eta_yy*factor
+end
+
 function compute_winding_number_yz(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     for k = 1:nz, j = 1:ny, i=1:nx

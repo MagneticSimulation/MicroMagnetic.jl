@@ -2,7 +2,7 @@ using JuMag
 using Printf
 using NPZ
 
-mesh =  FDMeshGPU(nx=100, ny=100, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
+mesh =  FDMesh(nx=100, ny=100, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
 
 function m0_fun(i,j,k,dx,dy,dz)
   r2 = (i-50)^2 + (j-50)^2
@@ -21,13 +21,20 @@ function relax_system()
   add_dmi(sim, 4e-3, name="dmi")
 
   init_m0(sim, m0_fun)
-  relax(sim, maxsteps=200, stopping_dmdt=0.1, save_vtk_every = 10)
+  relax(sim, maxsteps=1000, stopping_dmdt=0.1, save_vtk_every = 10)
   #println(sim.spin)
   npzwrite("m0.npy", sim.spin)
 
   #save_vtk(sim, "skx", fields=["exch", "dmi"])
 end
 
-relax_system()
+#relax_system()
 m = npzread("m0.npy")
 println(compute_skyrmion_number(m, mesh))
+
+Bxx, Bxy, Byx, Byy = compute_tensor_B(m, mesh)
+println(Bxx)
+println(Bxy)
+println(Byx)
+println(Byy)
+
