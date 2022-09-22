@@ -1,5 +1,3 @@
-abstract type MeshGPU <: Mesh end
-
 struct FDMeshGPU{T <: AbstractFloat} <: MeshGPU
   dx::T
   dy::T

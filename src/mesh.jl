@@ -1,6 +1,8 @@
 abstract type Mesh end
+abstract type MeshCPU <: Mesh end
+abstract type MeshGPU <: Mesh end
 
-struct FDMesh <: Mesh
+struct FDMesh <: MeshCPU
   dx::Float64
   dy::Float64
   dz::Float64

@@ -1,25 +1,4 @@
 # Notes
-## Structures
-
-### Mesh
-```@raw html
-<img src="../figures/mesh.png" width="600"/>
-```
-
-### Sim
-```@raw html
-<img src="../figures/sim.png" width="600"/>
-```
-
-### Driver
-```@raw html
-<img src="../figures/driver.png" width="500"/>
-```
-
-### Energy
-```@raw html
-<img src="../figures/energy.png" width="400"/>
-```
 
 ## Reducing the startup time
 

@@ -3,12 +3,16 @@ using Documenter
 using JuMag
 #using DocumenterTools: Themes
 
-format = Documenter.HTML(prettyurls=get(ENV, "CI", nothing) == "true")
+format = Documenter.HTML(
+    prettyurls=get(ENV, "CI", nothing) == "true",
+    assets=["assets/init.js"]
+)
 
 PAGES = ["index.md",
     "tutorial.md",
     "equations.md",
     "notes.md",
+    "developer.md",
     "functions.md",
     "questions.md"]
 
