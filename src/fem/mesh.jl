@@ -1,4 +1,4 @@
-mutable struct FEMesh <: Mesh
+mutable struct FEMesh <: MeshCPU
     number_nodes::Int64  #total node number
     number_cells::Int64  #total cell number
     number_faces_bnd::Int64 #total surface number
