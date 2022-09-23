@@ -1,45 +1,120 @@
 # Equations
 
-## Energies and effective field
+## Atomistic spin model
 
-#### Atomistic spin model
+The basic assumption of the atomistic spin model is that each lattice site is associated with a magnetic moment $\mu_s$. For metal systems with quenched orbital moments, the magnetic moment is mainly related to its spin angular momentum
+```math
+\mathbf{\mu}_s = - \hbar \gamma \mathbf{S}
+```
+where $\gamma(>0)$ is the gyromagnetic ratio and $\mathbf{S}$ is the atomic spin. The LLG equation governs the dynamics of the magnetic moment, which reads
 
-In the atomistic spin model, the effective field can be computed from
+```math
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H}_\mathrm{eff} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
+```
+
+where $\mathbf{m}$ is the unit vector of the magnetic moment, $\mathbf{H}_\mathrm{eff}$ is the effective field.
+
+Unlike the continuous micromagnetic model, the atomistic spin model is discrete, and thus, the effective field $\mathbf{H}_\mathrm{eff}$ is defined as the partial derivative of the total Hamiltonian with respect to $\mathbf{m}$, i.e., 
 
 ```math
 \mathbf{H}_{\mathrm{eff}}=-\frac{1}{\mu_s} \frac{\partial \mathcal{H}}{\partial \mathbf{m}}
 ```
 
-where $\mathcal{H}$ is the total Hamiltonian including the exchange interaction, Dzyaloshinskii-Moriya interaction, dipolar interaction, anisotropy interaction and Zeeman interaction. The exchange interaction is given by
+where $\mathcal{H}$ is the total Hamiltonian including the exchange interaction, Dzyaloshinskii-Moriya interaction, dipolar interaction, anisotropy interaction,  Zeeman interaction and so on.  
+
+
+The exchange interaction is given by
 
 ```math
-\mathcal{H}_\mathrm{ex} = -J \sum_{\langle i, j\rangle} \vec{m}_{i} \cdot \vec{m}_{j}
+\mathcal{H}_\mathrm{ex} = -J \sum_{\langle i, j\rangle} \mathbf{m}_{i} \cdot \mathbf{m}_{j}
 ```
-
-and the Dzyaloshinskii-Moriya interaction reads
+where $J$ denotes the exchange constant and $\langle i,j \rangle$ represents a unique pair between lattice sites $i$ and $j$ and we assume that the summation is taken only once for each pair. A positive $J$ results in the ferromagnetic state while a negative $J$ leads to the antiferromagnetic state, which can be seen by minimizing the exchange Hamiltonian. To solve the LLG equation numerically, we need the effective field at each site, which is given 
 
 ```math
-\mathcal{H}_\mathrm{dmi} =  \sum_{\langle i, j\rangle}  \vec{D}_{i j} \cdot\left(\vec{m}_{i} \times \vec{m}_{j}\right)
+\mathbf{H}_\mathrm{ex, i} = \frac{J}{\mu_s} \sum_{\langle i, j\rangle} \mathbf{m}_{j}.
 ```
 
-and anisotropy
+Similarly, the Dzyaloshinskii-Moriya interaction reads
 
 ```math
-\mathcal{H}_\mathrm{an} = - K \sum_{i}\left(m_{i}^{z}\right)^{2}
+\mathcal{H}_\mathrm{dmi} =  \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
+```
+where $\mathbf{D}_{i j}$ is the DM vector.  Typically, there are two situations: (1) $\mathbf{D}_{i j} = D \hat{r}_{ij}$, which corresponds to the Bulk DMI. (2) $\mathbf{D}_{i j} = D \hat{r}_{ij} \times \hat{z}$, which corresponds to the interfacial DMI. Unlike the exchange interaction, the DM Hamiltonian is minimal when the two adjacent magnetic moments are perpendicular. The corresponding effective field can be computed by
+```math
+\mathbf{H}_\mathrm{dmi, i} = \frac{1}{\mu_s} \sum_{\langle i, j\rangle} \mathbf{D}_{i j} \times \mathbf{m}_{j}.
 ```
 
-and the zeeman field
+The other two common interactions are the anisotropy and the Zeeman, which are given by
 
 ```math
-\mathcal{H}_\mathrm{ze} =  - \mu_s \vec{m}_i \cdot \vec{H}
+\mathcal{H}_\mathrm{an} = - K \sum_{i}\left(\mathbf{m}_{i} \cdot \hat{u}\right)^{2} \\
+\mathcal{H}_\mathrm{ze} =  - \mu_s \mathbf{m}_i \cdot \mathbf{H}
 ```
 
-#### Micromagnetic model
+The effective field of the anisotropy is 
+```math
+\mathbf{H}_\mathrm{an, i} = \frac{2K}{\mu_s}  (\mathbf{m}_{i} \cdot \hat{u}) \hat{u}.
+```
+
+### Multiferroic Insulators
+
+For multiferroics such as Cu$_2$OSeO$_3$, the noncollinear spin texture induces a local electric polarization via the the $d-p$ hybridization mechanism. The local electric dipole moment $\mathbf{P}$ depends on the direction of the applied static magnetic field relative to the crystallographic axes.[PRL 128, 037201 (2022)] 
+
+##### $H_0//110$:
+```math
+\mathbf{P}_i=\lambda\left(-m_{i, x} m_{i, y}, \frac{-m_{i, x}^2+m_{i, z}^2}{2}, m_{i, y} m_{i, z}\right)
+```
+
+##### $H_0//001$:
+```math
+\mathbf{P}_i=\lambda\left(-m_{i, z} m_{i, x}, m_{i, y} m_{i, z}, \frac{-m_{i, x}^2+m_{i, y}^2}{2}\right)
+```
+
+##### $H_0//111$:
+
+```math
+\mathbf{P}_{i,x}=-\lambda \frac{m_{i, x}\left(\sqrt{2} m_{i, y}+m_{i, z}\right)}{\sqrt{3}} \\
+
+\mathbf{P}_{i,y} = \lambda \frac{-m_{i, x}^2+m_{i, y}\left(m_{i, y}-\sqrt{2} m_{i, z}\right)}{\sqrt{6}} \\
+
+\mathbf{P}_{i,z} =
+-\lambda \frac{m_{i, x}^2+m_{i, y}^2-2 m_{i, z}^2}{2 \sqrt{3}}
+```
+
+The Hamiltonian related to the high-frequency lasers is given by 
+
+```math
+\mathcal{H}_\mathrm{laser} =  -\sum_{i} \mu_s \mathbf{m}_i \cdot \mathbf{H}(t) - \sum_{i} \mathbf{P}_i \cdot \mathbf{E}(t)
+```
+
+The corresponding effective fields associated with the electric field are
+##### $H_0//110$:
+```math
+H_x = \frac{\lambda}{\mu_s}  (-E_y m_x  - E_x m_y )\\
+H_y = \frac{\lambda}{\mu_s}  (-E_x m_x  + E_z m_z )\\
+H_y = \frac{\lambda}{\mu_s}  (E_z m_y  + E_y m_z )\\
+```
+
+##### $H_0//001$:
+```math
+H_x = \frac{\lambda}{\mu_s}  (-E_z m_x  - E_x m_z )\\
+H_y = \frac{\lambda}{\mu_s}  (E_z m_y  + E_y m_z )\\
+H_y = \frac{\lambda}{\mu_s}  (-E_x m_x  + E_y m_y )\\
+```
+
+##### $H_0//111$:
+```math
+H_x = -\frac{\lambda}{\sqrt{3}\mu_s}  (\sqrt{2}(E_y m_x + E_x m_y)  +E_z m_x + E_x m_z )\\
+H_y = -\frac{\lambda}{\sqrt{3}\mu_s}  (\sqrt{2}(E_x m_x - E_y m_y)  +E_z m_y + E_y m_z )\\
+H_y = \frac{\lambda}{\sqrt{3} \mu_s}  (-E_x m_x  + E_y m_y - 2 E_z m_z)\\
+```
+
+## Micromagnetic model
 
 In micromagnetics, the effective field can be computed from the total micromagnetic energy
 
 ```math
-\vec{H}_{\mathrm{eff}}=-\frac{1}{\mu_{0} M_{s}} \frac{\delta E}{\delta \vec{m}}
+\mathbf{H}_{\mathrm{eff}}=-\frac{1}{\mu_{0} M_{s}} \frac{\delta E}{\delta \mathbf{m}}
 ```
 
 The typical energy terms are
@@ -47,35 +122,35 @@ The typical energy terms are
 - **Exchange energy**
 
 ```math
-  E_\mathrm{ex} = \int_{V} A (\nabla \vec{m})^2 \mathrm{d}V
+  E_\mathrm{ex} = \int_{V} A (\nabla \mathbf{m})^2 \mathrm{d}V
 ```
 
-  where $(\nabla \vec{m})^{2}=\left(\nabla m_{x}\right)^{2}+\left(\nabla m_{y}\right)^{2}+\left(\nabla m_{z}\right)^{2}$. So the corresponding effective field is
+  where $(\nabla \mathbf{m})^{2}=\left(\nabla m_{x}\right)^{2}+\left(\nabla m_{y}\right)^{2}+\left(\nabla m_{z}\right)^{2}$. So the corresponding effective field is
 
 ```math
-  \vec{H}_{\mathrm{ex}}=\frac{2 A}{\mu_{0} M_{s}} \nabla^{2} \vec{m}
+  \mathbf{H}_{\mathrm{ex}}=\frac{2 A}{\mu_{0} M_{s}} \nabla^{2} \mathbf{m}
 ```
 
 - **Zeeman energy**
 
 ```math
-  E_\mathrm{ex} = -  \mu_0 \int_{V}  \vec{H} \cdot \vec{M} \mathrm{d}V
+  E_\mathrm{ex} = -  \mu_0 \int_{V}  \mathbf{H} \cdot \mathbf{M} \mathrm{d}V
 ```
 
-  as expected, the effective field is $\vec{H}$.
+  as expected, the effective field is $\mathbf{H}$.
 
 - **Anisotropy**
 
   The uniaxial anisotropy energy is given by
 
 ```math
-  E_\mathrm{anis} = -\int_{V} K_{u} (\vec{m} \cdot \hat{u})^2 \, dV
+  E_\mathrm{anis} = -\int_{V} K_{u} (\mathbf{m} \cdot \hat{u})^2 \, dV
 ```
 
   from which the effective field can be computed as
 
 ```math
-  \vec{H}_{\mathrm{an}}=\frac{2 K_u}{\mu_0 M_s}\left(\vec{m} \cdot \hat{u}\right) \hat{u}
+  \mathbf{H}_{\mathrm{an}}=\frac{2 K_u}{\mu_0 M_s}\left(\mathbf{m} \cdot \hat{u}\right) \hat{u}
 ```
 
 - **Cubic Anisotropy**
@@ -89,30 +164,30 @@ The typical energy terms are
   and thus the corresponding effective field reads
 
 ```math
-  \vec{H}_{\mathrm{cubic}}= \frac{4 K_c}{\mu_0 M_s}  
+  \mathbf{H}_{\mathrm{cubic}}= \frac{4 K_c}{\mu_0 M_s}  
   \left( m_x^3 \mathbf{e}_x + m_y^3 \mathbf{e}_y + m_z^3 \mathbf{e}_z \right)
 ```
 
 - **Bulk DMI energy** The Bulk DMI energy reads
 
 ```math
-  E_{\mathrm{dmi}} = \int_V D \vec{m} \cdot (\nabla \times \vec{m}) \, \mathrm{d}V
+  E_{\mathrm{dmi}} = \int_V D \mathbf{m} \cdot (\nabla \times \mathbf{m}) \, \mathrm{d}V
 ```
 
   so the effective field is
 
 ```math
-  \vec{H}_\mathrm{D}=-\frac{2 D}{\mu_{0} M_{s}}(\nabla \times \vec{m})
+  \mathbf{H}_\mathrm{D}=-\frac{2 D}{\mu_{0} M_{s}}(\nabla \times \mathbf{m})
 ```
 
 - **Magnetostatic energy**
 
 ```math
-  E_{\mathrm{d}}=-\frac{\mu_{0}}{2} \int_{V} \vec{H}_{\mathrm{d}}(\mathbf{r}) \cdot \vec{M}(\mathbf{r}) d V
+  E_{\mathrm{d}}=-\frac{\mu_{0}}{2} \int_{V} \mathbf{H}_{\mathrm{d}}(\mathbf{r}) \cdot \mathbf{M}(\mathbf{r}) d V
 ```
 
 ```math
-  \vec{H}_{\mathrm{d}}(\mathbf{r})=\frac{1}{4 \pi}\left(\int_{V} \rho_{m}\left(\mathbf{r}^{\prime}\right) \frac{\mathbf{r}-\mathbf{r}^{\prime}}{\left|\mathbf{r}-\mathbf{r}^{\prime}\right|^{3}} \mathrm{d}^{3} r^{\prime}+\int_{S} \sigma_{m}\left(\mathbf{r}^{\prime}\right) \frac{\mathbf{r}-\mathbf{r}^{\prime}}{\left|\mathbf{r}-\mathbf{r}^{\prime}\right|^{3}} \mathrm{d}^{2} r^{\prime}\right)
+  \mathbf{H}_{\mathrm{d}}(\mathbf{r})=\frac{1}{4 \pi}\left(\int_{V} \rho_{m}\left(\mathbf{r}^{\prime}\right) \frac{\mathbf{r}-\mathbf{r}^{\prime}}{\left|\mathbf{r}-\mathbf{r}^{\prime}\right|^{3}} \mathrm{d}^{3} r^{\prime}+\int_{S} \sigma_{m}\left(\mathbf{r}^{\prime}\right) \frac{\mathbf{r}-\mathbf{r}^{\prime}}{\left|\mathbf{r}-\mathbf{r}^{\prime}\right|^{3}} \mathrm{d}^{2} r^{\prime}\right)
 ```
 
 ## LLG equation
@@ -120,13 +195,13 @@ The typical energy terms are
 The driver `LLG` solves the standard LLG equation, which can be written as
 
 ```math
-\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} + \alpha \vec{m} \times  \frac{\partial \vec{m}}{\partial t}
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
 ```
 
 and the corresponding LL form is given by
 
 ```math
-(1+\alpha^2)\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} - \alpha \gamma \vec{m} \times (\vec{m} \times \vec{H})
+(1+\alpha^2)\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} - \alpha \gamma \mathbf{m} \times (\mathbf{m} \times \mathbf{H})
 ```
 
 ## LLG equation with extensions
@@ -134,25 +209,25 @@ and the corresponding LL form is given by
 The driver `LLG_STT` implements the LLG equation with zhang-li extension
 
 ```math
-\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} + \alpha \vec{m} \times  \frac{\partial \vec{m}}{\partial t}
-+ (\vec{u} \cdot \nabla) \vec{m} - \beta [\vec{m}\times (\vec{u} \cdot \nabla)\vec{m}]
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
++ (\mathbf{u} \cdot \nabla) \mathbf{m} - \beta [\mathbf{m}\times (\mathbf{u} \cdot \nabla)\mathbf{m}]
 ```
 
 and the driver `LLG_CPP` implements the LLG equation with spin transfer torque
 for the current-perpendicular-to-plane (CPP) case,
 
 ```math
-\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} + \alpha \vec{m} \times  \frac{\partial \vec{m}}{\partial t} - a_J \vec{m} \times (\vec{m} \times \vec{p})
- -  b_J \vec{m} \times \vec{p}
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t} - a_J \mathbf{m} \times (\mathbf{m} \times \mathbf{p})
+ -  b_J \mathbf{m} \times \mathbf{p}
 ```
 The spin valve structures and  spin orbit torques can use the `LLG_CPP` driver.
 
 The driver `LLG_STT_CPP` has put them together,
 
 ```math
-\frac{\partial \vec{m}}{\partial t} = - \gamma \vec{m} \times \vec{H} + \alpha \vec{m} \times  \frac{\partial \vec{m}}{\partial t}
-+ (\vec{u} \cdot \nabla) \vec{m} - \beta [\vec{m}\times (\vec{u} \cdot \nabla)\vec{m}] - a_J \vec{m} \times (\vec{m} \times \vec{p})
- -  b_J \vec{m} \times \vec{p}
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
++ (\mathbf{u} \cdot \nabla) \mathbf{m} - \beta [\mathbf{m}\times (\mathbf{u} \cdot \nabla)\mathbf{m}] - a_J \mathbf{m} \times (\mathbf{m} \times \mathbf{p})
+ -  b_J \mathbf{m} \times \mathbf{p}
 ```
 
 ## SLLG equation
@@ -251,25 +326,25 @@ where
 For cubic mesh, the implemented energy reads
 
 ```math
-\mathcal{H} = - J \sum_{\langle \langle i, j\rangle \rangle} \vec{m}_{i} \cdot \vec{m}_{j}
-+\sum_{\langle \langle i, j \rangle \rangle }  \vec{D}_{i j} \cdot\left(\vec{m}_{i} \times \vec{m}_{j}\right)
-- K \sum_{i}\left(\vec{u} \cdot \vec{m}_i\right)^2 - \sum_{i} \vec{H} \cdot \vec{m}_i
+\mathcal{H} = - J \sum_{\langle \langle i, j\rangle \rangle} \mathbf{m}_{i} \cdot \mathbf{m}_{j}
++\sum_{\langle \langle i, j \rangle \rangle }  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
+- K \sum_{i}\left(\mathbf{u} \cdot \mathbf{m}_i\right)^2 - \sum_{i} \mathbf{H} \cdot \mathbf{m}_i
 ```
 
-where $\vec{m}_i$ is unit vector of the classical spin at site _i_.
+where $\mathbf{m}_i$ is unit vector of the classical spin at site _i_.
 
 For triangular mesh (2D), the system energy reads
 
 ```math
-H= \sum_{\langle i, j\rangle}  \vec{D}_{i j} \cdot\left(\vec{S}_{i} \times \vec{S}_{j}\right)
--J \sum_{\langle i, j\rangle} \vec{S}_{i} \cdot \vec{S}_{j}- \lambda \sum_{\langle i, j\rangle} S_{i}^{z} S_{j}^{z}
+H= \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{S}_{i} \times \mathbf{S}_{j}\right)
+-J \sum_{\langle i, j\rangle} \mathbf{S}_{i} \cdot \mathbf{S}_{j}- \lambda \sum_{\langle i, j\rangle} S_{i}^{z} S_{j}^{z}
 -K \sum_{i}\left(S_{i}^{z}\right)^{2}
 ```
 
 where
 
 ```math
-\vec{D}_{i j} = D \hat{z} \times \hat{r}_{ij}  + D_z^{j} \hat{z}
+\mathbf{D}_{i j} = D \hat{z} \times \hat{r}_{ij}  + D_z^{j} \hat{z}
 ```
 
 ## NEB (Nudged elastic band)
@@ -328,22 +403,22 @@ The detailed equations can be found @ [Journal of Chemical Physics 113, 22 (2000
 Micromagnetic system and the corresponding atomistic model are the classical system. The resonance frequencies and the spatial resonance modes can be obtained using the eigenvalue method. In JuMag, we implemented a simple eigenvalue method for the following Hamiltonian of the atomistic model
 
 ```math
-\mathcal{H} = -J \sum_{\langle i, j\rangle} \vec{m}_{i} \cdot \vec{m}_{j} + \sum_{\langle i, j\rangle}  \vec{D}_{i j} \cdot\left(\vec{m}_{i} \times \vec{m}_{j}\right) - K \sum_{i}\left(m_{i}^{z}\right)^{2} - \mu_s \vec{m}_i \cdot \vec{H}
+\mathcal{H} = -J \sum_{\langle i, j\rangle} \mathbf{m}_{i} \cdot \mathbf{m}_{j} + \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right) - K \sum_{i}\left(m_{i}^{z}\right)^{2} - \mu_s \mathbf{m}_i \cdot \mathbf{H}
 ```
 
 For a given ground state or metastable spin configuration
 
 ```math
-\vec{m}_0=(\sin\theta \cos \phi, \sin\theta \sin \phi, \cos\theta)^T,
+\mathbf{m}_0=(\sin\theta \cos \phi, \sin\theta \sin \phi, \cos\theta)^T,
 ```
 
 one can construct a local coordinate system such that
 
 ```math
-\vec{m} = w \vec{m}_0 + u \vec{e}_\theta + v  \vec{e}_\phi,
+\mathbf{m} = w \mathbf{m}_0 + u \mathbf{e}_\theta + v  \mathbf{e}_\phi,
 ```
 
-where $\vec{e}_\theta =(\cos \theta \cos \phi, \cos\theta \sin\phi,-\sin \theta)^T$ and $\vec{e}_\phi=(-\sin \phi, \cos\phi,0)^T$. In matrix form,
+where $\mathbf{e}_\theta =(\cos \theta \cos \phi, \cos\theta \sin\phi,-\sin \theta)^T$ and $\mathbf{e}_\phi=(-\sin \phi, \cos\phi,0)^T$. In matrix form,
 
 ```math
 \begin{bmatrix}
@@ -359,12 +434,12 @@ m_x \\ m_y \\ m_z
  \end{bmatrix}.
 ```
 
-Under this transformation, the unperturbed spin configuration $\vec{m}_0$ corresponds to $u=0, v=0$ and $w=1$. In this local coordinate, the effective fields are given by
+Under this transformation, the unperturbed spin configuration $\mathbf{m}_0$ corresponds to $u=0, v=0$ and $w=1$. In this local coordinate, the effective fields are given by
 
 ```math
-\vec{H}_\mathrm{eff} = - \frac{1}{\mu_s} \frac{\partial \mathcal{H}}{\partial \vec{m}}
-= - \frac{1}{\mu_s}\left(  \frac{\partial \mathcal{H}}{\partial w} \vec{m}_0 +
-\frac{\partial \mathcal{H}}{\partial u} \vec{e}_\theta + \frac{\partial \mathcal{H}}{\partial v} \vec{e}_\phi \right).
+\mathbf{H}_\mathrm{eff} = - \frac{1}{\mu_s} \frac{\partial \mathcal{H}}{\partial \mathbf{m}}
+= - \frac{1}{\mu_s}\left(  \frac{\partial \mathcal{H}}{\partial w} \mathbf{m}_0 +
+\frac{\partial \mathcal{H}}{\partial u} \mathbf{e}_\theta + \frac{\partial \mathcal{H}}{\partial v} \mathbf{e}_\phi \right).
 ```
 
 Substituting the effective fields into the LLG equation, we obtain for the case that $\alpha=0$
@@ -376,7 +451,7 @@ Substituting the effective fields into the LLG equation, we obtain for the case 
 \end{matrix}
 ```
 
-where $H_w$, $H_u$ and $H_v$ are effective fields along $\vec{m}_0$, $\vec{e}_\theta$ and $\vec{e}_\phi$, respectively. To linearize the LLG equation, we assume $|u| \ll 1$, $|v| \ll 1$ and thus $w \approx 1- (1/2)(u^2+v^2)$. Moreover, we look for the solutions such that $u=\tilde{u}e^{-i\omega t}$ and $v=\tilde{v}e^{-i\omega t}$. Therefore, we arrive at
+where $H_w$, $H_u$ and $H_v$ are effective fields along $\mathbf{m}_0$, $\mathbf{e}_\theta$ and $\mathbf{e}_\phi$, respectively. To linearize the LLG equation, we assume $|u| \ll 1$, $|v| \ll 1$ and thus $w \approx 1- (1/2)(u^2+v^2)$. Moreover, we look for the solutions such that $u=\tilde{u}e^{-i\omega t}$ and $v=\tilde{v}e^{-i\omega t}$. Therefore, we arrive at
 
 ```math
 \begin{matrix}
@@ -390,14 +465,14 @@ where we have ignored the higher-order terms. In addition, the above equation ca
 ```math
 \frac{i \omega \mu_s}{\gamma}  
 \begin{bmatrix}
-\vec{u} \\ \vec{v}
+\mathbf{u} \\ \mathbf{v}
  \end{bmatrix} = \mathbf{A}  
  \begin{bmatrix}
-\vec{u} \\ \vec{v}
+\mathbf{u} \\ \mathbf{v}
  \end{bmatrix},
 ```
 
-where we have introduced two vectors $\vec{u}=(\tilde{u}_1, \tilde{u}_2, ..., \tilde{u}_n)^T$ and $\vec{v}=(\tilde{v}_1, \tilde{v}_2, ..., \tilde{v}_n)^T$. Therefore, the normal modes of the system can be obtained through solving the eigenvalues of the matrix $\mathbf{A}$. The eigenvalues are pure imaginary numbers since $\omega$ is real. The related effective fields are given by
+where we have introduced two vectors $\mathbf{u}=(\tilde{u}_1, \tilde{u}_2, ..., \tilde{u}_n)^T$ and $\mathbf{v}=(\tilde{v}_1, \tilde{v}_2, ..., \tilde{v}_n)^T$. Therefore, the normal modes of the system can be obtained through solving the eigenvalues of the matrix $\mathbf{A}$. The eigenvalues are pure imaginary numbers since $\omega$ is real. The related effective fields are given by
 
 ```math
 \begin{aligned}
@@ -450,4 +525,4 @@ where we have introduced two vectors $\vec{u}=(\tilde{u}_1, \tilde{u}_2, ..., \t
   \end{aligned}
 ```
 
-- **Zeeman Field** For a static external field $\vec{H}=(H_x, H_y, H_z)$, one obtains $\tilde{h}_u = \tilde{h}_v = 0$ and $\tilde{H}^a_{w, i} = H_z \cos \theta_i + H_x \cos \phi_i \sin \theta_i + H_y \sin \phi_i \sin \theta_i$.
+- **Zeeman Field** For a static external field $\mathbf{H}=(H_x, H_y, H_z)$, one obtains $\tilde{h}_u = \tilde{h}_v = 0$ and $\tilde{H}^a_{w, i} = H_z \cos \theta_i + H_x \cos \phi_i \sin \theta_i + H_y \sin \phi_i \sin \theta_i$.
