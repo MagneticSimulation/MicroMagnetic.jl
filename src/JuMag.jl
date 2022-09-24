@@ -111,6 +111,7 @@ if _cuda_available.x
     include("atomistic/head.jl")
     include("atomistic/mesh.jl")
     include("atomistic/sim.jl")
+    include("atomistic/kernels.jl")
     include("atomistic/field.jl")
     include("cuda/driver.jl")
     include("cuda/sim.jl")
@@ -143,7 +144,8 @@ if _cuda_available.x
            run_step,
            run_sim,add_exch_anis,
            add_demag_gpu,
-           NEB_GPU
+           NEB_GPU,
+           add_magnetoelectric_laser
 end
 
 

@@ -60,14 +60,15 @@ The effective field of the anisotropy is
 
 For multiferroics such as Cu$_2$OSeO$_3$, the noncollinear spin texture induces a local electric polarization via the the $d-p$ hybridization mechanism. The local electric dipole moment $\mathbf{P}$ depends on the direction of the applied static magnetic field relative to the crystallographic axes.[PRL 128, 037201 (2022)] 
 
-##### $H_0//110$:
-```math
-\mathbf{P}_i=\lambda\left(-m_{i, x} m_{i, y}, \frac{-m_{i, x}^2+m_{i, z}^2}{2}, m_{i, y} m_{i, z}\right)
-```
 
 ##### $H_0//001$:
 ```math
 \mathbf{P}_i=\lambda\left(-m_{i, z} m_{i, x}, m_{i, y} m_{i, z}, \frac{-m_{i, x}^2+m_{i, y}^2}{2}\right)
+```
+
+##### $H_0//110$:
+```math
+\mathbf{P}_i=\lambda\left(-m_{i, x} m_{i, y}, \frac{-m_{i, x}^2+m_{i, z}^2}{2}, m_{i, y} m_{i, z}\right)
 ```
 
 ##### $H_0//111$:
@@ -88,25 +89,26 @@ The Hamiltonian related to the high-frequency lasers is given by
 ```
 
 The corresponding effective fields associated with the electric field are
-##### $H_0//110$:
-```math
-H_x = \frac{\lambda}{\mu_s}  (-E_y m_x  - E_x m_y )\\
-H_y = \frac{\lambda}{\mu_s}  (-E_x m_x  + E_z m_z )\\
-H_y = \frac{\lambda}{\mu_s}  (E_z m_y  + E_y m_z )\\
-```
 
 ##### $H_0//001$:
 ```math
 H_x = \frac{\lambda}{\mu_s}  (-E_z m_x  - E_x m_z )\\
 H_y = \frac{\lambda}{\mu_s}  (E_z m_y  + E_y m_z )\\
-H_y = \frac{\lambda}{\mu_s}  (-E_x m_x  + E_y m_y )\\
+H_z = \frac{\lambda}{\mu_s}  (-E_x m_x  + E_y m_y )\\
+```
+
+##### $H_0//110$:
+```math
+H_x = \frac{\lambda}{\mu_s}  (-E_y m_x  - E_x m_y )\\
+H_y = \frac{\lambda}{\mu_s}  (-E_x m_x  + E_z m_z )\\
+H_z = \frac{\lambda}{\mu_s}  (E_z m_y  + E_y m_z )\\
 ```
 
 ##### $H_0//111$:
 ```math
 H_x = -\frac{\lambda}{\sqrt{3}\mu_s}  (\sqrt{2}(E_y m_x + E_x m_y)  +E_z m_x + E_x m_z )\\
 H_y = -\frac{\lambda}{\sqrt{3}\mu_s}  (\sqrt{2}(E_x m_x - E_y m_y)  +E_z m_y + E_y m_z )\\
-H_y = \frac{\lambda}{\sqrt{3} \mu_s}  (-E_x m_x  + E_y m_y - 2 E_z m_z)\\
+H_z = -\frac{\lambda}{\sqrt{3}\mu_s}  (E_x m_x  + E_y m_y - 2 E_z m_z)\\
 ```
 
 ## Micromagnetic model

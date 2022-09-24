@@ -46,3 +46,17 @@ mutable struct KagomeAnisotropy{T<:AbstractFloat} <: InteractionGPU
    total_energy::T
    name::String
 end
+
+
+mutable struct MagnetoelectricLaser{T<:AbstractFloat} <: InteractionGPU
+   lambda::T # Magnetoelectric coupling strength
+   E::T #The ampitude of the electric field
+   B::T #The ampitude of the magnetic field
+   omega:: T #the frequency of the laser
+   delta:: T #laser polarization is determined by delta. RCP(δ = 0),  linearly polarized (δ=π/2), LCP (δ=π)
+   direction::Int64  #The direction of static field, 001, 110 or 111 
+   field::Array{T, 1}
+   energy::Array{T, 1}
+   total_energy::T
+   name::String
+end
