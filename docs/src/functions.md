@@ -10,7 +10,6 @@ TriangularMeshGPU
 ```
 
 
-
 ### DataTypes
 
 ```@docs
@@ -18,7 +17,6 @@ JuMag.NumberOrArrayOrFunction
 JuMag.NumberOrArray
 JuMag.TupleOrArrayOrFunction
 ```
-
 
 
 ### Interfaces
@@ -42,6 +40,7 @@ add_zeeman
 add_exch_vector
 add_exch_kagome
 add_anis_kagome
+add_magnetoelectric_laser
 add_exch_anis
 update_zeeman
 update_anis

@@ -172,3 +172,28 @@ function effective_field(stochastic::StochasticFieldGPU, sim::AtomicSimGPU, spin
     @cuda blocks=blocks_n threads=threads_n stochastic_field_kernel!(spin, sim.field, stochastic.eta, stochastic.T, sim.energy, sim.mu_s, factor, volume, nxyz)
     return nothing
   end
+
+
+  function effective_field(laser::MagnetoelectricLaser, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+
+    lambda = laser.lambda
+   
+    sin_t = sin(laser.omega*t + laser.delta)
+    cos_t = cos(laser.omega*t)
+    Ex, Ey = laser.E*sin_t, laser.E*cos_t
+    Hx, Hy = laser.B*cos_t, -laser.B*sin_t
+
+    N = sim.nxyz
+    blk, thr = cudims(N)
+    if laser.direction == 001
+        @cuda blocks=blk threads=thr __magnetoelectric_laser__kernel_001!(spin, sim.field, sim.energy, 
+                                    lambda, Ex, Ey, 0, Hx, Hy, 0, sim.mu_s, N)
+    elseif laser.direction == 110
+        @cuda blocks=blk threads=thr __magnetoelectric_laser__kernel_110!(spin, sim.field, sim.energy, 
+                                    lambda, Ex, Ey, 0, Hx, Hy, 0, sim.mu_s, N)
+    elseif laser.direction == 111
+        @cuda blocks=blk threads=thr __magnetoelectric_laser__kernel_111!(spin, sim.field, sim.energy, 
+                                    lambda, Ex, Ey, 0, Hx, Hy, 0, sim.mu_s, N)
+    end
+    return nothing
+end

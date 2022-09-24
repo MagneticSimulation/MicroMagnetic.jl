@@ -175,3 +175,43 @@ function add_thermal_noise(sim::AtomicSimGPU, T::NumberOrArrayOrFunction; name="
     end
     return thermal
 end
+
+"""
+    add_magnetoelectric_laser(sim::AtomicSimGPU, lambda::Float64, E::Float64, B::Float64, omega::Float64; delta=0, direction=001, name="lasers")
+
+Add the interaction of high-frequency lasers to multiferroic insulator Cu2OSeO3. 
+The Hamiltonian is given by 
+
+```math
+\\mathcal{H}_\\mathrm{laser} =  -\\sum_{i} \\mu_s \\mathbf{m}_i \\cdot \\mathbf{B}(t) - \\sum_{i} \\mathbf{P}_i \\cdot \\mathbf{E}(t)
+```
+
+The high-frequency laser is described as 
+
+```math
+\\mathbf{E}(t) =  E ( \\sin (\\omega t + \\delta), \\cos \\omega t, 0) \\qquad
+\\mathbf{B}(t) =  B ( \\cos \\omega t, -\\sin(\\omega t + \\delta), 0)
+```
+where δ determines the laser polarization, i.e., δ = 0 for right-circularly polarized (RCP), 
+δ=π/2 for linearly polarized and δ=π for left-circularly polarized (LCP).
+"""
+function add_magnetoelectric_laser(sim::AtomicSimGPU, lambda::Float64, E::Float64, B::Float64, omega::Float64; delta=0, direction=001, name="lasers")
+    nxyz = sim.nxyz
+    F = _cuda_using_double.x ? Float64 : Float32
+    field = zeros(F, 3*nxyz)
+    energy = zeros(F, nxyz)
+
+    laser = MagnetoelectricLaser(F(lambda), F(E),  F(B), F(omega), F(delta), 
+                                direction, field, energy, F(0.0), name)
+  
+    push!(sim.interactions, laser)
+  
+    if sim.save_data
+        push!(sim.saver.headers, string("E_",name))
+        push!(sim.saver.units, "J")
+        id = length(sim.interactions)
+        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+    end
+    return laser
+end
+

@@ -9,3 +9,16 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
     | Atomistic Spin Model |  -   |  ✓   |
     |     Monte Carlo      |  -   |  ✓   |
     |         NEB          |  ✓   |  ✓   |
+
+
+## Index
+
+```@contents
+PAGES = ["index.md",
+    "tutorial.md",
+    "equations.md",
+    "notes.md",
+    "developer.md",
+    "functions.md",
+    "questions.md"]
+```
