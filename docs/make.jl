@@ -1,7 +1,9 @@
 using Documenter
-#using DemoCards
+using DemoCards
 using JuMag
 #using DocumenterTools: Themes
+
+examples, examples_cb = makedemos("examples")
 
 format = Documenter.HTML(
     prettyurls=get(ENV, "CI", nothing) == "true",
@@ -12,6 +14,7 @@ PAGES = ["index.md",
     "tutorial.md",
     "equations.md",
     "notes.md",
+    examples,
     "developer.md",
     "functions.md",
     "questions.md"]
