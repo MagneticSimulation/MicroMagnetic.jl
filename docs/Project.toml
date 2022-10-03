@@ -1,0 +1,7 @@
+[deps]
+JuMag = "8b6b6816-cea2-582c-a99f-83810c20db0f"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+DemoCards = "311a05b2-6137-4a5a-b473-18580a3d38b5"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
