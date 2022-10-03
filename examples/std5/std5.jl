@@ -52,7 +52,7 @@ function applied_current(mesh,ux,beta)
 
     set_Ms(sim,8e5)
     init_m0(sim,m0)
-    add_exch(sim,1.3e-11) #exchange length=5.7nm
+    add_exch(sim,1.3e-11) #exchange length=5.7 nm
     add_demag(sim)
 
 
@@ -74,12 +74,12 @@ function applied_current(mesh,ux,beta)
     end
 end
 
-relax_vortex(mesh_cpu)
+#relax_vortex(mesh_cpu)
 relax_vortex(mesh_gpu)
 
 #ux=-P*g*mu_B*J/(2*c_e*Ms) where J=1e12 is the current density， P=1 is the polarization rate,
 #g is the Lander factor of free electrons, c_e is the charge of an electron.
 @info("Start STT!")
-applied_current(mesh_cpu,-72.438,0.05)
+#applied_current(mesh_cpu,-72.438,0.05)
 @info("Start GPU STT!")
 applied_current(mesh_gpu,-72.438,0.05)
