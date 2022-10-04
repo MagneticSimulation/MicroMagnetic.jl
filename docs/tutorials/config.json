@@ -1,6 +1,5 @@
 {
   "order": [
-    "tutorials",
     "micromagnetics",
     "atomistic",
     "monte_carlo"
