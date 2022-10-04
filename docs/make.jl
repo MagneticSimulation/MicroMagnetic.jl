@@ -11,10 +11,9 @@ format = Documenter.HTML(
 )
 
 PAGES = ["index.md",
-    "tutorial.md",
     "equations.md",
-    "notes.md",
     examples,
+    "notes.md",
     "developer.md",
     "functions.md",
     "questions.md"]

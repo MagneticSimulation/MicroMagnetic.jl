@@ -1,8 +1,8 @@
 {
   "order": [
     "tutorials",
-    "atomistic",
     "micromagnetics",
+    "atomistic",
     "monte_carlo"
   ]
 }
