@@ -97,10 +97,8 @@ function plot_loop()
         ylabel = "mx"
     )
 
-    lines!(ax, H, m, color = :blue)
-    scatter!(ax, H, m, markersize = 6, color = :blue)
-    lines!(ax, -H, -m, color = :blue)
-    scatter!(ax, -H, -m, markersize = 6, color = :blue)
+    scatterlines!(ax, H, m, markersize = 6, color = :blue, markercolor = :orange)
+    scatterlines!(ax, -H, -m, markersize = 6, color = :blue, markercolor = :orange)
 
     expected = 39788.736 # A/m
     vlines!(ax, [expected, -expected], color = :red, linestyle = :dash)

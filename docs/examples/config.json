@@ -1,0 +1,9 @@
+{
+  "order": [
+    "tutorials",
+    "atomistic",
+    "micromagnetics",
+    "monte_carlo"
+  ]
+}
+  
