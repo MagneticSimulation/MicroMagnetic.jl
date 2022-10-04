@@ -27,6 +27,7 @@ makedocs(
     highlightsig = true
 )
 
+examples_cb()
 
 deploydocs(
     #deps = Deps.pip("pygments", "mkdocs", "python-markdown-math"),

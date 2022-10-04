@@ -55,22 +55,14 @@ function apply_field1(mesh)
 end
 
 
-#=====================
-Run the steps 1 and 2.
-```julia
-println("Start to run step1 !")  
-relax_system(mesh)
-println("Start to run step2 !")
-apply_field1(mesh) 
-println("Done!")
-```
-=====================#
-println("Start to run step1 !")  #jl
-relax_system(mesh)  #jl
-println("Start to run step2 !")  #jl
-apply_field1(mesh)  #jl
-println("Done!")  #jl
 
+# Run the steps 1 and 2.
+if !isfile("std4_m0.npy")
+  relax_system(mesh)
+end  
+if !isfile("std4_dyn.txt")
+  apply_field1(mesh) 
+end
 
 # Finally, we plot the time evolution of the magnetization using the plot_m function
 
@@ -79,8 +71,8 @@ using CairoMakie
 
 function plot_m()
     folder = @__DIR__
-    data = readdlm(folder*"/assets/std4_dyn.txt", skipstart=2)
-    oommf = readdlm(folder*"/assets/std4_oommf.txt")
+    data = readdlm("std4_dyn.txt", skipstart=2)
+    oommf = readdlm("assets/std4_oommf.txt")
 
     fig = Figure(resolution = (800, 480))
     ax = Axis(fig[1, 1],
