@@ -4,6 +4,7 @@ using JuMag
 #using DocumenterTools: Themes
 
 tutorials, tutorials_cb = makedemos("tutorials")
+examples, examples_cb = makedemos("examples")
 
 format = Documenter.HTML(
     prettyurls=get(ENV, "CI", nothing) == "true",
@@ -13,9 +14,10 @@ format = Documenter.HTML(
 PAGES = ["index.md",
          tutorials,
         "equations.md",
+        examples,
+        "functions.md",
         "notes.md",
         "developer.md",
-        "functions.md",
         "questions.md"]
 
 makedocs(
@@ -27,6 +29,7 @@ makedocs(
 )
 
 tutorials_cb()
+examples_cb()
 
 deploydocs(
     #deps = Deps.pip("pygments", "mkdocs", "python-markdown-math"),
