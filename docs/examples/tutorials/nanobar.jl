@@ -61,7 +61,7 @@ function plot_spatial_m()
     ax = Axis(fig[1, 1], backgroundcolor = "white")
 
     arrows!(ax, xs, ys, mx, my, arrowsize = 10, lengthscale = 2, 
-            arrowcolor = my, align = :center)
+            arrowcolor = vec(my), linecolor = vec(my), align = :center)
 
     save(folder*"/assets/bar_magnetization.png", fig) #src
 
