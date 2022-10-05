@@ -27,19 +27,18 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
         results = [o::AbstractSim -> o.saver.nsteps,
                 o::AbstractSim -> sum(o.energy),
                 average_m]
-        sim.saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
+        sim.saver = DataSaver(string(name, "_", lowercase(driver),".txt"), 0.0, 0, false, headers, units, results)
     end
 
-    if driver!="none"
-      if driver in ("LLG", "LLG_STT", "LLG_STT_CPP") && save_data
-          saver = sim.saver
-          insert!(saver.headers, 2, "time")
-          insert!(saver.units, 2, "<s>")
-          insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
-      end
-      sim.driver = create_driver(driver, integrator, nxyz)
+    if driver in ("LLG", "LLG_STT", "LLG_STT_CPP") && save_data
+        saver = sim.saver
+        insert!(saver.headers, 2, "time")
+        insert!(saver.units, 2, "<s>")
+        insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
     end
-
+    sim.driver_name = driver
+    sim.driver = create_driver(driver, integrator, nxyz)
+    
    sim.interactions = []
    #println(sim)
    return sim
@@ -200,6 +199,42 @@ function init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
   end
 
   sim.spin[:] .= sim.prespin[:]
+end
+
+"""
+    set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince")
+
+Set the driver of the simulation, can be used to switch the driver.
+"""
+function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince")
+
+    if sim.driver_name == driver
+      return nothing
+    end
+  
+    # if the driver is update, we create a new saver
+    if sim.save_data
+      headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
+      units = ["<>", "<J>",("<>", "<>", "<>")]
+      results = [o::AbstractSim -> o.saver.nsteps,
+                 o::AbstractSim -> o.total_energy, average_m]
+      sim.saver = DataSaver(string(sim.name, "_", lowercase(driver), ".txt"), 0.0, 0, false, headers, units, results)
+    end
+    
+    if isa(sim, AbstractSimGPU)
+        sim.driver = create_driver_gpu(driver, integrator, sim.nxyz)
+    else
+        sim.driver = create_driver(driver, integrator, sim.nxyz)
+    end
+    sim.driver_name = driver
+  
+    if startswith(driver,"LLG") && sim.save_data
+      saver = sim.saver
+      insert!(saver.headers, 2, "time")
+      insert!(saver.units, 2, "<s>")
+      insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
+    end
+  
 end
 
 """
@@ -669,63 +704,57 @@ end
 """
     relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
 
-Relax the system using `LLG` or `SD` driver. The stop condition is determined by `stopping_dmdt`(both for `LLG` and `SD` drivers).
-Spins can be stored in ovfs or vtks. ovf format can be chosen in "binary"(float64),"binary8"(float64), "binary4"(float32), "text"
+Relax the system using `LLG` or `SD` driver. This function works for both micromagnetic (FD and FE) and atomistic simulations, in both CPU and GPU. 
 
-Fields can be stored in vtks by:
+`maxsteps` is the maximum steps allowed to run. 
+
+`stopping_dmdt` is the main stop condition, both for both for `LLG` and `SD` drivers. For standard micromagnetic simulaition, 
+the typical value of `stopping_dmdt` is in the range of [0.01, 1].  In the `SD` driver, the time is not strictly defined. 
+To make it comparable for the `LLG` driver, we multiply a factor of `gamma`. However, for the atomistic model 
+with dimensionless unit, this factor should not be used. In this situation, `using_time_factor` should be set to `false`.
+
+The magnetization (spins) can be stored in ovfs or vtks. ovf format can be chosen in "binary"(float64),"binary8"(float64), "binary4"(float32), "text"
+
+Fields can be stored in vtks as well
 
 ```julia
 relax(sim, save_vtk_every = 10, fields = ["demag", "exch", "anis"])
 ```
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_every = -1, 
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_factor=true, save_m_every = -1, 
     save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks", fields::Array{String, 1} = String[])
 
-    #= if !sim.save_data  
-        save_m_every = -1
-    end =#
+    # to dertermine which driver is used.
+    llg_driver = false
+    if isa(sim.driver, LLG) || (_cuda_available.x && isa(sim.driver, LLG_GPU))
+        llg_driver = true
+    end
 
-  llg_driver = false
+    time_factor =  using_time_factor ? 2.21e5/2 : 1.0
 
-  if isa(sim, MicroSimFEM)
-    N_spins = sim.n_nodes
-  else
-    N_spins = sim.nxyz
-  end
+    N_spins = isa(sim, MicroSimFEM) ? sim.n_nodes : sim.nxyz
 
-  if isa(sim.driver, LLG) || (_cuda_available.x && isa(sim.driver, LLG_GPU))
-      llg_driver = true
-  end
-
-  if !isdir(vtk_folder) && save_vtk_every > 0
-      mkdir(vtk_folder)
-  end
-
-  if !isdir(ovf_folder) && save_ovf_every > 0
-      mkdir(ovf_folder)
-  end
-
-  if _cuda_available.x && (isa(sim, MicroSimGPU) || isa(sim, AtomicSimGPU))
-      T = _cuda_using_double.x ? Float64 : Float32
-      dm = CUDA.zeros(T, 3*sim.nxyz)
-  else
-    dm = zeros(Float64,3*N_spins)
-  end
+    if _cuda_available.x && (isa(sim, MicroSimGPU) || isa(sim, AtomicSimGPU))
+        T = _cuda_using_double.x ? Float64 : Float32
+        dm = CUDA.zeros(T, 3*sim.nxyz)
+    else
+        dm = zeros(Float64,3*N_spins)
+    end
 
 
-  dmdt_factor = (2 * pi / 360) * 1e9
-  if _cuda_available.x && isa(sim, AtomicSimGPU)
-      dmdt_factor = 1.0
-  end
+    dmdt_factor = (2 * pi / 360) * 1e9
+    if _cuda_available.x && isa(sim, AtomicSimGPU)
+        dmdt_factor = 1.0
+    end
 
-  step = 0
-  driver = sim.driver
-  @info @sprintf("Running Driver : %s.", typeof(driver))
-  for i=1:maxsteps
+    step = 0
+    driver = sim.driver
+    @info @sprintf("Running Driver : %s.", typeof(driver))
+    for i=1:maxsteps
 
       run_step(sim, driver)
 
-      step_size = llg_driver ? driver.ode.step : driver.tau/2.21e5*2
+      step_size = llg_driver ? driver.ode.step : driver.tau/time_factor
 
       compute_dm!(dm, sim.prespin, sim.spin, N_spins)
       max_dmdt = maximum(dm)/step_size
@@ -744,9 +773,11 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
           write_data(sim)
       end
     if save_vtk_every > 0 && i%save_vtk_every == 0
+        !isdir(vtk_folder) && mkdir(vtk_folder)
         save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
     end
     if save_ovf_every > 0 && i%save_ovf_every == 0
+       !isdir(ovf_folder) && mkdir(ovf_folder)
       save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
     end
 
@@ -765,9 +796,11 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_ever
           write_data(sim)
       end
       if save_vtk_every > 0
-          save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+        !isdir(vtk_folder) && mkdir(vtk_folder)
+        save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
       end
       if save_ovf_every > 0
+        !isdir(ovf_folder) && mkdir(ovf_folder)
         save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
       end
       step = i

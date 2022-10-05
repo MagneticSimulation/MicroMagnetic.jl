@@ -47,7 +47,7 @@ function test_neb_cpu()
 
     function creat_sim()
         mesh =  FDMesh(nx=1, ny=1, nz=1, dx=5e-9, dy=5e-9, dz=5e-9)
-        sim = Sim(mesh, name="neb", driver="none",save_data=false)
+        sim = Sim(mesh, name="neb", driver="None",save_data=false)
         set_Ms(sim, 8e5)
 
         init_m0(sim, (0.6, 0, -0.8))

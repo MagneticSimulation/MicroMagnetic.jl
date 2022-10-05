@@ -5,6 +5,11 @@ abstract type MicroEnergy end
 abstract type Integrator end
 abstract type IntegratorCayley <:Integrator end
 
+abstract type AbstractSimGPU <:AbstractSim end
+abstract type DriverGPU end
+abstract type EnergyGPU end
+abstract type MicroEnergyGPU end
+
 """
     NumberOrArrayOrFunction
 
@@ -87,6 +92,7 @@ mutable struct MicroSim <: AbstractSim
   pins::Array{Bool, 1}
   nxyz::Int64
   name::String
+  driver_name::String
   interactions::Array
   save_data::Bool
   MicroSim() = new()

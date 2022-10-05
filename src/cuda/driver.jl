@@ -1,4 +1,7 @@
-mutable struct EnergyMinimization_GPU{T<:AbstractFloat} <: DriverGPU
+mutable struct EmptyDriverGPU <: DriverGPU
+end
+
+mutable struct EnergyMinimizationGPU{T<:AbstractFloat} <: DriverGPU
   gk::CuArray{T, 1}
   ss::CuArray{T, 1}
   sf::CuArray{T, 1}
@@ -63,12 +66,16 @@ mutable struct LLG_STT_CPP_GPU{T<:AbstractFloat} <: DriverGPU
 end
 
 function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
-    supported_drivers = ["SD", "LLG", "LLG_STT", "LLG_CPP", "LLG_STT_CPP"]
+    supported_drivers = ["None", "SD", "LLG", "LLG_STT", "LLG_CPP", "LLG_STT_CPP"]
     if !(driver in supported_drivers)
         error("Supported drivers for GPU: ", join(supported_drivers, " "))
     end
 
     Float = _cuda_using_double.x ? Float64 : Float32
+
+    if driver == "None"
+        return EmptyDriverGPU()
+    end
 
     if driver == "SD"
         gk = CUDA.zeros(Float,3*nxyz)
@@ -76,7 +83,7 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         ss = CUDA.zeros(Float, nxyz)
         sf = CUDA.zeros(Float, nxyz)
         ff = CUDA.zeros(Float, nxyz)
-        return EnergyMinimization_GPU(gk, ss, sf, ff, field, Float(0.0), Float(1e-2), Float(1e-10), 0)
+        return EnergyMinimizationGPU(gk, ss, sf, ff, field, Float(0.0), Float(1e-2), Float(1e-10), 0)
     end
 
     supported_integrators = ["Heun", "RungeKutta", "DormandPrince", "DormandPrinceCayley"]

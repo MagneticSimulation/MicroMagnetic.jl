@@ -28,25 +28,25 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince"
     sim.interactions = []
     sim.save_data = save_data
 
+    # if save_data is true, we create the saver. 
     if save_data
         headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
         units = ["<>", "<J>",("<>", "<>", "<>")]
         results = [o::AbstractSim -> o.saver.nsteps,
                    o::AbstractSim -> o.total_energy, average_m]
-        sim.saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
+        sim.saver = DataSaver(string(name, "_", lowercase(driver), ".txt"), 0.0, 0, false, headers, units, results)
     end
+    sim.driver = create_driver_gpu(driver, integrator, nxyz)
+    sim.driver_name = driver
 
-    if driver!="none"
-        sim.driver = create_driver_gpu(driver, integrator, nxyz)
-
-        if driver in ("LLG", "LLG_STT", "LLG_STT_CPP") && save_data
-            saver = sim.saver
-            insert!(saver.headers, 2, "time")
-            insert!(saver.units, 2, "<s>")
-            insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
-        end
+    # if the driver is LLG related, then add the time info in the saver. 
+    if startswith(driver,"LLG") && save_data
+        saver = sim.saver
+        insert!(saver.headers, 2, "time")
+        insert!(saver.units, 2, "<s>")
+        insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
     end
-
+    
     blocks, threads = cudims(nxyz)
     sim.blocks = blocks
     sim.threads = threads

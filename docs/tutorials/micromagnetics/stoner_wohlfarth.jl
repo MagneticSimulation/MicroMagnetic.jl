@@ -88,7 +88,7 @@ using CairoMakie
 
 function plot_loop()
     folder = @__DIR__
-    data = readdlm(folder*"/sw_cubic.txt", skipstart=2)
+    data = readdlm(folder*"/sw_cubic_sd.txt", skipstart=2)
     m, H = data[:, 3], data[:, 8]
     
     fig = Figure(resolution = (800, 500))

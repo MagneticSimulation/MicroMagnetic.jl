@@ -15,6 +15,7 @@ mutable struct AtomicSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   blocks::Int64
   threads::Int64
   name::String
+  driver_name::String
   interactions::Array{Any, 1}
   save_data::Bool
   AtomicSimGPU{T}() where {T<:AbstractFloat} = new()
