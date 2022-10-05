@@ -59,7 +59,7 @@ function run_step_kernel!(gk::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::Cu
 end
 
 
-function compute_tau(driver::EnergyMinimization_GPU, m_pre::CuArray{T, 1}, m::CuArray{T, 1},
+function compute_tau(driver::EnergyMinimizationGPU, m_pre::CuArray{T, 1}, m::CuArray{T, 1},
                      h::CuArray{T, 1}, N::Int64)  where {T<:AbstractFloat}
   if driver.steps == 0
       blk, thr = cudims(N)
@@ -87,7 +87,7 @@ function compute_tau(driver::EnergyMinimization_GPU, m_pre::CuArray{T, 1}, m::Cu
   return nothing
 end
 
-function run_step(sim::AbstractSim, driver::EnergyMinimization_GPU)
+function run_step(sim::AbstractSim, driver::EnergyMinimizationGPU)
 
   effective_field(sim, sim.spin, 0.0)
   compute_tau(driver, sim.prespin, sim.spin, driver.field, sim.nxyz)

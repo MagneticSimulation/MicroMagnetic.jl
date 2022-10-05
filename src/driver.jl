@@ -1,3 +1,6 @@
+mutable struct EmptyDriver <: Driver
+end
+
 mutable struct EnergyMinimization <: Driver
   gk::Array{Float64, 1}
   tau::Float64
@@ -26,9 +29,13 @@ mutable struct LLG_STT <: Driver
 end
 
 function create_driver(driver::String, integrator::String, nxyz::Int64)
-    supported_drivers = ["SD", "LLG", "LLG_STT"]
+    supported_drivers = ["None", "SD", "LLG", "LLG_STT"]
     if !(driver in supported_drivers)
         error("Supported drivers for CPU: ", join(supported_drivers, " "))
+    end
+
+    if driver == "None"
+        return EmptyDriver()
     end
 
     if driver=="SD" #Steepest Descent

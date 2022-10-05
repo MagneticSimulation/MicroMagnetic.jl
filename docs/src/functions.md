@@ -25,6 +25,7 @@ JuMag.TupleOrArrayOrFunction
 Sim
 set_Ms
 set_Ms_cylindrical
+set_driver
 create_box
 create_cylinder
 set_mu_s

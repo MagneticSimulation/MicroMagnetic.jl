@@ -1,9 +1,3 @@
-abstract type AbstractSimGPU <:AbstractSim end
-abstract type MeshGPU <: Mesh end
-abstract type DriverGPU end
-abstract type EnergyGPU end
-abstract type MicroEnergyGPU end
-
 mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   mesh::MeshGPU
   driver::DriverGPU
@@ -19,6 +13,7 @@ mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   blocks::Int64
   threads::Int64
   name::String
+  driver_name::String
   interactions::Array{Any, 1}
   save_data::Bool
   MicroSimGPU{T}() where {T<:AbstractFloat} = new()
