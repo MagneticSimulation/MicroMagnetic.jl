@@ -2,9 +2,22 @@
 # title: Magnetic skyrmion
 # author: Weiwei Wang
 # date: 2022-10-04
-# description: to check whether the parameters are correct to give a skyrmion in PRL **111** 067203 (2013).
+# description: to check how to use the parameters given in PRL **111** 067203 (2013).
 # tag: atomistic; skyrmion
 # ---
+
+#==============
+!!! note "Used parameters in the simulation"
+    |Parameter | Value  | 
+    | :----:   | :----: | 
+    | Lattice constant | $a = 0.5$ nm |
+    | Spin length      | $S = 1$      | 
+    | Magnetic moment  |  $\mu_s = 2 \mu_B$ |
+    | Excahnge constant |  $J = 50 k_B$   |
+    | DMI         | $D/J = 0.5$  |     |
+    | External field  | $H \mu_s /J  = 0.2$ | 
+
+===============#
 
 using JuMag
 using Printf
