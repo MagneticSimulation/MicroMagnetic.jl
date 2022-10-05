@@ -4,9 +4,12 @@
 
 The basic assumption of the atomistic spin model is that each lattice site is associated with a magnetic moment $\mu_s$. For metal systems with quenched orbital moments, the magnetic moment is mainly related to its spin angular momentum
 ```math
-\mathbf{\mu}_s = - \hbar \gamma \mathbf{S}
+\mathbf{\mu} = - g \mu_B \mathbf{S} = - \hbar  \gamma \mathbf{S}
 ```
-where $\gamma(>0)$ is the gyromagnetic ratio and $\mathbf{S}$ is the atomic spin. The LLG equation governs the dynamics of the magnetic moment, which reads
+where $\mu_B=e \hbar /(2m)$ is the Bohr magneton, $e(>0)$ is the electron charge, 
+$\gamma=g\mu_B/\hbar (>0) $ is the gyromagnetic ratio, $g=2$ is the g-factor. 
+The LLG equation governs the dynamics of the magnetic moment, 
+which reads
 
 ```math
 \frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H}_\mathrm{eff} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
@@ -208,14 +211,32 @@ and the corresponding LL form is given by
 
 ## LLG equation with extensions
 
-The driver `LLG_STT` implements the LLG equation with zhang-li extension
+### Spin transfer torque
+
+In micromagnetics, the spin transfer torque is modelled with the extended LLG equation Zhang-Li extension, 
+which reads
 
 ```math
 \frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
 + (\mathbf{u} \cdot \nabla) \mathbf{m} - \beta [\mathbf{m}\times (\mathbf{u} \cdot \nabla)\mathbf{m}]
 ```
+where 
+```math
+\mathbf{u} = \frac{p g \mu_B}{2 e M_s} \mathbf{j}
+```
+represents the strength of the current. The unit of $\mathbf{u}$ is m/s. 
+In the definition of  $\mathbf{u}$,
+$p$ is the spin polarization of the electric current, $e(>0)$ is the elementary charge,
+$M_s$ is the saturation magnetization and $\mathbf{j}$ is electric current density.
 
-and the driver `LLG_CPP` implements the LLG equation with spin transfer torque
+For the atomistic model, 
+```math
+\mathbf{u} = \frac{p g \mu_B a^3}{2 e \mu_s} \mathbf{j} = \frac{p a^3}{2 e S} \mathbf{j}.
+```
+where $S = |\mathbf{S}|$ is the length of local spin.
+
+In JuMag, the the extended LLG equation Zhang-Li extension is implemented in the driver `LLG_STT`.  
+Moreover, the driver `LLG_CPP` implements the LLG equation with spin transfer torque
 for the current-perpendicular-to-plane (CPP) case,
 
 ```math
