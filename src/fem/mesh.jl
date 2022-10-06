@@ -111,6 +111,9 @@ function build_boundary_maps!(mesh::FEMesh)
 
 end
 
+"""
+Create a FEMesh from the given netgen neutral file.
+"""
 function FEMesh(fname::String; unit_length=1e-9)
     mesh = load_mesh_netgen_neutral(fname)
     mesh.unit_length = unit_length
