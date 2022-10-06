@@ -4,6 +4,7 @@
     "nanobar.jl",
     "vortex.jl",
     "std4.jl",
+    "std5.jl",
     "stoner_wohlfarth.jl"
   ]
 }
