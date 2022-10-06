@@ -4,6 +4,7 @@
 
 ```@docs
 FDMesh
+FEMesh
 FDMeshGPU
 CubicMeshGPU
 TriangularMeshGPU
@@ -46,8 +47,8 @@ add_exch_anis
 update_zeeman
 update_anis
 relax
+compute_guiding_center
 ```
-
 
 
 ### DataSaving
