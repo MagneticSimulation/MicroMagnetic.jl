@@ -40,7 +40,7 @@ function create_driver(driver::String, integrator::String, nxyz::Int64)
 
     if driver=="SD" #Steepest Descent
         gk = zeros(Float64,3*nxyz)
-        return EnergyMinimization(gk, 0.0, 1e-4, 1e-12, 0)
+        return EnergyMinimization(gk, 0.0, 100.0, 1e-12, 0)
     end
 
     supported_integrators = ["Heun", "RungeKutta", "DormandPrince", "DormandPrinceCayley"]
