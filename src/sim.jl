@@ -773,12 +773,12 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
           write_data(sim)
       end
     if save_vtk_every > 0 && i%save_vtk_every == 0
-        !isdir(vtk_folder) && mkdir(vtk_folder)
+        isdir(vtk_folder) || mkdir(vtk_folder)
         save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
     end
     if save_ovf_every > 0 && i%save_ovf_every == 0
-       !isdir(ovf_folder) && mkdir(ovf_folder)
-      save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
+        isdir(ovf_folder) || mkdir(ovf_folder)
+        save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
     end
 
     if sim.save_data
@@ -796,11 +796,11 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
           write_data(sim)
       end
       if save_vtk_every > 0
-        !isdir(vtk_folder) && mkdir(vtk_folder)
+        isdir(vtk_folder) || mkdir(vtk_folder)
         save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
       end
       if save_ovf_every > 0
-        !isdir(ovf_folder) && mkdir(ovf_folder)
+        isdir(ovf_folder) || mkdir(ovf_folder)
         save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
       end
       step = i
@@ -810,10 +810,12 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
 
   if step == maxsteps
       if save_vtk_every > 0
-          save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, step)), fields = fields)
+        isdir(vtk_folder) || mkdir(vtk_folder)
+        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, step)), fields = fields)
       end
       if save_ovf_every > 0
-          save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, step)), dataformat = ovf_format)
+        isdir(ovf_folder) || mkdir(ovf_folder)
+        save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, step)), dataformat = ovf_format)
       end
   end
   return nothing
@@ -910,32 +912,147 @@ function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
     run_until(sim, t_end, sim.driver.ode, save_data)
 end
 
+"""
+    create_sim(mesh; args...)
 
+Create a micromagnetic simulation instance with given arguments. 
 
-function StdSim(mesh; Ms=8e5, A=1.3e-11, D=0, Ku=0, axis=(0,0,1), H=(0,0,0), m0=(0,0,1), demag=false, name="relax")
-  
-    sim = Sim(mesh, driver="SD", name = name)
-  
-    set_Ms(sim, Ms)
-  
-    init_m0(sim, m0)
-  
-    add_exch(sim, A)
-  
-    add_zeeman(sim, H)
-  
-    if abs(D)>0
-      add_dmi(sim, D)
+- `mesh`: a mesh has to be provided to start the simulation. The mesh could be [`FDMesh`](@ref), [`FEMesh`](@ref),
+[`FDMeshGPU`](@ref), [`CubicMeshGPU`](@ref), or [`TriangularMeshGPU`](@ref).
+
+# Arguments
+- `name` : the simulation name, should be a string.
+- `driver` : the driver name, should be a string. By default, the driver is "SD".
+- `alpha` : the Gilbert damping in the LLG equation, should be a number.
+- `beta` : the nonadiabatic strength in the LLG equation with spin transfer torques (zhang-li model), should be a number.
+- `gamma` : the gyromagnetic ratio, default value = 2.21e5.
+- `ux`, `uy` or `uz`: the strengths of the spin transfer torque.
+- `Ms`: the saturation magnetization, should be [`NumberOrArrayOrFunction`](@ref). By default, Ms=8e5
+- `mu_s`: the magnetic moment, should be [`NumberOrArrayOrFunction`](@ref). By default, mu_s=2*mu_B
+- `A` or `J`: the exchange constant, should be [`NumberOrArrayOrFunction`](@ref).
+- `D` : the DMI constant, should be [`NumberOrArrayOrFunction`](@ref).
+- `dmi_type` : the type of DMI, could be "bulk" or "interfacial".
+- `Ku`: the anisotropy constant, should be [`NumberOrArrayOrFunction`](@ref).
+- `axis`: the anisotropy axis, should be a tuple, such as (0,0, 1)
+- `demag` : include demagnetization or not, should be a boolean, i.e., true or false.
+- `H`: the external field, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
+- `m0` : the initial magnetization, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
+"""
+function create_sim(mesh; args...)
+    #convert args to a dict
+    args = Dict(args)
+    #Ms=8e5, A=1.3e-11, D=0, Ku=0, axis=(0,0,1), H=(0,0,0), m0=(0,0,1), demag=false, driver="SD", name="relax"
+    driver = haskey(args, :driver) ? args[:driver] : "SD"
+    name = haskey(args, :name) ? args[:name] : "unnamed"
+
+    #Create the mesh using given driver and name
+    sim = Sim(mesh, driver=driver, name = name)
+
+    #If the simulation is the standard micromagnetic simulation.
+    if isa(mesh, FDMesh) || isa(mesh, FDMeshGPU) || isa(mesh, FEMesh) || isa(mesh, FDMeshGPU)
+
+        # we set the Ms anyway
+        Ms = haskey(args, :Ms) ? args[:Ms] : 8e5
+        set_Ms(sim, Ms)
+
+        # add the exchange if A is given
+        if haskey(args, :A)
+            add_exch(sim, args[:A])
+        end
+
+        # add the DMI if D is given
+        if haskey(args, :D)
+            dmi_type = haskey(args, :dmi_type) ? args[:dmi_type] : "bulk"
+            add_dmi(sim, args[:D], type=dmi_type)
+        end
+
+        # add the demag
+        if haskey(args, :demag) && args[:demag]
+            add_demag(sim)
+        end
+
+        for key in [:Ms, :A, :D, :demag]
+            haskey(args, key) && delete!(args, key)
+        end
+
+    
+    #If the simulation is atomistic
+    elseif isa(mesh, AtomicMeshGPU)
+
+        mu_s = haskey(args, :mu_s) ? args[:mu_s] : 2*mu_B
+        set_mu_s(sim, mu_s)
+
+        # add the exchange if A is given
+        if haskey(args, :J)
+            add_exch(sim, args[:J])
+        end
+        
+        # add the DMI if D is given
+        if haskey(args, :D)
+            add_dmi(sim, args[:D])
+        end
+
+        for key in [:mu_s, :J, :D]
+            haskey(args, key) && delete!(args, key)
+        end
+    else
+        error("This info is for debug.")
     end
+
+    # add the anisotropy
+    if haskey(args, :Ku)
+        axis = haskey(args, :axis) ? args[:axis] : (0,0,1)
+        add_anis(sim, args[:Ku], axis=axis)
+        haskey(args, :axis) && delete!(args, :axis)
+    end
+
+    # add the external field
+    if haskey(args, :H)
+        add_zeeman(sim, args[:H])
+    end
+
+    if haskey(args, :alpha) && startswith(driver, "LLG")
+        sim.driver.alpha = args[:alpha]
+        delete!(args, :alpha)
+    end
+
+    if haskey(args, :gamma) && startswith(driver, "LLG")
+        sim.driver.gamma = args[:gamma]
+        delete!(args, :gamma)
+    end
+
+    if haskey(args, :beta) && startswith(driver, "LLG_STT")
+        sim.driver.beta = args[:beta]
+        delete!(args, :beta)
+    end
+
+    if haskey(args, :ux) && startswith(driver, "LLG_STT")
+        set_ux(sim, args[:ux])
+        delete!(args, :ux)
+    end
+
+    if haskey(args, :uy) && startswith(driver, "LLG_STT")
+        set_uy(sim, args[:uy])
+        delete!(args, :uy)
+    end
+
+    if haskey(args, :uz) && startswith(driver, "LLG_STT")
+        set_uz(sim, args[:uz])
+        delete!(args, :uz)
+    end
+
+    # set m0 anyway
+    m0_value = haskey(args, :m0) ? args[:m0] : (0.8, 0.6, 0)
+    init_m0(sim, m0_value)
   
-    if abs(Ku)>0
-      add_anis(sim, Ku, axis=axis)
+    for key in [:driver, :name, :Ku, :H, :m0]
+        haskey(args, key) && delete!(args, key)
     end
     
-    if demag
-      add_demag(sim)
+    for key in args
+        @warn @sprintf("Key '%s' is not used.", key)
     end
-  
+    
     return sim
     
   end

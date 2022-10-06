@@ -92,6 +92,7 @@ function drive_skyrmion(;u=2, alpha=0.1, beta=0.2, dt=1e-10, steps=10)
 
     set_ux(sim, -u)
     
+    isdir("assets") || mkdir("assets")
     f = open(@sprintf("assets/pos_u_%g_alpha_%g_beta_%g.txt", u, alpha, beta), "w")
     for i = 0:steps
         t = dt*i
@@ -119,6 +120,7 @@ function plot_XY(filename)
     lines!(ax, ts, X.-X[1], label="X")
     lines!(ax, ts, Y.-Y[1], label="Y")
     axislegend()
+
     save("assets/xy.png",fig)
     return fig
 

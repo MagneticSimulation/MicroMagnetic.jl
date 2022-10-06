@@ -23,6 +23,7 @@ JuMag.TupleOrArrayOrFunction
 ### Interfaces
 
 ```@docs
+create_sim
 Sim
 set_Ms
 set_Ms_cylindrical
