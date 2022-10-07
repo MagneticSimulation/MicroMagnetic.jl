@@ -501,11 +501,11 @@ function compute_guiding_center(m::Array{T, 1}, mesh::Mesh; xmin=1, xmax=-1, ymi
 end
 
 """
-    function compute_guiding_center(sim::AbstractSim,  xmin=1, xmax=-1, ymin = 1, ymax=-1, z=1)
+    function compute_guiding_center(sim::AbstractSim; xmin=1, xmax=-1, ymin = 1, ymax=-1, z=1)
 
 compute the guiding center.
 """
-function compute_guiding_center(sim::AbstractSim,  xmin=1, xmax=-1, ymin = 1, ymax=-1, z=1)
+function compute_guiding_center(sim::AbstractSim; xmin=1, xmax=-1, ymin = 1, ymax=-1, z=1)
   spin = Array(sim.spin)
   mesh = sim.mesh
   Rx, Ry = compute_guiding_center(spin, mesh, xmin=xmin, xmax=xmax, ymin = ymin, ymax=ymax, z=z)
