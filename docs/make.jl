@@ -3,8 +3,8 @@ using DemoCards
 using JuMag
 #using DocumenterTools: Themes
 
-tutorials, tutorials_cb = makedemos("tutorials")
-examples, examples_cb = makedemos("examples")
+#tutorials, tutorials_cb = makedemos("tutorials")
+#examples, examples_cb = makedemos("examples")
 
 format = Documenter.HTML(
     prettyurls=get(ENV, "CI", nothing) == "true",
@@ -12,9 +12,9 @@ format = Documenter.HTML(
 )
 
 PAGES = ["index.md",
-         tutorials,
+        # tutorials,
         "equations.md",
-        examples,
+        #examples,
         "functions.md",
         "notes.md",
         "developer.md",
@@ -28,8 +28,8 @@ makedocs(
     highlightsig = true
 )
 
-tutorials_cb()
-examples_cb()
+#tutorials_cb()
+#examples_cb()
 
 deploydocs(
     #deps = Deps.pip("pygments", "mkdocs", "python-markdown-math"),
