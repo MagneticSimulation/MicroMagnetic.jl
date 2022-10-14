@@ -2,9 +2,12 @@
 module JuMag
 
 using LinearAlgebra
-
 using Printf
 using CUDA
+
+function dev_test()
+    return "This is a newly added function!"
+end
 
 LinearAlgebra.BLAS.set_num_threads(Threads.nthreads())
 
