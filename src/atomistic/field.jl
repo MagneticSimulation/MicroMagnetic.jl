@@ -104,9 +104,9 @@ function effective_field(dmi::HeisenbergBulkDMI, sim::AtomicSimGPU, spin::CuArra
     function __kernel!(m, h, energy, D, ngbs, n_ngbs, mu_s, N)
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x
         
-        ax = (1.0,-1.0, 0.0, 0.0, 0.0, 0.0)
-        ay = (0.0, 0.0, 1.0,-1.0, 0.0, 0.0)
-        az = (0.0, 0.0, 0.0, 0.0, 1.0,-1.0)
+        ax = (T(1), T(-1), T(0), T(0),T(0), T(0))
+        ay = (T(0), T(0), T(1), T(-1), T(0), T(0))
+        az = (T(0), T(0), T(0), T(0), T(1),T(-1))
 
         if 0 < i <= N
             j = 3*(i-1)
@@ -187,13 +187,13 @@ function effective_field(stochastic::StochasticFieldGPU, sim::AtomicSimGPU, spin
     blk, thr = cudims(N)
     if laser.direction == 001
         @cuda blocks=blk threads=thr __magnetoelectric_laser__kernel_001!(spin, sim.field, sim.energy, 
-                                    lambda, Ex, Ey, 0, Hx, Hy, 0, sim.mu_s, N)
+                                    T(lambda), T(Ex), T(Ey), T(0), T(Hx), T(Hy), T(0), sim.mu_s, N)
     elseif laser.direction == 110
         @cuda blocks=blk threads=thr __magnetoelectric_laser__kernel_110!(spin, sim.field, sim.energy, 
-                                    lambda, Ex, Ey, 0, Hx, Hy, 0, sim.mu_s, N)
+                                    T(lambda), T(Ex), T(Ey), T(0), T(Hx), T(Hy), T(0), sim.mu_s, N)
     elseif laser.direction == 111
         @cuda blocks=blk threads=thr __magnetoelectric_laser__kernel_111!(spin, sim.field, sim.energy, 
-                                    lambda, Ex, Ey, 0, Hx, Hy, 0, sim.mu_s, N)
+                                    T(lambda), T(Ex), T(Ey), T(0), T(Hx), T(Hy), T(0), sim.mu_s, N)
     end
     return nothing
 end

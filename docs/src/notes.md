@@ -14,7 +14,7 @@ conversion table can be used to convert the simulation results to physical units
 !!! note "Unit conversion table for J = 1meV, S = 1, and a = 0.5 nm."
     |Parameter | Conversion coefficients |  Value  | 
     | :----:   | :----: | :----: | 
-    | Distance x   | $\hat{x}=a$ | =0.5nm |
+    | Distance x   | $\hat{x}=a$ | 0.5nm |
     | Time t   | $\hat{t}=\hbar S/J$ | 0.66 ps |
     | Magnetic field H | $\hat{H} = J/(\hbar \gamma S)$ | 8.63T|
     | Velocity v | $\hat{v} = Ja/(\hbar S)$ | 759.63 m/s |
