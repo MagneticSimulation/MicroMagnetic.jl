@@ -20,7 +20,7 @@ export init_m0,
        init_m0_skyrmion, init_m0_skyrmion_lattice,
        add_zeeman,
        add_dmi,
-       add_exch, add_exch_kagome,
+       add_exch, add_exch_kagome, add_next_exch, add_next_next_exch,
        add_anis, add_cubic_anis,
        add_demag, add_exch_rkky, add_anis_kagome, add_anis_kagome_6fold,
        update_zeeman,update_anis, add_exch_vector,
@@ -141,6 +141,7 @@ if _cuda_available.x
     include("mc/mc_kernel.jl")
     export FDMeshGPU,
            CubicMeshGPU,
+           SquareMeshGPU
            TriangularMeshGPU,
            MonteCarlo,
            add_thermal_noise,

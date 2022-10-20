@@ -87,6 +87,82 @@ end
 
 
 """
+    add_next_exch()
+
+Add next-nearest neigbours exchange energy to the system
+"""
+
+function add_next_exch(sim::AtomicSimGPU, J::Number; name="next_exch")
+    nn_ngbs = sim.mesh.nn_ngbs
+    Js = zeros(nn_ngbs)
+    Js .= J
+    add_next_exch(sim, Js, name=name)
+end
+
+function add_next_exch(sim::AtomicSimGPU, J::Array; name="next_exch")
+    nxyz = sim.nxyz
+    Float = _cuda_using_double.x ? Float64 : Float32
+    field = zeros(Float, 3*nxyz)
+    energy = zeros(Float, nxyz)
+    nn_ngbs = sim.mesh.nn_ngbs
+    Js = CUDA.zeros(Float, nn_ngbs)
+
+    if length(J) != nn_ngbs
+        @error("The length of given Js is $(length(Js)) but we need an array with $a.")
+    else
+        copyto!(Js, [Float(i) for i in J])
+    end
+
+    next_exch = NextHeisenbergExchange(Js, field, energy, Float(0.0), name)
+    push!(sim.interactions, next_exch)
+    if sim.save_data
+        push!(sim.saver.headers, string("E_",name))
+        push!(sim.saver.units, "J")
+        id = length(sim.interactions)
+        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+    end
+    return next_exch
+end
+
+"""
+    add_next_next_exch()
+
+Add next-next-nearest neigbours exchange energy to the system
+"""
+function add_next_next_exch(sim::AtomicSimGPU, J::Number; name="next_next_exch")
+    nnn_ngbs = sim.mesh.nnn_ngbs
+    Js = zeros(nnn_ngbs)
+    Js .= J
+    add_next_next_exch(sim, Js, name=name)
+end
+
+function add_next_next_exch(sim::AtomicSimGPU, J::Array; name="next_next_exch")
+    nxyz = sim.nxyz
+    Float = _cuda_using_double.x ? Float64 : Float32
+    field = zeros(Float, 3*nxyz)
+    energy = zeros(Float, nxyz)
+    nnn_ngbs = sim.mesh.nnn_ngbs
+    Js = CUDA.zeros(Float, nnn_ngbs)
+
+    if length(J) != nnn_ngbs
+        @error("The length of given Js is $(length(Js)) but we need an array with $a.")
+    else
+        copyto!(Js, [Float(i) for i in J])
+    end
+
+    next_next_exch = NextNextHeisenbergExchange(Js, field, energy, Float(0.0), name)
+    push!(sim.interactions, next_next_exch)
+    if sim.save_data
+        push!(sim.saver.headers, string("E_",name))
+        push!(sim.saver.units, "J")
+        id = length(sim.interactions)
+        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+    end
+    return next_next_exch
+end
+
+
+"""
     add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
 
 Add bulk dmi energy to the system.
