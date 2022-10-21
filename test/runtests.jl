@@ -30,6 +30,7 @@ if JuMag._cuda_available.x
 
   include("atomistic/test_llg.jl")
   include("atomistic/test_laser.jl")
+  include("atomistic/test_next_exch.jl")
 
   JuMag.cuda_using_double()
   test_zeeman(gpu=true)
