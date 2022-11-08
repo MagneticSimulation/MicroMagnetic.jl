@@ -263,7 +263,7 @@ The SLLG equation, i.e., LLG equation including the stochastic field $\mathbf{b}
 The thermal fluctuation is assumed to be a Gaussian white noise, i.e., the thermal noise $\mathbf{b}$ obeys the  properties
 
 ```math
-\left< \mathbf{b} \right> = 0, \;\;\; \left< \mathbf{b}_i^u,\mathbf{b}_j^v \right> = 2 D \delta_{ij} \delta_{uv}
+\left< \mathbf{b} \right> = 0, \;\;\; \left< \mathbf{b}_i^u \cdot \mathbf{b}_j^v \right> = 2 D \delta_{ij} \delta_{uv}
 ```
 
 where $i$ and $j$ are Cartesian indices, $u$ and $v$ indicate the magnetization components and $\left< \cdot , \cdot \right>$
