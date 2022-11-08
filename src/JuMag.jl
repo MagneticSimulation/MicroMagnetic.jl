@@ -141,7 +141,7 @@ if _cuda_available.x
     include("mc/mc_kernel.jl")
     export FDMeshGPU,
            CubicMeshGPU,
-           SquareMeshGPU
+           SquareMeshGPU,
            TriangularMeshGPU,
            MonteCarlo,
            add_thermal_noise,
