@@ -116,8 +116,8 @@ function CubicMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     nnngbs[4,id] = indexpbc(i-1,j-1,k-1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
     nnngbs[5,id] = indexpbc(i+1,j-1,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
     nnngbs[6,id] = indexpbc(i+1,j+1,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
-    nnngbs[3,id] = indexpbc(i-1,j+1,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
-    nnngbs[4,id] = indexpbc(i-1,j-1,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
+    nnngbs[7,id] = indexpbc(i-1,j+1,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
+    nnngbs[8,id] = indexpbc(i-1,j-1,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
   end
   nxyz = nx*ny*nz
   return CubicMeshGPU(dx, dy, dz, nx, ny, nz, nxyz, 6, 12, 8, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), xperiodic, yperiodic, zperiodic)
