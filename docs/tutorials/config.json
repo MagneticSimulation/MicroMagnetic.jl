@@ -2,7 +2,8 @@
   "order": [
     "micromagnetics",
     "atomistic",
-    "monte_carlo"
+    "monte_carlo",
+    "neb"
   ]
 }
   
