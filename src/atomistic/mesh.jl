@@ -75,7 +75,7 @@ struct CubicMeshGPU <: AtomicMeshGPU
   nnn_ngbs::Int64
   ngbs::CuArray{Int32, 2}  #  nearest neighbours
   nngbs::CuArray{Int32, 2}  # next-nearest neighbours(warnning: the corresponding interaction function is named as "next_exch", not "nnexch")
-  nnngbs::CuArray{Int32, 2}  #    next-next-nearest neighbours
+  nnngbs::CuArray{Int32, 2}  # next-next-nearest neighbours
   xperiodic::Bool
   yperiodic::Bool
   zperiodic::Bool
@@ -171,4 +171,49 @@ function SquareMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
   end
   nxyz = nx*ny*nz
   return CubicMeshGPU(dx, dy, dz, nx, ny, nz, nxyz, 4, 4, 4, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), xperiodic, yperiodic, zperiodic)
+end
+
+#We defined a cylindrical tube mesh along the +z direction
+struct CylindricalTubeMeshGPU <: AtomicMeshGPU
+  dz::Float64
+  R::Float64
+  nz::Int64
+  nr::Int64
+  nxyz::Int64
+  n_ngbs::Int64
+  ngbs::CuArray{Int32, 2}  #nearest neighbours
+  zperiodic::Bool
+  coordinates::Array{Float64, 2}  #coordinates array
+end
+
+"""
+    CylindricalTubeMeshGPU(;dz=1e-9, R=20e-9, nz=1, nr=10, pbc="open")
+
+Create a cylindrical tube mesh along the +z direction. 
+
+The spins are located on the cylindrical tube uniformly, and are indexed as follows:
+```julia
+  id = index(i, 1, k, nr, 1, nz)
+```
+which means that the spins are labelled in a ring firstly, then `nz` is the number of rings.  
+The coordinates of the spins at each ring are given as `(R cos(2*pi*(i-1)/nr), R sin(2*pi*(nr-1)/nr))`.
+"""
+function CylindricalTubeMeshGPU(;dz=1e-9, R=20e-9, nz=1, nr=10, pbc="open")
+  ngbs = zeros(Int32, 4, nr*nz)
+  coordinates = zeros(Float64, 3, nr*nz)
+  zperiodic = 'z' in pbc ? true : false
+  delta = 2*pi/nr
+  for k = 1:nz, i=1:nr
+    id = index(i, 1, k, nr, 1, nz)
+    coordinates[1, id] = R*cos((i-1)*delta) 
+    coordinates[2, id] = R*sin((i-1)*delta) 
+    coordinates[3, id] = (k-0.5)*dz
+    ngbs[1,id] = indexpbc(i-1,1,k,nr,1,nz, true, false, zperiodic)
+    ngbs[2,id] = indexpbc(i+1,1,k,nr,1,nz, true, false, zperiodic)
+    ngbs[3,id] = indexpbc(i,1,k-1,nr,1,nz, true, false, zperiodic)
+    ngbs[4,id] = indexpbc(i,1,k+1,nr,1,nz, true, false, zperiodic)
+  end
+  nxyz = nr*nz
+  n_ngbs = 4
+  return CylindricalTubeMeshGPU(dz, R, nz, nr, nxyz, n_ngbs, CuArray(ngbs), zperiodic, coordinates)
 end

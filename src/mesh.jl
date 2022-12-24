@@ -93,31 +93,17 @@ end
 end
 
 
-function indexpbc(i::Int64, j::Int64, k::Int64,
-                  nx::Int64, ny::Int64, nz::Int64,
+function indexpbc(i::Int64, j::Int64, k::Int64, nx::Int64, ny::Int64, nz::Int64, 
                   xperiodic::Bool, yperiodic::Bool, zperiodic::Bool)
-  if xperiodic
-    if i < 1
-      i += nx
-    elseif i > nx
-      i -= nx
-    end
-  end
+                  
+    xperiodic && (i < 1) && (i += nx)
+    xperiodic && (i > nx) && (i -= nx)
 
-  if yperiodic
-    if j < 1
-      j += ny
-    elseif j > ny
-      j -= ny
-    end
-  end
+    yperiodic && (j < 1) && (j += ny)
+    yperiodic && (j > ny) && (j -= ny)
 
-  if zperiodic
-    if k < 1
-      k += nz
-    elseif k > nz
-      k -= nz
-    end
-  end
-  return index(i,j,k, nx, ny, nz)
+    zperiodic && (k < 1) && (k += nz)
+    zperiodic && (k > nz) && (k -= nz)
+
+    return index(i, j, k, nx, ny, nz)
 end
