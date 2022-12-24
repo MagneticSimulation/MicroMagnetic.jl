@@ -143,6 +143,7 @@ if _cuda_available.x
            CubicMeshGPU,
            SquareMeshGPU,
            TriangularMeshGPU,
+           CylindricalTubeMeshGPU,
            MonteCarlo,
            add_thermal_noise,
            set_shape,
