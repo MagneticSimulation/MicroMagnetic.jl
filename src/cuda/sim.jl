@@ -445,6 +445,7 @@ function add_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1)
       id = length(sim.interactions)
       push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
   end
+  @info "AnisotropyGPU has been added to the simulation."
   return anis
 end
 
