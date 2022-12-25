@@ -5,13 +5,13 @@
 Set magnetic moment mu_s of the studied system. For example,
 
 ```julia
-   set_mu_s(sim, 8.6e5)
+   set_mu_s(sim, 2*mu_B)
 ```
 or
 ```julia
 function circular_shape(i,j,k,dx,dy,dz)
     if (i-50.5)^2 + (j-50.5)^2 <= 50^2
-        return 8.6e5
+        return 2*mu_B
     end
     return 0.0
 end
@@ -165,7 +165,10 @@ end
 """
     add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
 
-Add bulk dmi energy to the system.
+Add bulk dmi energy to the system. The bulk dmi is defined as
+```math
+x^2 =  1
+```
 """
 function add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
     nxyz = sim.nxyz
@@ -174,8 +177,32 @@ function add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
     energy = zeros(Float, nxyz)
     n_ngbs = sim.mesh.n_ngbs
 
-    dmi = HeisenbergBulkDMI(Float(D), field, energy, Float(0.0), name)
-
+    # TODO: implement the effective field for both TriangularMeshGPU and CubicMeshGPU
+    # TODO: check the sign of D
+    if isa(sim.mesh, TriangularMeshGPU)
+        error("bulk dmi for triangular mesh has not implemented yet")
+    elseif isa(sim.mesh, CubicMeshGPU)
+        dmi = HeisenbergBulkDMI(Float(D), field, energy, Float(0.0), name)
+    elseif isa(sim.mesh, CylindricalTubeMeshGPU)
+        nr = sim.mesh.nr
+        coords = sim.mesh.coordinates
+        ngbs = Array(sim.mesh.ngbs)
+        #Dij stores D*r_{ij}, i.e., r_{n_r, 1}, r12, r23, ..., r_{(n_r-1)n_r},  r_{n_r, 1}
+        Dij = zeros(Float, 3, nr+1)
+        for i = 1:nr
+            j = ngbs[1, i]  # the left one
+            rx = coords[1, j] - coords[1, i]
+            ry = coords[2, j] - coords[2, i]
+            rz = coords[3, j] - coords[3, i]
+            r = sqrt(rx*rx+ry*ry+rz*rz)
+            Dij[1, i] = D*rx/r
+            Dij[2, i] = D*ry/r
+            Dij[3, i] = D*rz/r
+        end
+        Dij[:, nr+1] .= Dij[:, 1]
+        dmi = HeisenbergTubeBulkDMI(Float(D), CuArray(Dij), field, energy, Float(0.0), name)
+    end
+        
     push!(sim.interactions, dmi)
     if sim.save_data
         push!(sim.saver.headers, string("E_",name))

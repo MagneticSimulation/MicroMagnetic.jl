@@ -154,6 +154,15 @@ function init_vector!(v::Array{T, 1}, mesh::CubicMeshGPU, init::Function) where 
   end
 end
 
+function init_vector!(v::Array{T, 1}, mesh::CylindricalTubeMeshGPU, init::Function) where {T<:AbstractFloat}
+  nxyz = mesh.nxyz
+  b = reshape(v, 3, nxyz)
+  for i = 1:mesh.nr, k = 1:mesh.nz
+    id = index(i, 1, k, mesh.nr, 1, mesh.nz)
+    b[:, id] .=  init(i, k, mesh.nr, mesh.nz)
+  end
+end
+
 function init_vector!(v::CuArray{T, 1}, mesh::Mesh, init::Any) where {T<:AbstractFloat}
     F = _cuda_using_double.x ? Float64 : Float32
     tmp = zeros(F, 3*mesh.nxyz)

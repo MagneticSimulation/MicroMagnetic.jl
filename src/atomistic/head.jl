@@ -1,5 +1,6 @@
 abstract type InteractionGPU end
 
+#AtomicSimGPU is the overall struct for atomistic simulation.
 mutable struct AtomicSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   mesh::MeshGPU
   driver::DriverGPU
@@ -21,6 +22,7 @@ mutable struct AtomicSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   AtomicSimGPU{T}() where {T<:AbstractFloat} = new()
 end
 
+# HeisenbergExchange denotes the Heisenberg exchange interaction 
 mutable struct HeisenbergExchange{T<:AbstractFloat} <: InteractionGPU
    Js::CuArray{T, 1}  #The length of Js should be equal to the number of neighbours
    field::Array{T, 1}
@@ -28,6 +30,7 @@ mutable struct HeisenbergExchange{T<:AbstractFloat} <: InteractionGPU
    total_energy::T
    name::String
 end
+
 
 mutable struct NextHeisenbergExchange{T<:AbstractFloat} <: InteractionGPU
    Js::CuArray{T, 1}  #The length of Js should be equal to the number of neighbours
@@ -45,8 +48,21 @@ mutable struct NextNextHeisenbergExchange{T<:AbstractFloat} <: InteractionGPU
    name::String
 end
 
+# HeisenbergBulkDMI denotes the Bulk DM interaction that can be used in 
+# cubic and triangular meshes. 
 mutable struct HeisenbergBulkDMI{T<:AbstractFloat} <: InteractionGPU
    D::T 
+   field::Array{T, 1}
+   energy::Array{T, 1}
+   total_energy::T
+   name::String
+end
+
+# HeisenbergTubeBulkDMI denotes the Bulk DM interaction that can be used in 
+# cylindrical tube mesh
+mutable struct HeisenbergTubeBulkDMI{T<:AbstractFloat} <: InteractionGPU
+   D::T
+   Dij::CuArray{T, 2} # store the DM vector of a ring, which is D*r_ij
    field::Array{T, 1}
    energy::Array{T, 1}
    total_energy::T

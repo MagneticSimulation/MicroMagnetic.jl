@@ -192,9 +192,9 @@ function effective_field(dmi::HeisenbergBulkDMI, sim::AtomicSimGPU, spin::CuArra
     function __kernel!(m, h, energy, D, ngbs, n_ngbs, mu_s, N)
         i = (blockIdx().x-1) * blockDim().x + threadIdx().x
         
-        ax = (T(1), T(-1), T(0), T(0),T(0), T(0))
+        ax = (T(1), T(-1), T(0), T(0), T(0), T(0))
         ay = (T(0), T(0), T(1), T(-1), T(0), T(0))
-        az = (T(0), T(0), T(0), T(0), T(1),T(-1))
+        az = (T(0), T(0), T(0), T(0), T(1), T(-1))
 
         if 0 < i <= N
             j = 3*(i-1)
@@ -236,6 +236,89 @@ function effective_field(dmi::HeisenbergBulkDMI, sim::AtomicSimGPU, spin::CuArra
 
     return nothing
 end
+
+
+function effective_field(dmi::HeisenbergTubeBulkDMI, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+
+    function __kernel!(m, h, energy, D, Dij, ngbs, n_ngbs, nr, mu_s, N)
+        i = (blockIdx().x-1) * blockDim().x + threadIdx().x
+        
+        if 0 < i <= N
+            j = 3*(i-1)
+            @inbounds ms_local = mu_s[i]
+            if ms_local == 0.0
+                @inbounds energy[i] = 0
+                @inbounds h[j+1] = 0
+                @inbounds h[j+2] = 0
+                @inbounds h[j+3] = 0
+                return nothing
+            end
+            ms_inv = T(1/ms_local)
+
+            fx, fy, fz = T(0), T(0), T(0)
+
+            #the order of Dij is r_{n_r, 1}, r12, r23, ..., r_{(n_r-1)n_r},  r_{n_r, 1}
+            # the left neighbour
+            @inbounds id = ngbs[1, i]
+            if id>0 && mu_s[id] > 0
+                x = 3*id-2
+                k = i % nr  #should be i rather than id
+                k == 0 && (k+= nr) # the rangle of k is [1, nr]
+                @inbounds fx -= cross_x(Dij[1, k],Dij[2, k],Dij[3, k],m[x],m[x+1],m[x+2]);
+                @inbounds fy -= cross_y(Dij[1, k],Dij[2, k],Dij[3, k],m[x],m[x+1],m[x+2]);
+                @inbounds fz -= cross_z(Dij[1, k],Dij[2, k],Dij[3, k],m[x],m[x+1],m[x+2]);
+            end
+
+            # the right neighbour
+            @inbounds id = ngbs[2, i]
+            if id>0 && mu_s[id] > 0
+                x = 3*id-2
+                k = i % nr
+                k == 0 && (k += nr)
+                k += 1  # the range of k is [2, nr+1]
+                @inbounds fx += cross_x(Dij[1, k],Dij[2, k],Dij[3, k],m[x],m[x+1],m[x+2]);
+                @inbounds fy += cross_y(Dij[1, k],Dij[2, k],Dij[3, k],m[x],m[x+1],m[x+2]);
+                @inbounds fz += cross_z(Dij[1, k],Dij[2, k],Dij[3, k],m[x],m[x+1],m[x+2]);
+            end
+
+            # the bottom neighbour
+            @inbounds id = ngbs[3, i]
+            if id>0 && mu_s[id] > 0
+                x = 3*id-2
+                @inbounds fx += cross_x(T(0),T(0),-D,m[x],m[x+1],m[x+2]);
+                @inbounds fy += cross_y(T(0),T(0),-D,m[x],m[x+1],m[x+2]);
+                @inbounds fz += cross_z(T(0),T(0),-D,m[x],m[x+1],m[x+2]);
+            end            
+
+            # the top neighbour
+            @inbounds id = ngbs[3, i]
+            if id>0 && mu_s[id] > 0
+                x = 3*id-2
+                @inbounds fx += cross_x(T(0),T(0),D,m[x],m[x+1],m[x+2]);
+                @inbounds fy += cross_y(T(0),T(0),D,m[x],m[x+1],m[x+2]);
+                @inbounds fz += cross_z(T(0),T(0),D,m[x],m[x+1],m[x+2]);
+            end 
+
+            @inbounds energy[i] = -0.5*(fx*m[j+1] + fy*m[j+2] + fz*m[j+3])
+            @inbounds h[j+1] = fx*ms_inv
+            @inbounds h[j+2] = fy*ms_inv
+            @inbounds h[j+3] = fz*ms_inv
+        end
+
+        return nothing
+    end
+
+    N = sim.nxyz
+    blk, thr = cudims(N)
+    ngbs = sim.mesh.ngbs
+    n_ngbs = sim.mesh.n_ngbs
+    nr = sim.mesh.nr
+    @cuda blocks=blk threads=thr __kernel!(spin, sim.field, sim.energy, dmi.D, dmi.Dij, ngbs, n_ngbs, nr, sim.mu_s, N)
+
+    return nothing
+end
+
+
 
 
 function effective_field(stochastic::StochasticFieldGPU, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
