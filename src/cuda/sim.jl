@@ -11,7 +11,7 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince"
         sim = AtomicSimGPU{Float}()
     end
     sim.mesh = mesh
-    nxyz = mesh.nx*mesh.ny*mesh.nz
+    nxyz = mesh.nxyz
 
     sim.nxyz = nxyz
     sim.spin = CUDA.zeros(Float, 3*nxyz)

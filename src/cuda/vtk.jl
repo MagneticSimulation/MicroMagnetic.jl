@@ -121,3 +121,34 @@ function save_vtk_points(sim::AbstractSimGPU, fname::String; fields::Array{Strin
   end
   vtk_save(vtk)
 end
+
+
+function save_vtu(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} = String[])
+  mesh = sim.mesh
+  points = mesh.coordinates
+  ngbs = Array(mesh.ngbs)
+  cells = MeshCell[]
+  for k = 1:mesh.nz-1, i=1:mesh.nr
+      id = index(i, 1, k, mesh.nr, 1, mesh.nz)
+      id2 = indexpbc(i+1, 1, k+1, mesh.nr, 1, mesh.nz, true, false, false)
+      cell = MeshCell(VTKCellTypes.VTK_QUAD, [id, ngbs[2, id], id2, ngbs[4, id]])
+      push!(cells, cell)
+  end
+
+  vtk_grid(fname, points, cells) do vtk
+      vtk_point_data(vtk, Array(sim.spin), "m"; component_names=["mx", "my", "mz"])
+
+      if length(fields) > 0
+        compute_fields_to_gpu(sim,sim.spin,0.0)
+        fields = Set(fields)
+        for i in sim.interactions
+          if i.name in fields
+            vtk_point_data(vtk, i.field, i.name)
+          end
+        end
+      end
+
+  end
+end
+
+
