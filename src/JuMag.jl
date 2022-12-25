@@ -152,7 +152,8 @@ if _cuda_available.x
            run_sim,add_exch_anis,
            add_demag_gpu,
            NEB_GPU,
-           add_magnetoelectric_laser
+           add_magnetoelectric_laser,
+           add_anis_tube
 end
 
 

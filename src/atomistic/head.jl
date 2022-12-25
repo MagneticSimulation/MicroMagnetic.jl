@@ -80,6 +80,15 @@ mutable struct KagomeAnisotropy{T<:AbstractFloat} <: InteractionGPU
    name::String
 end
 
+mutable struct TubeAnisotropy{T<:AbstractFloat}
+   Ku::T
+   axes::CuArray{T, 2}
+   field::Array{T, 1}
+   energy::Array{T, 1}
+   total_energy::T
+   name::String
+end
+
 
 mutable struct MagnetoelectricLaser{T<:AbstractFloat} <: InteractionGPU
    lambda::T # Magnetoelectric coupling strength

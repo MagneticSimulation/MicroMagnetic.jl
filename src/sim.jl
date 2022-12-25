@@ -40,7 +40,8 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.driver = create_driver(driver, integrator, nxyz)
     
    sim.interactions = []
-   #println(sim)
+   
+   @info "Standard Sim (CPU) has been used."
    return sim
 end
 
@@ -270,6 +271,9 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
       push!(sim.saver.units, "J")
       push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
   end
+
+  @info "Standard Zeeman (CPU) has been added."
+
   return zeeman
 end
 

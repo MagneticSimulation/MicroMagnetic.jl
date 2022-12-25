@@ -54,6 +54,44 @@ function effective_field(anis::AnisotropyGPU, sim::AtomicSimGPU, spin::CuArray{T
 end
 
 
+function effective_field(anis::TubeAnisotropy, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+
+    function __kernel!(m, h, energy, ku, axes, mu_s, N)
+        i = (blockIdx().x-1) * blockDim().x + threadIdx().x
+        if 0 < i <= N
+            j = 3*(i-1)
+
+            ax = axes[1, i]
+            ay = axes[2, i]
+            az = axes[3, i]
+
+            @inbounds ms_local = mu_s[i]
+            if ms_local == 0.0
+                @inbounds energy[i] = 0
+                @inbounds h[j+1] = 0
+                @inbounds h[j+2] = 0
+                @inbounds h[j+3] = 0
+                return nothing
+            end
+            ms_inv = 2.0/ms_local
+            @inbounds sa = m[j+1]*ax+m[j+2]*ay+m[j+3]*az
+            @inbounds h[j+1] = ku[i]*sa*ax*ms_inv
+            @inbounds h[j+2] = ku[i]*sa*ay*ms_inv
+            @inbounds h[j+3] = ku[i]*sa*az*ms_inv
+            @inbounds energy[i] = -ku[i]*sa*sa
+        end
+
+        return nothing
+    end
+
+    N = sim.nxyz
+    blk, thr = cudims(N)
+    @cuda blocks=blk threads=thr __kernel!(spin, sim.field, sim.energy, anis.Ku, anis.axes, sim.mu_s, N)
+
+    return nothing
+end
+
+
 function effective_field(exch::HeisenbergExchange, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
 
     function __kernel!(m, h, energy, Js, ngbs, n_ngbs, mu_s, N)

@@ -162,13 +162,15 @@ function add_next_next_exch(sim::AtomicSimGPU, J::Array; name="next_next_exch")
 end
 
 
-"""
+@doc raw"""
     add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
 
 Add bulk dmi energy to the system. The bulk dmi is defined as
 ```math
-x^2 =  1
+\mathcal{H}_\mathrm{dmi} =  \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
 ```
+where $\mathbf{D}_{i j}$ is the DM vector. For the bulk dmi as implemented in this function, 
+$\mathbf{D}_{i j} = D \hat{r}_{ij}$.
 """
 function add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
     nxyz = sim.nxyz
@@ -245,7 +247,7 @@ function add_anis_kagome(sim::AtomicSimGPU, Ku::Float64; ax1=(-0.5,-sqrt(3)/2,0)
   T = _cuda_using_double.x ? Float64 : Float32
   field = zeros(T, 3*nxyz)
   energy = zeros(T, nxyz)
-  anis =  KagomeAnisotropy(Float(Ku), ax1, ax2, ax3, field, energy, T(0.0), name)
+  anis =  KagomeAnisotropy(T(Ku), ax1, ax2, ax3, field, energy, T(0.0), name)
   push!(sim.interactions, anis)
 
   if sim.save_data
@@ -256,6 +258,42 @@ function add_anis_kagome(sim::AtomicSimGPU, Ku::Float64; ax1=(-0.5,-sqrt(3)/2,0)
   end
   return anis
 end
+
+@doc raw"""
+    add_anis_tube(sim::AtomicSimGPU, Ku::Float64; name="anis")
+
+add anisotropy to the system when the tube mesh is used. The anisotropy axis $u$ 
+is along with the radial direction.
+
+```math
+E_\mathrm{anis} = - K_{u} (\vec{m} \cdot \hat{u})^2
+```
+"""
+function add_anis_tube(sim::AtomicSimGPU, Ku::Float64; name="anis")
+    nxyz = sim.nxyz
+    T = _cuda_using_double.x ? Float64 : Float32
+    field = zeros(T, 3*nxyz)
+    energy = zeros(T, nxyz)
+    axes = zeros(T, 3, nxyz)
+
+    nr = sim.mesh.nr
+    for i = 1:nxyz
+        theta = 2*pi*(i-1)/nr
+        axes[1, i] = cos(theta)
+        axes[2, i] = sin(theta)
+    end
+
+    anis =  TubeAnisotropy(T(Ku), CuArray(axes), field, energy, T(0.0), name)
+    push!(sim.interactions, anis)
+  
+    if sim.save_data
+        push!(sim.saver.headers, string("E_",name))
+        push!(sim.saver.units, "J")
+        id = length(sim.interactions)
+        push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+    end
+    return anis
+  end
 
 
 function add_thermal_noise(sim::AtomicSimGPU, T::NumberOrArrayOrFunction; name="thermal", k_B=k_B)
