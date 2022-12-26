@@ -184,9 +184,16 @@ function llg_stt_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::
     else
       ms = sim.Ms
     end
-    compute_field_stt_gpu(spin, driver.h_stt, ms, driver.ux, driver.uy, driver.uz, T(ut),
+
+    if isa(mesh, CylindricalTubeMeshGPU)
+        # only uz plays a role 
+        compute_field_stt_gpu(spin, driver.h_stt, ms, driver.ux, driver.uy, driver.uz, T(ut),
+                T(1.0), T(1.0), T(mesh.dz), mesh.nr, 1, mesh.nz, true, false, mesh.zperiodic, N)
+    else
+        compute_field_stt_gpu(spin, driver.h_stt, ms, driver.ux, driver.uy, driver.uz, T(ut),
                        T(mesh.dx),T(mesh.dy), T(mesh.dz), mesh.nx, mesh.ny, mesh.nz,
                        mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, N)
+    end
 
     blk, thr = cudims(N)
     @cuda blocks=blk threads=thr llg_rhs_kernel!(dm_dt, spin, driver.field, sim.pins,
