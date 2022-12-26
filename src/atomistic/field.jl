@@ -295,13 +295,13 @@ function effective_field(dmi::HeisenbergTubeBulkDMI, sim::AtomicSimGPU, spin::Cu
 
             fx, fy, fz = T(0), T(0), T(0)
 
-            #the order of Dij is r_{n_r, 1}, r12, r23, ..., r_{(n_r-1)n_r},  r_{n_r, 1}
+            # the order of Dij is r_{n_r, 1}, r12, r23, ..., r_{(n_r-1)n_r},  r_{n_r, 1}
             # the left neighbour
             @inbounds id = ngbs[1, i]
             if id>0 && mu_s[id] > 0
                 x = 3*id-2
                 k = i % nr  #should be i rather than id
-                k == 0 && (k+= nr) # the rangle of k is [1, nr]
+                k == 0 && (k += nr) # the rangle of k is [1, nr]
                 @inbounds fx -= cross_x(Dij[1, k],Dij[2, k],Dij[3, k],m[x],m[x+1],m[x+2]);
                 @inbounds fy -= cross_y(Dij[1, k],Dij[2, k],Dij[3, k],m[x],m[x+1],m[x+2]);
                 @inbounds fz -= cross_z(Dij[1, k],Dij[2, k],Dij[3, k],m[x],m[x+1],m[x+2]);

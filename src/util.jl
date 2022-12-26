@@ -67,6 +67,23 @@ function fftfreq(N; d=1)
     return f
 end
 
+"""
+This is a helper function to convert m to cylindrical coordinates (mr, mt, mz) for spins 
+uniformly located in CylindricalTubeMeshGPU
+"""
+function convert_m_to_cylindrical(m::Array{T, 1}, nr::Int64, nz::Int64) where {T<:AbstractFloat}
+    N = nr*nz
+    mc = zeros(T, 3, N)
+    b = reshape(m, 3, N)
+    for i = 1:N
+        theta = 2*pi*(i-1)/nr
+        mc[1, i] = b[1, i]*cos(theta) + b[2, i]*sin(theta)
+        mc[2, i] = -b[1, i]*sin(theta) + b[2, i]*cos(theta)
+        mc[3, i] = b[3, i]
+    end
+    return reshape(mc, 3*N)
+end
+
 
 function partial_xy(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz

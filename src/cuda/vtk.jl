@@ -122,7 +122,7 @@ function save_vtk_points(sim::AbstractSimGPU, fname::String; fields::Array{Strin
   vtk_save(vtk)
 end
 
-
+# only works for CylindricalTubeMeshGPU
 function save_vtu(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} = String[])
   mesh = sim.mesh
   points = mesh.coordinates
@@ -136,7 +136,10 @@ function save_vtu(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} =
   end
 
   vtk_grid(fname, points, cells) do vtk
-      vtk_point_data(vtk, Array(sim.spin), "m"; component_names=["mx", "my", "mz"])
+      m =  Array(sim.spin)
+      mc = convert_m_to_cylindrical(m, mesh.nr, mesh.nz)
+      vtk_point_data(vtk, m, "m"; component_names=["mx", "my", "mz"])
+      vtk_point_data(vtk, mc, "mc"; component_names=["mr", "mt", "mz"])
 
       if length(fields) > 0
         compute_fields_to_gpu(sim,sim.spin,0.0)
