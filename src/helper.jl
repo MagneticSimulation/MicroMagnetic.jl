@@ -194,6 +194,7 @@ function compute_dm_step(m1::Array{Float64, 1}, m2::Array{Float64, 1}, N::Int64)
   return max_dm
 end
 
+
 function compute_skyrmion_number(v::Array{T, 1}, m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     for k = 1:nz, j = 1:ny, i=1:nx
@@ -508,6 +509,16 @@ compute the guiding center.
 function compute_guiding_center(sim::AbstractSim; xmin=1, xmax=-1, ymin = 1, ymax=-1, z=1)
   spin = Array(sim.spin)
   mesh = sim.mesh
+
+  if isa(mesh, CylindricalTubeMeshGPU)
+    dx = 2*pi*mesh.R/mesh.nr
+    pbc_z = mesh.zperiodic ? "z" : ""
+    m = convert_m_to_cylindrical(spin, mesh.nr, mesh.nz) # it seems we don't have to transform it?
+    mesh = FDMesh(nx=mesh.nr, ny=mesh.nz, nz=1, dx = dx, dy=mesh.dz, dz=1e-9, pbc="x"*pbc_z)
+    Rx, Ry = compute_guiding_center(m, mesh, xmin=xmin, xmax=xmax, ymin = ymin, ymax=ymax, z=1)
+    return Rx, Ry
+  end
+
   Rx, Ry = compute_guiding_center(spin, mesh, xmin=xmin, xmax=xmax, ymin = ymin, ymax=ymax, z=z)
   return Rx, Ry
 end

@@ -298,3 +298,16 @@ function compute_skyrmion_number(m::Array{T, 1}, mesh::TriangularMeshGPU) where 
     compute_skyrmion_number(v, m, mesh)
     return sum(v)
 end
+
+
+function compute_skyrmion_number(m::Array{T, 1}, mesh::CylindricalTubeMeshGPU) where {T<:AbstractFloat}
+    dx = 2*pi*mesh.R/mesh.nr
+    mm = convert_m_to_cylindrical(m, mesh.nr, mesh.nz)
+    v = zeros(T, mesh.nr*mesh.nz)
+    pbc_z = mesh.zperiodic ? "z" : ""
+    mesh = FDMesh(nx=mesh.nr, ny=mesh.nz, nz=1, dx = dx, dy=mesh.dz, dz=1e-9, pbc="x"*pbc_z)
+    compute_skyrmion_number(v, mm, mesh)
+    return sum(v)
+end
+
+
