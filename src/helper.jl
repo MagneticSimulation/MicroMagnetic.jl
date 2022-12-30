@@ -511,12 +511,7 @@ function compute_guiding_center(sim::AbstractSim; xmin=1, xmax=-1, ymin = 1, yma
   mesh = sim.mesh
 
   if isa(mesh, CylindricalTubeMeshGPU)
-    dx = 2*pi*mesh.R/mesh.nr
-    pbc_z = mesh.zperiodic ? "z" : ""
-    m = convert_m_to_cylindrical(spin, mesh.nr, mesh.nz) # it seems we don't have to transform it?
-    mesh = FDMesh(nx=mesh.nr, ny=mesh.nz, nz=1, dx = dx, dy=mesh.dz, dz=1e-9, pbc="x"*pbc_z)
-    Rx, Ry = compute_guiding_center(m, mesh, xmin=xmin, xmax=xmax, ymin = ymin, ymax=ymax, z=1)
-    return Rx, Ry
+    return compute_guiding_center(sim, sim.mesh)
   end
 
   Rx, Ry = compute_guiding_center(spin, mesh, xmin=xmin, xmax=xmax, ymin = ymin, ymax=ymax, z=z)

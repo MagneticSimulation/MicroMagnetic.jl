@@ -84,7 +84,6 @@ function convert_m_to_cylindrical(m::Array{T, 1}, nr::Int64, nz::Int64) where {T
     return reshape(mc, 3*N)
 end
 
-
 function partial_xy(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy = mesh.dx, mesh.dy

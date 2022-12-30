@@ -310,4 +310,51 @@ function compute_skyrmion_number(m::Array{T, 1}, mesh::CylindricalTubeMeshGPU) w
     return sum(v)
 end
 
+"""
+    compute_guiding_center(sim::AbstractSim, mesh::CylindricalTubeMeshGPU)
+
+compute the guiding center when a CylindricalTubeMeshGPU is used. However, the direct calculation will give 
+an incorrect results if the skyrmion touches the edges. Since periodic boundary conditions are naturally 
+imposed on the mesh, we can shift the spin forward and backward one third and recompute the guiding centers.
+In principle, two of those three centers should always be the same no matter where the skyrmion is. 
+"""
+function compute_guiding_center(sim::AbstractSim, mesh::CylindricalTubeMeshGPU) where {T<:AbstractFloat}
+  
+  # two of the three numbers are very close, so we compute the distance between them, 
+  # and return the one with the least distance
+  function find_value_min_distance(x, y, z)
+     all = [x,y,z]
+     v = argmin(abs.(circshift(all, 1) - all))
+     return all[v]
+  end
+
+    spin = Array(sim.spin)
+    dx = 2*pi*mesh.R/mesh.nr
+    dy = mesh.dz # we set dy using mesh.dz
+    m = convert_m_to_cylindrical(spin, mesh.nr, mesh.nz) # it seems we don't have to transform it?
+    mesh = FDMesh(nx=mesh.nr, ny=mesh.nz, nz=1, dx = dx, dy = dy, dz=1e-9, pbc="xy")
+    Rx, Ry = compute_guiding_center(m, mesh, z=1)
+
+    roll_nx = Int(div(mesh.nx, 3)) 
+    roll_ny = Int(div(mesh.ny, 3))
+
+    m2 = reshape(m, 3, mesh.nx, mesh.ny)
+    m2f = circshift(m2, (0, roll_nx, roll_ny)) # roll m and recompute guiding center
+    m2f = reshape(m2f, 3*mesh.nx*mesh.ny)
+    Rxf, Ryf = compute_guiding_center(m2f, mesh, z=1)
+    Rxf = (Rxf - roll_nx*mesh.dx < 0) ? (Rxf + (mesh.nx - roll_nx)*mesh.dx) : Rxf - roll_nx*mesh.dx
+    Ryf = (Ryf - roll_ny*mesh.dy < 0) ? (Ryf + (mesh.ny - roll_ny)*mesh.dy) : Ryf - roll_ny*mesh.dy
+    
+    m2b = circshift(m2, (0, -roll_nx, -roll_ny)) 
+    m2b = reshape(m2b, 3*mesh.nx*mesh.ny)
+    Rxb, Ryb = compute_guiding_center(m2b, mesh, z=1)
+    Rxb = (Rxb + roll_nx*mesh.dx)%(mesh.nx*dx)
+    Ryb = (Ryb + roll_ny*mesh.dy)%(mesh.ny*dy)
+    
+    Rx = find_value_min_distance(Rx, Rxf, Rxb)
+    Ry = find_value_min_distance(Ry, Ryf, Ryb)
+    return Rx, Ry
+
+end
+
 
