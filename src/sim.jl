@@ -244,13 +244,9 @@ end
 Add a static Zeeman energy to the simulation.
 """
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-    # FIXME: We need to unify the two variable names (nxyz and n_nodes)
-    if isa(sim, MicroSimFEM)
-        nxyz = sim.n_nodes
-    else
-        nxyz = sim.nxyz
-    end
 
+   nxyz = sim.nxyz
+    
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
   init_vector!(field, sim.mesh, H0)
@@ -289,7 +285,7 @@ Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its n
 
 """
 function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-    N_spins = isa(sim, MicroSimFEM) ? sim.n_nodes : sim.nxyz
+    N_spins = sim.nxyz
     field = zeros(Float64, 3*N_spins)
     init_vector!(field, sim.mesh, H0)
 
@@ -387,14 +383,10 @@ end
 Add exchange energy to the system.
 """
 function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
-    if isa(sim, MicroSimFEM)
-        nxyz = sim.n_nodes
-        Spatial_A = zeros(Float64, sim.n_cells)
-        K_mat = spzeros(3*nxyz, 3*nxyz)
-    else
-        nxyz = sim.nxyz
-        Spatial_A = zeros(Float64, sim.nxyz)
-    end
+    
+    nxyz = sim.nxyz
+    Spatial_A = zeros(Float64, sim.nxyz)
+
   
   field = zeros(Float64, 3*nxyz)
   energy = zeros(Float64, nxyz)
@@ -402,8 +394,6 @@ function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
   init_scalar!(Spatial_A , sim.mesh, A)
   if isa(sim, MicroSim) 
     exch = Exchange(Spatial_A , field, energy, name)
-  elseif isa(sim, MicroSimFEM)
-    exch = ExchangeFEM(Spatial_A , field, energy, K_mat, false, name)
   else
 	exch = HeisenbergExchange(A, field, energy, name)
   end
@@ -736,7 +726,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
 
     time_factor =  using_time_factor ? 2.21e5/2 : 1.0
 
-    N_spins = isa(sim, MicroSimFEM) ? sim.n_nodes : sim.nxyz
+    N_spins = sim.nxyz
 
     if _cuda_available.x && (isa(sim, MicroSimGPU) || isa(sim, AtomicSimGPU))
         T = _cuda_using_double.x ? Float64 : Float32
@@ -921,7 +911,7 @@ end
 
 Create a micromagnetic simulation instance with given arguments. 
 
-- `mesh`: a mesh has to be provided to start the simulation. The mesh could be [`FDMesh`](@ref), [`FEMesh`](@ref),
+- `mesh`: a mesh has to be provided to start the simulation. The mesh could be [`FDMesh`](@ref), 
 [`FDMeshGPU`](@ref), [`CubicMeshGPU`](@ref), or [`TriangularMeshGPU`](@ref).
 
 # Arguments
@@ -953,7 +943,7 @@ function create_sim(mesh; args...)
     sim = Sim(mesh, driver=driver, name = name)
 
     #If the simulation is the standard micromagnetic simulation.
-    if isa(mesh, FDMesh) || isa(mesh, FDMeshGPU) || isa(mesh, FEMesh) || isa(mesh, FDMeshGPU)
+    if isa(mesh, FDMesh) || isa(mesh, FDMeshGPU) || isa(mesh, FDMeshGPU)
 
         # we set the Ms anyway
         Ms = haskey(args, :Ms) ? args[:Ms] : 8e5

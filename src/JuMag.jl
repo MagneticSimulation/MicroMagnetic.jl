@@ -70,7 +70,6 @@ cudims(a::AbstractArray) = cudims(length(a))
 
 include("const.jl")
 include("mesh.jl")
-include("fem/mesh.jl")
 include("geometry.jl")
 include("head.jl")
 include("util.jl")
@@ -94,14 +93,8 @@ include("neb/neb_llg.jl")
 include("ovf2.jl")
 include("init_m.jl")
 
-include("fem/util.jl")
-include("fem/sim.jl")
-include("fem/demag.jl")
-include("fem/field.jl")
-
 #include("main.jl")
 
-export UnitTetrahedronMesh, FEMesh, save_inp
 
 #_cuda_available[] = CUDA.functional()
 

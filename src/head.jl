@@ -1,4 +1,3 @@
-using SparseArrays
 abstract type Driver end
 abstract type AbstractSim end
 abstract type MicroEnergy end
@@ -103,25 +102,6 @@ mutable struct Exchange <: MicroEnergy
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String
-end
-
-mutable struct ExchangeFEM <: MicroEnergy
-    A::Array{Float64, 1}
-    field::Array{Float64, 1}
-    energy::Array{Float64, 1}
-    K_matrix::SparseMatrixCSC{}
-    K_matrix_initialized::Bool
-    name::String
-end
-
-mutable struct AnisotropyFEM <: MicroEnergy
-    Ku::Array{Float64, 1}
-    axis::Array{Float64, 1}
-    field::Array{Float64, 1}
-    energy::Array{Float64, 1}
-    K_matrix::SparseMatrixCSC{}
-    K_matrix_initialized::Bool
-    name::String
 end
 
 mutable struct Vector_Exchange <: MicroEnergy

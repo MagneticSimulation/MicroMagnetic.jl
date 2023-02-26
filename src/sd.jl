@@ -31,11 +31,9 @@ function search_tau(sim::AbstractSim)
   tau1  = driver.min_tau
   tau = 0.0
   tau2 = 0.0
-  if isa(sim, MicroSimFEM)
-    N = sim.n_nodes
-  else
-    N = sim.nxyz
-  end
+
+  N = sim.nxyz
+  
   m = sim.spin
   h = sim.field
   dtau = 1e-12
@@ -148,7 +146,7 @@ end
 
 function run_step(sim::AbstractSim, driver::EnergyMinimization)
 
-  N_spins = isa(sim, MicroSimFEM) ? sim.n_nodes : sim.nxyz
+  N_spins = sim.nxyz
 
   effective_field(sim, sim.spin, 0.0)
   if driver.steps == 0
