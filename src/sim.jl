@@ -1,3 +1,5 @@
+using JLD2
+
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
 
@@ -207,35 +209,67 @@ end
 
 Set the driver of the simulation, can be used to switch the driver.
 """
-function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince")
+function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", args...)
 
-    if sim.driver_name == driver
-      return nothing
-    end
-  
-    # if the driver is update, we create a new saver
-    if sim.save_data
-      headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
-      units = ["<>", "<J>",("<>", "<>", "<>")]
-      results = [o::AbstractSim -> o.saver.nsteps,
-                 o::AbstractSim -> o.total_energy, average_m]
-      sim.saver = DataSaver(string(sim.name, "_", lowercase(driver), ".txt"), 0.0, 0, false, headers, units, results)
-    end
+    args = Dict(args)
+
+    if sim.driver_name != driver
+        # if the driver is updated, we create a new saver
+        if sim.save_data
+            headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
+            units = ["<>", "<J>",("<>", "<>", "<>")]
+            results = [o::AbstractSim -> o.saver.nsteps,
+                   o::AbstractSim -> o.total_energy, average_m]
+            sim.saver = DataSaver(string(sim.name, "_", lowercase(driver), ".txt"), 0.0, 0, false, headers, units, results)
+        end
+      
+        if isa(sim, AbstractSimGPU)
+            sim.driver = create_driver_gpu(driver, integrator, sim.nxyz)
+        else
+            sim.driver = create_driver(driver, integrator, sim.nxyz)
+        end
+        sim.driver_name = driver
     
-    if isa(sim, AbstractSimGPU)
-        sim.driver = create_driver_gpu(driver, integrator, sim.nxyz)
-    else
-        sim.driver = create_driver(driver, integrator, sim.nxyz)
+        if startswith(driver,"LLG") && sim.save_data
+            saver = sim.saver
+            insert!(saver.headers, 2, "time")
+            insert!(saver.units, 2, "<s>")
+            insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
+        end
     end
-    sim.driver_name = driver
-  
-    if startswith(driver,"LLG") && sim.save_data
-      saver = sim.saver
-      insert!(saver.headers, 2, "time")
-      insert!(saver.units, 2, "<s>")
-      insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
+
+    # FIXME: we have to consider all the situations here
+    
+    if haskey(args, :alpha) && startswith(driver, "LLG")
+        sim.driver.alpha = args[:alpha]
+        delete!(args, :alpha)
     end
-  
+
+    if haskey(args, :gamma) && startswith(driver, "LLG")
+        sim.driver.gamma = args[:gamma]
+        delete!(args, :gamma)
+    end
+
+    if haskey(args, :beta) && startswith(driver, "LLG_STT")
+        sim.driver.beta = args[:beta]
+        delete!(args, :beta)
+    end
+
+    if haskey(args, :ux) && startswith(driver, "LLG_STT")
+        set_ux(sim, args[:ux])
+        delete!(args, :ux)
+    end
+
+    if haskey(args, :uy) && startswith(driver, "LLG_STT")
+        set_uy(sim, args[:uy])
+        delete!(args, :uy)
+    end
+
+    if haskey(args, :uz) && startswith(driver, "LLG_STT")
+        set_uz(sim, args[:uz])
+        delete!(args, :uz)
+    end
+
 end
 
 """
@@ -1051,3 +1085,43 @@ function create_sim(mesh; args...)
     
   end
 
+
+"""
+    run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1)
+
+Run the simulation to the time `steps*dt`.
+
+- steps : the total steps of the simulation
+- dt : the time interval of each step, so the total simulation time is `steps*dt`
+- save_data : saving the overall data such as energies and average magnetization of the simulation at each step
+- save_m_every : save magnetization for every `save_m_every` step, a negative save_m_every will disable the magnetization saving.
+"""
+function run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1)
+
+    file = jldopen(@sprintf("%s.jdl2", sim.name), "w")
+
+    file["mesh/nx"] = sim.mesh.nx
+    file["mesh/ny"] = sim.mesh.ny
+    file["mesh/nz"] = sim.mesh.nz
+    file["mesh/dx"] = sim.mesh.dx
+    file["mesh/dy"] = sim.mesh.dy
+    file["mesh/dz"] = sim.mesh.dz
+
+    file["steps"] = steps
+    file["dt"] = dt
+    file["save_m_every"] = save_m_every
+
+    if save_m_every > 0
+        m_group = JLD2.Group(file, "m")
+    end
+
+    for i = 1:steps
+        run_until(sim, i*dt, save_data=save_data)
+        @info @sprintf("step =%5d  t = %10.6e", i, i*dt)
+        if (save_m_every>1 && i%save_m_every == 1) || save_m_every == 1
+            index = @sprintf("%d", i)
+            m_group[index] = Array(sim.spin)
+        end
+    end
+    close(file)
+end

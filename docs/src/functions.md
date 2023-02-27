@@ -1,4 +1,4 @@
-# References
+# API
 
 ### Meshes
 
@@ -24,6 +24,7 @@ JuMag.TupleOrArrayOrFunction
 
 ```@docs
 create_sim
+run_sim
 Sim
 set_Ms
 set_Ms_cylindrical
