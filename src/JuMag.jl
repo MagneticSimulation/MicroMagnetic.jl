@@ -50,7 +50,9 @@ export init_m0,
        NEB,
        interpolate_m,save_ovf,read_ovf,
        fftfreq,
-       ex,ey,ez
+       ex,ey,ez,
+       jdl2png,
+       jdl2avi
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT, Gauss
 export ex,ey,ez
@@ -93,6 +95,7 @@ include("neb/neb_sd.jl")
 include("neb/neb_llg.jl")
 include("ovf2.jl")
 include("init_m.jl")
+include("movie.jl")
 
 #include("main.jl")
 
