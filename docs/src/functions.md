@@ -4,7 +4,6 @@
 
 ```@docs
 FDMesh
-FEMesh
 FDMeshGPU
 CubicMeshGPU
 TriangularMeshGPU
@@ -18,7 +17,6 @@ JuMag.NumberOrArrayOrFunction
 JuMag.NumberOrArray
 JuMag.TupleOrArrayOrFunction
 ```
-
 
 ### Interfaces
 
@@ -68,6 +66,8 @@ read_ovf
 
 ```@docs
 ovf2vtk
+jdl2png
+jdl2avi
 OVF2LTEM
 OVF2MFM
 OVF2XRAY
