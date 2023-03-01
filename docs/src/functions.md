@@ -67,7 +67,7 @@ read_ovf
 ```@docs
 ovf2vtk
 jdl2png
-jdl2avi
+jdl2movie
 OVF2LTEM
 OVF2MFM
 OVF2XRAY

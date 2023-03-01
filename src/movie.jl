@@ -39,14 +39,17 @@ function jdl2png(jdl_file; k = 1, component='z')
 end
 
 """
-    jdl2avi(jdl_file; k = 1, component='z', r=12, rm_png=false)
+  jdl2movie(jdl_file; k = 1, component='z', r=12, rm_png=false, output=nothing)
 
-Create a moive (.avi) from the given jdl2 file. `k` indicates the layer index (starting from 1), 
-`component` refers to the used component ('x', 'y' or 'z') for plotting, `r` is frame rate.
+Create a moive from the given jdl2 file. `k` indicates the layer index (starting from 1), 
+`component` refers to the used component ('x', 'y' or 'z') for plotting, `r` is frame rate, 
+output is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
 """
-function jdl2avi(jdl_file; k = 1, component='z', r=12, rm_png=false)
-  base_name = jdl_file[1:length(jdl_file)-5]
-  output = base_name*".avi"
+function jdl2movie(jdl_file; k = 1, component='z', r=12, rm_png=false, output=nothing)
+  if output==nothing
+    base_name = jdl_file[1:length(jdl_file)-5]
+    output = @sprintf("%s.mp4", base_name)
+  end
 
   isfile(output) && rm(output, force=true)
 
@@ -56,6 +59,8 @@ function jdl2avi(jdl_file; k = 1, component='z', r=12, rm_png=false)
 
   rm_png && rm(png_folder, force=true, recursive=true)
 end
+
+
 
 
 
