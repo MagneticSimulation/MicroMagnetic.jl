@@ -1087,7 +1087,7 @@ function create_sim(mesh; args...)
 
 
 """
-    run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1)
+    run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, call_back=nothing)
 
 Run the simulation to the time `steps*dt`.
 
@@ -1095,8 +1095,14 @@ Run the simulation to the time `steps*dt`.
 - dt : the time interval of each step, so the total simulation time is `steps*dt`
 - save_data : saving the overall data such as energies and average magnetization of the simulation at each step
 - save_m_every : save magnetization for every `save_m_every` step, a negative save_m_every will disable the magnetization saving.
+- call_back : a call back function will be invoked during the simulation process. For example, if we want to compute the guiding
+center and save it to a text file, we can define the following function
+```julia
+
+```
+
 """
-function run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1)
+function run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, call_back=nothing)
 
     file = jldopen(@sprintf("%s.jdl2", sim.name), "w")
 
@@ -1118,6 +1124,11 @@ function run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1)
     for i = 1:steps
         run_until(sim, i*dt, save_data=save_data)
         @info @sprintf("step =%5d  t = %10.6e", i, i*dt)
+
+        if isa(call_back, Function) 
+            call_back(sim, i*dt)
+        end
+
         if (save_m_every>1 && i%save_m_every == 1) || save_m_every == 1
             index = @sprintf("%d", i)
             m_group[index] = Array(sim.spin)

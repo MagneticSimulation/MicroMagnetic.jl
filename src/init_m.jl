@@ -11,6 +11,15 @@ function init_m0_random(sim::AbstractSim)
     init_m0(sim, random_m)
 end
 
+function init_m0_skyrmion(sim::AbstractSim)
+    mesh = sim.mesh
+    nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
+    dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
+    xc, yc = dx*(nx+1)/2, dy*(ny+1)/2
+    R = 1/2 * min(nx*dx, ny*dy)
+    init_m0_skyrmion(sim, (xc,yc), R)
+end
+
 """
     init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7, p=-1, c=1, type="B")
 
@@ -33,16 +42,6 @@ For example:
     init_m0_skyrmion(sim, (50e-9,50e-9), 2e-8, ratio=0.5, p=-1, c=1, type="B")
 ```
 """
-
-function init_m0_skyrmion(sim::AbstractSim)
-    mesh = sim.mesh
-    nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
-    dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
-    xc, yc = dx*(nx+1)/2, dy*(ny+1)/2
-    R = 1/2 * min(nx*dx, ny*dy)
-    init_m0_skyrmion(sim, (xc,yc), R)
-end
-
 function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7, p=-1, c=1, type="B")
     if type!="N" && type!="B"
         @info("add_skyrmion: type should be \"N\" or \"B\" ")
@@ -55,7 +54,7 @@ function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7
     dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
     m = Array(sim.spin)
     b = reshape(m, (3,nx,ny,nz))
-    Ms= sim.Ms
+    Ms= Array(sim.Ms)
 
     eps = 1e-6
     for i=1:nx, j=1:ny

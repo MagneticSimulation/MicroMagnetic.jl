@@ -17,7 +17,8 @@ const _mpi_available = Ref(true)
 
 export init_m0,
        init_m0_random,
-       init_m0_skyrmion, init_m0_skyrmion_lattice,
+       init_m0_skyrmion, 
+       init_m0_skyrmion_lattice,
        add_zeeman,
        add_dmi,
        add_exch, add_exch_kagome, add_next_exch, add_next_next_exch,
@@ -52,7 +53,7 @@ export init_m0,
        fftfreq,
        ex,ey,ez,
        jdl2png,
-       jdl2avi
+       jdl2movie
 
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT, Gauss
 export ex,ey,ez
