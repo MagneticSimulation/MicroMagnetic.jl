@@ -34,6 +34,7 @@ export init_m0,
        Sim,
        create_sim,
        run_sim, 
+       SaverItem, DataSaver,init_saver,
        CubicMesh,
        TriangularMesh,
        set_mu_s, set_mu_s_kagome,
@@ -82,6 +83,7 @@ include("sd.jl")
 include("llg/llg.jl")
 include("llg/llg_cay.jl")
 include("field.jl")
+include("add_field.jl")
 include("helper.jl")
 include("integrator/heun.jl")
 include("integrator/rk.jl")

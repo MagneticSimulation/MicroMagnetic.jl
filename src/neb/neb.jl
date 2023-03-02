@@ -3,57 +3,52 @@ using Printf
 abstract type NEBDriver end
 
 mutable struct NEB <: AbstractSim
-  N::Int64  #number of images
-  nxyz::Int64 # nxyz = neb.sim.nxyz*N
-  sim::AbstractSim
-  init_m::Any
-  driver::NEBDriver
-  images::Array{Float64, 2}  #size(images) = (3*nxyz, N)
-  pre_images::Array{Float64, 2}
-  spin::Array{Float64, 1} #A pointer to images
-  prespin::Array{Float64, 1} #A pointer to pre_images
-  name::String
-  field::Array{Float64, 2}
-  energy::Array{Float64, 1}
-  distance::Array{Float64, 1}
-  saver_energy::DataSaver
-  saver_distance::DataSaver
-  spring_constant::Float64
-  tangents::Array{Float64, 2}
+    N::Int64  #number of images
+    nxyz::Int64 # nxyz = neb.sim.nxyz*N
+    sim::AbstractSim
+    init_m::Any
+    driver::NEBDriver
+    images::Array{Float64, 2}  #size(images) = (3*nxyz, N)
+    pre_images::Array{Float64, 2}
+    spin::Array{Float64, 1} #A pointer to images
+    prespin::Array{Float64, 1} #A pointer to pre_images
+    name::String
+    field::Array{Float64, 2}
+    energy::Array{Float64, 1}
+    distance::Array{Float64, 1}
+    saver_energy::DataSaver
+    saver_distance::DataSaver
+    spring_constant::Float64
+    tangents::Array{Float64, 2}
+    NEB() = new()
 end
 
 function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_constant=1.0e5, driver="LLG")
-  nxyz = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
-  N = sum(intervals)+length(intervals)+1
-  images = zeros(Float64,3*sim.nxyz,N)
-  tangents = zeros(Float64,3*sim.nxyz,N)
-  pre_images = zeros(Float64,3*sim.nxyz,N)
-  energy = zeros(Float64, N)
-  Ms = zeros(Float64,nxyz)
-  driver = create_neb_driver(driver, nxyz, N)
-  field = zeros(Float64,3*nxyz, N)
-  distance=zeros(Float64,N-1)
+    nxyz = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
+    N = sum(intervals)+length(intervals)+1
 
-  headers = ["steps"]
-  units = ["<>"]
-  results = Any[o::NEB -> o.driver.nsteps]
-  distance_headers= ["steps"]
-  distance_units = ["<>"]
-  distance_results = Any[o::NEB -> o.driver.nsteps]
-  saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
-  saver_distance = DataSaver(string(@sprintf("%s_distance",name), ".txt"),
-                                    0.0, 0, false, distance_headers, distance_units, distance_results)
+    neb = NEB()
+    neb.N = N
+    neb.nxyz = nxyz * N
+    neb.sim = sim
+    neb.name = name
+    neb.init_m = init_m
+    neb.driver = create_neb_driver(driver, nxyz, N)
+    neb.images = zeros(Float64, 3*sim.nxyz, N)
+    neb.pre_images = zeros(Float64, 3*sim.nxyz, N)
+    neb.spin = reshape(neb.images, 3*sim.nxyz*N)
+    neb.prespin = reshape(neb.pre_images, 3*sim.nxyz*N)
+    neb.field = zeros(Float64,3*nxyz, N)
+    neb.energy = zeros(Float64, N)
+    neb.distance=zeros(Float64,N-1)
+    neb.spring_constant = spring_constant
+    neb.tangents = zeros(Float64,3*sim.nxyz,N)
 
-
-  spins = reshape(images, 3*sim.nxyz*N)
-  prespins = reshape(pre_images, 3*sim.nxyz*N)
-
-  neb = NEB(N, sim.nxyz*N, sim, init_m, driver, images, pre_images, spins, prespins,
-             name, field, energy, distance, saver, saver_distance, spring_constant, tangents)
-  init_images(neb, intervals)
-  compute_distance(neb.distance,neb.images,N,nxyz)
-  compute_system_energy(neb)
-  return neb
+    init_saver(neb)
+    init_images(neb, intervals)
+    compute_distance(neb.distance,neb.images,N,nxyz)
+    compute_system_energy(neb)
+    return neb
 end
 
 function create_neb_driver(driver::String, nxyz::Int64, N::Int64) #TODO: FIX ME
@@ -97,22 +92,24 @@ function init_images(neb::NEB, intervals::Any)
 
   #normalise(neb.spin, neb.nxyz)
   neb.pre_images[:]=neb.images[:]
+end
 
-  for n = 1:N
-    name = @sprintf("E_total_%g",n)
-    push!(neb.saver_energy.headers,name)
-    push!(neb.saver_energy.units, "<J>")
-    fun =  o::NEB -> o.energy[n]
-    push!(neb.saver_energy.results, fun)
-  end
-
-  for n = 1:N-1  #TODO: using a single function?
-    name =  @sprintf("distance_%d",n)
-    push!(neb.saver_distance.headers,name)
-    push!(neb.saver_distance.units, "<>")
-    fun =  o::NEB -> o.distance[n]
-    push!(neb.saver_distance.results, fun)
-  end
+function init_saver(neb::NEB)
+    step_item = SaverItem("step", "", o::NEB -> o.driver.nsteps)
+    neb.saver_energy = DataSaver(string(neb.name, ".txt"), false, 0.0, 0, [step_item])
+    neb.saver_distance = DataSaver(string(@sprintf("%s_distance",neb.name), ".txt"), false, 0.0, 0, [step_item])
+    N = neb.N
+    for n = 1:N
+        name = @sprintf("E_total_%g",n)
+        item = SaverItem(name, "J", o::NEB -> o.energy[n])
+        push!(neb.saver_energy.items, item)
+    end
+    
+    for n = 1:N-1  #TODO: using a single function?
+        name =  @sprintf("distance_%d",n)
+        item = SaverItem(name, "", o::NEB -> o.distance[n])
+        push!(neb.saver_distance.items, item)
+    end
 end
 
 function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
@@ -187,7 +184,7 @@ function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy:
 end
 
 function compute_distance(distance::Array{Float64,1},images::Array{Float64, 2},N::Int,nxyz::Int)
-  Threads.@threads for n=1:N-1
+    Threads.@threads for n=1:N-1
     m1 = images[:,n]
     m2 = images[:,n+1]
     l =zeros(nxyz)
