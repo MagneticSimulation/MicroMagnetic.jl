@@ -18,30 +18,13 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.prespin = zeros(Float64,3*nxyz)
     sim.field = zeros(Float64,3*nxyz)
     sim.energy = zeros(Float64,nxyz)
-
     sim.Ms = zeros(Float64, nxyz)
     sim.pins = zeros(Bool, nxyz)
-    sim.save_data = save_data
-
-    if save_data
-        headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
-        units = ["<>", "<J>",("<>", "<>", "<>")]
-        results = [o::AbstractSim -> o.saver.nsteps,
-                o::AbstractSim -> sum(o.energy),
-                average_m]
-        sim.saver = DataSaver(string(name, "_", lowercase(driver),".txt"), 0.0, 0, false, headers, units, results)
-    end
-
-    if driver in ("LLG", "LLG_STT", "LLG_STT_CPP") && save_data
-        saver = sim.saver
-        insert!(saver.headers, 2, "time")
-        insert!(saver.units, 2, "<s>")
-        insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
-    end
     sim.driver_name = driver
-    sim.driver = create_driver(driver, integrator, nxyz)
-    
-   sim.interactions = []
+    sim.driver = create_driver(driver, integrator, nxyz)    
+    sim.interactions = []
+    sim.save_data = save_data
+    sim.saver = create_saver(string(name, "_", lowercase(driver), ".txt"), driver)
    
    @info "Standard Sim (CPU) has been used."
    return sim
@@ -216,26 +199,15 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
     if sim.driver_name != driver
         # if the driver is updated, we create a new saver
         if sim.save_data
-            headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
-            units = ["<>", "<J>",("<>", "<>", "<>")]
-            results = [o::AbstractSim -> o.saver.nsteps,
-                   o::AbstractSim -> o.total_energy, average_m]
-            sim.saver = DataSaver(string(sim.name, "_", lowercase(driver), ".txt"), 0.0, 0, false, headers, units, results)
+            sim.saver = create_saver(string(sim.name, "_", lowercase(driver), ".txt"), driver)
         end
-      
+
         if isa(sim, AbstractSimGPU)
             sim.driver = create_driver_gpu(driver, integrator, sim.nxyz)
         else
             sim.driver = create_driver(driver, integrator, sim.nxyz)
         end
-        sim.driver_name = driver
-    
-        if startswith(driver,"LLG") && sim.save_data
-            saver = sim.saver
-            insert!(saver.headers, 2, "time")
-            insert!(saver.units, 2, "<s>")
-            insert!(saver.results, 2, o::AbstractSim -> o.saver.t)
-        end
+        sim.driver_name = driver    
     end
 
     # FIXME: we have to consider all the situations here
@@ -269,464 +241,6 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
         set_uz(sim, args[:uz])
         delete!(args, :uz)
     end
-
-end
-
-"""
-    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-
-Add a static Zeeman energy to the simulation.
-"""
-function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-
-   nxyz = sim.nxyz
-    
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  init_vector!(field, sim.mesh, H0)
-
-  zeeman =  Zeeman(field, energy, name)
-  push!(sim.interactions, zeeman)
-
-  if sim.save_data
-      if isa(H0, Tuple)
-          push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
-          push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
-          id = length(sim.interactions)
-          fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
-          push!(sim.saver.results, fun)
-      end
-
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-
-  @info "Standard Zeeman (CPU) has been added."
-
-  return zeeman
-end
-
-"""
-    update_zeeman(sim::AbstractSim, H0::Tuple; name="zeeman")
-
-Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its name. For example,
-
-```julia
-   add_zeeman(sim, (0,0,0), name="my_H")  #create a zeeman energy with field (0,0,0) A/m
-   update_zeeman(sim, (0,0,1e5), name="my_H")  #change the field to (0,0,1e5) A/m
-```
-
-"""
-function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-    N_spins = sim.nxyz
-    field = zeros(Float64, 3*N_spins)
-    init_vector!(field, sim.mesh, H0)
-
-    for i in sim.interactions
-        if i.name == name
-            i.field[:] = field[:]
-            return nothing
-        end
-    end
-    return nothing
-end
-
-"""
-    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
-
-Add a time varying zeeman to system.
-
-The input `ft` is a function of time `t` and its return value should be a tuple with length 3.
-
-Example:
-
-```julia
-  function time_fun(t)
-    w = 2*pi*2.0e9
-    return (sin(w*t), cos(w*t), 0)
-  end
-
-  function spatial_H(i, j, k, dx, dy, dz)
-    H = 1e3
-    if i<=2
-        return (H, H, 0)
-    end
-    return (0, 0, 0)
-  end
-
-  add_zeeman(sim, spatial_H, time_fun)
-```
-"""
-function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
-  nxyz = sim.nxyz
-  init_field = zeros(Float64, 3*nxyz)
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  init_vector!(init_field, sim.mesh, H0)
-
-  zeeman =  TimeZeeman(ft, init_field, field, energy, name)
-  push!(sim.interactions, zeeman)
-
-  if sim.save_data
-    id = length(sim.interactions)
-      if isa(H0, Tuple)
-          push!(sim.saver.headers, (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")))
-          push!(sim.saver.units, ("<A/m>", "<A/m>", "<A/m>"))
-          fun = o::AbstractSim ->  (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
-          push!(sim.saver.results, fun)
-      end
-
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return zeeman
-end
-
-"""
-    add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch")
-
-Add a vector form exchange energy to the system. The exchange constant of 3 directions can be different.
-For example:
-```julia
-add_exc_vector(sim, (2e-12,5e-12,0))
-```
-"""
-function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch_vector")
-  nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  Spatial_A = zeros(Float64, 3*nxyz)
-  init_vector!(Spatial_A , sim.mesh, A)
-  exch = Vector_Exchange(Spatial_A , field, energy, name)
-  push!(sim.interactions, exch)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return exch
-end
-
-"""
-    add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
-
-Add exchange energy to the system.
-"""
-function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
-    
-    nxyz = sim.nxyz
-    Spatial_A = zeros(Float64, sim.nxyz)
-
-  
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-
-  init_scalar!(Spatial_A , sim.mesh, A)
-  if isa(sim, MicroSim) 
-    exch = Exchange(Spatial_A , field, energy, name)
-  else
-	exch = HeisenbergExchange(A, field, energy, name)
-  end
-  push!(sim.interactions, exch)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return exch
-end
-
-"""
-    add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
-
-Add exchange interaction within the Geometry, or update corresponding A if other exch is added.
-"""
-function add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
-  for interaction in sim.interactions
-      if interaction.name == name
-         update_scalar_geometry(interaction.A, geo, A)
-         return nothing
-      end
-  end
-  nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  Spatial_A = zeros(Float64, nxyz)
-  update_scalar_geometry(Spatial_A, geo, A)
-  if isa(sim, MicroSim)
-    exch = Exchange(Spatial_A , field, energy, name)
-  else
-  exch = HeisenbergExchange(A, field, energy, name)
-  end
-  push!(sim.interactions, exch)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return exch
-end
-
-function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="rkky")
-  nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  exch = ExchangeRKKY(sigma, Delta, field, energy, name)
-
-  push!(sim.interactions, exch)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return exch
-end
-
-"""
-    add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
-
-Add DMI to the system. Example:
-
-```julia
-   add_dmi(sim, (1e-3, 1e-3, 0))
-```
-"""
-function add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
-  nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  dmi =  BulkDMI(Float64(D[1]), Float64(D[2]), Float64(D[3]), field, energy, name)
-  push!(sim.interactions, dmi)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return dmi
-end
-
-"""
-    add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
-
-Add DMI to the system. `type` could be "bulk" or "interfacial"
-Examples:
-
-```julia
-   add_dmi(sim, 1e-3, type="interfacial")
-```
-or
-```julia
-   add_dmi(sim, 1e-3, type="bulk")
-```
-"""
-function add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
-    if type == "interfacial"
-        return add_dmi_interfacial(sim, D, name=name)
-    elseif type == "bulk"
-        return add_dmi(sim, (D,D,D), name=name)
-    else
-        error("Supported DMI type:", "interfacial", "bulk")
-    end
-
-end
-
-function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
-    nxyz = sim.nxyz
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
-    dmi =  InterfacialDMI(Float64(D), field, energy, name)
-    push!(sim.interactions, dmi)
-
-    if sim.save_data
-        push!(sim.saver.headers, string("E_",name))
-        push!(sim.saver.units, "J")
-        id = length(sim.interactions)
-        push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-    end
-    return dmi
-end
-
-"""
-    add_dmi(sim::AbstractSim;  name="dmi")
-
-Add DMI to the system. Example:
-
-```julia
-   add_dmi(sim, (1e-3, 1e-3, 0))
-```
-"""
-function add_dmi(sim::AbstractSim, name="dmi")
-  nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  z = 0.0
-  dmi =  DMI(z,z,z,z,z,z,z,z,z,z,z,z,z,z, field, energy, name)
-  push!(sim.interactions, dmi)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return dmi
-end
-
-"""
-    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
-
-Add Demag to the system. `Nx`, `Ny` and `Nz` can be used to describe the macro boundary conditions which means that
-the given mesh is repeated `2Nx+1`, `2Ny+1 and `2Nz+1` times in `x`, `y` and `z` direction, respectively.
-"""
-function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
-  demag = init_demag(sim, Nx, Ny, Nz)
-  demag.name = name
-  push!(sim.interactions, demag)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::MicroSim->sum(o.interactions[id].energy))
-  end
-  return demag
-end
-
-"""
-    add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
-
-Add Anisotropy to the system, where the energy density is given by
-
-```math
-E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
-```
-"""
-function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
-  nxyz = sim.nxyz
-  Kus =  zeros(Float64, nxyz)
-  init_scalar!(Kus, sim.mesh, Ku)
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
-  naxis = (axis[1]/lt, axis[2]/lt, axis[3]/lt)
-  anis =  Anisotropy(Kus, naxis, field, energy, name)
-  push!(sim.interactions, anis)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return anis
-end
-
-"""
-    add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0,0,1), name="anis")
-
-Add Anisotropy within the Geometry, or update corresponding Ku if other anis is added.
-"""
-function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0,0,1), name="anis")
-  lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
-  naxis = (axis[1]/lt, axis[2]/lt, axis[3]/lt)
-  for interaction in sim.interactions
-      if interaction.name == name
-         update_scalar_geometry(interaction.Ku, geo, Ku)
-         return nothing
-      end
-  end
-  nxyz = sim.nxyz
-  Kus =  zeros(Float64, nxyz)
-  update_scalar_geometry(Kus, geo, Ku)
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  anis =  Anisotropy(Kus, naxis, field, energy, name)
-  push!(sim.interactions, anis)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return anis
-end
-"""
-    update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
-
-update anisotropy constant Ku according to its name.
-
-Example:
-```julia
-    mesh = FDMesh(nx=200, ny=200, nz=12, dx=5e-9, dy=5e-9, dz=5e-9)
-    sim = Sim(mesh)
-    add_anis(sim, 3e4, axis = (0,0,1), name="K1")
-    add_anis(sim, 1e5, axis = (1,0,0), name="K2")
-    update_anis(sim, 5e4, name="K2")  #update anisotropy K2
-```
-"""
-function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
-  nxyz = sim.nxyz
-  Kus =  zeros(Float64, nxyz)
-  init_scalar!(Kus, sim.mesh, Ku)
-  for i in sim.interactions
-    if i.name == name
-      i.Ku[:] = Kus[:]
-      return nothing
-    end
-  end
-  return nothing
-end
-
-"""
-    add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1::Any=nothing, axis2::Any=nothing, name="cubic")
-
-add cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1)
-use axis1=(1,1,0), axis2=(1,-1,0) to set a pair of normal axis, and the third axis will be calculated automatically
-"""
-function add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1::Any=nothing, axis2::Any=nothing, name="cubic")
-  axis1 = axis1 == nothing ? (1,0,0) : axis1
-  axis2 = axis2 == nothing ? (0,1,0) : axis2
-  norm1 = sqrt(axis1[1]^2+axis1[2]^2+axis1[3]^2)
-  norm2 = sqrt(axis2[1]^2+axis2[2]^2+axis2[3]^2)
-  naxis1,naxis2 = axis1./norm1,axis2./norm2
-  if abs.(sum(naxis1.*naxis2)) > 1e-10
-    @error("cubic axis not normal!")
-    return nothing
-  end
-  naxis3= cross_product(axis1,axis2)
-  axis = zeros(Float64,9)
-  for i = 1:3
-    axis[i] = naxis1[i]
-    axis[i+3] = naxis2[i]
-    axis[i+6] = naxis3[i]
-  end
-
-  nxyz = sim.nxyz
-  field = zeros(Float64, 3*nxyz)
-  energy = zeros(Float64, nxyz)
-  anis =  CubicAnisotropy(axis, Kc, field, energy, name)
-  push!(sim.interactions, anis)
-
-  if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
-  end
-  return anis
 end
 
 """
@@ -749,8 +263,9 @@ Fields can be stored in vtks as well
 relax(sim, save_vtk_every = 10, fields = ["demag", "exch", "anis"])
 ```
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_factor=true, save_m_every = -1, 
-    save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks", fields::Array{String, 1} = String[])
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_factor=true, 
+    save_m_every = -1, save_ovf_every=-1, save_vtk_every=-1, 
+    ovf_format = "binary", ovf_folder="ovfs", vtk_folder="vtks", fields::Array{String, 1} = String[])
 
     # to dertermine which driver is used.
     llg_driver = false
@@ -775,77 +290,80 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
         dmdt_factor = 1.0
     end
 
+    if save_ovf_every > 0
+        isdir(ovf_folder) || mkdir(ovf_folder)
+    end
+
+    if save_vtk_every > 0
+        isdir(vtk_folder) || mkdir(vtk_folder)
+    end
+
     step = 0
     driver = sim.driver
     @info @sprintf("Running Driver : %s.", typeof(driver))
     for i=1:maxsteps
 
-      run_step(sim, driver)
+        run_step(sim, driver)
 
-      step_size = llg_driver ? driver.ode.step : driver.tau/time_factor
+        step_size = llg_driver ? driver.ode.step : driver.tau/time_factor
 
-      compute_dm!(dm, sim.prespin, sim.spin, N_spins)
-      max_dmdt = maximum(dm)/step_size
+        compute_dm!(dm, sim.prespin, sim.spin, N_spins)
+        max_dmdt = maximum(dm)/step_size
 
-      t = llg_driver ? sim.driver.ode.t : 0.0
-      if llg_driver
-          @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
-                        i, step_size, t, max_dmdt/dmdt_factor)
-      else
-          @info @sprintf("step =%5d  step_size=%10.6e    max_dmdt=%10.6e",
-                        i, step_size, max_dmdt/dmdt_factor)
-      end
-
-      if save_m_every>0 && i%save_m_every == 0
-          compute_system_energy(sim, sim.spin, t)
-          write_data(sim)
-      end
-    if save_vtk_every > 0 && i%save_vtk_every == 0
-        isdir(vtk_folder) || mkdir(vtk_folder)
-        save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
-    end
-    if save_ovf_every > 0 && i%save_ovf_every == 0
-        isdir(ovf_folder) || mkdir(ovf_folder)
-        save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
-    end
-
-    if sim.save_data
-        if llg_driver 
-            sim.saver.t = driver.ode.t
+        t = llg_driver ? sim.driver.ode.t : 0.0
+        if llg_driver
+            @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
+                            i, step_size, t, max_dmdt/dmdt_factor)
+        else
+            @info @sprintf("step =%5d  step_size=%10.6e    max_dmdt=%10.6e",
+                            i, step_size, max_dmdt/dmdt_factor)
+        end
+        
+        if save_m_every>0 && i%save_m_every == 0
+            compute_system_energy(sim, sim.spin, t)
+            write_data(sim)
         end
 
-        sim.saver.nsteps += 1
+        if save_vtk_every > 0 && i%save_vtk_every == 0
+            save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+        end
+
+        if save_ovf_every > 0 && i%save_ovf_every == 0
+            save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
+        end
+        
+        if sim.save_data
+            sim.saver.nsteps += 1
+        end
+
+        if max_dmdt < stopping_dmdt*dmdt_factor
+            @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
+            if save_m_every>0 
+                compute_system_energy(sim, sim.spin, t)
+                write_data(sim)
+            end
+    
+            if save_vtk_every > 0
+                save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+            end
+    
+            if save_ovf_every > 0 
+                save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
+            end
+            step = i
+            break
+        end
     end
 
-    if max_dmdt < stopping_dmdt*dmdt_factor
-      @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
-      if save_m_every>0
-          compute_system_energy(sim, sim.spin, t)
-          write_data(sim)
-      end
-      if save_vtk_every > 0
-        isdir(vtk_folder) || mkdir(vtk_folder)
-        save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
-      end
-      if save_ovf_every > 0
-        isdir(ovf_folder) || mkdir(ovf_folder)
-        save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
-      end
-      step = i
-      break
-    end
-  end
+    if step == maxsteps
+        if save_vtk_every > 0
+            save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+        end
 
-  if step == maxsteps
-      if save_vtk_every > 0
-        isdir(vtk_folder) || mkdir(vtk_folder)
-        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, step)), fields = fields)
-      end
-      if save_ovf_every > 0
-        isdir(ovf_folder) || mkdir(ovf_folder)
-        save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, step)), dataformat = ovf_format)
-      end
-  end
+        if save_ovf_every > 0 
+            save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
+        end
+    end
   return nothing
 end
 
@@ -1087,7 +605,7 @@ function create_sim(mesh; args...)
 
 
 """
-    run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, call_back=nothing)
+    run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=sim.saver)
 
 Run the simulation to the time `steps*dt`.
 
@@ -1095,14 +613,16 @@ Run the simulation to the time `steps*dt`.
 - dt : the time interval of each step, so the total simulation time is `steps*dt`
 - save_data : saving the overall data such as energies and average magnetization of the simulation at each step
 - save_m_every : save magnetization for every `save_m_every` step, a negative save_m_every will disable the magnetization saving.
-- call_back : a call back function will be invoked during the simulation process. For example, if we want to compute the guiding
-center and save it to a text file, we can define the following function
+- saver : a saver struct, by default it will use sim's saver. But you can use customized saver instead. For example, if we want to compute the guiding
+center and save it to a text file, we can define the following saver
 ```julia
-
+    customized_saver = init_saver("output.txt", "LLG")
+    push!(custom_saver.items, SaverItem("center", "m", compute_guiding_center))
+    run_sim(sim, saver=customized_saver)
 ```
 
 """
-function run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, call_back=nothing)
+function run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=sim.saver)
 
     file = jldopen(@sprintf("%s.jdl2", sim.name), "w")
 
@@ -1125,9 +645,7 @@ function run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, call_b
         run_until(sim, i*dt, save_data=save_data)
         @info @sprintf("step =%5d  t = %10.6e", i, i*dt)
 
-        if isa(call_back, Function) 
-            call_back(sim, i*dt)
-        end
+        write_data(sim, saver)
 
         if (save_m_every>1 && i%save_m_every == 1) || save_m_every == 1
             index = @sprintf("%d", i)

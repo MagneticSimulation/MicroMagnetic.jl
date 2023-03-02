@@ -64,10 +64,9 @@ function add_exch(sim::AtomicSimGPU, J::Array; name="exch")
     exch = HeisenbergExchange(Js, field, energy, Float(0.0), name)
     push!(sim.interactions, exch)
     if sim.save_data
-        push!(sim.saver.headers, string("E_",name))
-        push!(sim.saver.units, "J")
         id = length(sim.interactions)
-        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+        item = SaverItem(string("E_",name), "J", o::AbstractSim->o.interactions[id].total_energy)
+        push!(sim.saver.items, item)
     end
     return exch
 end
@@ -116,10 +115,9 @@ function add_next_exch(sim::AtomicSimGPU, J::Array; name="next_exch")
     next_exch = NextHeisenbergExchange(Js, field, energy, Float(0.0), name)
     push!(sim.interactions, next_exch)
     if sim.save_data
-        push!(sim.saver.headers, string("E_",name))
-        push!(sim.saver.units, "J")
         id = length(sim.interactions)
-        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+        item = SaverItem(string("E_",name), "J", o::AbstractSim->o.interactions[id].total_energy)
+        push!(sim.saver.items, item)
     end
     return next_exch
 end
@@ -153,10 +151,9 @@ function add_next_next_exch(sim::AtomicSimGPU, J::Array; name="next_next_exch")
     next_next_exch = NextNextHeisenbergExchange(Js, field, energy, Float(0.0), name)
     push!(sim.interactions, next_next_exch)
     if sim.save_data
-        push!(sim.saver.headers, string("E_",name))
-        push!(sim.saver.units, "J")
         id = length(sim.interactions)
-        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+        item = SaverItem(string("E_",name), "J", o::AbstractSim->o.interactions[id].total_energy)
+        push!(sim.saver.items, item)
     end
     return next_next_exch
 end
@@ -207,10 +204,9 @@ function add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
         
     push!(sim.interactions, dmi)
     if sim.save_data
-        push!(sim.saver.headers, string("E_",name))
-        push!(sim.saver.units, "J")
         id = length(sim.interactions)
-        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+        item = SaverItem(string("E_",name), "J", o::AbstractSim->o.interactions[id].total_energy)
+        push!(sim.saver.items, item)
     end
 end
 
@@ -309,10 +305,9 @@ function add_thermal_noise(sim::AtomicSimGPU, T::NumberOrArrayOrFunction; name="
     push!(sim.interactions, thermal)
   
     if sim.save_data
-        push!(sim.saver.headers, string("E_",name))
-        push!(sim.saver.units, "J")
         id = length(sim.interactions)
-        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+        item = SaverItem(string("E_",name), "J", o::AbstractSim->o.interactions[id].total_energy)
+        push!(sim.saver.items, item)
     end
     return thermal
 end
@@ -348,10 +343,9 @@ function add_magnetoelectric_laser(sim::AtomicSimGPU, lambda::Float64, E::Float6
     push!(sim.interactions, laser)
   
     if sim.save_data
-        push!(sim.saver.headers, string("E_",name))
-        push!(sim.saver.units, "J")
         id = length(sim.interactions)
-        push!(sim.saver.results, o::AbstractSim->o.interactions[id].total_energy)
+        item = SaverItem(string("E_",name), "J", o::AbstractSim->o.interactions[id].total_energy)
+        push!(sim.saver.items, item)
     end
     return laser
 end

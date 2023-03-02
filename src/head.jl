@@ -71,12 +71,16 @@ TupleOrArrayOrFunction = Union{Tuple, Array, Function}
 
 mutable struct DataSaver
   name::String
-  t::Float64
-  nsteps::Int64
   header_saved::Bool
-  headers::Array  #string or tuple<string> array
-  units::Array #string or tuple<string> array
-  results::Array  #function array
+  t::Float64
+  nsteps::Int
+  items::Array
+end
+
+mutable struct SaverItem
+    name::Union{String, Tuple}
+    unit::Union{String, Tuple}
+    result::Function
 end
 
 mutable struct MicroSim <: AbstractSim

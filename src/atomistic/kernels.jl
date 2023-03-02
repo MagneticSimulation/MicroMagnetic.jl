@@ -87,13 +87,13 @@ function __magnetoelectric_laser__kernel_111!(m, h, energy, lambda, Ex, Ey, Ez, 
             @inbounds h[j+3] = 0
             return nothing
         end
-        ms_inv = -lambda/ms_local/CUDA.sqrt(3)
+        ms_inv = -lambda/ms_local/CUDA.sqrt(3.0)
         @inbounds mx = m[j+1]
         @inbounds my = m[j+2]
         @inbounds mz = m[j+3]
 
-        @inbounds h[j+1] = (CUDA.sqrt(2)*(Ey*mx + Ex*my)+Ez*mx+Ex*mz)*ms_inv
-        @inbounds h[j+2] = (CUDA.sqrt(2)*(Ex*mx - Ey*my)+Ez*my+Ey*mz)*ms_inv 
+        @inbounds h[j+1] = (CUDA.sqrt(2.0)*(Ey*mx + Ex*my)+Ez*mx+Ex*mz)*ms_inv
+        @inbounds h[j+2] = (CUDA.sqrt(2.0)*(Ex*mx - Ey*my)+Ez*my+Ey*mz)*ms_inv 
         @inbounds h[j+3] = (Ex*mx + Ey*my-2*Ez*mz)*ms_inv
         
         #compute the energy for the electric part

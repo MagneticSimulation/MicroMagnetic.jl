@@ -51,6 +51,7 @@ function NEB_GPU(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spri
     neb.energy_cpu = zeros(Float, neb.N+2)
     neb.distance = zeros(Float, neb.N+1)
 
+    step_item = SaverItem("step", "", o::NEB -> o.driver.nsteps)
     init_saver(neb)
     init_images(neb, init_m, intervals)
     compute_distance(neb)
@@ -72,36 +73,21 @@ function create_neb_driver_gpu(driver::String, nxyz::Int64, N::Int64)
   end
 
 function init_saver(neb::NEB_GPU)
-
-    headers = ["steps"]
-    units = ["<>"]
-    results = Any[o::NEB_GPU -> o.saver_energy.nsteps]
-    neb.saver_energy = DataSaver(@sprintf("%s_energy.txt", neb.name),
-                                 0.0, 0, false, headers, units, results)
-
-    distance_headers= ["steps"]
-    distance_units = ["<>"]
-    distance_results = Any[o::NEB_GPU -> o.saver_energy.nsteps]
-
-    neb.saver_distance = DataSaver(@sprintf("%s_distance.txt", neb.name),
-                                   0.0, 0, false, distance_headers, distance_units, distance_results)
+    step_item = SaverItem("step", "", o::NEB_GPU -> o.saver_energy.nsteps)
+    neb.saver_energy = DataSaver(string(neb.name, ".txt"), false, 0.0, 0, [step_item])
+    neb.saver_distance = DataSaver(string(@sprintf("%s_distance",neb.name), ".txt"), false, 0.0, 0, [step_item])
     N=neb.N
     for n = 1:N+2
         name = @sprintf("E_total_%g",n)
-        push!(neb.saver_energy.headers,name)
-        push!(neb.saver_energy.units, "<J>")
-        fun =  o::NEB_GPU -> o.energy_cpu[n]
-        push!(neb.saver_energy.results, fun)
+        item = SaverItem(name, "J", o::NEB_GPU -> o.energy_cpu[n])
+        push!(neb.saver_energy.items, item)
     end
 
     for n = 1:N+1
         name =  @sprintf("distance_%d", n)
-        push!(neb.saver_distance.headers,name)
-        push!(neb.saver_distance.units, "<>")
-        fun =  o::NEB_GPU -> o.distance[n]
-        push!(neb.saver_distance.results, fun)
+        item = SaverItem(name, "", o::NEB_GPU -> o.distance[n])
+        push!(neb.saver_distance.items, item)
     end
-
 end
 
 function init_m0_Ms(sim::AbstractSim, m0::TupleOrArrayOrFunction)
