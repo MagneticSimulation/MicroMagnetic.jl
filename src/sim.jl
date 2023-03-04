@@ -605,7 +605,7 @@ function create_sim(mesh; args...)
 
 
 """
-    run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=sim.saver)
+    run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=nothing)
 
 Run the simulation to the time `steps*dt`.
 
@@ -622,7 +622,11 @@ center and save it to a text file, we can define the following saver
 ```
 
 """
-function run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=sim.saver)
+function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=nothing)
+
+    if save_data && saver===nothing
+        saver = sim.saver
+    end
 
     file = jldopen(@sprintf("%s.jdl2", sim.name), "w")
 
@@ -645,7 +649,7 @@ function run_sim(sim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=
         run_until(sim, i*dt, save_data=save_data)
         @info @sprintf("step =%5d  t = %10.6e", i, i*dt)
 
-        write_data(sim, saver)
+        save_data && write_data(sim, saver)
 
         if (save_m_every>1 && i%save_m_every == 1) || save_m_every == 1
             index = @sprintf("%d", i)
