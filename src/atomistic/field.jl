@@ -1,3 +1,12 @@
+function effective_field(zeeman::TimeZeemanGPU, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+    nxyz = sim.nxyz
+    blocks_n, threads_n = sim.blocks, sim.threads
+    tx, ty, tz = zeeman.time_fun(t)
+    @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, zeeman.cufield, sim.energy, sim.mu_s, T(1), T(tx), T(ty), T(tz), nxyz)
+    return nothing
+  end
+
+
 function effective_field(zeeman::ZeemanGPU, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
 
     function __kernel!(m, h, h_static, energy, mu_s, N)

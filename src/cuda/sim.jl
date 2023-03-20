@@ -169,7 +169,7 @@ function update_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction; name = "zee
 end
 
 
-function add_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
+function add_zeeman(sim::AbstractSimGPU, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
     nxyz = sim.nxyz
     T = _cuda_using_double.x ? Float64 : Float32
     field = zeros(T, 3*nxyz)
