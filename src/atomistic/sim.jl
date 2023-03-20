@@ -247,10 +247,9 @@ function add_anis_kagome(sim::AtomicSimGPU, Ku::Float64; ax1=(-0.5,-sqrt(3)/2,0)
   push!(sim.interactions, anis)
 
   if sim.save_data
-      push!(sim.saver.headers, string("E_",name))
-      push!(sim.saver.units, "J")
-      id = length(sim.interactions)
-      push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+    id = length(sim.interactions)
+    item = SaverItem(string("E_",name), "J",  o::AbstractSim->sum(o.interactions[id].energy))
+    push!(sim.saver.items, item)
   end
   return anis
 end
@@ -283,10 +282,9 @@ function add_anis_tube(sim::AtomicSimGPU, Ku::Float64; name="anis")
     push!(sim.interactions, anis)
   
     if sim.save_data
-        push!(sim.saver.headers, string("E_",name))
-        push!(sim.saver.units, "J")
         id = length(sim.interactions)
-        push!(sim.saver.results, o::AbstractSim->sum(o.interactions[id].energy))
+        item = SaverItem(string("E_",name), "J",  o::AbstractSim->sum(o.interactions[id].energy))
+        push!(sim.saver.items, item)
     end
     return anis
   end
@@ -306,7 +304,7 @@ function add_thermal_noise(sim::AtomicSimGPU, T::NumberOrArrayOrFunction; name="
   
     if sim.save_data
         id = length(sim.interactions)
-        item = SaverItem(string("E_",name), "J", o::AbstractSim->o.interactions[id].total_energy)
+        item = SaverItem(string("E_",name), "J", o::AbstractSim->o.interactions[id].exi)
         push!(sim.saver.items, item)
     end
     return thermal
