@@ -72,9 +72,10 @@ function compute_tau(driver::EnergyMinimizationGPU, m_pre::CuArray{T, 1}, m::CuA
     @cuda blocks=blk threads=thr compute_gk_kernel_2!(driver.gk,
                                  driver.ss, driver.sf, driver.ff,
                                  m, m_pre, h, N)
-    sum1 = sum(driver.ss) #Is it better to use Float64 for driver.ss?
-    sum2 = sum(driver.sf)
-    sum3 = sum(driver.ff)
+
+    sum1 = sum(Array(driver.ss)) #Is it better to use Float64 for driver.ss?
+    sum2 = sum(Array(driver.sf))
+    sum3 = sum(Array(driver.ff))
 
     tau1 = sum2 != T(0) ? sum1/sum2 : driver.min_tau
     tau2 = sum3 != T(0) ? sum2/sum3 : driver.min_tau
@@ -84,7 +85,7 @@ function compute_tau(driver::EnergyMinimizationGPU, m_pre::CuArray{T, 1}, m::CuA
         driver.tau = driver.max_tau
     end
 
-  return nothing
+    return nothing
 end
 
 function run_step(sim::AbstractSim, driver::EnergyMinimizationGPU)
