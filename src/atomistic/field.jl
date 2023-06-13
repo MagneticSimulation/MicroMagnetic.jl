@@ -234,6 +234,50 @@ function effective_field(next_next_exch::NextNextHeisenbergExchange, sim::Atomic
     return nothing
 end
 
+function effective_field(next_next_next_exch::NextNextNextHeisenbergExchange, sim::AtomicSimGPU, spin::CuArray{T,1}, t::Float64) where {T<:AbstractFloat}
+
+    function __kernel!(m, h, energy, Js, nnnngbs, nnnn_ngbs, mu_s, N)
+        i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+        if 0 < i <= N
+            j = 3 * (i - 1)
+            @inbounds ms_local = mu_s[i]
+            if ms_local == 0.0
+                @inbounds energy[i] = 0
+                @inbounds h[j+1] = 0
+                @inbounds h[j+2] = 0
+                @inbounds h[j+3] = 0
+                return nothing
+            end
+            ms_inv = T(1 / ms_local)
+
+            fx, fy, fz = T(0), T(0), T(0)
+            for k = 1:nnnn_ngbs
+                @inbounds id = nnnngbs[k, i]
+                if id > 0 && mu_s[id] > 0
+                    x = 3 * id - 2
+                    @inbounds fx += Js[k] * m[x]
+                    @inbounds fy += Js[k] * m[x+1]
+                    @inbounds fz += Js[k] * m[x+2]
+                end
+            end
+            @inbounds energy[i] = -0.5 * (fx * m[j+1] + fy * m[j+2] + fz * m[j+3])
+            @inbounds h[j+1] = fx * ms_inv
+            @inbounds h[j+2] = fy * ms_inv
+            @inbounds h[j+3] = fz * ms_inv
+        end
+
+        return nothing
+    end
+
+    N = sim.nxyz
+    blk, thr = cudims(N)
+    nnnngbs = sim.mesh.nnnngbs  #   next-nearest neigbours
+    nnnn_ngbs = sim.mesh.nnnn_ngbs
+    @cuda blocks = blk threads = thr __kernel!(spin, sim.field, sim.energy, next_next_next_exch.Js, nnnngbs, nnnn_ngbs, sim.mu_s, N)
+
+    return nothing
+end
+
 function effective_field(dmi::HeisenbergBulkDMI, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
 
     function __kernel!(m, h, energy, D, ngbs, n_ngbs, mu_s, N)
