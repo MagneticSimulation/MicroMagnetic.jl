@@ -123,6 +123,77 @@ function CubicMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
   return CubicMeshGPU(dx, dy, dz, nx, ny, nz, nxyz, 6, 12, 8, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), xperiodic, yperiodic, zperiodic)
 end
 
+struct CubicMesh4NGPU <: AtomicMeshGPU
+  dx::Float64
+  dy::Float64
+  dz::Float64
+  nx::Int64
+  ny::Int64
+  nz::Int64
+  nxyz::Int64
+  n_ngbs::Int64
+  nn_ngbs::Int64
+  nnn_ngbs::Int64
+  nnnn_ngbs::Int64
+  ngbs::CuArray{Int32, 2}  #  1st nearest neighbours
+  nngbs::CuArray{Int32, 2}  # 2nd next-nearest neighbours(warnning: the corresponding interaction function is named as "next_exch", not "nnexch")
+  nnngbs::CuArray{Int32,2}  # 3rd next-next-nearest neighbours
+  nnnngbs::CuArray{Int32,2}  # 4th next-next-next-nearest neighbours
+  xperiodic::Bool
+  yperiodic::Bool
+  zperiodic::Bool
+end
+
+function CubicMesh4NGPU(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
+  ngbs = zeros(Int32, 6, nx * ny * nz)
+  nngbs = zeros(Int32, 12, nx * ny * nz)
+  nnngbs = zeros(Int32, 8, nx * ny * nz)
+  nnnngbs = zeros(Int32, 6, nx * ny * nz)
+  xperiodic = 'x' in pbc ? true : false
+  yperiodic = 'y' in pbc ? true : false
+  zperiodic = 'z' in pbc ? true : false
+  for k = 1:nz, j = 1:ny, i = 1:nx
+    id = index(i, j, k, nx, ny, nz)
+    ngbs[1, id] = indexpbc(i - 1, j, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    ngbs[2, id] = indexpbc(i + 1, j, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    ngbs[3, id] = indexpbc(i, j - 1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    ngbs[4, id] = indexpbc(i, j + 1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    ngbs[5, id] = indexpbc(i, j, k - 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    ngbs[6, id] = indexpbc(i, j, k + 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+
+    nngbs[1, id] = indexpbc(i + 1, j, k - 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[2, id] = indexpbc(i, j + 1, k - 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[3, id] = indexpbc(i - 1, j, k - 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[4, id] = indexpbc(i, j - 1, k - 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[5, id] = indexpbc(i + 1, j - 1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[6, id] = indexpbc(i + 1, j + 1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[7, id] = indexpbc(i - 1, j + 1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[8, id] = indexpbc(i - 1, j - 1, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[9, id] = indexpbc(i + 1, j, k + 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[10, id] = indexpbc(i, j + 1, k + 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[11, id] = indexpbc(i - 1, j, k + 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nngbs[12, id] = indexpbc(i, j - 1, k + 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+
+    nnngbs[1, id] = indexpbc(i + 1, j - 1, k - 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnngbs[2, id] = indexpbc(i + 1, j + 1, k - 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnngbs[3, id] = indexpbc(i - 1, j + 1, k - 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnngbs[4, id] = indexpbc(i - 1, j - 1, k - 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnngbs[5, id] = indexpbc(i + 1, j - 1, k + 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnngbs[6, id] = indexpbc(i + 1, j + 1, k + 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnngbs[7, id] = indexpbc(i - 1, j + 1, k + 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnngbs[8, id] = indexpbc(i - 1, j - 1, k + 1, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+
+    nnnngbs[1, id] = indexpbc(i - 2, j, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnnngbs[2, id] = indexpbc(i + 2, j, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnnngbs[3, id] = indexpbc(i, j - 2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnnngbs[4, id] = indexpbc(i, j + 2, k, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnnngbs[5, id] = indexpbc(i, j, k - 2, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+    nnnngbs[6, id] = indexpbc(i, j, k + 2, nx, ny, nz, xperiodic, yperiodic, zperiodic)
+  end
+  nxyz = nx * ny * nz
+  return CubicMesh4NGPU(dx, dy, dz, nx, ny, nz, nxyz, 6, 12, 8, 6, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), CuArray(nnnngbs), xperiodic, yperiodic, zperiodic)
+end
+
 
 #   special for 2D-lattice(nz == 1), where the next-next-nearest points are totally different from the 3D case. 
 struct SquareMeshGPU <: AtomicMeshGPU

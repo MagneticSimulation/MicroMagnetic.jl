@@ -159,6 +159,46 @@ function add_next_next_exch(sim::AtomicSimGPU, J::Array; name="next_next_exch")
 end
 
 
+"""
+    add_next_next_exch()
+
+Add 4th next_next-next-nearest neigbours exchange energy to the system
+"""
+function add_next_next_next_exch(sim::AtomicSimGPU, J::Number; name="next_next_next_exch")
+    nnnn_ngbs = sim.mesh.nnnn_ngbs
+    Js = zeros(nnnn_ngbs)
+    Js .= J
+    add_next_next_next_exch(sim, Js, name=name)
+end
+
+function add_next_next_next_exch(sim::AtomicSimGPU, J::Array; name="next_next_next_exch")
+    nxyz = sim.nxyz
+    Float = _cuda_using_double.x ? Float64 : Float32
+    field = zeros(Float, 3 * nxyz)
+    energy = zeros(Float, nxyz)
+    nnnn_ngbs = sim.mesh.nnnn_ngbs
+    Js = CUDA.zeros(Float, nnnn_ngbs)
+
+    if length(J) != nnnn_ngbs
+        @error("The length of given Js is $(length(Js)) but we need an array with $a.")
+    else
+        copyto!(Js, [Float(i) for i in J])
+    end
+
+    next_next_next_exch = NextNextNextHeisenbergExchange(Js, field, energy, Float(0.0), name)
+    push!(sim.interactions, next_next_next_exch)
+    if sim.save_data
+        id = length(sim.interactions)
+        item = SaverItem(string("E_", name), "J", o::AbstractSim -> o.interactions[id].total_energy)
+        push!(sim.saver.items, item)
+    end
+    return next_next_next_exch
+end
+
+
+
+
+
 @doc raw"""
     add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
 

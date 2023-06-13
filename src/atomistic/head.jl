@@ -48,6 +48,13 @@ mutable struct NextNextHeisenbergExchange{T<:AbstractFloat} <: InteractionGPU
    name::String
 end
 
+mutable struct NextNextNextHeisenbergExchange{T<:AbstractFloat} <: InteractionGPU
+   Js::CuArray{T,1}  #The length of Js should be equal to the number of neighbours
+   field::Array{T,1}
+   energy::Array{T,1}
+   total_energy::T
+   name::String
+end
 # HeisenbergBulkDMI denotes the Bulk DM interaction that can be used in 
 # cubic and triangular meshes. 
 mutable struct HeisenbergBulkDMI{T<:AbstractFloat} <: InteractionGPU
