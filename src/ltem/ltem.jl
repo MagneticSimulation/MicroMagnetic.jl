@@ -2,6 +2,71 @@ using NPZ
 using FFTW
 using Printf
 
+function compute_magnetic_phase_direct(mx, my, dx, dy, Lz, Ms, i0, j0)  #slow, for testing purpose
+    Nx, Ny = size(mx)
+    mu0 = 4*pi*1e-7
+    Phi0 = 2.067833e-15
+
+    phi = 0
+    for i=1:Nx, j=1:Ny
+        x = (i0-i)*dx
+        y = (j0-j)*dy
+        r = sqrt(x^2+y^2)
+        if  r > 0.001*min(dx, dy)
+            phi += (y*mx[i,j] -  x*my[i,j])/r^2
+        end
+    end
+    return -phi*mu0*Ms*Lz/(2*Phi0)*dx*dy
+end
+
+
+function compute_magnetic_phase_fft(mx, my, dx, dy, Lz, Ms; Nx=-1, Ny=-1)
+    mu0 = 4*pi*1e-7
+    Phi0 = 2.067833e-15
+    nx, ny =  size(mx)
+
+    Nx = Nx < 0 ? nx : Nx
+    Ny = Ny < 0 ? ny : Ny
+
+    Lx = Nx + nx - 1
+    Ly = Ny + ny - 1
+    new_mx = zeros(Lx, Ly)
+    new_my = zeros(Lx, Ly)
+    for i=1:nx, j=1:ny
+        new_mx[i,j] = mx[i,j]
+        new_my[i,j] = my[i,j]
+    end
+
+    F(x::Number, y::Number) = y == 0 ? 0 : y/(x^2+y^2)
+    G(x::Number, y::Number) = x == 0 ? 0 : x/(x^2+y^2)
+
+    fs = zeros(Lx, Ly)
+    gs = zeros(Lx, Ly)
+    for i=1:Lx, j=1:Ly
+        fs[i,j] = F((-(Lx-1)/2+i-1)*dx, (-(Ly-1)/2+j-1)*dy)
+        gs[i,j] = G((-(Lx-1)/2+i-1)*dx, (-(Ly-1)/2+j-1)*dy)
+    end
+
+    fft_mx = fft(new_mx)
+    fft_my = fft(new_my)
+    fft_fs = fft(fs)
+    fft_gs = fft(gs)
+
+    fft_phi = zeros(Complex{Float64}, (Lx,Ly))
+    for i=1:Lx, j=1:Ly
+        fft_phi[i,j] = fft_mx[i,j]*fft_fs[i,j] - fft_my[i,j]*fft_gs[i,j]
+    end
+
+    phi_all = real.(ifft(fft_phi))
+    phi = zeros(Nx, Ny)
+    for i=1:Nx, j=1:Ny
+        phi[i,j] = phi_all[i+nx-1, j+ny-1]
+    end
+
+    return -phi*mu0*Ms*Lz/(2*Phi0)*dx*dy
+end
+
+
 """
     compute_magnetic_phase(m::Array{T,4}, theta::Real, axis::String;
 N1::Int=-1, N2::Int=-1, Ms=1/mu_0, d::Real=1.0) where {T<:AbstractFloat}
@@ -62,9 +127,6 @@ function compute_electric_phase(V, V0, Lz, beta)
     phi_E = CE*V0*Lz/cos(deg2rad(beta))
     return lambda, phi_E
 end
-
-
-
 
 #= function vector_potential_constant(Ms::Float64, d::Float64)
     mu0 = 4*pi*1e-7

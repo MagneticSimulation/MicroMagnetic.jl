@@ -230,6 +230,34 @@ function compute_shape_factor(m::Array{T, 1}, mesh::Mesh; r=0) where {T<:Abstrac
     return eta_xx*factor, eta_xy*factor, eta_yx*factor, eta_yy*factor
 end
 
+function compute_shape_factor(m::Array{T, 1}, x_c::Int64, y_c::Int64, mesh::Mesh; r=0) where {T<:AbstractFloat}
+  nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
+  pxm, pym = partial_xy(m, mesh)
+  eta_xx = 0
+  eta_xy = 0
+  eta_yx = 0
+  eta_yy = 0
+  if r==0
+    r = max(nx, ny)
+  end
+  #x_c = nx/2.0 + 0.5
+  #y_c = ny/2.0 + 0.5
+  factor = mesh.dx*mesh.dy/(4*pi*nz)
+  for k = 1:nz, j = 1:ny, i=1:nx
+      id = index(i, j, k, nx, ny, nz)
+      px_mx,px_my,px_mz = pxm[3*id-2],pxm[3*id-1],pxm[3*id]
+      py_mx,py_my,py_mz = pym[3*id-2],pym[3*id-1],pym[3*id]
+      if (i-x_c)^2 + (j-y_c)^2 < r^2
+        eta_xx += dot_product(px_mx,px_my,px_mz, px_mx,px_my,px_mz)
+        eta_xy += dot_product(px_mx,px_my,px_mz, py_mx,py_my,py_mz)
+        eta_yx += dot_product(py_mx,py_my,py_mz, px_mx,px_my,px_mz)
+        eta_yy += dot_product(py_mx,py_my,py_mz, py_mx,py_my,py_mz)
+      end
+  end
+  
+  return eta_xx*factor, eta_xy*factor, eta_yx*factor, eta_yy*factor
+end
+
 
 # The tensor B is defined as
 # \mathcal{B}_{i j}=\int\left(\mathbf{m} \times \partial_i \mathbf{m}\right)_j d x d y
