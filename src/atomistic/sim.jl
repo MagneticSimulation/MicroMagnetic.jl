@@ -248,6 +248,7 @@ function add_dmi(sim::AtomicSimGPU, D::Real; name="dmi")
         item = SaverItem(string("E_",name), "J", o::AbstractSim->o.interactions[id].total_energy)
         push!(sim.saver.items, item)
     end
+    return dmi
 end
 
 
@@ -388,3 +389,24 @@ function add_magnetoelectric_laser(sim::AtomicSimGPU, lambda::Float64, E::Float6
     return laser
 end
 
+@doc raw"""
+    add_demag(sim::AtomicSimGPU; name="demag", Nx=0, Ny=0, Nz=0 )
+
+add dipolar interaction into the system.
+
+```math
+\mathcal{H}_{\mathrm{d}}=-\frac{\mu_0 \mu_s^2}{4 \pi} \sum_{i<j} \frac{3\left(\mathbf{m}_i \cdot \hat{\mathbf{r}}_{i j}\right)\left(\mathbf{m}_j \cdot \hat{\mathbf{r}}_{i j}\right)-\mathbf{m}_i \cdot \mathbf{m}_j}{r_{i j}^3}
+```
+"""
+function add_demag(sim::AtomicSimGPU; name="demag", Nx=0, Ny=0, Nz=0)
+    demag = init_demag_gpu(sim, Nx, Ny, Nz)
+    demag.name = name
+    push!(sim.interactions, demag)
+
+    if sim.save_data
+        id = length(sim.interactions)
+        item = SaverItem(string("E_",name), "J", o::MicroSimGPU->o.interactions[id].total_energy)
+        push!(sim.saver.items, item)
+    end
+    return demag
+end
