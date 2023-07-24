@@ -13,6 +13,7 @@ include("test_integrator.jl")
 include("test_relax.jl")
 include("test_util.jl")
 include("test_ovf.jl")
+include("test_phase.jl")
 include("test_neb.jl")
 include("test_geometry.jl")
 
