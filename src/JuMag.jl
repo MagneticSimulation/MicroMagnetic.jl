@@ -130,6 +130,8 @@ if _cuda_available.x
     include("cuda/sd.jl")
     include("cuda/vtk.jl")
     include("cuda/ovf2.jl")
+    include("atomistic/demag_kernel.jl")
+    include("atomistic/demag.jl")
     include("neb/neb_cuda.jl")
     include("neb/neb_kernels.jl")
     include("integrator/heun_cuda.jl")
