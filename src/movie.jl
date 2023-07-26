@@ -4,6 +4,32 @@ using JLD2
 using PNGFiles
 using Colors, ColorSchemes
 using FFMPEG
+
+"""
+    ovf2png(ovf_name; k = 1, component='z')
+
+Create a png from the given ovf file.
+`k` indicates the layer index (starting from 1) 
+`component` refers to the used component ('x', 'y' or 'z') for plotting. 
+
+"""
+function ovf2png(ovf_name, output=nothing; k = 1, component='z')
+  if output == nothing
+    output = endswith(ovf_name, ".ovf") ? ovf_name[1:end-4] : ovf_name
+  end
+
+  ovf = read_ovf(ovf_name)
+
+  spin = reshape(ovf.data, 3, ovf.xnodes, ovf.ynodes, ovf.znodes)
+
+  m_index = component - 'x' + 1
+  m_t = transpose(spin[m_index, :, :, k]) # transpose the magnetization
+  m_f = reverse(m_t, dims = 1) # flip the m_t vertically
+  PNGFiles.save(output*".png", get(ColorSchemes.coolwarm, m_f))
+end
+
+
+
 """
     jdl2png(jdl_file; k = 1, component='z')
 
