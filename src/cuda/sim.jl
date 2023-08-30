@@ -331,6 +331,32 @@ function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi")
     return dmi
 end
 
+@doc raw"""
+    add_dmi_interlayer(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi_int")
+
+Add an interlayer DMI to the system. The energy of interlayer DMI is defined as 
+
+```math
+\mathcal{E}_\mathrm{dmi-int} =  \int_\Gamma \mathbf{D} \cdot\left(\mathbf{m}_{t} \times \mathbf{m}_{b}\right) d\mathbf{A}
+```
+where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{t}$ and $\mathbf{m}_{b}$. $\mathbf{D}$ 
+is the effective DMI vector. 
+"""
+function add_dmi_interlayer(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi_int")
+    nxyz = sim.nxyz
+    Float = _cuda_using_double.x ? Float64 : Float32
+    field = zeros(Float, 3*nxyz)
+    energy = zeros(Float, nxyz)
+    dmi = InterlayerDMIGPU(Float(D[1]), Float(D[2]), Float(D[3]), field, energy, Float(0.0), name)
+
+    push!(sim.interactions, dmi)
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSimGPU->o.interactions[id].total_energy))
+    end
+    return dmi
+end
+
 function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi")
     nxyz = sim.nxyz
     T = _cuda_using_double.x ? Float64 : Float32

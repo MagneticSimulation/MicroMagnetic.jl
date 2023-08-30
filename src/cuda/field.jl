@@ -88,6 +88,16 @@ function effective_field(dmi::BulkDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1},
   return nothing
 end
 
+function effective_field(dmi::InterlayerDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
+  nxyz = sim.nxyz
+  mesh = sim.mesh
+  blocks_n, threads_n = sim.blocks, sim.threads
+  @cuda blocks=blocks_n threads=threads_n interlayer_dmi_kernel!(spin, sim.field, sim.energy, sim.Ms,
+                    dmi.Dx, dmi.Dy, dmi.Dz, mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny,
+                    mesh.nz, mesh.volume, mesh.xperiodic, mesh.yperiodic, mesh.zperiodic)
+  return nothing
+end
+
 function effective_field(dmi::InterfacialDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   nxyz = sim.nxyz
   mesh = sim.mesh
