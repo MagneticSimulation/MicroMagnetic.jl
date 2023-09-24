@@ -46,11 +46,11 @@ function dE_zeeman_anisotropy_cubic_mesh_kernel!(m::CuDeviceArray{T, 1}, next_m:
 
         delta_E = -(dmx*Hx+dmy*Hy+dmz*Hz) #zeeman
 
-        @inbounds delta_E += Ku*CUDA.pow(m[i]*ux+m[i+1]*uy+m[i+2]*uz, 2) #Anisotropy
-        @inbounds delta_E -= Ku*CUDA.pow(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz, 2)
-        @inbounds delta_E += Kc*(CUDA.pow(m[i+2],4) - CUDA.pow(next_m[i+2],4)) #Cubic Anisotropy for z
-        @inbounds delta_E += Kc*(CUDA.pow(m[i+1],4) - CUDA.pow(next_m[i+1],4)) #Cubic Anisotropy for y
-        @inbounds delta_E += Kc*(CUDA.pow(m[i],4) - CUDA.pow(next_m[i],4)) #Cubic Anisotropy for x
+        @inbounds delta_E += Ku*(m[i]*ux+m[i+1]*uy+m[i+2]*uz)^2 #Anisotropy
+        @inbounds delta_E -= Ku*(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz)^2
+        @inbounds delta_E += Kc*(m[i+2]^4 -next_m[i+2]^4) #Cubic Anisotropy for z
+        @inbounds delta_E += Kc*(m[i+1]^4 - next_m[i+1]^4) #Cubic Anisotropy for y
+        @inbounds delta_E += Kc*(m[i]^4 - next_m[i]^4) #Cubic Anisotropy for x
         @inbounds dE[index] = delta_E
    end
    return nothing
@@ -80,9 +80,9 @@ function total_E_zeeman_anisotropy_kernel!(m::CuDeviceArray{T, 1},
 
         delta_E = -(mx*Hx+my*Hy+mz*Hz) #zeeman
 
-        delta_E -= Ku*CUDA.pow(mx*ux+my*uy+mz*uz, 2) #Anisotropy
+        delta_E -= Ku*(mx*ux+my*uy+mz*uz)^2 #Anisotropy
 
-        delta_E += Kc*(CUDA.pow(mx,4)+CUDA.pow(my,4)+CUDA.pow(mz,4))
+        delta_E += Kc*(mx^4+my^4+mz^4)
 
         @inbounds dE[index] = delta_E
    end
@@ -111,8 +111,8 @@ function dE_zeeman_anisotropy_triangular_mesh_kernel!(m::CuDeviceArray{T, 1}, ne
 
         delta_E = -(dmx*Hx+dmy*Hy+dmz*Hz) #zeeman
 
-        @inbounds delta_E += Ku*CUDA.pow(m[i]*ux+m[i+1]*uy+m[i+2]*uz, 2) #Anisotropy
-        @inbounds delta_E -= Ku*CUDA.pow(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz, 2)
+        @inbounds delta_E += Ku*(m[i]*ux+m[i+1]*uy+m[i+2]*uz)^2 #Anisotropy
+        @inbounds delta_E -= Ku*(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz)^2
         @inbounds dE[index] = delta_E
    end
    return nothing
@@ -150,8 +150,8 @@ function dE_zeeman_kagome_anisotropy_triangular_mesh_kernel!(m::CuDeviceArray{T,
 
         delta_E = -(dmx*Hx+dmy*Hy+dmz*Hz) #zeeman
 
-        @inbounds delta_E += Ku*CUDA.pow(m[i]*ux+m[i+1]*uy+m[i+2]*uz, 2) #Anisotropy
-        @inbounds delta_E -= Ku*CUDA.pow(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz, 2)
+        @inbounds delta_E += Ku*(m[i]*ux+m[i+1]*uy+m[i+2]*uz)^2 #Anisotropy
+        @inbounds delta_E -= Ku*(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz)^2
         @inbounds dE[index] = delta_E
    end
    return nothing
@@ -194,13 +194,13 @@ function dE_zeeman_kagome_anisotropy_6fold_triangular_mesh_kernel!(m::CuDeviceAr
 
         # @inbounds delta_E += Ku*CUDA.pow(m[i]*ux+m[i+1]*uy+m[i+2]*uz, 2) #Anisotropy
         # @inbounds delta_E -= Ku*CUDA.pow(next_m[i]*ux+next_m[i+1]*uy+next_m[i+2]*uz, 2)
-        @inbounds mu1s=CUDA.pow(m[i]*u1x+m[i+1]*u1y,2)
-        @inbounds mu2s=CUDA.pow(m[i]*u2x+m[i+1]*u2y,2)
-        @inbounds mu3s=CUDA.pow(m[i]*u3x+m[i+1]*u3y,2)
+        @inbounds mu1s=(m[i]*u1x+m[i+1]*u1y)^2
+        @inbounds mu2s=(m[i]*u2x+m[i+1]*u2y)^2
+        @inbounds mu3s=(m[i]*u3x+m[i+1]*u3y)^2
         delta_E += K1*(mu1s*mu2s+mu2s*mu3s+mu3s*mu1s)+K2*(mu1s*mu2s*mu3s)
-        @inbounds nu1s=CUDA.pow(next_m[i]*u1x+next_m[i+1]*u1y,2)
-        @inbounds nu2s=CUDA.pow(next_m[i]*u2x+next_m[i+1]*u2y,2)
-        @inbounds nu3s=CUDA.pow(next_m[i]*u3x+next_m[i+1]*u3y,2)
+        @inbounds nu1s=(next_m[i]*u1x+next_m[i+1]*u1y)^2
+        @inbounds nu2s=(next_m[i]*u2x+next_m[i+1]*u2y)^2
+        @inbounds nu3s=(next_m[i]*u3x+next_m[i+1]*u3y)^2
         delta_E -= K1*(nu1s*nu2s+nu2s*nu3s+nu3s*nu1s)+K2*(nu1s*nu2s*nu3s)
 
         @inbounds dE[index] = delta_E
