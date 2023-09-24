@@ -62,6 +62,17 @@ mutable struct BulkDMIGPU{T<:AbstractFloat} <: MicroEnergyGPU
    name::String
 end
 
+
+mutable struct InterlayerDMIGPU{T<:AbstractFloat} <: MicroEnergyGPU
+   Dx::T
+   Dy::T
+   Dz::T
+   field::Array{T, 1}
+   energy::Array{T, 1}
+   total_energy::T
+   name::String
+end
+
 mutable struct InterfacialDMIGPU{T<:AbstractFloat} <: MicroEnergyGPU
    D::T
    field::Array{T, 1}

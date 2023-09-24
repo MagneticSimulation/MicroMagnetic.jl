@@ -438,6 +438,60 @@ function bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
 end
 
 
+function interlayer_dmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
+                     energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
+                     Dx::T, Dy::T, Dz::T, dx::T, dy::T, dz::T, nx::Int64,
+                     ny::Int64, nz::Int64, volume::T, xperiodic::Bool,
+                     yperiodic::Bool, zperiodic::Bool) where {T<:AbstractFloat}
+
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+
+    if index <= nx*ny*nz
+        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
+        @inbounds energy[index] = 0
+        @inbounds h[3*index-2] = 0
+        @inbounds h[3*index-1] = 0
+        @inbounds h[3*index] = 0
+
+        if k!=1
+            return nothing
+        end
+
+        id1 = (j-1) * nx + i
+        id2 = (nz-1) * nx*ny + (j-1) * nx + i
+
+        k1 = 3*id1-2
+        k2 = 3*id2-2
+        @inbounds mbx = m[k1]
+        @inbounds mby = m[k1+1]
+        @inbounds mbz = m[k1+2]
+
+        @inbounds mtx = m[k2]
+        @inbounds mty = m[k2+1]
+        @inbounds mtz = m[k2+2]
+
+        mu0 = 4*pi*1e-7
+        @inbounds Ms1 =  Ms[id1]
+        @inbounds Ms2 =  Ms[id2]
+        if Ms1> 0 && Ms2 > 0
+            Ms_inv = 1.0/(Ms1*mu0)
+            @inbounds h[k1] = Ms_inv*cross_x(Dx,Dy,Dz,mtx,mty,mtz)
+            @inbounds h[k1+1] = Ms_inv*cross_y(Dx,Dy,Dz,mtx,mty,mtz)
+            @inbounds h[k1+2] = Ms_inv*cross_z(Dx,Dy,Dz,mtx,mty,mtz)
+            @inbounds energy[id1] = -0.5 * (h[k1] * mbx + h[k1+1] * mby + h[k1+2] * mbz)* volume
+
+            Ms_inv = 1.0/(Ms2*mu0)
+            @inbounds h[k2] = Ms_inv*cross_x(Dx,Dy,Dz,mbx,mby,mbz)
+            @inbounds h[k2+1] = Ms_inv*cross_y(Dx,Dy,Dz,mbx,mby,mbz)
+            @inbounds h[k2+2] = Ms_inv*cross_z(Dx,Dy,Dz,mbx,mby,mbz)
+
+            @inbounds energy[id2] = energy[id1]
+        end
+    end
+    return nothing
+end
+
+
 function interfacial_dmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                      energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
                      D::T, dx::T, dy::T, dz::T, nx::Int64,
