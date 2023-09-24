@@ -156,7 +156,8 @@ if _cuda_available.x
            add_demag_gpu,
            NEB_GPU,
            add_magnetoelectric_laser,
-           add_anis_tube
+           add_anis_tube,
+           add_dmi_interlayer
 end
 
 

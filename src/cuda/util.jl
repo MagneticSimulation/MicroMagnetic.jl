@@ -130,13 +130,12 @@ function init_vector!(v::Array{T, 1}, mesh::TriangularMeshGPU, init::Function) w
   nxyz = mesh.nx*mesh.ny*mesh.nz
   dx,dy = mesh.dx, mesh.dy
   b = reshape(v, 3, nxyz)
-  for i = 1:mesh.nx
-    for j = 1:mesh.ny
-        for k = 1:mesh.nz
-            id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-            b[:, id] .=  init(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        end
-      end
+  for i = 1:mesh.nx, j = 1:mesh.ny, k = 1:mesh.nz
+    id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+    vec_value = init(i,j,k, mesh.nx, mesh.ny, mesh.nz)
+    if vec_value != nothing
+      b[:, id] .= vec_value[:]
+    end
   end
   return nothing
 end
@@ -144,13 +143,12 @@ end
 function init_vector!(v::Array{T, 1}, mesh::CubicMeshGPU, init::Function) where {T<:AbstractFloat}
   nxyz = mesh.nx*mesh.ny*mesh.nz
   b = reshape(v, 3, nxyz)
-  for i = 1:mesh.nx
-    for j = 1:mesh.ny
-      for k = 1:mesh.nz
+  for i = 1:mesh.nx, j = 1:mesh.ny, k = 1:mesh.nz
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        b[:, id] .=  init(i,j,k, mesh.nx, mesh.ny, mesh.nz)
-      end
-    end
+        vec_value = init(i,j,k, mesh.nx, mesh.ny, mesh.nz)
+        if vec_value != nothing
+          b[:, id] .= vec_value[:]
+        end
   end
 end
 
