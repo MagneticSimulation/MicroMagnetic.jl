@@ -30,11 +30,10 @@ function MonteCarlo(mesh::Mesh; name="mc", mc_2d=false)
     sim.zee = ZeemanMC(Float(0),Float(0),Float(0))
     sim.anis = UniformAnisotropyMC(Float(0),Float(0),Float(0),Float(1),Float(0))
 
-    headers = ["step", "E_total", ("m_x", "m_y", "m_z")]
-    units = ["<>", "<J>",("<>", "<>", "<>")]
-    results = [o::AbstractSim -> o.saver.nsteps,
-             o::AbstractSim -> o.total_energy, average_m_with_shape]
-    saver = DataSaver(string(name, ".txt"), 0.0, 0, false, headers, units, results)
+    saver = init_saver(string(name, ".txt"), "MC")
+    push!(saver.items, SaverItem("E_total", "<J>", o::AbstractSim -> o.total_energy))
+    push!(saver.items, SaverItem(("m_x", "m_y", "m_z"), ("<>", "<>", "<>"), average_m_with_shape))
+
     sim.saver = saver
 
     return sim
