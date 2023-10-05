@@ -76,9 +76,9 @@ function plot_phase_diagram()
 
     hm = heatmap!(ax, Ts, Hs, Qs, interpolate=true, colormap = :RdBu)
     Colorbar(fig[:, end+1], hm)
-    text!(ax, 0.25, 0.35, text="FM", textsize=30)
-    text!(ax, 0.05, 0.15, text="SkX", textsize=30)
-    text!(ax, 0.1, 0.004, text="HL", textsize=30)
+    text!(ax, 0.25, 0.35, text="FM", fontsize=30)
+    text!(ax, 0.05, 0.15, text="SkX", fontsize=30)
+    text!(ax, 0.1, 0.004, text="HL", fontsize=30)
     save("assets/phase.png", fig) #src
     return fig
 
