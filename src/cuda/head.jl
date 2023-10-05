@@ -44,8 +44,7 @@ mutable struct Vector_ExchangeGPU{T<:AbstractFloat} <: MicroEnergyGPU
 end
 
 mutable struct ExchangeRKKYGPU{T<:AbstractFloat} <: MicroEnergyGPU
-   sigma::T
-   Delta::T
+   J::T
    field::Array{T, 1}
    energy::Array{T, 1}
    total_energy::T

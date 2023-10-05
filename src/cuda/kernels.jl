@@ -474,18 +474,18 @@ function interlayer_dmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
         @inbounds Ms1 =  Ms[id1]
         @inbounds Ms2 =  Ms[id2]
         if Ms1> 0 && Ms2 > 0
-            Ms_inv = 1.0/(Ms1*mu0)
+            Ms_inv = 1.0/(Ms1*mu0*dz)
             @inbounds h[k1] = Ms_inv*cross_x(Dx,Dy,Dz,mtx,mty,mtz)
             @inbounds h[k1+1] = Ms_inv*cross_y(Dx,Dy,Dz,mtx,mty,mtz)
             @inbounds h[k1+2] = Ms_inv*cross_z(Dx,Dy,Dz,mtx,mty,mtz)
             @inbounds energy[id1] = -0.5 * (h[k1] * mbx + h[k1+1] * mby + h[k1+2] * mbz)* volume
 
-            Ms_inv = 1.0/(Ms2*mu0)
+            Ms_inv = -1.0/(Ms2*mu0*dz)
             @inbounds h[k2] = Ms_inv*cross_x(Dx,Dy,Dz,mbx,mby,mbz)
             @inbounds h[k2+1] = Ms_inv*cross_y(Dx,Dy,Dz,mbx,mby,mbz)
             @inbounds h[k2+2] = Ms_inv*cross_z(Dx,Dy,Dz,mbx,mby,mbz)
+            @inbounds energy[id2] = -0.5 * (h[k2] * mtx + h[k2+1] * mty + h[k2+2] * mtz)* volume
 
-            @inbounds energy[id2] = energy[id1]
         end
     end
     return nothing

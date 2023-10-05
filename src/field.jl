@@ -201,7 +201,7 @@ function effective_field(exch::ExchangeRKKY, sim::MicroSim, spin::Array{Float64,
   field = exch.field
   energy = exch.energy
   Ms = sim.Ms
-  sigma = exch.sigma/exch.Delta
+  sigma = exch.J/mesh.dz
   nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
   for i=1:nx, j=1:ny
       id1 = (j-1) * nx + i

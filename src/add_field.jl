@@ -192,11 +192,27 @@ function add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
     return exch
 end
 
-function add_exch_rkky(sim::AbstractSim, sigma::Float64, Delta::Float64; name="rkky")
+@doc raw"""
+    add_exch_rkky(sim::AbstractSim, J::Float64; name="rkky")
+
+Add an RKKY-type exchange to the system. The energy of RKKY-type exchange is defined as 
+
+```math
+E_\mathrm{rkky} =  - \int_\Gamma J_\mathrm{rkky} \mathbf{m}_{i} \cdot \mathbf{m}_{j} dA
+```
+where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{i}$ and $\mathbf{m}_{j}$,
+$J_\mathrm{rkky}$ is the coupling constant which is related to the spacer layer thickness. 
+
+The effective field is given then as
+```math
+\mathbf{H}_i = \frac{1}{\mu_0 M_s}  \frac{J_\mathrm{rkky}}{\Delta} \mathbf{m}_{j} 
+```
+"""
+function add_exch_rkky(sim::AbstractSim, J::Float64; name="rkky")
     nxyz = sim.nxyz
     field = zeros(Float64, 3*nxyz)
     energy = zeros(Float64, nxyz)
-    exch = ExchangeRKKY(sigma, Delta, field, energy, name)
+    exch = ExchangeRKKY(J, field, energy, name)
 
     push!(sim.interactions, exch)
 

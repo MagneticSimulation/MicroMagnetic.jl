@@ -44,6 +44,8 @@ add_exch_kagome
 add_anis_kagome
 add_magnetoelectric_laser
 add_exch_anis
+add_exch_rkky
+add_dmi_interlayer
 update_zeeman
 update_anis
 relax

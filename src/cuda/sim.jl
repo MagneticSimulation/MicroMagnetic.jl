@@ -93,8 +93,9 @@ end
 Set the initial magnetization of the system. If `norm=false` the magnetization array will be not normalised.
 """
 function init_m0(sim::AbstractSimGPU, m0::TupleOrArrayOrFunction; norm=true)
-  Float = _cuda_using_double.x ? Float64 : Float32
-  spin = zeros(Float, 3*sim.nxyz)
+
+  spin = Array(sim.spin)
+
   init_vector!(spin, sim.mesh, m0)
   if norm
     normalise(spin, sim.nxyz)
@@ -299,12 +300,17 @@ function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch
     return exch
 end
 
-function add_exch_rkky(sim::MicroSimGPU, sigma::Float64, Delta::Float64; name="rkky")
+"""
+    add_exch_rkky(sim::MicroSimGPU, J::Float64; name="rkky")
+
+Add RKKY exchange energy to the system.
+"""
+function add_exch_rkky(sim::MicroSimGPU, J::Float64; name="rkky")
     nxyz = sim.nxyz
     Float = _cuda_using_double.x ? Float64 : Float32
     field = zeros(Float, 3*nxyz)
     energy = zeros(Float, nxyz)
-    exch = ExchangeRKKYGPU(Float(sigma), Float(Delta), field, energy, Float(0.0), name)
+    exch = ExchangeRKKYGPU(Float(J), field, energy, Float(0.0), name)
 
     push!(sim.interactions, exch)
 
@@ -337,10 +343,16 @@ end
 Add an interlayer DMI to the system. The energy of interlayer DMI is defined as 
 
 ```math
-\mathcal{E}_\mathrm{dmi-int} =  \int_\Gamma \mathbf{D} \cdot\left(\mathbf{m}_{t} \times \mathbf{m}_{b}\right) d\mathbf{A}
+E_\mathrm{dmi-int} =  \int_\Gamma \mathbf{D} \cdot \left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right) dA
 ```
-where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{t}$ and $\mathbf{m}_{b}$. $\mathbf{D}$ 
-is the effective DMI vector. 
+where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{i}$ and $\mathbf{m}_{j}$. 
+$\mathbf{D}$ is the effective DMI vector. 
+
+The effective field is given
+```math
+\mathbf{H}_i = \frac{1}{\mu_0 M_s \Delta}  \mathbf{D} \times \mathbf{m}_{j} 
+```
+
 """
 function add_dmi_interlayer(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi_int")
     nxyz = sim.nxyz
