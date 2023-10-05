@@ -44,14 +44,14 @@ println(maximum(b[1,:].-expected_x)./Ms)
 @test (maximum(b[3,:].-expected_z)./Ms<2e-4)
 
 
-mesh =  FDMesh(dx=2e-9, nx=1, ny=1, nz=3, pbc="x")
+Delta = 2e-9
+mesh =  FDMesh(dx=2e-9, dz=Delta, nx=1, ny=1, nz=3, pbc="x")
 sim = Sim(mesh)
 sim.Ms[:] .= Ms
 
 sigma = 1e-5
-Delta = 2e-9
 init_m0(sim, (0.6,0.8,0))
-add_exch_rkky(sim, sigma, Delta)
+add_exch_rkky(sim, sigma)
 
 JuMag.effective_field(sim, sim.spin, 0.0)
 b = reshape(sim.field, 3, sim.nxyz)

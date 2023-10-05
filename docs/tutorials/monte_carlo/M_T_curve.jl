@@ -61,7 +61,7 @@ end
 
 
 # Run the relax_system function.
-if !isfile("assets/M_H.txt")
+if filesize("assets/M_H.txt") == 0
   relax_system()
 end
 

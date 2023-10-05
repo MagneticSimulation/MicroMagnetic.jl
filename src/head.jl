@@ -116,8 +116,7 @@ mutable struct Vector_Exchange <: MicroEnergy
 end
 
 mutable struct ExchangeRKKY <: MicroEnergy
-   sigma::Float64
-   Delta::Float64
+   J::Float64
    field::Array{Float64, 1}
    energy::Array{Float64, 1}
    name::String
