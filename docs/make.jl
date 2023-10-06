@@ -8,6 +8,7 @@ examples, examples_cb = makedemos("examples")
 
 format = Documenter.HTML(
     prettyurls=get(ENV, "CI", nothing) == "true",
+    size_threshold = 83886080,
     assets=["assets/init.js"]
 )
 
@@ -20,13 +21,27 @@ PAGES = ["index.md",
         "developer.md",
         "questions.md"]
 
-makedocs(
-    sitename = "JuMag.jl",
-    format = format,
-    modules = [JuMag],
-    pages = PAGES,
-    highlightsig = true
-)
+if "warnonly=true" in ARGS
+    @info("Option warnonly=true is enabled.")
+    makedocs(
+        sitename = "JuMag.jl",
+        format = format,
+        modules = [JuMag],
+        pages = PAGES,
+        highlightsig = true,
+        checkdocs = :none,
+        warnonly=true
+    )
+else
+    makedocs(
+        sitename = "JuMag.jl",
+        format = format,
+        modules = [JuMag],
+        pages = PAGES,
+        highlightsig = true,
+        checkdocs = :none
+    )
+end
 
 tutorials_cb()
 examples_cb()
@@ -35,3 +50,4 @@ deploydocs(
     #deps = Deps.pip("pygments", "mkdocs", "python-markdown-math"),
     repo = "github.com/ww1g11/JuMag.jl.git"
 )
+

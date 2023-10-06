@@ -8,7 +8,7 @@
 
 #======================
 In JuMag, we can use Monte Carlo to compute the M-T curve. 
-For the atomistic model with $z$ nearest neighbors, the relation between exchange constant and $T_c$ reads [^1]
+For the atomistic model with $z$ nearest neighbors, the relation between exchange constant and $T_c$ reads [1]
 
 ```math
 J = \frac{3 k_B T_c}{ \epsilon z }
@@ -95,3 +95,6 @@ end
 
 plot_m_H()
 
+#======================
+[1] Atomistic spin model simulations of magnetic nanomaterials, J. Phys.: Condens. Matter 26 (2014) 103202.
+======================#

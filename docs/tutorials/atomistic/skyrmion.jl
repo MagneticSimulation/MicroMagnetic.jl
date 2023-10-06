@@ -70,7 +70,7 @@ function plot_spatial_m()
   mf = [Vec3f(m[1, i, j], m[2, i,j], m[3, i,j]) for i in 1:5:nx for j in 1:5:ny]
   mz = [m[3, i, j]  for i in 1:5:nx for j in 1:5:ny]
 
-  fig = Figure(resolution = (1600, 1600))
+  fig = Figure(resolution = (1000, 1000))
   ax = Axis(fig[1, 1], backgroundcolor = "white")
 
   arrows!(ax, points, mf, fxaa=true, # turn on anti-aliasing

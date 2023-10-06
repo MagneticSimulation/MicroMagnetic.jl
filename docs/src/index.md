@@ -15,7 +15,6 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 
 ```@contents
 PAGES = ["index.md",
-    "tutorial.md",
     "equations.md",
     "notes.md",
     "developer.md",
