@@ -16,7 +16,7 @@ struct TriangularMeshGPU <: AtomicMeshGPU
   zperiodic::Bool
 end
 
-"""
+@doc raw"""
 Create a 3d triangular mesh.
 
 The nearest neighbours are indexed as counterclockwise of the given spin:
@@ -81,6 +81,12 @@ struct CubicMeshGPU <: AtomicMeshGPU
   zperiodic::Bool
 end
 
+@doc raw"""
+Create a CubicMesh 
+	 
+	CubicMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
+
+"""
 function CubicMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
   ngbs = zeros(Int32,6,nx*ny*nz)
   nngbs = zeros(Int32,12,nx*ny*nz)

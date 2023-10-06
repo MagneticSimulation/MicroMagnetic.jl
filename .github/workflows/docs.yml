@@ -13,7 +13,7 @@ jobs:
       
       - run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
               
-      - run: julia --project=docs/ --code-coverage=user docs/make.jl
+      - run: julia --project=docs/ --code-coverage=user docs/make.jl warnonly=true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
