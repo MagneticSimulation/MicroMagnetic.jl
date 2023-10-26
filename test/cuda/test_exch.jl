@@ -77,13 +77,25 @@ set_Ms(sim, Ms)
 
 sigma = 1e-5
 
-init_m0(sim, (0.6,0.8,0))
+function m0_fun_rkky(i,j,k,dx,dy,dz)
+  if k == 1
+    return 0.6, 0.8, 0
+  elseif k == 3
+    return -0.8, 0, 0.6
+  else
+    return 1,0,0
+  end
+end
+
+init_m0(sim, m0_fun_rkky)
 add_exch_rkky(sim, sigma)
 
 JuMag.effective_field(sim, sim.spin, 0.0)
-b = reshape(Array(sim.field), 3, sim.nxyz)
-println(b)
-fx = sigma/Delta/(mu0*Ms)*0.6
-fy = sigma/Delta/(mu0*Ms)*0.8
-println(fx-b[1,1])
-@test fx-b[1,1] == 0.0
+b = Array(sim.field)
+println("field = ", b)
+f1 = sigma/Delta/(mu0*Ms)*0.6
+f2 = sigma/Delta/(mu0*Ms)*0.8
+expected = [-f2, 0, f1, 0,0,0, f1, f2, 0]
+println(expected-b)
+println("max diff: ", maximum(abs.(expected-b)))
+@test maximum(abs.(expected-b)) < eps()

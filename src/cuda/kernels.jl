@@ -446,12 +446,12 @@ function interlayer_dmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
 
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
-    if index <= nx*ny*nz
+    if index <= nx*ny
         i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
-        @inbounds energy[index] = 0
-        @inbounds h[3*index-2] = 0
-        @inbounds h[3*index-1] = 0
-        @inbounds h[3*index] = 0
+        #@inbounds energy[index] = 0
+        #@inbounds h[3*index-2] = 0
+        #@inbounds h[3*index-1] = 0
+        #@inbounds h[3*index] = 0
 
         if k!=1
             return nothing
@@ -785,13 +785,16 @@ function exchange_kernel_rkky!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
                         sigma::T, nx::Int64, ny::Int64, nz::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= nx*ny*nz
-        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
-        @inbounds energy[index] = 0
-        @inbounds h[3*index-2] = 0
-        @inbounds h[3*index-1] = 0
-        @inbounds h[3*index] = 0
 
+    if index <= nx*ny #we should use nx*ny rather than nx*ny*nz
+        i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
+        
+        #@inbounds energy[index] = 0
+        #@inbounds h[3*index-2] = 0
+        #@inbounds h[3*index-1] = 0
+        #@inbounds h[3*index] = 0
+
+        #here k should be always 1
         if k!=1
             return nothing
         end
