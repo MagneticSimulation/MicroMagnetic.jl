@@ -1,7 +1,7 @@
 using WriteVTK
 using NPZ
 
-function save_m(sim::AbstractSimGPU, fname::String;vtk::Bool = false, npy::Bool = false, vtk_folder::String="vtks",npy_folder::String="npys")
+function save_m(sim::AbstractSimGPU, fname::String; vtk::Bool = false, npy::Bool = false, vtk_folder::String="vtks",npy_folder::String="npys")
   if vtk
       !isdir(vtk_folder) && mkdir(vtk_folder)
       save_vtk(sim, joinpath(vtk_folder, fname))
@@ -53,13 +53,39 @@ function save_vtk_triangular_mesh(sim::AbstractSimGPU, fname::String; fields::Ar
   vtk_save(vtk)
 end
 
+function save_vtk_fcc_mesh(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} = String[])
+  mesh = sim.mesh
+
+  vtk = vtk_grid(fname, mesh.coordinates, MeshCell[])
+
+  T = _cuda_using_double.x ? Float64 : Float32
+  vtk_point_data(vtk, Array(sim.spin), "m")
+
+  if length(fields) > 0
+    compute_fields_to_gpu(sim,sim.spin,0.0)
+    fields = Set(fields)
+    for i in sim.interactions
+      if i.name in fields
+        vtk_point_data(vtk, Array(i.field), i.name)
+      end
+    end
+  end
+  vtk_save(vtk)
+end
+
+
 function save_vtk(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} = String[])
   mesh = sim.mesh
+
   nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
   xyz = zeros(Float32, 3, nx+1, ny+1, nz+1)
   dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
+  
   if isa(mesh, TriangularMeshGPU)
       save_vtk_triangular_mesh(sim, fname, fields=fields)
+      return nothing
+  elseif isa(mesh, FccMeshGPU)
+      save_vtk_fcc_mesh(sim, fname, fields=fields)
       return nothing
   else
     for k = 1:nz+1, j = 1:ny+1, i = 1:nx+1
@@ -92,6 +118,12 @@ end
 
 function save_vtk_points(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} = String[])
   mesh = sim.mesh
+
+  if isa(mesh, FccMeshGPU)
+    save_vtk_fcc_mesh(sim, fname, fields=fields)
+    return nothing
+  end
+
   nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
   xyz = zeros(Float32, 3, nx, ny, nz)
   dx, dy, dz=mesh.dx, mesh.dy, mesh.dz
