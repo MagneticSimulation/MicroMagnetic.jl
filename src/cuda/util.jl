@@ -152,6 +152,18 @@ function init_vector!(v::Array{T, 1}, mesh::CubicMeshGPU, init::Function) where 
   end
 end
 
+function init_vector!(v::Array{T, 1}, mesh::FccMeshGPU, init::Function) where {T<:AbstractFloat}
+  n_spins = mesh.nxyz
+  b = reshape(v, 3, n_spins)
+  cds = mesh.coordinates
+  for i = 1:n_spins
+      vec_value = init(cds[1,i], cds[2,i], cds[3,i], mesh.dx, mesh.dy, mesh.dz)
+      if vec_value != nothing
+          b[:, i] .= vec_value[:]
+      end
+  end
+end
+
 function init_vector!(v::Array{T, 1}, mesh::CylindricalTubeMeshGPU, init::Function) where {T<:AbstractFloat}
   nxyz = mesh.nxyz
   b = reshape(v, 3, nxyz)
