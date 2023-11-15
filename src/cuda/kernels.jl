@@ -783,7 +783,7 @@ end
 
 function exchange_kernel_rkky!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Ms::CuDeviceArray{T, 1},
-                        sigma::T, nx::Int64, ny::Int64, nz::Int64) where {T<:AbstractFloat}
+                        sigma::T, volume::T, nx::Int64, ny::Int64, nz::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
     if index <= nx*ny #we should use nx*ny rather than nx*ny*nz
@@ -821,7 +821,7 @@ function exchange_kernel_rkky!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
             @inbounds h[k1] = sigma*Ms_inv*mtx
             @inbounds h[k1+1] = sigma*Ms_inv*mty
             @inbounds h[k1+2] = sigma*Ms_inv*mtz
-            @inbounds energy[id1] = 0.5*sigma*(1-mtx*mbx-mty*mby-mtz*mbz)
+            @inbounds energy[id1] = 0.5*sigma*(1-mtx*mbx-mty*mby-mtz*mbz)*volume
 
             Ms_inv = 1.0/(Ms2*mu0)
             @inbounds h[k2] = sigma*Ms_inv*mbx

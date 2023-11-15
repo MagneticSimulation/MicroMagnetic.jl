@@ -73,7 +73,7 @@ function effective_field(exch::ExchangeRKKYGPU, sim::MicroSimGPU, spin::CuArray{
   nxyz = sim.nxyz
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
-  @cuda blocks=blocks_n threads=threads_n exchange_kernel_rkky!(spin, sim.field, sim.energy, sim.Ms, exch.J/mesh.dz,
+  @cuda blocks=blocks_n threads=threads_n exchange_kernel_rkky!(spin, sim.field, sim.energy, sim.Ms, exch.J/mesh.dz, mesh.volume,
                     mesh.nx, mesh.ny, mesh.nz)
   return nothing
 end

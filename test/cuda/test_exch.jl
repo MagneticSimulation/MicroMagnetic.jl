@@ -88,9 +88,10 @@ function m0_fun_rkky(i,j,k,dx,dy,dz)
 end
 
 init_m0(sim, m0_fun_rkky)
-add_exch_rkky(sim, sigma)
+r = add_exch_rkky(sim, sigma)
 
-JuMag.effective_field(sim, sim.spin, 0.0)
+#JuMag.effective_field(sim, sim.spin, 0.0)
+JuMag.compute_system_energy(sim, sim.spin, 0.0)
 b = Array(sim.field)
 println("field = ", b)
 f1 = sigma/Delta/(mu0*Ms)*0.6
@@ -99,3 +100,4 @@ expected = [-f2, 0, f1, 0,0,0, f1, f2, 0]
 println(expected-b)
 println("max diff: ", maximum(abs.(expected-b)))
 @test maximum(abs.(expected-b)) < eps()
+println("energy: ",r.total_energy)

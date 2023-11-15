@@ -51,7 +51,7 @@ sim.Ms[:] .= Ms
 
 sigma = 1e-5
 init_m0(sim, (0.6,0.8,0))
-add_exch_rkky(sim, sigma)
+r = add_exch_rkky(sim, sigma)
 
 JuMag.effective_field(sim, sim.spin, 0.0)
 b = reshape(sim.field, 3, sim.nxyz)
@@ -60,6 +60,7 @@ fx = sigma/Delta/(mu0*Ms)*0.6
 fy = sigma/Delta/(mu0*Ms)*0.8
 println(fx-b[1,1])
 @test fx-b[1,1] == 0.0
+
 
 mesh =FDMesh(nx=3,ny=3,nz=3)
 function m(i,j,k,dx,dy,dz)
