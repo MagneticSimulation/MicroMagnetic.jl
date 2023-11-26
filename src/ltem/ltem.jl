@@ -97,7 +97,7 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
 
     dx=dx*cos(beta)
 
-    lambda, phi_E = compute_electric_phase(1000*V, V0, dz, nz, beta)
+    lambda, phi_E = compute_electric_phase(1000*V, V0, dz*nz, beta)
 
     N = zero_padding_size
     Nx = N > nx ? N : nx
