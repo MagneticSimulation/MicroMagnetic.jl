@@ -66,7 +66,6 @@ function compute_magnetic_phase_fft(mx, my, dx, dy, Lz, Ms; Nx=-1, Ny=-1)
     return -phi*mu0*Ms*Lz/(2*Phi0)*dx*dy
 end
 
-
 #Ref: "MALTS: A tool to simulate Lorentz Transmission Electron Microscopy from micromagnetic simulations" by Stephanie K. Walton
 #df in um
 #V is the Accelerating voltage, in Kv
@@ -163,6 +162,53 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
     end
 
     return local_phi, local_intensity
+end
+
+function m_average(m::Array{T,1}, nx::Int, ny::Int, nz::Int; axis::String="z") where {T<:AbstractFloat} ##axis can only chosen from "x" "y" "z"
+
+    if length(m) != 3 * nx * ny * nz
+        println("Length doesn't match!")
+        return nothing
+    end
+
+    b = reshape(m, (3, nx, ny, nz))
+    N = 0
+    if axis == "x"
+        mx, my, mz = zeros(ny, nz), zeros(ny, nz), zeros(ny, nz)
+        for i = 1:nx
+            mx .+= b[2, i, :, :]
+            my .+= b[3, i, :, :]
+            mz .+= b[1, i, :, :]
+        end
+        N = nx
+    elseif axis == "y"
+        mx, my, mz = zeros(nx, nz), zeros(nx, nz), zeros(nx, nz)
+        for j = 1:ny
+            mx .-= b[1, :, j, :]
+            my .+= b[3, :, j, :]
+            mz .+= b[2, :, j, :]
+        end
+        N = ny
+    elseif axis == "z"
+        mx, my, mz = zeros(nx, ny), zeros(nx, ny), zeros(nx, ny)
+        for k = 1:nz
+            mx .+= b[1, :, :, k]
+            my .+= b[2, :, :, k]
+            mz .+= b[3, :, :, k]
+        end
+        N = nz
+    end
+
+    return mx / N, my / N, mz / N
+end
+
+function m_average(ovf::OVF2; axis::String="z")
+    m = ovf.data
+    nx = ovf.xnodes
+    ny = ovf.ynodes
+    nz = ovf.znodes
+
+    return m_average(m, nx, ny, nz, axis=axis)
 end
 
 
