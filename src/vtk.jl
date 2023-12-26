@@ -1,4 +1,5 @@
 using WriteVTK
+using ReadVTK
 using NPZ
 using Printf
 
@@ -167,3 +168,11 @@ function ovf2vtk(ovf_name, vtk_name=nothing; point_data=false, box=nothing)
     return nothing
 end
 
+
+function read_vtk(filename; field="m", point_data=false)
+  vtk = VTKFile(filename)
+  data =  point_data ? get_point_data(vtk) : get_cell_data(vtk)
+  #point = get_points(vtk)
+  f = copy(get_data(data[field]))
+  return reshape(f, length(f))
+end
