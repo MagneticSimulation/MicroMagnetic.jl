@@ -83,7 +83,8 @@ function create_driver_gpu(driver::String, integrator::String, nxyz::Int64)
         ss = CUDA.zeros(Float, nxyz)
         sf = CUDA.zeros(Float, nxyz)
         ff = CUDA.zeros(Float, nxyz)
-        return EnergyMinimizationGPU(gk, ss, sf, ff, field, Float(0.0), Float(1e-5), Float(1e-10), 0)
+        max_tau = 1.0
+        return EnergyMinimizationGPU(gk, ss, sf, ff, field, Float(0.0), Float(max_tau), Float(1e-10), 0)
     end
 
     supported_integrators = ["Heun", "RungeKutta", "DormandPrince", "DormandPrinceCayley"]
