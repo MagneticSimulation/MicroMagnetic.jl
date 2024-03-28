@@ -1,6 +1,6 @@
-#We implement the steepest descent method given by https://aip.scitation.org/doi/10.1063/1.4862839
-#and https://doi.org/10.1063/1.4896360  where the Barzilai-Borwein (BB) rule is used to speedup
-#the energy minimization
+# We implement the steepest descent method given by https://aip.scitation.org/doi/10.1063/1.4862839
+# and https://doi.org/10.1063/1.4896360  where the Barzilai-Borwein (BB) rule is used to speedup
+# the energy minimization
 # m is the magnetization array, in the format [mx1, my1, mz1, ...]
 # h is the corresponding effective field
 # tau is a scale number
