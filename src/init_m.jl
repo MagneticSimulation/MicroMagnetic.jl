@@ -91,7 +91,7 @@ function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7
             end
         end
     end
-    #normalise(sim.spin, sim.nxyz)
+    #normalise(sim.spin, sim.n_nodes)
     copyto!(sim.prespin, m)
     copyto!(sim.spin, m)
     return nothing

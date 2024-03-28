@@ -24,17 +24,17 @@ mutable struct DormandPrinceCayley <: IntegratorCayley
 end
 
 
-function DormandPrinceCayley(nxyz::Int64, rhs_fun, tol::Float64)
-  omega = zeros(Float64,3*nxyz)
-  omega_t = zeros(Float64,3*nxyz)
-  dw_dt = zeros(Float64,3*nxyz)
-  k1 = zeros(Float64, 3*nxyz)
-  k2 = zeros(Float64, 3*nxyz)
-  k3 = zeros(Float64, 3*nxyz)
-  k4 = zeros(Float64, 3*nxyz)
-  k5 = zeros(Float64, 3*nxyz)
-  k6 = zeros(Float64, 3*nxyz)
-  k7 = zeros(Float64, 3*nxyz)
+function DormandPrinceCayley(n_nodes::Int64, rhs_fun, tol::Float64)
+  omega = zeros(Float64,3*n_nodes)
+  omega_t = zeros(Float64,3*n_nodes)
+  dw_dt = zeros(Float64,3*n_nodes)
+  k1 = zeros(Float64, 3*n_nodes)
+  k2 = zeros(Float64, 3*n_nodes)
+  k3 = zeros(Float64, 3*n_nodes)
+  k4 = zeros(Float64, 3*n_nodes)
+  k5 = zeros(Float64, 3*n_nodes)
+  k6 = zeros(Float64, 3*n_nodes)
+  k7 = zeros(Float64, 3*n_nodes)
   facmax = 5.0
   facmin = 0.2
   safety = 0.824
@@ -105,9 +105,9 @@ end
 function advance_step(sim::AbstractSim, integrator::IntegratorCayley)
 
     if integrator.succeed
-        omega_to_spin(integrator.omega, sim.prespin, sim.spin, sim.nxyz)
+        omega_to_spin(integrator.omega, sim.prespin, sim.spin, sim.n_nodes)
         if integrator.nsteps%10 == 0
-          normalise(sim.spin, sim.nxyz)
+          normalise(sim.spin, sim.n_nodes)
         end
         sim.prespin .= sim.spin
     end
@@ -136,7 +136,7 @@ function advance_step(sim::AbstractSim, integrator::IntegratorCayley)
             integrator.step = integrator.step*min(integrator.facmax, max(integrator.facmin, factor))
         end
     end
-  omega_to_spin(integrator.omega, sim.prespin, sim.spin, sim.nxyz)
+  omega_to_spin(integrator.omega, sim.prespin, sim.spin, sim.n_nodes)
   return true
 end
 

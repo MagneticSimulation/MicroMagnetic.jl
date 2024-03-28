@@ -27,15 +27,15 @@ mutable struct DormandPrince <: Integrator
     succeed::Bool
 end
 
-function DormandPrince(nxyz::Int64, rhs_fun, tol::Float64)
-  errors = zeros(Float64,3*nxyz)
-  k1 = zeros(Float64, 3*nxyz)
-  k2 = zeros(Float64, 3*nxyz)
-  k3 = zeros(Float64, 3*nxyz)
-  k4 = zeros(Float64, 3*nxyz)
-  k5 = zeros(Float64, 3*nxyz)
-  k6 = zeros(Float64, 3*nxyz)
-  k7 = zeros(Float64, 3*nxyz)
+function DormandPrince(n_nodes::Int64, rhs_fun, tol::Float64)
+  errors = zeros(Float64,3*n_nodes)
+  k1 = zeros(Float64, 3*n_nodes)
+  k2 = zeros(Float64, 3*n_nodes)
+  k3 = zeros(Float64, 3*n_nodes)
+  k4 = zeros(Float64, 3*n_nodes)
+  k5 = zeros(Float64, 3*n_nodes)
+  k6 = zeros(Float64, 3*n_nodes)
+  k7 = zeros(Float64, 3*n_nodes)
   facmax = 5.0
   facmin = 0.2
   safety = 0.824
@@ -78,7 +78,7 @@ function dopri5_step_inner(sim::AbstractSim, step::Float64, t::Float64)
   ode.rhs_fun(sim, k6, y_next, t + a[5]*step) #k6
 
   y_next .= y_current .+ (v[1].*k1 .+ v[2].*k2 .+ v[3].*k3 .+ v[4].*k4 .+ v[5].*k5 .+ v[6].*k6) .* step
-  normalise(y_next, sim.nxyz) #if we want to copy k7 to k1, we should normalise it here.
+  normalise(y_next, sim.n_nodes) #if we want to copy k7 to k1, we should normalise it here.
   ode.rhs_fun(sim, k7, y_next, t + a[6]*step) #k7
 
   ode.nfevals += 7

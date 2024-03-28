@@ -23,18 +23,18 @@ mutable struct DormandPrinceCayleyGPU{T<:AbstractFloat} <: IntegratorCayley
 end
 
 
-function DormandPrinceCayleyGPU(nxyz::Int64, rhs_fun, tol::Float64)
+function DormandPrinceCayleyGPU(n_nodes::Int64, rhs_fun, tol::Float64)
   Float = _cuda_using_double.x ? Float64 : Float32
-  omega = CUDA.zeros(Float,3*nxyz)
-  omega_t = CUDA.zeros(Float,3*nxyz)
-  dw_dt = CUDA.zeros(Float,3*nxyz)
-  k1 = CUDA.zeros(Float,3*nxyz)
-  k2 = CUDA.zeros(Float,3*nxyz)
-  k3 = CUDA.zeros(Float,3*nxyz)
-  k4 = CUDA.zeros(Float,3*nxyz)
-  k5 = CUDA.zeros(Float,3*nxyz)
-  k6 = CUDA.zeros(Float,3*nxyz)
-  k7 = CUDA.zeros(Float,3*nxyz)
+  omega = CUDA.zeros(Float,3*n_nodes)
+  omega_t = CUDA.zeros(Float,3*n_nodes)
+  dw_dt = CUDA.zeros(Float,3*n_nodes)
+  k1 = CUDA.zeros(Float,3*n_nodes)
+  k2 = CUDA.zeros(Float,3*n_nodes)
+  k3 = CUDA.zeros(Float,3*n_nodes)
+  k4 = CUDA.zeros(Float,3*n_nodes)
+  k5 = CUDA.zeros(Float,3*n_nodes)
+  k6 = CUDA.zeros(Float,3*n_nodes)
+  k7 = CUDA.zeros(Float,3*n_nodes)
   facmax = 5.0
   facmin = 0.2
   safety = 0.824

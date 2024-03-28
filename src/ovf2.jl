@@ -40,7 +40,7 @@ Or to specify a certain data type:
 """
 function save_ovf(sim::AbstractSim, fname::String; type::DataType = Float64)
     mesh = sim.mesh
-    nxyz = mesh.nx*mesh.ny*mesh.nz
+    n_nodes = mesh.nx*mesh.ny*mesh.nz
 
     ovf = OVF2{Float64}()
     ovf.xnodes = mesh.nx
@@ -51,7 +51,7 @@ function save_ovf(sim::AbstractSim, fname::String; type::DataType = Float64)
     ovf.zstepsize = mesh.dz
     ovf.type = type
     ovf.name = sim.name
-    ovf.data = zeros(Float64,3*nxyz)
+    ovf.data = zeros(Float64,3*n_nodes)
     copyto!(ovf.data, sim.spin)
 
     save_ovf(ovf, fname)
@@ -164,8 +164,8 @@ end
 
 function write_ovf2_float32(io::IOStream, ovf::OVF2)
     nx, ny, nz = ovf.xnodes, ovf.ynodes, ovf.znodes
-    nxyz = nx*ny*nz
-    spin = zeros(Float32, 3*nxyz)
+    n_nodes = nx*ny*nz
+    spin = zeros(Float32, 3*n_nodes)
     copyto!(spin, ovf.data)
 
     b = reshape(spin, (3, nx, ny, nz))
@@ -202,8 +202,8 @@ end
 """
 function read_ovf(sim::AbstractSim, fname::String)
     ovf  = read_ovf(fname)
-    nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
-    if nxyz != sim.nxyz
+    n_nodes = ovf.xnodes*ovf.ynodes*ovf.znodes
+    if n_nodes != sim.n_nodes
         error("The ovf does not match the sim.mesh")
     end
     copyto!(sim.prespin, ovf.data)
@@ -212,8 +212,8 @@ end
 
 function read_ovf2_float32(io::IOStream, ovf::OVF2)
     ovf.type = Float32
-    nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
-    spin = zeros(Float32, 3*nxyz)
+    n_nodes = ovf.xnodes*ovf.ynodes*ovf.znodes
+    spin = zeros(Float32, 3*n_nodes)
     if read(io,Float32) == 1234567.0
 	  read!(io, spin)
     end
@@ -223,8 +223,8 @@ end
 
 function read_ovf2_float64(io::IOStream, ovf::OVF2)
     ovf.type = Float64
-    nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
-    spin = zeros(Float64, 3*nxyz)
+    n_nodes = ovf.xnodes*ovf.ynodes*ovf.znodes
+    spin = zeros(Float64, 3*n_nodes)
     if read(io, Float64) == 123456789012345.0
       read!(io, spin)
     end
@@ -234,8 +234,8 @@ end
 
 function read_ovf2_string(io::IOStream, ovf::OVF2)
     ovf.type = String
-    nxyz = ovf.xnodes*ovf.ynodes*ovf.znodes
-    spin = zeros(Float64, 3*nxyz)
+    n_nodes = ovf.xnodes*ovf.ynodes*ovf.znodes
+    spin = zeros(Float64, 3*n_nodes)
     i = 0
     for line in eachline(io)
         if startswith(line, "#")
@@ -332,8 +332,8 @@ function mag2ovf(m::Array{T, 1}, nx::Int, ny::Int, nz::Int;
     ovf.type = type
     ovf.name = fname
 
-    nxyz = nx*ny*nz
-    ovf.data = zeros(Float64, 3*nxyz)
+    n_nodes = nx*ny*nz
+    ovf.data = zeros(Float64, 3*n_nodes)
     copyto!(ovf.data, m)
 
     save_ovf(ovf, fname)

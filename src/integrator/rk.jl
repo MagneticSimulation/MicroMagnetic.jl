@@ -11,11 +11,11 @@ mutable struct RungeKutta <: Integrator
    rhs_fun::Function
 end
 
-function RungeKutta(nxyz::Int64, rhs_fun, step::Float64)
-  k1 = zeros(Float64,3*nxyz)
-  k2 = zeros(Float64,3*nxyz)
-  k3 = zeros(Float64,3*nxyz)
-  k4 = zeros(Float64,3*nxyz)
+function RungeKutta(n_nodes::Int64, rhs_fun, step::Float64)
+  k1 = zeros(Float64,3*n_nodes)
+  k2 = zeros(Float64,3*n_nodes)
+  k3 = zeros(Float64,3*n_nodes)
+  k4 = zeros(Float64,3*n_nodes)
   return RungeKutta(0.0, step, 0, k1, k2, k3, k4, rhs_fun)
 end
 
@@ -44,7 +44,7 @@ function advance_step(sim::AbstractSim, integrator::RungeKutta)
     sim.prespin .= sim.spin
     sim.spin .+= (1.0/6*h).*(k1 .+ 2 .*k2 + 2 .*k3 .+ k4)
 
-    normalise(sim.spin, sim.nxyz)
+    normalise(sim.spin, sim.n_nodes)
     integrator.nsteps += 1
     integrator.t = integrator.nsteps*h
 end

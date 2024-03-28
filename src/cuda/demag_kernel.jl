@@ -316,9 +316,9 @@ end
 
 
 function compute_energy_kernel!(energy::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
-                               Ms::CuDeviceArray{T, 1}, volume::T, nxyz::Int64) where {T<:AbstractFloat}
+                               Ms::CuDeviceArray{T, 1}, volume::T, n_nodes::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if 0< index <= nxyz
+    if 0< index <= n_nodes
 		mu0 = 4*pi*1e-7
         j = 3*index-2
         @inbounds energy[index] = -0.5*mu0*Ms[index]*volume*(m[j]*h[j] + m[j+1]*h[j+1] + m[j+2]*h[j+2])

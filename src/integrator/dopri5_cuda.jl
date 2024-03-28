@@ -28,16 +28,16 @@ mutable struct DormandPrinceGPU{T<:AbstractFloat}  <: Integrator
     succeed::Bool
 end
 
-function DormandPrinceGPU(nxyz::Int64, rhs_fun, tol::Float64)
+function DormandPrinceGPU(n_nodes::Int64, rhs_fun, tol::Float64)
     Float = _cuda_using_double.x ? Float64 : Float32
-    errors = CUDA.zeros(Float,3*nxyz)
-    k1 = CUDA.zeros(Float,3*nxyz)
-    k2 = CUDA.zeros(Float,3*nxyz)
-    k3 = CUDA.zeros(Float,3*nxyz)
-    k4 = CUDA.zeros(Float,3*nxyz)
-    k5 = CUDA.zeros(Float,3*nxyz)
-    k6 = CUDA.zeros(Float,3*nxyz)
-    k7 = CUDA.zeros(Float,3*nxyz)
+    errors = CUDA.zeros(Float,3*n_nodes)
+    k1 = CUDA.zeros(Float,3*n_nodes)
+    k2 = CUDA.zeros(Float,3*n_nodes)
+    k3 = CUDA.zeros(Float,3*n_nodes)
+    k4 = CUDA.zeros(Float,3*n_nodes)
+    k5 = CUDA.zeros(Float,3*n_nodes)
+    k6 = CUDA.zeros(Float,3*n_nodes)
+    k7 = CUDA.zeros(Float,3*n_nodes)
     facmax = 5.0
     facmin = 0.2
     safety = 0.824
@@ -194,7 +194,7 @@ function dopri5_step_inner_GPU(sim::AbstractSim, step::Float64, t::Float64)
                                v[3], ode.k3, v[4], ode.k4,
                                v[5], ode.k5, v[6], ode.k6,
                                step, N)
-  normalise(sim.spin, sim.nxyz) #if we want to copy k7 to k1, we should normalise it here.
+  normalise(sim.spin, sim.n_nodes) #if we want to copy k7 to k1, we should normalise it here.
   ode.rhs_fun(sim, ode.k7, sim.spin, t + a[6]*step) #k7
 
   ode.nfevals += 7

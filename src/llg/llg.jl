@@ -187,7 +187,7 @@ LLG call_back function that will be called by the integrator.
 function llg_call_back(sim::AbstractSim, dm_dt::Array{Float64, 1}, spin::Array{Float64, 1}, t::Float64)
 
   effective_field(sim, spin, t)
-  llg_rhs(dm_dt, spin, sim.field, sim.pins, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
+  llg_rhs(dm_dt, spin, sim.field, sim.pins, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.n_nodes)
 
   return nothing
 end
@@ -201,11 +201,11 @@ function llg_stt_call_back(sim::AbstractSim, dm_dt::Array{Float64, 1}, spin::Arr
   mesh = sim.mesh
 
   effective_field(sim, spin, t)
-  compute_field_stt(spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
+  compute_field_stt(spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.n_nodes)
 
-  llg_rhs(dm_dt, spin, sim.field, sim.pins, sim.driver.alpha, sim.driver.gamma, true, sim.nxyz)
+  llg_rhs(dm_dt, spin, sim.field, sim.pins, sim.driver.alpha, sim.driver.gamma, true, sim.n_nodes)
 
-  add_stt_rhs(dm_dt, spin, driver.h_stt, sim.pins, driver.alpha, driver.beta, sim.nxyz)
+  add_stt_rhs(dm_dt, spin, driver.h_stt, sim.pins, driver.alpha, driver.beta, sim.n_nodes)
 
   return nothing
 
