@@ -16,8 +16,8 @@ function save_npy(sim::AbstractSimGPU,name::String)
   T = _cuda_using_double.x ? Float64 : Float32
   name = @sprintf("%s.npy", name)
   mesh = sim.mesh
-  nxyz = mesh.nx*mesh.ny*mesh.nz
-  spin = zeros(T, 3*nxyz)
+  n_nodes = mesh.nx*mesh.ny*mesh.nz
+  spin = zeros(T, 3*n_nodes)
   copyto!(spin, sim.spin)
   npzwrite(name, spin)
 end
@@ -35,7 +35,7 @@ function save_vtk_triangular_mesh(sim::AbstractSimGPU, fname::String; fields::Ar
 
   vtk = vtk_grid(fname, xyz)
   T = _cuda_using_double.x ? Float64 : Float32
-  spin = zeros(T, 3*sim.nxyz)
+  spin = zeros(T, 3*sim.n_nodes)
   copyto!(spin, sim.spin)
   b = reshape(spin, (3, nx, ny, nz))
   vtk_point_data(vtk, b , "m")
@@ -96,7 +96,7 @@ function save_vtk(sim::AbstractSimGPU, fname::String; fields::Array{String, 1} =
   end
   vtk = vtk_grid(fname, xyz)
   T = _cuda_using_double.x ? Float64 : Float32
-  xyz = zeros(T, 3*sim.nxyz)
+  xyz = zeros(T, 3*sim.n_nodes)
   copyto!(xyz, sim.spin)
   b = reshape(xyz, (3, nx, ny, nz))
   vtk_cell_data(vtk, b , "m")
@@ -135,7 +135,7 @@ function save_vtk_points(sim::AbstractSimGPU, fname::String; fields::Array{Strin
   vtk = vtk_grid(fname, xyz)
   T = _cuda_using_double.x ? Float64 : Float32
 
-  m = zeros(T, 3*sim.nxyz)
+  m = zeros(T, 3*sim.n_nodes)
   copyto!(m, sim.spin)
 
   b = reshape(m, (3, nx, ny, nz))

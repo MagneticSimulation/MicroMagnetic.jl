@@ -9,7 +9,7 @@ mutable struct MicroSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   Ms::CuArray{T, 1}
   pins::CuArray{Bool, 1}
   total_energy::T
-  nxyz::Int64
+  n_nodes::Int64
   blocks::Int64
   threads::Int64
   name::String

@@ -23,15 +23,15 @@ function compute_distance_kernel!(ds::CuDeviceArray{T, 1}, m1::CuDeviceArray{T, 
 end
 
 function compute_distance(neb::NEB_GPU)
-    nxyz = neb.sim.nxyz
+    n_nodes = neb.sim.n_nodes
     N = neb.N
-    dof = 3*nxyz
-    blk, thr = cudims(nxyz)
+    dof = 3*n_nodes
+    blk, thr = cudims(n_nodes)
     ds = neb.sim.energy #we borrow the sim.energy
     for n=0:N
        m1 = n==0 ? neb.image_l : view(neb.spin, (n-1)*dof+1:n*dof)
        m2 = n==N ? neb.image_r : view(neb.spin, n*dof+1:(n+1)*dof)
-       @cuda blocks=blk threads=thr compute_distance_kernel!(ds, m1, m2, nxyz)
+       @cuda blocks=blk threads=thr compute_distance_kernel!(ds, m1, m2, n_nodes)
        neb.distance[n+1] = LinearAlgebra.norm(ds)
    end
    return nothing
@@ -56,9 +56,9 @@ end
 
 function compute_tangents_kernel!(t::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                         left_m::CuDeviceArray{T, 1}, right_m::CuDeviceArray{T, 1},
-                        energy::CuDeviceArray{T, 1}, N::Int64, nxyz::Int64) where {T<:AbstractFloat}
+                        energy::CuDeviceArray{T, 1}, N::Int64, n_nodes::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    dof = 3*nxyz
+    dof = 3*n_nodes
     if 0 < index <= dof
         for n = 1:N
             k = (n-1)*dof + index
@@ -93,16 +93,16 @@ end
 
 function compute_tangents(neb::NEB_GPU)
     N = neb.N
-    nxyz = neb.sim.nxyz
-    blk, thr = cudims(3*nxyz)
+    n_nodes = neb.sim.n_nodes
+    blk, thr = cudims(3*n_nodes)
     @cuda blocks=blk threads=thr compute_tangents_kernel!(neb.tangent, neb.spin,
                                                            neb.image_l, neb.image_r,
-                                                           neb.energy, N, nxyz)
+                                                           neb.energy, N, n_nodes)
 
-    blk, thr = cudims(N*nxyz)
-    @cuda blocks=blk threads=thr neb_projection_kernel!(neb.tangent, neb.spin, N*nxyz)
+    blk, thr = cudims(N*n_nodes)
+    @cuda blocks=blk threads=thr neb_projection_kernel!(neb.tangent, neb.spin, N*n_nodes)
 
-    dof = 3*nxyz
+    dof = 3*n_nodes
     for n=1:N
         t = view(neb.tangent, dof*(n-1)+1:dof*n)
         norm_t = LinearAlgebra.norm(t)
@@ -115,13 +115,13 @@ end
 #compute LLG equation with alpha=1
 function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
                         h::CuDeviceArray{T, 1}, pins::CuDeviceArray{Bool, 1},
-                        gamma::T, N::Int64, nxyz::Int64) where {T<:AbstractFloat}
+                        gamma::T, N::Int64, n_nodes::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if 0 < index <= N
         j = 3*index-2
-        k = index%nxyz
+        k = index%n_nodes
         if k == 0
-            k = nxyz
+            k = n_nodes
         end
         if pins[k]
             @inbounds dw_dt[j] = 0
@@ -147,9 +147,9 @@ function neb_llg_rhs_kernel!(dw_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
 end
 
 function neb_llg_rhs_gpu(dw_dt::CuArray{T, 1}, m::CuArray{T, 1}, h::CuArray{T, 1},
-                 pins::CuArray{Bool, 1}, gamma::T, N::Int64, nxyz::Int64) where {T<:AbstractFloat}
+                 pins::CuArray{Bool, 1}, gamma::T, N::Int64, n_nodes::Int64) where {T<:AbstractFloat}
 
     blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr neb_llg_rhs_kernel!(dw_dt, m, h, pins, gamma, N, nxyz)
+    @cuda blocks=blk threads=thr neb_llg_rhs_kernel!(dw_dt, m, h, pins, gamma, N, n_nodes)
     return nothing
 end

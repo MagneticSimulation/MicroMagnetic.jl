@@ -81,9 +81,9 @@ end
 
 function llg_cay_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, t::Float64, omega::Array{Float64, 1})
 
-  omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
+  omega_to_spin(omega, sim.prespin, sim.spin, sim.n_nodes)
   effective_field(sim, sim.spin, t)
-  llg_rhs_Cay(dw_dt, sim.spin, sim.field, omega, sim.pins, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.nxyz)
+  llg_rhs_Cay(dw_dt, sim.spin, sim.field, omega, sim.pins, sim.driver.alpha, sim.driver.gamma, sim.driver.precession, sim.n_nodes)
 
   return nothing
 
@@ -94,12 +94,12 @@ function llg_stt_cay_call_back(sim::AbstractSim, dw_dt::Array{Float64, 1}, t::Fl
 
   driver = sim.driver
   mesh = sim.mesh
-  omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
+  omega_to_spin(omega, sim.prespin, sim.spin, sim.n_nodes)
   effective_field(sim, sim.spin, t)
 
-  compute_field_stt(sim.spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.nxyz)
+  compute_field_stt(sim.spin, driver.h_stt, driver.ux, driver.uy, driver.uz, mesh.dx, mesh.dy, mesh.dz, mesh.ngbs, sim.n_nodes)
 
-  llg_stt_rhs_Cay(dw_dt, sim.spin, sim.field, driver.h_stt, omega, sim.pins, driver.alpha, driver.beta, driver.gamma, sim.nxyz)
+  llg_stt_rhs_Cay(dw_dt, sim.spin, sim.field, driver.h_stt, omega, sim.pins, driver.alpha, driver.beta, driver.gamma, sim.n_nodes)
 
   return nothing
 

@@ -6,15 +6,15 @@ function MonteCarlo(mesh::Mesh; name="mc", mc_2d=false)
     sim = MonteCarlo{Float}()
     sim.mc_2d = mc_2d
     sim.mesh = mesh
-    nxyz = mesh.nx*mesh.ny*mesh.nz
-    sim.nxyz = nxyz
+    n_nodes = mesh.nx*mesh.ny*mesh.nz
+    sim.n_nodes = n_nodes
 
-    sim.shape = CUDA.ones(Bool, nxyz)
-    sim.spin = CUDA.zeros(Float, 3*nxyz)
-    sim.nextspin = CUDA.zeros(Float,3*nxyz)
-    sim.rnd = CUDA.zeros(Float,3*nxyz)
-    sim.energy = CUDA.zeros(Float,nxyz)
-    sim.delta_E = CUDA.zeros(Float,nxyz)
+    sim.shape = CUDA.ones(Bool, n_nodes)
+    sim.spin = CUDA.zeros(Float, 3*n_nodes)
+    sim.nextspin = CUDA.zeros(Float,3*n_nodes)
+    sim.rnd = CUDA.zeros(Float,3*n_nodes)
+    sim.energy = CUDA.zeros(Float,n_nodes)
+    sim.delta_E = CUDA.zeros(Float,n_nodes)
     sim.steps = 0
     sim.name = name
     sim.T = 300
@@ -214,13 +214,13 @@ end
 
 function init_m0(sim::MonteCarlo, m0::TupleOrArrayOrFunction; norm=true)
   Float = _cuda_using_double.x ? Float64 : Float32
-  spin = zeros(Float, 3*sim.nxyz)
+  spin = zeros(Float, 3*sim.n_nodes)
   init_vector!(spin, sim.mesh, m0)
   if norm
-    normalise(spin, sim.nxyz)
+    normalise(spin, sim.n_nodes)
   end
   shape = Array(sim.shape)
-  for i in 1:sim.nxyz
+  for i in 1:sim.n_nodes
       if !shape[i]
           spin[3*i-2] = NaN32
           spin[3*i-1] = NaN32
@@ -234,7 +234,7 @@ end
 function update_ngbs(mesh, shape::Array{Bool})
     ngbs = Array(mesh.ngbs)
     nngbs = Array(mesh.nngbs)
-    for i = 1:mesh.nxyz
+    for i = 1:mesh.n_nodes
         for j=1:mesh.n_ngbs
             id = ngbs[j, i]
             if id>0 && ((!shape[id]) ||(!shape[i]))
@@ -254,7 +254,7 @@ end
 
 function set_shape(sim::MonteCarlo, fun_Ms::Function)
     mesh = sim.mesh
-    shape = ones(Bool, mesh.nxyz)
+    shape = ones(Bool, mesh.n_nodes)
     for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
         shape[id] = fun_Ms(i, j, k, mesh.dx, mesh.dy, mesh.dz)
@@ -266,7 +266,7 @@ end
 
 function set_shape_to_kagome(sim::MonteCarlo)
     mesh = sim.mesh
-    shape = ones(Bool, mesh.nxyz)
+    shape = ones(Bool, mesh.n_nodes)
     for k = 1:mesh.nz, j = 1:mesh.ny, i = 1:mesh.nx
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
         #shape[id] = true
@@ -282,9 +282,9 @@ end
 function run_step(sim::MonteCarlo)
 
     if sim.mc_2d
-        uniform_random_circle_xy(sim.nextspin, sim.rnd, sim.nxyz)
+        uniform_random_circle_xy(sim.nextspin, sim.rnd, sim.n_nodes)
     else
-        uniform_random_sphere(sim.nextspin, sim.rnd, sim.nxyz)
+        uniform_random_sphere(sim.nextspin, sim.rnd, sim.n_nodes)
     end
 
     run_single_step(sim, 0)
@@ -297,7 +297,7 @@ end
 
 
 function run_single_step(sim::MonteCarlo, bias::Int64)
-    blk, thr = cudims(sim.nxyz)
+    blk, thr = cudims(sim.n_nodes)
 
     mesh = sim.mesh
 
@@ -351,7 +351,7 @@ function compute_clock_number(m::Array{T, 1}, cn::Array{Float32, 1},shape::Array
     # return sum(v)
   signA=zeros(typeof(0.0),6)
   ngbs = Array(mesh.ngbs)
-  for i = 1:mesh.nxyz
+  for i = 1:mesh.n_nodes
     mx=m[i*3-2]
     my=m[i*3-1]
     if shape[i]
@@ -397,7 +397,7 @@ function save_vtk_clocknum(sim::AbstractSimGPU,cn::Array{Float32, 1}, fname::Str
 
   vtk = vtk_grid(fname, xyz)
   T = _cuda_using_double.x ? Float64 : Float32
-  spin = zeros(T, 3*sim.nxyz)
+  spin = zeros(T, 3*sim.n_nodes)
   copyto!(spin, sim.spin)
   b = reshape(spin, (3, nx, ny, nz))
   vtk_point_data(vtk, b , "m")

@@ -9,7 +9,7 @@ struct FDMesh <: MeshCPU
   nx::Int64
   ny::Int64
   nz::Int64
-  nxyz::Int64
+  n_nodes::Int64
   volume::Float64
   ngbs::Array{Int64, 2}
   xperiodic::Bool
@@ -38,8 +38,8 @@ function FDMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
         ngbs[6,id] = indexpbc(i,j,k+1, nx,ny,nz, xperiodic, yperiodic, zperiodic)
     end
     volume = dx*dy*dz
-    nxyz = nx*ny*nz
-    return FDMesh(dx, dy, dz, nx, ny, nz, nxyz, volume, ngbs, xperiodic, yperiodic, zperiodic)
+    n_nodes = nx*ny*nz
+    return FDMesh(dx, dy, dz, nx, ny, nz, n_nodes, volume, ngbs, xperiodic, yperiodic, zperiodic)
 end
 
 

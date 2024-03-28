@@ -28,7 +28,7 @@ mutable struct LLG_STT <: Driver
   h_stt::Array{Float64, 1}
 end
 
-function create_driver(driver::String, integrator::String, nxyz::Int64)
+function create_driver(driver::String, integrator::String, n_nodes::Int64)
     supported_drivers = ["None", "SD", "LLG", "LLG_STT"]
     if !(driver in supported_drivers)
         error("Supported drivers for CPU: ", join(supported_drivers, " "))
@@ -39,7 +39,7 @@ function create_driver(driver::String, integrator::String, nxyz::Int64)
     end
 
     if driver=="SD" #Steepest Descent
-        gk = zeros(Float64,3*nxyz)
+        gk = zeros(Float64,3*n_nodes)
         return EnergyMinimization(gk, 0.0, 100.0, 1e-12, 0)
     end
 
@@ -50,31 +50,31 @@ function create_driver(driver::String, integrator::String, nxyz::Int64)
 
     if driver=="LLG"
         if integrator == "Heun"
-            henu = ModifiedEuler(nxyz, llg_call_back, 1e-14)
+            henu = ModifiedEuler(n_nodes, llg_call_back, 1e-14)
             return LLG(true, 0.1, 2.21e5, henu)
         elseif integrator == "RungeKutta"
-            rungekutta = RungeKutta(nxyz, llg_call_back, 5e-13)
+            rungekutta = RungeKutta(n_nodes, llg_call_back, 5e-13)
             return LLG(true, 0.1, 2.21e5, rungekutta)
         elseif integrator == "DormandPrince"
             tol = 1e-6
-            dopri5 = DormandPrince(nxyz, llg_call_back, tol)
+            dopri5 = DormandPrince(n_nodes, llg_call_back, tol)
             return LLG(true, 0.1, 2.21e5, dopri5)
         else
             tol = 1e-6
-            dopri5 = DormandPrinceCayley(nxyz, llg_cay_call_back, tol)
+            dopri5 = DormandPrinceCayley(n_nodes, llg_cay_call_back, tol)
             return LLG(true, 0.1, 2.21e5, dopri5)
         end
     elseif driver=="LLG_STT"
         tol = 1e-6
         if integrator == "DormandPrince"
-            dopri5 = DormandPrince(nxyz, llg_stt_call_back, tol)
+            dopri5 = DormandPrince(n_nodes, llg_stt_call_back, tol)
         else
-            dopri5 = DormandPrinceCayley(nxyz, llg_stt_cay_call_back, tol)
+            dopri5 = DormandPrinceCayley(n_nodes, llg_stt_cay_call_back, tol)
         end
-        ux = zeros(nxyz)
-        uy = zeros(nxyz)
-        uz = zeros(nxyz)
-        hstt = zeros(3*nxyz)
+        ux = zeros(n_nodes)
+        uy = zeros(n_nodes)
+        uz = zeros(n_nodes)
+        hstt = zeros(3*n_nodes)
         return LLG_STT(0.5, 0.0, 2.21e5, dopri5, tol, ux, uy, uz, hstt)
 
     else

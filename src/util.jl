@@ -88,10 +88,10 @@ function partial_xy(m::Array{T, 1}, mesh::Mesh) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy = mesh.dx, mesh.dy
     ngbs = mesh.ngbs
-    nxyz = mesh.nxyz
-    pxm = zeros(T, 3*nxyz)
-    pym = zeros(T, 3*nxyz)
-    for i = 1:nxyz
+    n_nodes = mesh.n_nodes
+    pxm = zeros(T, 3*n_nodes)
+    pym = zeros(T, 3*n_nodes)
+    for i = 1:n_nodes
       j = 3*i-2
       #x-direction
       i1 = ngbs[1,i]
@@ -126,9 +126,9 @@ function partial_x(u::Array{T, 1}, mesh::Mesh, Ms::Array{T, 1}) where {T<:Abstra
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy = mesh.dx, mesh.dy
     ngbs = mesh.ngbs
-    nxyz = mesh.nxyz
-    px = zeros(T, nxyz)
-    for i = 1:nxyz
+    n_nodes = mesh.n_nodes
+    px = zeros(T, n_nodes)
+    for i = 1:n_nodes
       #x-direction
       i1 = ngbs[1,i]
       i2 = ngbs[2,i]
@@ -146,9 +146,9 @@ function partial_y(u::Array{T, 1}, mesh::Mesh, Ms::Array{T, 1}) where {T<:Abstra
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy = mesh.dx, mesh.dy
     ngbs = mesh.ngbs
-    nxyz = mesh.nxyz
-    py = zeros(T, nxyz)
-    for i = 1:nxyz
+    n_nodes = mesh.n_nodes
+    py = zeros(T, n_nodes)
+    for i = 1:n_nodes
       #y-direction
       i1 = ngbs[3,i]
       i2 = ngbs[4,i]
@@ -166,9 +166,9 @@ function partial_z(u::Array{T, 1}, mesh::Mesh, Ms::Array{T, 1}) where {T<:Abstra
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
     ngbs = mesh.ngbs
-    nxyz = mesh.nxyz
-    pz = zeros(T, nxyz)
-    for i = 1:nxyz
+    n_nodes = mesh.n_nodes
+    pz = zeros(T, n_nodes)
+    for i = 1:n_nodes
       #y-direction
       i1 = ngbs[5,i]
       i2 = ngbs[6,i]

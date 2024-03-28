@@ -93,8 +93,8 @@ function init_demag_gpu(sim::MicroSimGPU, Nx::Int, Ny::Int, Nz::Int)
   m_plan = plan_rfft(mx_gpu)
   h_plan = plan_irfft(Hx, nx_fft)
 
-  field = zeros(Float, 3*sim.nxyz)
-  energy = zeros(Float, sim.nxyz)
+  field = zeros(Float, 3*sim.n_nodes)
+  energy = zeros(Float, sim.n_nodes)
   demag = DemagGPU(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
                 tensor_xy, tensor_xz, tensor_yz, mx_gpu, my_gpu, mz_gpu,
                 Mx, My, Mz, Hx, Hy, Hz,
@@ -194,9 +194,9 @@ function init_demag_gpu_II(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
   m_plan = plan_rfft(mx_gpu)
   h_plan = plan_irfft(Hx, nx_fft)
 
-  field = zeros(Float, 3*sim.nxyz)
-  energy = zeros(Float, sim.nxyz)
-  spin = CUDA.zeros(Float, 3*sim.nxyz)
+  field = zeros(Float, 3*sim.n_nodes)
+  energy = zeros(Float, sim.n_nodes)
+  spin = CUDA.zeros(Float, 3*sim.n_nodes)
   demag = DemagGPUII(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
                 tensor_xy, tensor_xz, tensor_yz, spin, mx_gpu, my_gpu, mz_gpu,
                 Mx, My, Mz, Hx, Hy, Hz,
@@ -231,15 +231,15 @@ function effective_field(demag::DemagGPU, sim::MicroSimGPU, spin::CuArray{T, 1},
 
   @cuda blocks = blocks_n threads=threads_n collect_h_kernel!(sim.field, demag.mx, demag.my, demag.mz, nx, ny, nz)
 
-  blocks_n, threads_n = cudims(sim.nxyz)
-  @cuda blocks=blocks_n threads=threads_n compute_energy_kernel!(sim.energy, spin, sim.field, sim.Ms, mesh.volume, sim.nxyz)
+  blocks_n, threads_n = cudims(sim.n_nodes)
+  @cuda blocks=blocks_n threads=threads_n compute_energy_kernel!(sim.energy, spin, sim.field, sim.Ms, mesh.volume, sim.n_nodes)
   return nothing
 end
 
 function effective_field(demag::DemagGPUII, sim::MicroSim, spin::Array{Float64, 1}, t::Float64) where {T<:AbstractFloat}
   mesh = sim.mesh
   nx, ny, nz = mesh.nx, sim.mesh.ny, sim.mesh.nz
-  for i = 1:sim.nxyz
+  for i = 1:sim.n_nodes
       j = 3*i-2
       demag.field[j]  = spin[j]*sim.Ms[i]
       demag.field[j+1]  = spin[j+1]*sim.Ms[i]
@@ -274,7 +274,7 @@ function effective_field(demag::DemagGPUII, sim::MicroSim, spin::Array{Float64, 
   mu0 = 4*pi*1e-7
   volume = sim.mesh.volume
   field = demag.field
-  for i=1:sim.nxyz
+  for i=1:sim.n_nodes
     j = 3*i
     demag.energy[i] = -0.5*mu0*volume*sim.Ms[i]*(field[j-2]*spin[j-2] + field[j-1]*spin[j-1] + field[j]*spin[j])
   end

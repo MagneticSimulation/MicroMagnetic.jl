@@ -89,7 +89,7 @@ function create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0, xc="unvalued", yc="
     geo.xc =  xc == "unvalued" ? mesh.nx*mesh.dx/2.0 : xc  #[0, nx*dx]
     geo.yc =  yc == "unvalued" ? mesh.ny*mesh.dy/2.0 : yc  #[0, ny*dy]
     geo.zc =  zc == "unvalued" ? mesh.nz*mesh.dz/2.0 : zc  #[0, nz*dz]
-    geo.shape = zeros(Bool, mesh.nxyz)
+    geo.shape = zeros(Bool, mesh.n_nodes)
     if axis == ez
         R = min(geo.xc, geo.yc)
         geo.r1 = r1 > 0 ? r1 : R
@@ -165,7 +165,7 @@ function create_box(mesh::Mesh; x1=0, y1=0, z1=0, x2=0, y2=0, z2=0)
     geo = Box()
     geo.x1,geo.y1,geo.z1 = x1,y1,z1
     geo.x2,geo.y2,geo.z2 = x2,y2,z2
-    geo.shape = zeros(Bool, mesh.nxyz)
+    geo.shape = zeros(Bool, mesh.n_nodes)
 
     for i=1:mesh.nx, j=1:mesh.ny, k=1:mesh.nz
         x = (i-0.5)*mesh.dx

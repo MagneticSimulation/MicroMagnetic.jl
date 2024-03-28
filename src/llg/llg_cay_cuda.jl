@@ -39,7 +39,7 @@ end
 function llg_cayley_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1}, t::Float64, omega::CuArray{T, 1}) where {T<:AbstractFloat}
 
     driver = sim.driver
-    N = sim.nxyz
+    N = sim.n_nodes
 
     omega_to_spin(omega, sim.prespin, sim.spin, N)
     effective_field(sim, sim.spin, t)
@@ -121,14 +121,14 @@ function llg_stt_cayley_call_back_gpu(sim::AbstractSimGPU, dw_dt::CuArray{T, 1},
 
     driver = sim.driver
     mesh = sim.mesh
-    omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
+    omega_to_spin(omega, sim.prespin, sim.spin, sim.n_nodes)
     effective_field(sim, sim.spin, t)
     ut = driver.ufun(t)
     compute_field_stt_gpu(sim.spin, driver.h_stt, sim.Ms, driver.ux, driver.uy, driver.uz, T(ut),
                        mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny, mesh.nz,
-                       mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, sim.nxyz)
+                       mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, sim.n_nodes)
     llg_rhs_stt_cayley_gpu(dw_dt, sim.spin, driver.field, driver.h_stt, omega, sim.pins, driver.alpha,
-                           driver.beta, driver.gamma, sim.nxyz)
+                           driver.beta, driver.gamma, sim.n_nodes)
 
     return nothing
 
@@ -210,15 +210,15 @@ function llg_stt_cpp_cayley_call_back_gpu(sim::AbstractSim, dw_dt::CuArray{T, 1}
 
     driver = sim.driver
     mesh = sim.mesh
-    omega_to_spin(omega, sim.prespin, sim.spin, sim.nxyz)
+    omega_to_spin(omega, sim.prespin, sim.spin, sim.n_nodes)
     effective_field(sim, sim.spin, t)
     ut = driver.ufun(t)
     compute_field_stt_gpu(sim.spin, driver.h_stt, sim.Ms, driver.ux, driver.uy, driver.uz, T(ut),
                        mesh.dx, mesh.dy, mesh.dz, mesh.nx, mesh.ny, mesh.nz,
-                       mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, sim.nxyz)
+                       mesh.xperiodic, mesh.yperiodic, mesh.zperiodic, sim.n_nodes)
 
     llg_rhs_stt_cpp_cayley_gpu(dw_dt, sim.spin, driver.field, driver.h_stt, omega, driver.aj, sim.pins, driver.p, driver.alpha,
-                        driver.beta, driver.bj, driver.gamma, sim.nxyz)
+                        driver.beta, driver.bj, driver.gamma, sim.n_nodes)
 
     return nothing
 

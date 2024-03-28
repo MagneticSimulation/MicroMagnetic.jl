@@ -158,9 +158,9 @@ function distribute_m_atomistic_kernel!(m_gpu, mx_gpu, my_gpu, mz_gpu, mu_s, nx:
 end
 
 function compute_energy_kernel!(energy::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
-                               mu_s::CuDeviceArray{T, 1}, nxyz::Int64) where {T<:AbstractFloat}
+                               mu_s::CuDeviceArray{T, 1}, n_nodes::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if 0< index <= nxyz
+    if 0< index <= n_nodes
         j = 3*index-2
         @inbounds energy[index] = -0.5*mu_s[index]*(m[j]*h[j] + m[j+1]*h[j+1] + m[j+2]*h[j+2])
     end

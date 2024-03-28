@@ -69,8 +69,8 @@ function init_demag_gpu(sim::AtomicSimGPU, Nx::Int, Ny::Int, Nz::Int)
   m_plan = plan_rfft(mx_gpu)
   h_plan = plan_irfft(Hx, nx_fft)
 
-  field = zeros(Float, 3*sim.nxyz)
-  energy = zeros(Float, sim.nxyz)
+  field = zeros(Float, 3*sim.n_nodes)
+  energy = zeros(Float, sim.n_nodes)
   demag = DemagGPU(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
                 tensor_xy, tensor_xz, tensor_yz, mx_gpu, my_gpu, mz_gpu,
                 Mx, My, Mz, Hx, Hy, Hz,
@@ -106,8 +106,8 @@ function effective_field(demag::DemagGPU, sim::AtomicSimGPU, spin::CuArray{T, 1}
 
   @cuda blocks = blocks_n threads=threads_n collect_h_kernel!(sim.field, demag.mx, demag.my, demag.mz, nx, ny, nz)
 
-  blocks_n, threads_n = cudims(sim.nxyz)
-  @cuda blocks=blocks_n threads=threads_n compute_energy_kernel!(sim.energy, spin, sim.field, sim.mu_s, sim.nxyz)
+  blocks_n, threads_n = cudims(sim.n_nodes)
+  @cuda blocks=blocks_n threads=threads_n compute_energy_kernel!(sim.energy, spin, sim.field, sim.mu_s, sim.n_nodes)
   return nothing
 end
 

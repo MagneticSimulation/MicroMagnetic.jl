@@ -9,8 +9,8 @@ function neb_llg_call_back(neb::NEB, dm_dt::Array{Float64, 1}, spin::Array{Float
   effective_field_NEB(neb, spin)
   neb.field[:, 1] .= 0
   neb.field[:, neb.N] .= 0
-  field = reshape(neb.field, 3*neb.nxyz)
-  llg_rhs(dm_dt, spin, field, 1.0, 2.21e5, neb.nxyz)
+  field = reshape(neb.field, 3*neb.n_nodes)
+  llg_rhs(dm_dt, spin, field, 1.0, 2.21e5, neb.n_nodes)
   return nothing
 end
 
@@ -46,7 +46,7 @@ function relax_NEB_LLG(neb::NEB, maxsteps::Int64, stopping_dmdt::Float64, save_m
         neb.driver.nsteps = rk_data.nsteps
 
         step_size = rk_data.step
-        max_dmdt = compute_dmdt(neb.prespin, neb.spin, neb.nxyz, step_size)
+        max_dmdt = compute_dmdt(neb.prespin, neb.spin, neb.n_nodes, step_size)
         @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e  time=%s",
                      i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor, Dates.now())
 

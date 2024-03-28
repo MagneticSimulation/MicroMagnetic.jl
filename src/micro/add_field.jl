@@ -4,9 +4,9 @@
 Add a static Zeeman energy to the simulation.
 """
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-    nxyz = sim.nxyz   
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes   
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
     init_vector!(field, sim.mesh, H0)
 
     zeeman =  Zeeman(field, energy, name)
@@ -42,7 +42,7 @@ Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its n
 
 """
 function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-    N_spins = sim.nxyz
+    N_spins = sim.n_nodes
     field = zeros(Float64, 3*N_spins)
     init_vector!(field, sim.mesh, H0)
 
@@ -82,10 +82,10 @@ Example:
 ```
 """
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
-    nxyz = sim.nxyz
-    init_field = zeros(Float64, 3*nxyz)
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    init_field = zeros(Float64, 3*n_nodes)
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
     init_vector!(init_field, sim.mesh, H0)
 
     zeeman =  TimeZeeman(ft, init_field, field, energy, name)
@@ -116,10 +116,10 @@ add_exc_vector(sim, (2e-12,5e-12,0))
 ```
 """
 function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch_vector")
-    nxyz = sim.nxyz
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
-    Spatial_A = zeros(Float64, 3*nxyz)
+    n_nodes = sim.n_nodes
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
+    Spatial_A = zeros(Float64, 3*n_nodes)
     init_vector!(Spatial_A , sim.mesh, A)
     exch = Vector_Exchange(Spatial_A , field, energy, name)
     push!(sim.interactions, exch)
@@ -139,12 +139,12 @@ Add exchange energy to the system.
 """
 function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
     
-    nxyz = sim.nxyz
-    Spatial_A = zeros(Float64, sim.nxyz)
+    n_nodes = sim.n_nodes
+    Spatial_A = zeros(Float64, sim.n_nodes)
 
   
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
 
     init_scalar!(Spatial_A , sim.mesh, A)
     if isa(sim, MicroSim) 
@@ -173,10 +173,10 @@ function add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
             return nothing
         end
     end
-    nxyz = sim.nxyz
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
-    Spatial_A = zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
+    Spatial_A = zeros(Float64, n_nodes)
     update_scalar_geometry(Spatial_A, geo, A)
     if isa(sim, MicroSim)
         exch = Exchange(Spatial_A , field, energy, name)
@@ -209,9 +209,9 @@ The effective field is given then as
 ```
 """
 function add_exch_rkky(sim::AbstractSim, J::Float64; name="rkky")
-    nxyz = sim.nxyz
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
     exch = ExchangeRKKY(J, field, energy, name)
 
     push!(sim.interactions, exch)
@@ -233,9 +233,9 @@ Add DMI to the system. Example:
 ```
 """
 function add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
-    nxyz = sim.nxyz
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
     dmi =  BulkDMI(Float64(D[1]), Float64(D[2]), Float64(D[3]), field, energy, name)
     push!(sim.interactions, dmi)
 
@@ -272,9 +272,9 @@ function add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
 end
 
 function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
-    nxyz = sim.nxyz
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
     dmi =  InterfacialDMI(Float64(D), field, energy, name)
     push!(sim.interactions, dmi)
 
@@ -295,9 +295,9 @@ Add DMI to the system. Example:
 ```
 """
 function add_dmi(sim::AbstractSim, name="dmi")
-    nxyz = sim.nxyz
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
     z = 0.0
     dmi =  DMI(z,z,z,z,z,z,z,z,z,z,z,z,z,z, field, energy, name)
     push!(sim.interactions, dmi)
@@ -337,11 +337,11 @@ E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
 ```
 """
 function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
-    nxyz = sim.nxyz
-    Kus =  zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    Kus =  zeros(Float64, n_nodes)
     init_scalar!(Kus, sim.mesh, Ku)
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
     lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
     naxis = (axis[1]/lt, axis[2]/lt, axis[3]/lt)
     anis =  Anisotropy(Kus, naxis, field, energy, name)
@@ -368,11 +368,11 @@ function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0,0,1), nam
             return nothing
         end
     end
-    nxyz = sim.nxyz
-    Kus =  zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    Kus =  zeros(Float64, n_nodes)
     update_scalar_geometry(Kus, geo, Ku)
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
     anis =  Anisotropy(Kus, naxis, field, energy, name)
     push!(sim.interactions, anis)
 
@@ -397,8 +397,8 @@ Example:
 ```
 """
 function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
-    nxyz = sim.nxyz
-    Kus =  zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    Kus =  zeros(Float64, n_nodes)
     init_scalar!(Kus, sim.mesh, Ku)
     for i in sim.interactions
         if i.name == name
@@ -433,9 +433,9 @@ function add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1::Any=nothing, axis2
         axis[i+6] = naxis3[i]
     end
 
-    nxyz = sim.nxyz
-    field = zeros(Float64, 3*nxyz)
-    energy = zeros(Float64, nxyz)
+    n_nodes = sim.n_nodes
+    field = zeros(Float64, 3*n_nodes)
+    energy = zeros(Float64, n_nodes)
     anis =  CubicAnisotropy(axis, Kc, field, energy, name)
     push!(sim.interactions, anis)
 

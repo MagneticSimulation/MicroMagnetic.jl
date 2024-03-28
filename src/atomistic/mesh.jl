@@ -7,7 +7,7 @@ struct TriangularMeshGPU <: AtomicMeshGPU
   nx::Int64
   ny::Int64
   nz::Int64
-  nxyz::Int64
+  n_nodes::Int64
   n_ngbs::Int64
   ngbs::CuArray{Int32, 2}
   nngbs::CuArray{Int32, 2}
@@ -69,7 +69,7 @@ struct CubicMeshGPU <: AtomicMeshGPU
   nx::Int64
   ny::Int64
   nz::Int64
-  nxyz::Int64
+  n_nodes::Int64
   n_ngbs::Int64
   nn_ngbs::Int64
   nnn_ngbs::Int64
@@ -125,8 +125,8 @@ function CubicMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     nnngbs[7,id] = indexpbc(i-1,j+1,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
     nnngbs[8,id] = indexpbc(i-1,j-1,k+1,nx,ny,nz, xperiodic, yperiodic, zperiodic)
   end
-  nxyz = nx*ny*nz
-  return CubicMeshGPU(dx, dy, dz, nx, ny, nz, nxyz, 6, 12, 8, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), xperiodic, yperiodic, zperiodic)
+  n_nodes = nx*ny*nz
+  return CubicMeshGPU(dx, dy, dz, nx, ny, nz, n_nodes, 6, 12, 8, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), xperiodic, yperiodic, zperiodic)
 end
 
 struct CubicMesh4NGPU <: AtomicMeshGPU
@@ -136,7 +136,7 @@ struct CubicMesh4NGPU <: AtomicMeshGPU
   nx::Int64
   ny::Int64
   nz::Int64
-  nxyz::Int64
+  n_nodes::Int64
   n_ngbs::Int64
   nn_ngbs::Int64
   nnn_ngbs::Int64
@@ -196,8 +196,8 @@ function CubicMesh4NGPU(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open
     nnnngbs[5, id] = indexpbc(i, j, k - 2, nx, ny, nz, xperiodic, yperiodic, zperiodic)
     nnnngbs[6, id] = indexpbc(i, j, k + 2, nx, ny, nz, xperiodic, yperiodic, zperiodic)
   end
-  nxyz = nx * ny * nz
-  return CubicMesh4NGPU(dx, dy, dz, nx, ny, nz, nxyz, 6, 12, 8, 6, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), CuArray(nnnngbs), xperiodic, yperiodic, zperiodic)
+  n_nodes = nx * ny * nz
+  return CubicMesh4NGPU(dx, dy, dz, nx, ny, nz, n_nodes, 6, 12, 8, 6, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), CuArray(nnnngbs), xperiodic, yperiodic, zperiodic)
 end
 
 
@@ -209,7 +209,7 @@ struct SquareMeshGPU <: AtomicMeshGPU
   nx::Int64
   ny::Int64
   nz::Int64
-  nxyz::Int64
+  n_nodes::Int64
   n_ngbs::Int64
   nn_ngbs::Int64
   nnn_ngbs::Int64
@@ -246,8 +246,8 @@ function SquareMeshGPU(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     nnngbs[3,id] = indexpbc(i-2,j,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
     nnngbs[4,id] = indexpbc(i,j-2,k,nx,ny,nz, xperiodic, yperiodic, zperiodic)
   end
-  nxyz = nx*ny*nz
-  return CubicMeshGPU(dx, dy, dz, nx, ny, nz, nxyz, 4, 4, 4, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), xperiodic, yperiodic, zperiodic)
+  n_nodes = nx*ny*nz
+  return CubicMeshGPU(dx, dy, dz, nx, ny, nz, n_nodes, 4, 4, 4, CuArray(ngbs), CuArray(nngbs), CuArray(nnngbs), xperiodic, yperiodic, zperiodic)
 end
 
 #We defined a cylindrical tube mesh along the +z direction
@@ -256,7 +256,7 @@ struct CylindricalTubeMeshGPU <: AtomicMeshGPU
   R::Float64
   nz::Int64
   nr::Int64
-  nxyz::Int64
+  n_nodes::Int64
   n_ngbs::Int64
   ngbs::CuArray{Int32, 2}  #nearest neighbours
   zperiodic::Bool
@@ -295,9 +295,9 @@ function CylindricalTubeMeshGPU(;dz=1e-9, R=20e-9, nz=1, nr=10, pbc="open")
     ngbs[3,id] = indexpbc(i,1,k-1,nr,1,nz, true, false, zperiodic)
     ngbs[4,id] = indexpbc(i,1,k+1,nr,1,nz, true, false, zperiodic)
   end
-  nxyz = nr*nz
+  n_nodes = nr*nz
   n_ngbs = 4
-  return CylindricalTubeMeshGPU(dz, R, nz, nr, nxyz, n_ngbs, CuArray(ngbs), zperiodic, coordinates)
+  return CylindricalTubeMeshGPU(dz, R, nz, nr, n_nodes, n_ngbs, CuArray(ngbs), zperiodic, coordinates)
 end
 
 
@@ -311,7 +311,7 @@ struct FccMeshGPU <: AtomicMeshGPU
   nx::Int64
   ny::Int64
   nz::Int64
-  nxyz::Int64  # it should be n_spins, we will change it later.
+  n_nodes::Int64  # it should be n_spins, we will change it later.
   n_ngbs::Int64
   nn_ngbs::Int64
   ngbs::CuArray{Int32, 2}  #  nearest neighbours
