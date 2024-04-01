@@ -1,6 +1,6 @@
-function uniform_random_sphere_kernel!(m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1}, n_nodes::Int64) where {T<:AbstractFloat}
+function uniform_random_sphere_kernel!(m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1}, n_total::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= n_nodes
+    if index <= n_total
         j = 3*index - 2
         @inbounds phi = rnd[j]*2*pi;
         @inbounds ct = 2*rnd[j+1] - 1;
@@ -12,9 +12,9 @@ function uniform_random_sphere_kernel!(m::CuDeviceArray{T, 1}, rnd::CuDeviceArra
    return nothing
 end
 
-function uniform_random_circle_xy_kernel!(m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1}, n_nodes::Int64) where {T<:AbstractFloat}
+function uniform_random_circle_xy_kernel!(m::CuDeviceArray{T, 1}, rnd::CuDeviceArray{T, 1}, n_total::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= n_nodes
+    if index <= n_total
         j = 3*index - 2
         @inbounds phi = rnd[j]*2*pi;
         @inbounds m[j] = CUDA.cos(phi);
@@ -61,12 +61,12 @@ function total_E_zeeman_anisotropy_kernel!(m::CuDeviceArray{T, 1},
                               dE::CuDeviceArray{T, 1},
                               Hx::T, Hy::T, Hz::T, Ku::T, Kc::T,
                               ux::T, uy::T, uz::T,
-                              n_nodes::Int64) where {T<:AbstractFloat}
+                              n_total::Int64) where {T<:AbstractFloat}
 
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
     #bias should be 0, 1 and 2 for cubic mesh
-    if index <= n_nodes
+    if index <= n_total
         @inbounds si = shape[index]
         if !si
             @inbounds dE[index] = 0
@@ -275,11 +275,11 @@ function add_total_E_exch_dmi_cubic_mesh_kernel!(m::CuDeviceArray{T, 1},
                               dE::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},
                               nngbs::CuDeviceArray{Int32, 2}, n_ngbs::Int64, J0::CuDeviceArray{T, 1},
                               J1::CuDeviceArray{T, 1}, D0::CuDeviceArray{T, 2}, D1::CuDeviceArray{T, 2},
-                              n_nodes::Int64) where {T<:AbstractFloat}
+                              n_total::Int64) where {T<:AbstractFloat}
 
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
-    if index <= n_nodes
+    if index <= n_total
 
         @inbounds si = shape[index]
         if !si
@@ -384,11 +384,11 @@ function add_total_E_exch_dmi_triangular_mesh_kernel!(m::CuDeviceArray{T, 1},
                               dE::CuDeviceArray{T, 1}, ngbs::CuDeviceArray{Int32, 2},
                               n_ngbs::Int64, J0::CuDeviceArray{T, 1},
                               D0::CuDeviceArray{T, 2},
-                              n_nodes::Int64) where {T<:AbstractFloat}
+                              n_total::Int64) where {T<:AbstractFloat}
 
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
-    if index <= n_nodes
+    if index <= n_total
 
         @inbounds si = shape[index]
         if !si

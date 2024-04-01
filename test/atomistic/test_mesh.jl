@@ -2,7 +2,7 @@ using JuMag
 using Test
 
 function test_CylindricalTubeMeshGPU(mesh)
-	@test mesh.nxyz == mesh.nr*mesh.nz
+	@test mesh.n_total == mesh.nr*mesh.nz
 	nr, nz = mesh.nr, mesh.nz
 	ngbs = Array(mesh.ngbs)
 	for k = 1:nz, i=1:mesh.nr

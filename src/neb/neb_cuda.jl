@@ -3,7 +3,7 @@ using CUDA
 
 mutable struct NEB_GPU{T<:AbstractFloat} <: AbstractSim
     N::Int64 #number of images in this process
-    n_nodes::Int64 # n_nodes = neb.sim.n_nodes*N
+    n_total::Int64 # n_total = neb.sim.n_total*N
     clib_image:: Int64
     sim::AbstractSim
     driver::NEBDriver
@@ -28,25 +28,25 @@ function NEB_GPU(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spri
     neb = NEB_GPU{Float}()
 
     mesh = sim.mesh
-    n_nodes = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
+    n_total = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
     N = sum(intervals) + length(intervals) - 1
     if N < 1
         error("The number of free images should larger than 1 (typically 10~20).")
     end
     neb.N = N
-    neb.n_nodes = sim.n_nodes*neb.N
+    neb.n_total = sim.n_total*neb.N
     neb.sim = sim
     neb.name = name
     neb.clib_image = clib_image
 
-    neb.driver = create_neb_driver_gpu(driver, n_nodes,N)
+    neb.driver = create_neb_driver_gpu(driver, n_total,N)
 
-    neb.image_l = CUDA.zeros(Float, 3*sim.n_nodes)
-    neb.spin = CUDA.zeros(Float, 3*sim.n_nodes*neb.N)
-    neb.prespin = CUDA.zeros(Float, 3*sim.n_nodes*neb.N)
-    neb.image_r = CUDA.zeros(Float, 3*sim.n_nodes)
-    neb.field = CUDA.zeros(Float, 3*sim.n_nodes*neb.N)
-    neb.tangent = CUDA.zeros(Float, 3*sim.n_nodes*neb.N)
+    neb.image_l = CUDA.zeros(Float, 3*sim.n_total)
+    neb.spin = CUDA.zeros(Float, 3*sim.n_total*neb.N)
+    neb.prespin = CUDA.zeros(Float, 3*sim.n_total*neb.N)
+    neb.image_r = CUDA.zeros(Float, 3*sim.n_total)
+    neb.field = CUDA.zeros(Float, 3*sim.n_total*neb.N)
+    neb.tangent = CUDA.zeros(Float, 3*sim.n_total*neb.N)
     neb.energy = CUDA.zeros(Float, neb.N+2)
     neb.energy_cpu = zeros(Float, neb.N+2)
     neb.distance = zeros(Float, neb.N+1)
@@ -62,10 +62,10 @@ function NEB_GPU(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spri
 end
 
 
-function create_neb_driver_gpu(driver::String, n_nodes::Int64, N::Int64)
+function create_neb_driver_gpu(driver::String, n_total::Int64, N::Int64)
     if driver == "LLG"
         tol = 1e-5
-        dopri5 = DormandPrinceGPU(n_nodes*N, neb_llg_call_back_gpu, tol)
+        dopri5 = DormandPrinceGPU(n_total*N, neb_llg_call_back_gpu, tol)
         return NEB_LLG_Driver(0, dopri5)
     else
       error("Only Driver 'LLG' is supported!")
@@ -92,11 +92,11 @@ end
 
 function init_m0_Ms(sim::AbstractSim, m0::TupleOrArrayOrFunction)
   Float = _cuda_using_double.x ? Float64 : Float32
-  spin = zeros(Float, 3*sim.n_nodes)
+  spin = zeros(Float, 3*sim.n_total)
   init_vector!(spin, sim.mesh, m0)
-  normalise(spin, sim.n_nodes)
+  normalise(spin, sim.n_total)
   Ms = Array(sim.Ms)
-  for i = 1:sim.n_nodes
+  for i = 1:sim.n_total
       if abs(Ms[i]) < eps(Float)
           spin[3*i-2] = 0
           spin[3*i-1] = 0
@@ -108,13 +108,13 @@ end
 
 function init_images(neb::NEB_GPU, init_m::Any, intervals::Any)
     sim = neb.sim
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
 
     if length(init_m) != length(intervals)+1
         error("Imput init_m or intervals wrong!")
     end
 
-    dof = 3*n_nodes
+    dof = 3*n_total
     image_id = 1
     local_image_id=1
     N = neb.N
@@ -160,7 +160,7 @@ function effective_field_NEB(neb::NEB_GPU, spin::CuArray{T, 1})  where {T<:Abstr
 function compute_micromagnetic_field(neb::NEB_GPU)
     CUDA.@sync fill!(neb.field, 0.0)
     sim = neb.sim
-    dof = 3*sim.n_nodes
+    dof = 3*sim.n_total
     for n = 1:neb.N
         f = view(neb.field, (n-1)*dof+1:n*dof)
         m = view(neb.spin, (n-1)*dof+1:n*dof)
@@ -182,7 +182,7 @@ function compute_field_related_to_tangent(neb::NEB_GPU)
    compute_tangents(neb)
    compute_distance(neb)
 
-   dof = 3*neb.sim.n_nodes
+   dof = 3*neb.sim.n_total
    for n = 1:neb.N
        f = view(neb.field, (n-1)*dof+1:n*dof)
        t = view(neb.tangent, (n-1)*dof+1:n*dof)
@@ -226,7 +226,7 @@ end
 function compute_system_energy(neb::NEB_GPU)
   sim = neb.sim
 
-  dof = 3*sim.n_nodes
+  dof = 3*sim.n_total
   for n = 1:neb.N
       sim.total_energy = 0
       b = view(neb.spin, (n-1)*dof+1:n*dof)
@@ -242,7 +242,7 @@ end
 
 function neb_llg_call_back_gpu(neb::NEB_GPU, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64)  where {T<:AbstractFloat}
     effective_field_NEB(neb, spin)
-    neb_llg_rhs_gpu(dm_dt, spin, neb.field, neb.sim.pins, 2.21e5, neb.n_nodes, neb.sim.n_nodes)
+    neb_llg_rhs_gpu(dm_dt, spin, neb.field, neb.sim.pins, 2.21e5, neb.n_total, neb.sim.n_total)
     return nothing
   end
 
@@ -287,8 +287,8 @@ function relax(neb::NEB_GPU; maxsteps=10000, stopping_dmdt=0.05, save_m_every = 
         step_size = rk_data.step
 
         #we borrow neb.field to store dm
-        compute_dm!(neb.field, neb.prespin, neb.spin, neb.n_nodes)
-        max_dmdt = maximum(view(neb.field, 1:neb.n_nodes))/step_size
+        compute_dm!(neb.field, neb.prespin, neb.spin, neb.n_total)
+        max_dmdt = maximum(view(neb.field, 1:neb.n_total))/step_size
 
         @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e  time=%s",
                             i, rk_data.step, rk_data.t, max_dmdt/dmdt_factor, Dates.now())
@@ -331,7 +331,7 @@ function save_ovf(neb::NEB_GPU, fname::String;
     type::DataType = _cuda_using_double.x ? Float64 : Float32)
 
   sim = neb.sim
-  dof = 3*sim.n_nodes
+  dof = 3*sim.n_total
 
   id_start = 0
   sim.spin .= neb.image_l
@@ -349,7 +349,7 @@ end
 
 function save_vtk(neb::NEB_GPU, fname::String)
   sim = neb.sim
-  dof = 3*sim.n_nodes
+  dof = 3*sim.n_total
 
     sim.spin .= neb.image_l
     save_vtk(sim,  @sprintf("%s_0",fname))

@@ -18,10 +18,10 @@ mutable struct ModifiedEulerGPU{T<:AbstractFloat}  <: Integrator
    rhs_fun::Function
 end
 
-function ModifiedEulerGPU(n_nodes::Int64, rhs_fun, step::Float64)
+function ModifiedEulerGPU(n_total::Int64, rhs_fun, step::Float64)
   Float = _cuda_using_double.x ? Float64 : Float32
-  k1 = CUDA.zeros(Float,3*n_nodes)
-  k2 = CUDA.zeros(Float,3*n_nodes)
+  k1 = CUDA.zeros(Float,3*n_total)
+  k2 = CUDA.zeros(Float,3*n_total)
   return ModifiedEulerGPU(0.0, step, 0, k1, k2, rhs_fun)
 end
 
@@ -40,7 +40,7 @@ function advance_step(sim::AbstractSim, integrator::ModifiedEulerGPU)
     sim.prespin .= sim.spin
     sim.spin .+= (1/2*h) .* (k1 .+ k2)
 
-    normalise(sim.spin, sim.n_nodes)
+    normalise(sim.spin, sim.n_total)
 
     #nsteps is very important in the presence of stochastic field,
     #note that the stochastic field is constant in calculating k1 and k2

@@ -45,7 +45,7 @@ end
 CUDA version of LLG call_back function that will be called by the integrator.
 """
 function llg_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-    N = sim.n_nodes
+    N = sim.n_total
     driver = sim.driver
     effective_field(sim, spin, t)
 
@@ -173,7 +173,7 @@ function add_stt_rhs_kernel!(dm_dt::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1},
 end
 
 function llg_stt_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-    N = sim.n_nodes
+    N = sim.n_total
     driver = sim.driver
     mesh = sim.mesh
     effective_field(sim, spin, t)
@@ -247,7 +247,7 @@ end
 
 
 function llg_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-    N = sim.n_nodes
+    N = sim.n_total
     driver = sim.driver
     mesh = sim.mesh
     effective_field(sim, spin, t)
@@ -264,7 +264,7 @@ function llg_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::
 end
 
 function llg_stt_cpp_call_back_gpu(sim::AbstractSimGPU, dm_dt::CuArray{T, 1}, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-    N = sim.n_nodes
+    N = sim.n_total
     driver = sim.driver
     mesh = sim.mesh
     effective_field(sim, spin, t)

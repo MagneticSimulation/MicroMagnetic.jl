@@ -2,9 +2,9 @@ using CUDA
 
 function zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         h_static::CuDeviceArray{T, 1}, energy::CuDeviceArray{T, 1},
-                        Ms::CuDeviceArray{T, 1}, volume::T, n_nodes::Int64) where {T<:AbstractFloat}
+                        Ms::CuDeviceArray{T, 1}, volume::T, n_total::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= n_nodes
+    if index <= n_total
         mu0 = 4*pi*1e-7
         j = 3*(index-1)
         @inbounds h[j+1] = h_static[j+1]
@@ -18,9 +18,9 @@ end
 function stochastic_field_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                                  eta::CuDeviceArray{T, 1}, Temp::CuDeviceArray{T, 1},
                                  energy::CuDeviceArray{T, 1},
-                                 Ms::CuDeviceArray{T, 1}, factor::Float64, volume::T, n_nodes::Int64) where {T<:AbstractFloat}
+                                 Ms::CuDeviceArray{T, 1}, factor::Float64, volume::T, n_total::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= n_nodes
+    if index <= n_total
         mu0 = 4*pi*1e-7
         j = 3*(index-1)
         @inbounds Ms_local = Ms[index]
@@ -44,9 +44,9 @@ end
 
 function time_zeeman_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         h_static::CuDeviceArray{T, 1}, cufield::CuDeviceArray{T, 1}, energy::CuDeviceArray{T, 1},
-                        Ms::CuDeviceArray{T, 1}, volume::T, fx::T, fy::T, fz::T, n_nodes::Int64) where {T<:AbstractFloat}
+                        Ms::CuDeviceArray{T, 1}, volume::T, fx::T, fy::T, fz::T, n_total::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= n_nodes
+    if index <= n_total
         mu0 = 4*pi*1e-7
         j = 3*(index-1)
         @inbounds h[j+1] = h_static[j+1]*fx
@@ -67,12 +67,12 @@ function exchange_anistropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
     nxy = nx * ny
-    n_nodes = nxy * nz
+    n_total = nxy * nz
     ax = 2 / (dx * dx)
     ay = 2 / (dy * dy)
     az = 2 / (dz * dz)
 
-    if 0 < index <= n_nodes
+    if 0 < index <= n_total
         i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
         indexm = 3*index
         @inbounds mx = m[indexm-2]
@@ -93,7 +93,7 @@ function exchange_anistropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 
         fx, fy, fz = T(0.0), T(0.0), T(0.0)
 
         if k>1 || zperiodic
-            id = (k==1) ? index - nxy + n_nodes : index - nxy
+            id = (k==1) ? index - nxy + n_total : index - nxy
             idm = 3*id
             @inbounds if Ms[id]>0
               @inbounds fz += az*exch*(m[idm] - mz)
@@ -133,7 +133,7 @@ function exchange_anistropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 
         end
 
         if k<nz || zperiodic
-            id = (k==nz) ? index + nxy - n_nodes : index + nxy
+            id = (k==nz) ? index + nxy - n_total : index + nxy
             idm = 3*id
             @inbounds if Ms[id]>0
                 @inbounds fz += az*exch*(m[idm]- mz)
@@ -156,12 +156,12 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
   nxy = nx * ny
-  n_nodes = nxy * nz
+  n_total = nxy * nz
   ax = 2 / (dx * dx)
   ay = 2 / (dy * dy)
   az = 2 / (dz * dz)
 
-  if 0 < index <= n_nodes
+  if 0 < index <= n_total
       i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
@@ -181,7 +181,7 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       id, idm = 0, 0
       fx, fy, fz = T(0.0), T(0.0), T(0.0)
       if k>1 || zperiodic
-          id = (k==1) ? index - nxy + n_nodes : index - nxy
+          id = (k==1) ? index - nxy + n_total : index - nxy
           idm = 3*id
           @inbounds if Ms[id]>0
             @inbounds fx += az*exch*(m[idm-2] - mx)
@@ -231,7 +231,7 @@ function exchange_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       end
 
       if k<nz || zperiodic
-          id = (k==nz) ? index + nxy - n_nodes : index + nxy
+          id = (k==nz) ? index + nxy - n_total : index + nxy
           idm = 3*id
           @inbounds if Ms[id]>0
               @inbounds fx += az*exch*(m[idm-2]- mx)
@@ -256,12 +256,12 @@ function exchange_vector_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
     nxy = nx * ny
-    n_nodes = nxy * nz
+    n_total = nxy * nz
     ax = 2 / (dx * dx)
     ay = 2 / (dy * dy)
     az = 2 / (dz * dz)
 
-    if 0 < index <= n_nodes
+    if 0 < index <= n_total
         i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
         indexm = 3*index
@@ -284,7 +284,7 @@ function exchange_vector_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
         id, idm = 0, 0
         fx, fy, fz = T(0.0), T(0.0), T(0.0)
         if k>1 || zperiodic
-            id = (k==1) ? index - nxy + n_nodes : index - nxy
+            id = (k==1) ? index - nxy + n_total : index - nxy
             idm = 3*id
             @inbounds if Ms[id]>0
                 @inbounds fx += az*exchz*(m[idm-2] - mx)
@@ -334,7 +334,7 @@ function exchange_vector_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
         end
 
         if k<nz || zperiodic
-            id = (k==nz) ? index + nxy - n_nodes : index + nxy
+            id = (k==nz) ? index + nxy - n_total : index + nxy
             idm = 3*id
             @inbounds if Ms[id]>0
                 @inbounds fx += az*exchz*(m[idm-2]- mx)
@@ -361,9 +361,9 @@ function bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
   nxy = nx * ny
-  n_nodes = nxy * nz
+  n_total = nxy * nz
 
-  if 0< index <= n_nodes
+  if 0< index <= n_total
       i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
@@ -382,7 +382,7 @@ function bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       id, idm = 0, 0
       fx, fy, fz = T(0.0), T(0.0), T(0.0)
       if k>1 || zperiodic
-          id = (k==1) ? index - nxy + n_nodes : index - nxy
+          id = (k==1) ? index - nxy + n_total : index - nxy
           idm = 3*id - 2
           @inbounds fx += (Dz/dz)*cross_x(T(0),T(0),T(1),m[idm],m[idm+1],m[idm+2]);
           @inbounds fy += (Dz/dz)*cross_y(T(0),T(0),T(1),m[idm],m[idm+1],m[idm+2]);
@@ -422,7 +422,7 @@ function bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       end
 
       if k<nz || zperiodic
-          id = (k==nz) ? index + nxy - n_nodes : index + nxy
+          id = (k==nz) ? index + nxy - n_total : index + nxy
           idm = 3*id - 2
           @inbounds fx += (Dz/dz)*cross_x(T(0),T(0),T(-1),m[idm],m[idm+1],m[idm+2]);
           @inbounds fy += (Dz/dz)*cross_y(T(0),T(0),T(-1),m[idm],m[idm+1],m[idm+2]);
@@ -501,9 +501,9 @@ function interfacial_dmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
   nxy = nx * ny
-  n_nodes = nxy * nz
+  n_total = nxy * nz
 
-  if 0 < index <= n_nodes
+  if 0 < index <= n_total
       i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
@@ -573,9 +573,9 @@ function spatial_interfacial_dmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArra
   index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
   nxy = nx * ny
-  n_nodes = nxy * nz
+  n_total = nxy * nz
 
-  if 0< index <= n_nodes
+  if 0< index <= n_total
       i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
@@ -646,9 +646,9 @@ function spatial_bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
   index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
 
   nxy = nx * ny
-  n_nodes = nxy * nz
+  n_total = nxy * nz
 
-  if 0< index <= n_nodes
+  if 0< index <= n_total
       i,j,k = Tuple(CUDA.CartesianIndices((nx,ny,nz))[index])
 
       indexm = 3*index
@@ -668,7 +668,7 @@ function spatial_bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       id, idm = 0, 0
       fx, fy, fz = T(0.0), T(0.0), T(0.0)
       if k>1 || zperiodic
-          id = (k==1) ? index - nxy + n_nodes : index - nxy
+          id = (k==1) ? index - nxy + n_total : index - nxy
           idm = 3*id - 2
 		  @inbounds fx += (D/dz)*cross_x(T(0),T(0),T(1),m[idm],m[idm+1],m[idm+2]);
 		  @inbounds fy += (D/dz)*cross_y(T(0),T(0),T(1),m[idm],m[idm+1],m[idm+2]);
@@ -708,7 +708,7 @@ function spatial_bulkdmi_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
       end
 
       if k<nz || zperiodic
-          id = (k==nz) ? index + nxy - n_nodes : index + nxy
+          id = (k==nz) ? index + nxy - n_total : index + nxy
 		  idm = 3*id - 2
 		  @inbounds fx += (D/dz)*cross_x(T(0),T(0),T(-1),m[idm],m[idm+1],m[idm+2]);
 		  @inbounds fy += (D/dz)*cross_y(T(0),T(0),T(-1),m[idm],m[idm+1],m[idm+2]);
@@ -726,9 +726,9 @@ end
 function anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Ku::CuDeviceArray{T, 1},
                         axis_x::T, axis_y::T, axis_z::T,
-                        Ms::CuDeviceArray{T, 1}, volume::T, n_nodes::Int64) where {T<:AbstractFloat}
+                        Ms::CuDeviceArray{T, 1}, volume::T, n_total::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= n_nodes
+    if index <= n_total
         mu0 = 4*pi*1e-7
         j = 3*(index-1)
         @inbounds Ms_local = Ms[index]
@@ -753,9 +753,9 @@ end
 function cubic_anisotropy_kernel!(m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1},
                         energy::CuDeviceArray{T, 1}, Kc::T,
                         axis1::T,axis2::T,axis3::T,axis4::T,axis5::T,axis6::T,axis7::T,axis8::T,axis9::T,
-                        Ms::CuDeviceArray{T, 1}, volume::T, n_nodes::Int64) where {T<:AbstractFloat}
+                        Ms::CuDeviceArray{T, 1}, volume::T, n_total::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if index <= n_nodes
+    if index <= n_total
         mu0 = 4*pi*1e-7
         j = 3*(index-1)
         @inbounds Ms_local = Ms[index]

@@ -81,7 +81,7 @@ function LTEM(ovf_name; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, zero_padding
     dx = ovf.xstepsize
     dy = ovf.ystepsize
     dz = ovf.zstepsize
-    nxyz = nx*ny*nz
+    n_total = nx*ny*nz
     spin = ovf.data
     m = reshape(spin,(3, nx, ny, nz))
 
@@ -346,7 +346,7 @@ end=#
     dx = ovf.xstepsize
     dy = ovf.ystepsize
     dz = ovf.zstepsize
-    nxyz = nx*ny*nz
+    n_total = nx*ny*nz
     spin = ovf.data
     m = reshape(spin,(3, nx, ny, nz))
 

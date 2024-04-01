@@ -24,7 +24,7 @@ function OVF2XRAY(fname; xlim="none", ylim="none", axis=ez, N=-1)
     dx = ovf.xstepsize
     dy = ovf.ystepsize
     dz = ovf.zstepsize
-    nxyz = nx*ny*nz
+    n_total = nx*ny*nz
     spin = ovf.data
 
     mxp, myp, mzp = sum_ovf(ovf, axis=axis)

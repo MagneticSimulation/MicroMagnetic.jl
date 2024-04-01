@@ -2,9 +2,9 @@
 #and https://doi.org/10.1063/1.4896360  where the Barzilai-Borwein (BB) rule is used to speedup
 #the energy minimization
 
-function compute_gk_kernel_1!(gk::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}, n_nodes::Int64) where {T<:AbstractFloat}
+function compute_gk_kernel_1!(gk::CuDeviceArray{T, 1}, m::CuDeviceArray{T, 1}, h::CuDeviceArray{T, 1}, n_total::Int64) where {T<:AbstractFloat}
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    if 0 <index <= n_nodes
+    if 0 <index <= n_total
         j = 3*index - 2
         @inbounds fx,fy,fz = cross_product(m[j],m[j+1],m[j+2], h[j],h[j+1],h[j+2])
         @inbounds gx,gy,gz = cross_product(m[j],m[j+1],m[j+2], fx,fy,fz)
@@ -91,17 +91,17 @@ end
 function run_step(sim::AbstractSim, driver::EnergyMinimizationGPU)
 
   effective_field(sim, sim.spin, 0.0)
-  compute_tau(driver, sim.prespin, sim.spin, driver.field, sim.n_nodes)
+  compute_tau(driver, sim.prespin, sim.spin, driver.field, sim.n_total)
 
   sim.prespin .= sim.spin
 
-  blk, thr = cudims(sim.n_nodes)
+  blk, thr = cudims(sim.n_total)
   @cuda blocks=blk threads=thr run_step_kernel!(driver.gk, sim.spin,
-                               driver.field, sim.pins, driver.tau, sim.n_nodes)
+                               driver.field, sim.pins, driver.tau, sim.n_total)
   driver.steps += 1
-  #max_length_error = error_length_m(sim.spin, sim.n_nodes)
+  #max_length_error = error_length_m(sim.spin, sim.n_total)
   if driver.steps%10 == 0
-    normalise(sim.spin, sim.n_nodes)
+    normalise(sim.spin, sim.n_total)
   end
   return  nothing
 end

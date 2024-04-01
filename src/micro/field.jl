@@ -1,9 +1,9 @@
 function effective_field(zee::Zeeman, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   field = zee.field
   volume = sim.mesh.volume
-  for i = 1:n_nodes
+  for i = 1:n_total
     j = 3*(i-1)
     zee.energy[i] = -mu0*sim.Ms[i]*volume*(spin[j+1]*field[j+1] + spin[j+2]*field[j+2] + spin[j+3]*field[j+3])
   end
@@ -11,16 +11,16 @@ end
 
 function effective_field(zee::TimeZeeman, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   field = zee.field
-  b = reshape(field, 3, n_nodes)
-  b0 = reshape(zee.init_field, 3, n_nodes)
+  b = reshape(field, 3, n_total)
+  b0 = reshape(zee.init_field, 3, n_total)
   volume = sim.mesh.volume
   tx, ty, tz = zee.time_fun(t)
   b[1, :] = b0[1, :] * tx
   b[2, :] = b0[2, :] * ty
   b[3, :] = b0[3, :] * tz
-  for i = 1:n_nodes
+  for i = 1:n_total
     j = 3*(i-1)
     zee.energy[i] = -mu0*sim.Ms[i]*volume*(spin[j+1]*field[j+1] + spin[j+2]*field[j+2] + spin[j+3]*field[j+3])
   end
@@ -29,13 +29,13 @@ end
 function effective_field(anis::Anisotropy, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7
   mesh = sim.mesh
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   field = anis.field
   energy = anis.energy
   Ms = sim.Ms
   Ku = anis.Ku
   axis = anis.axis
-  for i = 1:n_nodes
+  for i = 1:n_total
     if Ms[i] == 0.0
       energy[i] = 0.0
       field[3*i-2] = 0.0
@@ -57,13 +57,13 @@ end
 function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7
   mesh = sim.mesh
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   field = anis.field
   energy = anis.energy
   Ms = sim.Ms
   Kc = anis.Kc
   axis = anis.axis
-  for i = 1:n_nodes
+  for i = 1:n_total
     if Ms[i] == 0.0
       energy[i] = 0.0
       field[3*i-2] = 0.0
@@ -94,7 +94,7 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
   dy = mesh.dy
   dz = mesh.dz
   ngbs = mesh.ngbs
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   field = exch.field
   energy = exch.energy
   A = exch.A
@@ -104,7 +104,7 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
   az = 2.0  / (dz * dz)
   nabla = (ax, ax, ay, ay, az, az)
 
-  for index = 1:n_nodes
+  for index = 1:n_total
     i = 3*index - 2
     if Ms[index] == 0.0
         energy[index] = 0.0
@@ -138,7 +138,7 @@ function effective_field(exch::Vector_Exchange, sim::MicroSim, spin::Array{Float
   dy = mesh.dy
   dz = mesh.dz
   ngbs = mesh.ngbs
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   field = exch.field
   energy = exch.energy
   A = exch.A
@@ -148,7 +148,7 @@ function effective_field(exch::Vector_Exchange, sim::MicroSim, spin::Array{Float
   az = 2.0  / (dz * dz)
   nabla = (ax, ax, ay, ay, az, az)
 
-  for index = 1:n_nodes
+  for index = 1:n_total
     i = 3*index - 2
     if Ms[index] == 0.0
         energy[index] = 0.0
@@ -241,7 +241,7 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64, 1}, t
   dy = mesh.dy
   dz = mesh.dz
   ngbs = mesh.ngbs
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   field = dmi.field
   energy = dmi.energy
   Ms = sim.Ms
@@ -251,7 +251,7 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64, 1}, t
   ay = (0.0, 0.0, 1.0,-1.0, 0.0, 0.0)
   az = (0.0, 0.0, 0.0, 0.0, 1.0,-1.0)
 
-  Threads.@threads for i = 1:n_nodes
+  Threads.@threads for i = 1:n_total
     if Ms[i] == 0.0
       energy[i] = 0.0
       field[3*i-2] = 0.0
@@ -289,7 +289,7 @@ function effective_field(dmi::DMI, sim::MicroSim, spin::Array{Float64, 1}, t::Fl
   dy = mesh.dy
   dz = mesh.dz
   ngbs = mesh.ngbs
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   field = dmi.field
   energy = dmi.energy
   Ms = sim.Ms
@@ -297,7 +297,7 @@ function effective_field(dmi::DMI, sim::MicroSim, spin::Array{Float64, 1}, t::Fl
   b = -0.5*(dmi.alpha_S+dmi.alpha_A-dmi.beta_S+dmi.beta_A)
   c = -0.5*(-dmi.alpha_S+dmi.alpha_A+dmi.beta_S+dmi.beta_A)
 
-  for i = 1:n_nodes
+  for i = 1:n_total
 
     if Ms[i] == 0.0
       energy[i] = 0.0
@@ -364,7 +364,7 @@ function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::Array{Float64
   dy = mesh.dy
   dz = mesh.dz
   ngbs = mesh.ngbs
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   field = dmi.field
   energy = dmi.energy
   Ms = sim.Ms
@@ -374,7 +374,7 @@ function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::Array{Float64
   ay = (1.0,-1.0, 0.0, 0.0)
   az = (0.0, 0.0, 0.0, 0.0)
 
-  Threads.@threads for i = 1:n_nodes
+  Threads.@threads for i = 1:n_total
     if Ms[i] == 0.0
       energy[i] = 0.0
       field[3*i-2] = 0.0

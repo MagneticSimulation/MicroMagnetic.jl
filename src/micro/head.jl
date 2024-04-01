@@ -93,7 +93,7 @@ mutable struct MicroSim <: AbstractSim
   energy::Array{Float64, 1}
   Ms::Array{Float64, 1}
   pins::Array{Bool, 1}
-  n_nodes::Int64
+  n_total::Int64 
   name::String
   driver_name::String
   interactions::Array

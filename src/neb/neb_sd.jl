@@ -6,10 +6,10 @@ mutable struct NEB_SD <: NEBDriver
   nsteps::Int64
 end
 
-function compute_tau(driver::NEB_SD, pre_images::Array{Float64, 2}, images::Array{Float64, 2}, h::Array{Float64, 2}, n_nodes::Int64,N)
+function compute_tau(driver::NEB_SD, pre_images::Array{Float64, 2}, images::Array{Float64, 2}, h::Array{Float64, 2}, n_total::Int64,N)
 
   if driver. == 0
-    for n=1:N, i=0:n_nodes-1  #compute gk[] for step 0
+    for n=1:N, i=0:n_total-1  #compute gk[] for step 0
         j = 3*i+1
         fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], h[j,n],h[j+1,n],h[j+2,n])
         gx,gy,gz = cross_product(images[j,n],images[j+1,n],images[j+2,n], fx,fy,fz)
@@ -22,7 +22,7 @@ function compute_tau(driver::NEB_SD, pre_images::Array{Float64, 2}, images::Arra
   end
   sum1, sum2, sum3 = zeros(N),zeros(N),zeros(N)
   for n=1:N
-    for i=0:n_nodes-1
+    for i=0:n_total-1
         j = 3*i+1
         sx = images[j,n] - pre_images[j,n]
         sy = images[j+1,n] - pre_images[j+1,n]
@@ -50,19 +50,19 @@ function compute_tau(driver::NEB_SD, pre_images::Array{Float64, 2}, images::Arra
      return nothing
 end
 
-function update_images(driver::NEB_SD,images::Array{Float64,2},h::Array{Float64,2},n_nodes::Int64,N::Int64)
+function update_images(driver::NEB_SD,images::Array{Float64,2},h::Array{Float64,2},n_total::Int64,N::Int64)
   tau = driver.tau
-  new_images = zeros(3*n_nodes,N)
+  new_images = zeros(3*n_total,N)
   for n =1:N
     if (n == 1)||(n==N)
-      for i=0:n_nodes-1
+      for i=0:n_total-1
         j = 3*i+1
         new_images[j,n] = images[j,n]
         new_images[j+1,n] = images[j+1,n]
         new_images[j+2,n] = images[j+2,n]
       end
     end
-    for i=0:n_nodes-1
+    for i=0:n_total-1
       j = 3*i+1
       fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], h[j,n],h[j+1,n],h[j+2,n])
       gx,gy,gz = cross_product(images[j,n],images[j+1,n],images[j+2,n], fx,fy,fz)
@@ -77,9 +77,9 @@ function update_images(driver::NEB_SD,images::Array{Float64,2},h::Array{Float64,
     end
   end
   for n=1:N
-    max_length_error = error_length_m(new_images[:,n], n_nodes)
+    max_length_error = error_length_m(new_images[:,n], n_total)
     if max_length_error > 1e-15
-      new_images[:,n] = normalized(new_images[:,n], n_nodes)                                 #fix me
+      new_images[:,n] = normalized(new_images[:,n], n_total)                                 #fix me
     end
   end
   return new_images
@@ -96,13 +96,13 @@ function compute_norm_gk(gk::Array{Float64,2},N::Int)
   return (sum/(N-2))
 end
 
-function compute_gk(images::Array{Float64,2},h::Array{Float64,2},n_nodes::Int64,N::Int64)
-  gk = zeros(3*n_nodes,N)
+function compute_gk(images::Array{Float64,2},h::Array{Float64,2},n_total::Int64,N::Int64)
+  gk = zeros(3*n_total,N)
   for n =1:N
     if (n == 1)||(n==N)
       continue
     end
-    for i=0:n_nodes-1
+    for i=0:n_total-1
       j = 3*i+1
       fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], h[j,n],h[j+1,n],h[j+2,n])
       gk[j,n],gk[j+1,n],gk[j+2,n] = cross_product(images[j,n],images[j+1,n],images[j+2,n], fx,fy,fz)
@@ -113,14 +113,14 @@ end
 
 function search_tau(neb::NEB)
   sim = neb.sim
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   N = neb.N
   driver = neb.driver
-  images=zeros(N,3*n_nodes)
-  h0=zeros(N,3*n_nodes)
+  images=zeros(N,3*n_total)
+  h0=zeros(N,3*n_total)
   images[:] = neb.images[:]
   h0[:] = neb.field[:]
-  for n=1:N, i=0:n_nodes-1  #compute gk[] for step 0
+  for n=1:N, i=0:n_total-1  #compute gk[] for step 0
     j = 3*i+1
     fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], h0[j,n],h0[j+1,n],h0[j+2,n])
     gx,gy,gz = cross_product(images[j,n],images[j+1,n],images[j+2,n], fx,fy,fz)
@@ -133,18 +133,18 @@ function search_tau(neb::NEB)
   tau = driver.min_tau
   tau2 = driver.min_tau
   driver.tau = tau1
-  neb.images = update_images(driver,images,h0,n_nodes,N)
+  neb.images = update_images(driver,images,h0,n_total,N)
 
   effective_field_NEB(neb, neb.spin)
 
-  gk1 =compute_gk(neb.images,neb.field,n_nodes,N)
+  gk1 =compute_gk(neb.images,neb.field,n_total,N)
   gk1_norm = compute_norm_gk(gk1,N)
   for i = 0:100
     tau2 = tau1 + dtau
     driver.tau = tau2
-    neb.images = update_images(driver,images,h0,n_nodes,N)
+    neb.images = update_images(driver,images,h0,n_total,N)
     effective_field_NEB(neb, neb.spin)
-    gk2 =compute_gk(neb.images,neb.field,n_nodes,N)
+    gk2 =compute_gk(neb.images,neb.field,n_total,N)
     gk2_norm = compute_norm_gk(gk2,N)
     if gk1_norm>=gk2_norm
       dtau = 2*dtau
@@ -162,16 +162,16 @@ function search_tau(neb::NEB)
   for j=1:10
     tau1 = a + 1/3*(b-a)
     driver.tau = tau1
-    neb.images = update_images(driver,images,h0,n_nodes,N)
+    neb.images = update_images(driver,images,h0,n_total,N)
     effective_field_NEB(neb, neb.spin)
-    gk1 =compute_gk(neb.images,neb.field,n_nodes,N)
+    gk1 =compute_gk(neb.images,neb.field,n_total,N)
     gk1_norm = compute_norm_gk(gk1,N)
 
     tau2 = a + 2/3*(b-a)
     driver.tau = tau2
-    neb.images = update_images(driver,images,h0,n_nodes,N)
+    neb.images = update_images(driver,images,h0,n_total,N)
     effective_field_NEB(neb, neb.spin)
-    gk2 =compute_gk(neb.images,neb.field,n_nodes,N)
+    gk2 =compute_gk(neb.images,neb.field,n_total,N)
     gk2_norm = compute_norm_gk(gk2,N)
     if gk1_norm<gk2_norm
       a = tau1
@@ -194,15 +194,15 @@ function run_step(neb::NEB)
   images = neb.images
   pre_images = neb.pre_images
   sim = neb.sim
-  n_nodes = sim.n_nodes
-  images=zeros(N,3*n_nodes)
+  n_total = sim.n_total
+  images=zeros(N,3*n_total)
   effective_field_NEB(neb, neb.spin, 0.0)
   if driver.nsteps == 0
     search_tau(neb)
     #driver.tau = 1e-12
-    #compute_tau(driver, pre_images, images, neb.field, n_nodes, N)
+    #compute_tau(driver, pre_images, images, neb.field, n_total, N)
   else
-    compute_tau(driver, pre_images, images, neb.field, n_nodes, N)
+    compute_tau(driver, pre_images, images, neb.field, n_total, N)
   end
   neb.pre_images[:] =  neb.images[:]
   h = neb.field
@@ -212,7 +212,7 @@ function run_step(neb::NEB)
     if (n == 1)||(n==N)
       continue
     end
-    for i=0:sim.n_nodes-1
+    for i=0:sim.n_total-1
       j = 3*i+1
       fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], h[j,n],h[j+1,n],h[j+2,n])
       factor = 0.25*(fx*fx+fy*fy+fz*fz)*tau^2
@@ -225,9 +225,9 @@ function run_step(neb::NEB)
     end
   end
   for n=1:N
-    max_length_error = error_length_m(neb.images[:,n], sim.n_nodes)
+    max_length_error = error_length_m(neb.images[:,n], sim.n_total)
     if max_length_error > 1e-15
-      neb.images[:,n] = normalized(neb.images[:,n], sim.n_nodes)
+      neb.images[:,n] = normalized(neb.images[:,n], sim.n_total)
     end
   end
   driver.nsteps += 1
@@ -251,7 +251,7 @@ end
 function relax_NEB(neb::NEB, maxsteps::Int64, stopping_torque::Float64, save_m_every::Int64, save_vtk_every::Int64, vtk_folder::String,save_ovf_every::Int64,ovf_folder::String)
   N = neb.N
   sim = neb.sim
-  gk_abs = zeros(Float64,3*sim.n_nodes)
+  gk_abs = zeros(Float64,3*sim.n_total)
   driver = neb.driver
   maxtorque=zeros(N)
   if save_m_every>0

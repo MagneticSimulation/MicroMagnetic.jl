@@ -4,11 +4,11 @@ abstract type NEBDriver end
 
 mutable struct NEB <: AbstractSim
     N::Int64  #number of images
-    n_nodes::Int64 # n_nodes = neb.sim.n_nodes*N
+    n_total::Int64 # n_total = neb.sim.n_total*N
     sim::AbstractSim
     init_m::Any
     driver::NEBDriver
-    images::Array{Float64, 2}  #size(images) = (3*n_nodes, N)
+    images::Array{Float64, 2}  #size(images) = (3*n_total, N)
     pre_images::Array{Float64, 2}
     spin::Array{Float64, 1} #A pointer to images
     prespin::Array{Float64, 1} #A pointer to pre_images
@@ -24,40 +24,40 @@ mutable struct NEB <: AbstractSim
 end
 
 function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_constant=1.0e5, driver="LLG")
-    n_nodes = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
+    n_total = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
     N = sum(intervals)+length(intervals)+1
 
     neb = NEB()
     neb.N = N
-    neb.n_nodes = n_nodes * N
+    neb.n_total = n_total * N
     neb.sim = sim
     neb.name = name
     neb.init_m = init_m
-    neb.driver = create_neb_driver(driver, n_nodes, N)
-    neb.images = zeros(Float64, 3*sim.n_nodes, N)
-    neb.pre_images = zeros(Float64, 3*sim.n_nodes, N)
-    neb.spin = reshape(neb.images, 3*sim.n_nodes*N)
-    neb.prespin = reshape(neb.pre_images, 3*sim.n_nodes*N)
-    neb.field = zeros(Float64,3*n_nodes, N)
+    neb.driver = create_neb_driver(driver, n_total, N)
+    neb.images = zeros(Float64, 3*sim.n_total, N)
+    neb.pre_images = zeros(Float64, 3*sim.n_total, N)
+    neb.spin = reshape(neb.images, 3*sim.n_total*N)
+    neb.prespin = reshape(neb.pre_images, 3*sim.n_total*N)
+    neb.field = zeros(Float64,3*n_total, N)
     neb.energy = zeros(Float64, N)
     neb.distance=zeros(Float64,N-1)
     neb.spring_constant = spring_constant
-    neb.tangents = zeros(Float64,3*sim.n_nodes,N)
+    neb.tangents = zeros(Float64,3*sim.n_total,N)
 
     init_saver(neb)
     init_images(neb, intervals)
-    compute_distance(neb.distance,neb.images,N,n_nodes)
+    compute_distance(neb.distance,neb.images,N,n_total)
     compute_system_energy(neb)
     return neb
 end
 
-function create_neb_driver(driver::String, n_nodes::Int64, N::Int64) #TODO: FIX ME
+function create_neb_driver(driver::String, n_total::Int64, N::Int64) #TODO: FIX ME
   if driver=="SD"
-      gk = zeros(Float64,3*n_nodes,N)
+      gk = zeros(Float64,3*n_total,N)
       return NEB_SD(gk, 0.0, 1e-5, 1e-14, 0)
   elseif driver == "LLG"
       tol = 1e-5
-      dopri5 = DormandPrince(n_nodes*N, neb_llg_call_back, tol)
+      dopri5 = DormandPrince(n_total*N, neb_llg_call_back, tol)
       return NEB_LLG_Driver(0, dopri5)
   else
     error("Only Driver 'SD' or 'LLG' is supported!")
@@ -66,7 +66,7 @@ end
 
 function init_images(neb::NEB, intervals::Any)
   sim=neb.sim
-  n_nodes=sim.n_nodes
+  n_total=sim.n_total
   N=neb.N
   images = neb.images
   pics = neb.init_m
@@ -90,7 +90,7 @@ function init_images(neb::NEB, intervals::Any)
     println("Input error!")
   end
 
-  #normalise(neb.spin, neb.n_nodes)
+  #normalise(neb.spin, neb.n_total)
   neb.pre_images[:]=neb.images[:]
 end
 
@@ -114,7 +114,7 @@ end
 
 function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
     sim = neb.sim
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     #neb.spin[:] = spin[:], we already copy spin to neb.images in dopri5
     images = neb.images
     N = neb.N
@@ -129,14 +129,14 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
     end
 
 
-    compute_tangents(neb.tangents,neb.images,neb.energy,N,n_nodes)
+    compute_tangents(neb.tangents,neb.images,neb.energy,N,n_total)
 
     for n=1:N-1
       f = neb.field[:,n]'*neb.tangents[:,n]
       neb.field[:,n] .-= f*neb.tangents[:,n]
     end
 
-    compute_distance(neb.distance,neb.images,N,n_nodes)
+    compute_distance(neb.distance,neb.images,N,n_total)
 
     for n=2:N-1
       neb.field[:,n] .+= neb.spring_constant*(neb.distance[n]-neb.distance[n-1])*neb.tangents[:,n]
@@ -144,7 +144,7 @@ function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
 end
 
 
-function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy::Array{Float64, 1},N::Int,n_nodes::Int)
+function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy::Array{Float64, 1},N::Int,n_total::Int)
   Threads.@threads  for n = 1:N
     if (n==1)||(n==N)
       continue
@@ -169,7 +169,7 @@ function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy:
       t[:,n] = tim + tip
     end
 
-    for i = 1:n_nodes
+    for i = 1:n_total
       j = 3*i - 2
       fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], t[j,n],t[j+1,n],t[j+2,n])
       t[j,n],t[j+1,n],t[j+2,n] = cross_product(fx,fy,fz, images[j,n],images[j+1,n],images[j+2,n])
@@ -183,12 +183,12 @@ function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy:
    return nothing
 end
 
-function compute_distance(distance::Array{Float64,1},images::Array{Float64, 2},N::Int,n_nodes::Int)
+function compute_distance(distance::Array{Float64,1},images::Array{Float64, 2},N::Int,n_total::Int)
     Threads.@threads for n=1:N-1
     m1 = images[:,n]
     m2 = images[:,n+1]
-    l =zeros(n_nodes)
-    for i=1:n_nodes
+    l =zeros(n_total)
+    for i=1:n_total
         j=3*i-2
         m1xm2=cross_product(m1[j],m1[j+1],m1[j+2],m2[j],m2[j+1],m2[j+2])
         l[i]=atan(norm(m1xm2),m1[j]*m2[j]+m1[j+1]*m2[j+1]+m1[j+2]*m2[j+2])
@@ -296,13 +296,13 @@ end
 #Interpolate magnetization between image m1 and image m2, where the total images
 #number is N+1
 function interpolate_m(m1::Array{T,1}, m2::Array{T,1}, N::Int) where T<:AbstractFloat
-    n_nodes = Int(length(m1)/3)
-    m = zeros(3*n_nodes,N+1)
-    b1 = reshape(m1,3,n_nodes)
-    b2 = reshape(m2,3,n_nodes)
+    n_total = Int(length(m1)/3)
+    m = zeros(3*n_total,N+1)
+    b1 = reshape(m1,3,n_total)
+    b2 = reshape(m2,3,n_total)
 
     for i=1:N+1
-        for j=1:n_nodes
+        for j=1:n_total
             k=3*j-2
             amp = b1[:,j]'*b2[:,j]
             if amp > 1
@@ -320,9 +320,9 @@ function interpolate_m(m1::Array{T,1}, m2::Array{T,1}, N::Int) where T<:Abstract
     return m
 end
 
-function cartesian2spherical(m, n_nodes)
-    R, theta, phi  = zeros(n_nodes), zeros(n_nodes), zeros(n_nodes)
-    for j=1:n_nodes
+function cartesian2spherical(m, n_total)
+    R, theta, phi  = zeros(n_total), zeros(n_total), zeros(n_total)
+    for j=1:n_total
         k=3*j-2
         r = sqrt(m[k]^2+m[k+1]^2)
         theta[j] = atan(r, m[k+2])
@@ -335,16 +335,16 @@ end
 #Interpolate magnetization between image m1 and image m2, where the total images
 #number is N+1
 function interpolate_m_spherical(m1::Array{T,1}, m2::Array{T,1}, N::Int) where T<:AbstractFloat
-    n_nodes = Int(length(m1)/3)
+    n_total = Int(length(m1)/3)
 
-    R1, theta1, phi1 = cartesian2spherical(m1, n_nodes)
-    R2, theta2, phi2  = cartesian2spherical(m2, n_nodes)
+    R1, theta1, phi1 = cartesian2spherical(m1, n_total)
+    R2, theta2, phi2  = cartesian2spherical(m2, n_total)
 
-    m = zeros(3*n_nodes,N+1)
+    m = zeros(3*n_total,N+1)
 
     for i=1:N+1
         v = view(m, :, i)
-        for j = 1:n_nodes
+        for j = 1:n_total
             k = 3*j-2
             theta = theta1[j] + (i-1)/(N+1)*(theta2[j] - theta1[j])
             phi = phi1[j] + (i-1)/(N+1)*(phi2[j] - phi1[j])
