@@ -12,16 +12,16 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
 
     sim.name = name
     sim.mesh = mesh
-    n_nodes = mesh.nx*mesh.ny*mesh.nz
-    sim.n_nodes = n_nodes
-    sim.spin = zeros(Float64,3*n_nodes)
-    sim.prespin = zeros(Float64,3*n_nodes)
-    sim.field = zeros(Float64,3*n_nodes)
-    sim.energy = zeros(Float64,n_nodes)
-    sim.Ms = zeros(Float64, n_nodes)
-    sim.pins = zeros(Bool, n_nodes)
+    n_total = mesh.nx*mesh.ny*mesh.nz
+    sim.n_total = n_total
+    sim.spin = zeros(Float64,3*n_total)
+    sim.prespin = zeros(Float64,3*n_total)
+    sim.field = zeros(Float64,3*n_total)
+    sim.energy = zeros(Float64,n_total)
+    sim.Ms = zeros(Float64, n_total)
+    sim.pins = zeros(Bool, n_total)
     sim.driver_name = driver
-    sim.driver = create_driver(driver, integrator, n_nodes)    
+    sim.driver = create_driver(driver, integrator, n_total)    
     sim.interactions = []
     sim.save_data = save_data
     sim.saver = create_saver(string(name, "_", lowercase(driver), ".txt"), driver)
@@ -68,7 +68,7 @@ axis could be JuMag.ex, JuMag.ey or JuMag.ez.
 """
 function set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
     geo = create_cylinder(sim.mesh, axis, r1=r1, r2=r2)
-    for i in 1:sim.n_nodes
+    for i in 1:sim.n_total
         if geo.shape[i]
             sim.Ms[i] = Ms
         end
@@ -128,11 +128,11 @@ function set_aj(sim::AbstractSim, init_aj)
 end
 
 function average_m(sim::AbstractSim)
-  b = reshape(sim.spin, 3, sim.n_nodes)
+  b = reshape(sim.spin, 3, sim.n_total)
   mx,my,mz = 0.0,0.0,0.0
   n = 0
   ms = isa(sim, MicroSim) ? sim.Ms : sim.mu_s
-  for i = 1:sim.n_nodes
+  for i = 1:sim.n_total
     if ms[i]>0
       n += 1
       mx += b[1,i]
@@ -170,9 +170,9 @@ or
 function init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
   init_vector!(sim.prespin, sim.mesh, m0)
   if norm
-    normalise(sim.prespin, sim.n_nodes)
+    normalise(sim.prespin, sim.n_total)
   end
-  for i = 1:sim.n_nodes
+  for i = 1:sim.n_total
       if sim.Ms[i] == 0.0
           sim.prespin[3*i-2] = 0
           sim.prespin[3*i-1] = 0
@@ -203,9 +203,9 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
         end
 
         if isa(sim, AbstractSimGPU)
-            sim.driver = create_driver_gpu(driver, integrator, sim.n_nodes)
+            sim.driver = create_driver_gpu(driver, integrator, sim.n_total)
         else
-            sim.driver = create_driver(driver, integrator, sim.n_nodes)
+            sim.driver = create_driver(driver, integrator, sim.n_total)
         end
         sim.driver_name = driver    
     end
@@ -275,11 +275,11 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
 
     time_factor =  using_time_factor ? 2.21e5/2 : 1.0
 
-    N_spins = sim.n_nodes
+    N_spins = sim.n_total
 
     if _cuda_available.x && (isa(sim, MicroSimGPU) || isa(sim, AtomicSimGPU))
         T = _cuda_using_double.x ? Float64 : Float32
-        dm = CUDA.zeros(T, 3*sim.n_nodes)
+        dm = CUDA.zeros(T, 3*sim.n_total)
     else
         dm = zeros(Float64,3*N_spins)
     end
@@ -374,7 +374,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayle
           return
       elseif t_end == integrator.t
           integrator.omega_t[:] = integrator.omega[:]
-          omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_nodes)
+          omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
           sim.saver.t = t_end
           sim.saver.nsteps += 1
           if save_data
@@ -384,7 +384,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayle
           return
       elseif t_end > integrator.t - integrator.step && integrator.step > 0 && t_end < integrator.t
           interpolation_dopri5(integrator, t_end)
-          omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_nodes)
+          omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
           sim.saver.t = t_end
           sim.saver.nsteps += 1
           if save_data
@@ -409,7 +409,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayle
       end
 
       interpolation_dopri5(integrator, t_end)
-      omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_nodes)
+      omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
       sim.saver.t = t_end
       sim.saver.nsteps += 1
       if save_data

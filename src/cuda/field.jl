@@ -1,15 +1,15 @@
 using CUDA
 
 function effective_field(zeeman::ZeemanGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   volume = sim.mesh.volume
   blocks_n, threads_n = sim.blocks, sim.threads
-  @cuda blocks=blocks_n threads=threads_n zeeman_kernel!(spin, sim.field, zeeman.cufield, sim.energy, sim.Ms, volume, n_nodes)
+  @cuda blocks=blocks_n threads=threads_n zeeman_kernel!(spin, sim.field, zeeman.cufield, sim.energy, sim.Ms, volume, n_total)
   return nothing
 end
 
 function effective_field(stochastic::StochasticFieldGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   volume = sim.mesh.volume
   integrator = sim.driver.ode
 
@@ -26,21 +26,21 @@ function effective_field(stochastic::StochasticFieldGPU, sim::MicroSimGPU, spin:
   factor = 2*alpha*k_B/(mu_0*volume*gamma*dt)
 
   blocks_n, threads_n = sim.blocks, sim.threads
-  @cuda blocks=blocks_n threads=threads_n stochastic_field_kernel!(spin, sim.field, stochastic.eta, stochastic.T, sim.energy, sim.Ms, factor, volume, n_nodes)
+  @cuda blocks=blocks_n threads=threads_n stochastic_field_kernel!(spin, sim.field, stochastic.eta, stochastic.T, sim.energy, sim.Ms, factor, volume, n_total)
   return nothing
 end
 
 function effective_field(zeeman::TimeZeemanGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   volume = sim.mesh.volume
   blocks_n, threads_n = sim.blocks, sim.threads
   tx, ty, tz = zeeman.time_fun(t)
-  @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, zeeman.cufield, sim.energy, sim.Ms, volume, T(tx), T(ty), T(tz), n_nodes)
+  @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, zeeman.cufield, sim.energy, sim.Ms, volume, T(tx), T(ty), T(tz), n_total)
   return nothing
 end
 
 function effective_field(exch::ExchangeGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
   @cuda blocks=blocks_n threads=threads_n exchange_kernel!(spin, sim.field, sim.energy, sim.Ms, exch.A,
@@ -50,7 +50,7 @@ function effective_field(exch::ExchangeGPU, sim::MicroSimGPU, spin::CuArray{T, 1
 end
 
 function effective_field(exch::ExchangeAnistropyGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
   @cuda blocks=blocks_n threads=threads_n exchange_anistropy_kernel!(spin, sim.field, sim.energy, sim.Ms, exch.kea,
@@ -60,7 +60,7 @@ function effective_field(exch::ExchangeAnistropyGPU, sim::MicroSimGPU, spin::CuA
 end
 
 function effective_field(exch::Vector_ExchangeGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
   @cuda blocks=blocks_n threads=threads_n exchange_vector_kernel!(spin, sim.field, sim.energy, sim.Ms, exch.A,
@@ -70,7 +70,7 @@ function effective_field(exch::Vector_ExchangeGPU, sim::MicroSimGPU, spin::CuArr
 end
 
 function effective_field(exch::ExchangeRKKYGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
   @cuda blocks=blocks_n threads=threads_n exchange_kernel_rkky!(spin, sim.field, sim.energy, sim.Ms, exch.J/mesh.dz, mesh.volume,
@@ -79,7 +79,7 @@ function effective_field(exch::ExchangeRKKYGPU, sim::MicroSimGPU, spin::CuArray{
 end
 
 function effective_field(dmi::BulkDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
   @cuda blocks=blocks_n threads=threads_n bulkdmi_kernel!(spin, sim.field, sim.energy, sim.Ms,
@@ -89,7 +89,7 @@ function effective_field(dmi::BulkDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1},
 end
 
 function effective_field(dmi::InterlayerDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
   @cuda blocks=blocks_n threads=threads_n interlayer_dmi_kernel!(spin, sim.field, sim.energy, sim.Ms,
@@ -99,7 +99,7 @@ function effective_field(dmi::InterlayerDMIGPU, sim::MicroSimGPU, spin::CuArray{
 end
 
 function effective_field(dmi::InterfacialDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
   @cuda blocks=blocks_n threads=threads_n interfacial_dmi_kernel!(spin, sim.field, sim.energy, sim.Ms,
@@ -109,7 +109,7 @@ function effective_field(dmi::InterfacialDMIGPU, sim::MicroSimGPU, spin::CuArray
 end
 
 function effective_field(dmi::SpatialInterfacialDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
   @cuda blocks=blocks_n threads=threads_n spatial_interfacial_dmi_kernel!(spin, sim.field, sim.energy, sim.Ms,
@@ -120,7 +120,7 @@ end
 
 
 function effective_field(dmi::SpatialBulkDMIGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   mesh = sim.mesh
   blocks_n, threads_n = sim.blocks, sim.threads
   @cuda blocks=blocks_n threads=threads_n spatial_bulkdmi_kernel!(spin, sim.field, sim.energy, sim.Ms,
@@ -136,7 +136,7 @@ function effective_field(anis::AnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T,
     volume = sim.mesh.volume
     @cuda blocks=blocks_n threads=threads_n anisotropy_kernel!(spin, sim.field, sim.energy, anis.Ku,
                                          T(axis[1]), T(axis[2]),T(axis[3]),
-                                         sim.Ms, volume, sim.n_nodes)
+                                         sim.Ms, volume, sim.n_total)
     return nothing
 end
 
@@ -146,7 +146,7 @@ function effective_field(anis::CubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArr
   axis = anis.axis
   @cuda blocks=blocks_n threads=threads_n cubic_anisotropy_kernel!(spin, sim.field, sim.energy, anis.Kc,
                                        axis[1],axis[2],axis[3],axis[4],axis[5],axis[6],axis[7],axis[8],axis[9],
-                                       sim.Ms, volume, sim.n_nodes)
+                                       sim.Ms, volume, sim.n_total)
   return nothing
 end
 

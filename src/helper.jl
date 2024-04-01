@@ -1,5 +1,5 @@
 function  init_scalar!(v::Array{T, 1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
-    for i = 1:mesh.n_nodes
+    for i = 1:mesh.n_total
         v[i] = init
     end
     return nothing
@@ -34,9 +34,9 @@ function init_scalar!(v::Array{Bool, 1}, mesh::Mesh, init_fun::Function)
 end
 
 function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Function) where {T<:AbstractFloat}
-  n_nodes = mesh.nx*mesh.ny*mesh.nz
+  n_total = mesh.nx*mesh.ny*mesh.nz
   dx,dy,dz = mesh.dx, mesh.dy, mesh.dz
-  b = reshape(v, 3, n_nodes)
+  b = reshape(v, 3, n_total)
   for i = 1:mesh.nx
     for j = 1:mesh.ny
       for k = 1:mesh.nz
@@ -60,7 +60,7 @@ end
 
 
 function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Tuple{Real,Real,Real}) where {T<:AbstractFloat}
-  #n_nodes = mesh.nx*mesh.ny*mesh.nz
+  #n_total = mesh.nx*mesh.ny*mesh.nz
   N = length(v)
   b = reshape(v, 3, div(N,3))
   b[1, :] .= init[1]
@@ -535,13 +535,13 @@ end
 function compute_cpp_force(m::Array{T, 1}, mesh::Mesh; p=(0,1,0)) where {T<:AbstractFloat}
     nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy = mesh.dx, mesh.dy
-    n_nodes = mesh.n_nodes
+    n_total = mesh.n_total
     ngbs = mesh.ngbs
 
     pxm, pym = partial_xy(m, mesh)
-    fx = zeros(T, n_nodes)
-    fy = zeros(T, n_nodes)
-    for i = 1:n_nodes
+    fx = zeros(T, n_total)
+    fy = zeros(T, n_total)
+    for i = 1:n_total
       j = 3*i-2
       mx, my, mz = m[j], m[j+1], m[j+2]
       fx[i] = p[1]* cross_x(mx, my, mz, pxm[j], pxm[j+1], pxm[j+2])

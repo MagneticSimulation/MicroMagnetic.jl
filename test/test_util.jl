@@ -17,8 +17,8 @@ function test_init_scalar(mesh)
 	function index_wrapper(i,j,k,dx,dy,dz)
 		return JuMag.index(i,j,k,mesh.nx, mesh.ny, mesh.nz)
 	end
-	nxyz = mesh.nxyz
-	v = zeros(Float64, nxyz)
+	n_total = mesh.n_total
+	v = zeros(Float64, n_total)
 	JuMag.init_scalar!(v, mesh, index_wrapper)
 	v3d = reshape(v, mesh.nx, mesh.ny, mesh.nz)
 	id = 0.0

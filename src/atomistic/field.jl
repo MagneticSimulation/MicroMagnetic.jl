@@ -1,8 +1,8 @@
 function effective_field(zeeman::TimeZeemanGPU, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     blocks_n, threads_n = sim.blocks, sim.threads
     tx, ty, tz = zeeman.time_fun(t)
-    @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, zeeman.cufield, sim.energy, sim.mu_s, T(1), T(tx), T(ty), T(tz), n_nodes)
+    @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, zeeman.cufield, sim.energy, sim.mu_s, T(1), T(tx), T(ty), T(tz), n_total)
     return nothing
   end
 
@@ -21,7 +21,7 @@ function effective_field(zeeman::ZeemanGPU, sim::AtomicSimGPU, spin::CuArray{T, 
         return nothing
     end
 
-    N = sim.n_nodes
+    N = sim.n_total
     blk, thr = cudims(N)
     @cuda blocks=blk threads=thr __kernel!(spin, sim.field, zeeman.cufield, sim.energy, sim.mu_s, N)
 
@@ -54,7 +54,7 @@ function effective_field(anis::AnisotropyGPU, sim::AtomicSimGPU, spin::CuArray{T
         return nothing
     end
 
-    N = sim.n_nodes
+    N = sim.n_total
     axis = anis.axis
     blk, thr = cudims(N)
     @cuda blocks=blk threads=thr __kernel!(spin, sim.field, sim.energy, anis.Ku, axis[1], axis[2], axis[3], sim.mu_s, N)
@@ -93,7 +93,7 @@ function effective_field(anis::TubeAnisotropy, sim::AtomicSimGPU, spin::CuArray{
         return nothing
     end
 
-    N = sim.n_nodes
+    N = sim.n_total
     blk, thr = cudims(N)
     @cuda blocks=blk threads=thr __kernel!(spin, sim.field, sim.energy, anis.Ku, anis.axes, sim.mu_s, N)
 
@@ -136,7 +136,7 @@ function effective_field(exch::HeisenbergExchange, sim::AtomicSimGPU, spin::CuAr
         return nothing
     end
 
-    N = sim.n_nodes
+    N = sim.n_total
     blk, thr = cudims(N)
     ngbs = sim.mesh.ngbs
     n_ngbs = sim.mesh.n_ngbs
@@ -181,7 +181,7 @@ function effective_field(next_exch::NextHeisenbergExchange, sim::AtomicSimGPU, s
         return nothing
     end
 
-    N = sim.n_nodes
+    N = sim.n_total
     blk, thr = cudims(N)
     nngbs = sim.mesh.nngbs  #   next-nearest neigbours
     nn_ngbs = sim.mesh.nn_ngbs
@@ -225,7 +225,7 @@ function effective_field(next_next_exch::NextNextHeisenbergExchange, sim::Atomic
         return nothing
     end
 
-    N = sim.n_nodes
+    N = sim.n_total
     blk, thr = cudims(N)
     nnngbs = sim.mesh.nnngbs  #   next-nearest neigbours
     nnn_ngbs = sim.mesh.nnn_ngbs
@@ -269,7 +269,7 @@ function effective_field(next_next_next_exch::NextNextNextHeisenbergExchange, si
         return nothing
     end
 
-    N = sim.n_nodes
+    N = sim.n_total
     blk, thr = cudims(N)
     nnnngbs = sim.mesh.nnnngbs  #   next-nearest neigbours
     nnnn_ngbs = sim.mesh.nnnn_ngbs
@@ -319,7 +319,7 @@ function effective_field(dmi::HeisenbergBulkDMI, sim::AtomicSimGPU, spin::CuArra
         return nothing
     end
 
-    N = sim.n_nodes
+    N = sim.n_total
     blk, thr = cudims(N)
     ngbs = sim.mesh.ngbs
     n_ngbs = sim.mesh.n_ngbs
@@ -399,7 +399,7 @@ function effective_field(dmi::HeisenbergTubeBulkDMI, sim::AtomicSimGPU, spin::Cu
         return nothing
     end
 
-    N = sim.n_nodes
+    N = sim.n_total
     blk, thr = cudims(N)
     ngbs = sim.mesh.ngbs
     n_ngbs = sim.mesh.n_ngbs
@@ -413,7 +413,7 @@ end
 
 
 function effective_field(stochastic::StochasticFieldGPU, sim::AtomicSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     integrator = sim.driver.ode
   
     if integrator.nsteps > stochastic.nsteps
@@ -431,7 +431,7 @@ function effective_field(stochastic::StochasticFieldGPU, sim::AtomicSimGPU, spin
     volume = 1.0/mu0 # we need this factor to make the energy density correctly
   
     blocks_n, threads_n = sim.blocks, sim.threads
-    @cuda blocks=blocks_n threads=threads_n stochastic_field_kernel!(spin, sim.field, stochastic.eta, stochastic.T, sim.energy, sim.mu_s, factor, volume, n_nodes)
+    @cuda blocks=blocks_n threads=threads_n stochastic_field_kernel!(spin, sim.field, stochastic.eta, stochastic.T, sim.energy, sim.mu_s, factor, volume, n_total)
     return nothing
   end
 
@@ -445,7 +445,7 @@ function effective_field(stochastic::StochasticFieldGPU, sim::AtomicSimGPU, spin
     Ex, Ey = laser.E*sin_t, laser.E*cos_t
     Hx, Hy = laser.B*cos_t, -laser.B*sin_t
 
-    N = sim.n_nodes
+    N = sim.n_total
     blk, thr = cudims(N)
     if laser.direction == 001
         @cuda blocks=blk threads=thr __magnetoelectric_laser__kernel_001!(spin, sim.field, sim.energy, 

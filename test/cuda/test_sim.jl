@@ -11,7 +11,7 @@ mesh =  FDMeshGPU(dx=1.1e-9, nx=10, ny=2)
 sim = Sim(mesh, driver="LLG")
 set_Ms(sim, 1.0)
 
-@test sim.nxyz == 20
+@test sim.n_total == 20
 
 init_m0(sim, (1.0, 1.0, 0))
 println(sim.spin)

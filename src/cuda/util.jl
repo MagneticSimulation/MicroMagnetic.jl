@@ -113,23 +113,23 @@ function  init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init::Number) where {T<:Abs
 end
 
 function init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init_fun::Function) where {T<:AbstractFloat}
-    init_v = zeros(T, mesh.n_nodes)
+    init_v = zeros(T, mesh.n_total)
     init_scalar!(init_v, mesh, init_fun)
     copyto!(v, init_v)
     return true
 end
 
 function  init_scalar!(v::CuArray{T1, 1}, mesh::Mesh, init::Array{T2, 1}) where {T1,T2<:AbstractFloat}
-    init_v  = zeros(T1, mesh.n_nodes)
+    init_v  = zeros(T1, mesh.n_total)
     init_v[:] .= init
     copyto!(v, init_v)
     return true
 end
 
 function init_vector!(v::Array{T, 1}, mesh::TriangularMeshGPU, init::Function) where {T<:AbstractFloat}
-  n_nodes = mesh.nx*mesh.ny*mesh.nz
+  n_total = mesh.nx*mesh.ny*mesh.nz
   dx,dy = mesh.dx, mesh.dy
-  b = reshape(v, 3, n_nodes)
+  b = reshape(v, 3, n_total)
   for i = 1:mesh.nx, j = 1:mesh.ny, k = 1:mesh.nz
     id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
     vec_value = init(i,j,k, mesh.nx, mesh.ny, mesh.nz)
@@ -141,8 +141,8 @@ function init_vector!(v::Array{T, 1}, mesh::TriangularMeshGPU, init::Function) w
 end
 
 function init_vector!(v::Array{T, 1}, mesh::CubicMeshGPU, init::Function) where {T<:AbstractFloat}
-  n_nodes = mesh.nx*mesh.ny*mesh.nz
-  b = reshape(v, 3, n_nodes)
+  n_total = mesh.nx*mesh.ny*mesh.nz
+  b = reshape(v, 3, n_total)
   for i = 1:mesh.nx, j = 1:mesh.ny, k = 1:mesh.nz
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
         vec_value = init(i,j,k, mesh.nx, mesh.ny, mesh.nz)
@@ -153,7 +153,7 @@ function init_vector!(v::Array{T, 1}, mesh::CubicMeshGPU, init::Function) where 
 end
 
 function init_vector!(v::Array{T, 1}, mesh::FccMeshGPU, init::Function) where {T<:AbstractFloat}
-  n_spins = mesh.n_nodes
+  n_spins = mesh.n_total
   b = reshape(v, 3, n_spins)
   cds = mesh.coordinates
   for i = 1:n_spins
@@ -165,8 +165,8 @@ function init_vector!(v::Array{T, 1}, mesh::FccMeshGPU, init::Function) where {T
 end
 
 function init_vector!(v::Array{T, 1}, mesh::CylindricalTubeMeshGPU, init::Function) where {T<:AbstractFloat}
-  n_nodes = mesh.n_nodes
-  b = reshape(v, 3, n_nodes)
+  n_total = mesh.n_total
+  b = reshape(v, 3, n_total)
   for i = 1:mesh.nr, k = 1:mesh.nz
     id = index(i, 1, k, mesh.nr, 1, mesh.nz)
     b[:, id] .=  init(i, k, mesh.nr, mesh.nz)
@@ -175,7 +175,7 @@ end
 
 function init_vector!(v::CuArray{T, 1}, mesh::Mesh, init::Any) where {T<:AbstractFloat}
     F = _cuda_using_double.x ? Float64 : Float32
-    tmp = zeros(F, 3*mesh.n_nodes)
+    tmp = zeros(F, 3*mesh.n_total)
     init_vector!(tmp, mesh, init)
     copyto!(v, tmp)
     return true
@@ -256,18 +256,18 @@ end
 
 
 function average_m(sim::AbstractSimGPU)
-  b = reshape(sim.spin, 3, sim.n_nodes)
-  return Tuple(sum(b, dims=2)./sim.n_nodes)  #FIXME: using non-zero N in general case?
+  b = reshape(sim.spin, 3, sim.n_total)
+  return Tuple(sum(b, dims=2)./sim.n_total)  #FIXME: using non-zero N in general case?
 end
 
 function average_m(sim::AbstractSimGPU, shape::CuArray{Bool, 1})
-  b = reshape(sim.spin, 3, sim.n_nodes)
+  b = reshape(sim.spin, 3, sim.n_total)
   return Tuple(sum(b, dims=2)./sum(shape))
 end
 
 function average_m_with_shape(sim::AbstractSimGPU)
     shape = sim.shape
-  b = reshape(sim.spin, 3, sim.n_nodes)
+  b = reshape(sim.spin, 3, sim.n_total)
   return Tuple(sum(b, dims=2)./sum(shape))
 end
 

@@ -12,7 +12,7 @@ mutable struct AtomicSimGPU{T<:AbstractFloat} <:AbstractSimGPU
   mu_s::CuArray{T, 1}
   pins::CuArray{Bool, 1}
   total_energy::T
-  n_nodes::Int64
+  n_total::Int64
   blocks::Int64
   threads::Int64
   name::String

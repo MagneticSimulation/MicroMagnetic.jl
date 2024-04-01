@@ -37,7 +37,7 @@ expected_x =-2*A/(mu0*Ms)*(2*pi/L)^2*sin.((2*pi/L).*xs);
 expected_y =-2*A/(mu0*Ms)*(2*pi/L)^2*sin.((2*pi/L).*xs.+1.2);
 expected_z =-2*A/(mu0*Ms)*(2*pi/L)^2*sin.((2*pi/L).*xs.+2.3);
 
-b = reshape(sim.field, 3, sim.nxyz)
+b = reshape(sim.field, 3, sim.n_total)
 println(maximum(b[1,:].-expected_x)./Ms)
 @test (maximum(b[1,:].-expected_x)./Ms<2e-4)
 @test (maximum(b[2,:].-expected_y)./Ms<2e-4)
@@ -54,7 +54,7 @@ init_m0(sim, (0.6,0.8,0))
 r = add_exch_rkky(sim, sigma)
 
 JuMag.effective_field(sim, sim.spin, 0.0)
-b = reshape(sim.field, 3, sim.nxyz)
+b = reshape(sim.field, 3, sim.n_total)
 println(b)
 fx = sigma/Delta/(mu0*Ms)*0.6
 fy = sigma/Delta/(mu0*Ms)*0.8

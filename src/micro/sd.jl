@@ -32,7 +32,7 @@ function search_tau(sim::AbstractSim)
   tau = 0.0
   tau2 = 0.0
 
-  N = sim.n_nodes
+  N = sim.n_total
   
   m = sim.spin
   h = sim.field
@@ -146,7 +146,7 @@ end
 
 function run_step(sim::AbstractSim, driver::EnergyMinimization)
 
-  N_spins = sim.n_nodes
+  N_spins = sim.n_total
 
   effective_field(sim, sim.spin, 0.0)
   if driver.steps == 0

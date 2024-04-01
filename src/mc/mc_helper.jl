@@ -51,7 +51,7 @@ mutable struct MonteCarlo{TF<:AbstractFloat} <:AbstractSimGPU
   energy::CuArray{TF, 1}
   delta_E::CuArray{TF, 1}
   total_energy::TF
-  n_nodes::Int64
+  n_total::Int64
   steps::Int64
   name::String
   T::Float64
@@ -80,7 +80,7 @@ end
 function compute_site_energy_exch_dmi(sim::MonteCarlo, energy::ExchangeMC, bias::Int64, mesh::CubicMeshGPU)
     exch = sim.exch
     dmi = sim.dmi
-    blk, thr = cudims(sim.n_nodes)
+    blk, thr = cudims(sim.n_total)
     @cuda blocks=blk threads=thr add_dE_exch_dmi_cubic_mesh_kernel!(sim.spin, sim.nextspin,
                                         sim.shape,
                                         sim.energy, mesh.ngbs, mesh.nngbs,
@@ -92,7 +92,7 @@ end
 function compute_site_energy_exch_dmi(sim::MonteCarlo, energy::NearestExchangeMC, bias::Int64, mesh::TriangularMeshGPU)
     exch = sim.exch
     dmi = sim.dmi
-    blk, thr = cudims(sim.n_nodes)
+    blk, thr = cudims(sim.n_total)
     @cuda blocks=blk threads=thr add_dE_exch_dmi_triangular_mesh_kernel!(sim.spin, sim.nextspin,
                                         sim.shape,
                                         sim.energy, mesh.ngbs,
@@ -105,7 +105,7 @@ end
 function compute_site_energy_zeeman_anis(sim::MonteCarlo, energy::UniformAnisotropyMC, bias::Int64, mesh::CubicMeshGPU)
     zee = sim.zee
     anis = sim.anis
-    blk, thr = cudims(sim.n_nodes)
+    blk, thr = cudims(sim.n_total)
     @cuda blocks=blk threads=thr dE_zeeman_anisotropy_cubic_mesh_kernel!(sim.spin,
                                         sim.nextspin, sim.shape,
                                         sim.energy, mesh.ngbs,
@@ -117,7 +117,7 @@ end
 function compute_site_energy_zeeman_anis(sim::MonteCarlo, energy::UniformAnisotropyMC, bias::Int64, mesh::TriangularMeshGPU)
     zee = sim.zee
     anis = sim.anis
-    blk, thr = cudims(sim.n_nodes)
+    blk, thr = cudims(sim.n_total)
     @cuda blocks=blk threads=thr dE_zeeman_anisotropy_triangular_mesh_kernel!(sim.spin,
                                         sim.nextspin, sim.shape,
                                         sim.energy, mesh.ngbs,
@@ -129,7 +129,7 @@ end
 function compute_site_energy_zeeman_anis(sim::MonteCarlo, energy::KagomeAnisotropyMC, bias::Int64, mesh::TriangularMeshGPU)
     zee = sim.zee
     anis = sim.anis
-    blk, thr = cudims(sim.n_nodes)
+    blk, thr = cudims(sim.n_total)
     @cuda blocks=blk threads=thr dE_zeeman_kagome_anisotropy_triangular_mesh_kernel!(sim.spin,
                                         sim.nextspin, sim.shape,
                                         sim.energy, mesh.ngbs,
@@ -150,13 +150,13 @@ function compute_system_energy(sim::MonteCarlo, energy::UniformAnisotropyMC, mes
 
     zee = sim.zee
     anis = sim.anis
-    blk, thr = cudims(sim.n_nodes)
+    blk, thr = cudims(sim.n_total)
     @cuda blocks=blk threads=thr total_E_zeeman_anisotropy_kernel!(sim.spin,
                                         sim.shape,
                                         sim.energy,
                                         zee.Hx, zee.Hy, zee.Hz,
                                         anis.Ku, anis.Kc, anis.ux, anis.uy, anis.uz,
-                                        mesh.n_nodes)
+                                        mesh.n_total)
 
     return nothing
 end
@@ -166,13 +166,13 @@ function compute_system_energy(sim::MonteCarlo, energy::ExchangeMC, mesh::CubicM
 
     exch = sim.exch
     dmi = sim.dmi
-    blk, thr = cudims(sim.n_nodes)
+    blk, thr = cudims(sim.n_total)
     @cuda blocks=blk threads=thr add_total_E_exch_dmi_cubic_mesh_kernel!(sim.spin,
                                         sim.shape,
                                         sim.energy, mesh.ngbs, mesh.nngbs,
                                         mesh.n_ngbs,
                                         exch.J, exch.J1, dmi.D, dmi.D1,
-                                        mesh.n_nodes)
+                                        mesh.n_total)
 
     return nothing
 end
@@ -182,13 +182,13 @@ function compute_system_energy(sim::MonteCarlo, energy::NearestExchangeMC, mesh:
 
     exch = sim.exch
     dmi = sim.dmi
-    blk, thr = cudims(sim.n_nodes)
+    blk, thr = cudims(sim.n_total)
     @cuda blocks=blk threads=thr add_total_E_exch_dmi_triangular_mesh_kernel!(sim.spin,
                                         sim.shape,
                                         sim.energy, mesh.ngbs,
                                         mesh.n_ngbs,
                                         exch.J,  dmi.D,
-                                        mesh.n_nodes)
+                                        mesh.n_total)
 
     return nothing
 end

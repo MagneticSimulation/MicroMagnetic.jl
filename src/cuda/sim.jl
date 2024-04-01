@@ -11,24 +11,24 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince"
         sim = AtomicSimGPU{Float}()
     end
     sim.mesh = mesh
-    n_nodes = mesh.n_nodes
+    n_total = mesh.n_total
 
-    sim.n_nodes = n_nodes
-    sim.spin = CUDA.zeros(Float, 3*n_nodes)
-    sim.prespin = CUDA.zeros(Float,3*n_nodes)
-    sim.field = CUDA.zeros(Float,3*n_nodes)
-    sim.energy = CUDA.zeros(Float,n_nodes)
+    sim.n_total = n_total
+    sim.spin = CUDA.zeros(Float, 3*n_total)
+    sim.prespin = CUDA.zeros(Float,3*n_total)
+    sim.field = CUDA.zeros(Float,3*n_total)
+    sim.energy = CUDA.zeros(Float,n_total)
     if isa(mesh, FDMeshGPU)
-        sim.Ms = CUDA.zeros(Float, n_nodes)
+        sim.Ms = CUDA.zeros(Float, n_total)
     else
-        sim.mu_s = CUDA.zeros(Float, n_nodes)
+        sim.mu_s = CUDA.zeros(Float, n_total)
     end
-    sim.pins = CUDA.zeros(Bool, n_nodes)
+    sim.pins = CUDA.zeros(Bool, n_total)
     sim.total_energy = 0.0
     sim.interactions = []
     sim.save_data = save_data
 
-    sim.driver = create_driver_gpu(driver, integrator, n_nodes)
+    sim.driver = create_driver_gpu(driver, integrator, n_total)
     sim.driver_name = driver
 
     sim.save_data = save_data
@@ -36,7 +36,7 @@ function Sim(mesh::MeshGPU; driver="LLG", name="dyn", integrator="DormandPrince"
         sim.saver = create_saver(string(name, "_", lowercase(driver), ".txt"), driver)
     end
     
-    blocks, threads = cudims(n_nodes)
+    blocks, threads = cudims(n_total)
     sim.blocks = blocks
     sim.threads = threads
     sim.name = name
@@ -51,7 +51,7 @@ end
 """
 function set_Ms(sim::MicroSimGPU, Ms::NumberOrArrayOrFunction)
     Float = _cuda_using_double.x ? Float64 : Float32
-    Ms_a = zeros(Float, sim.n_nodes)
+    Ms_a = zeros(Float, sim.n_total)
     init_scalar!(Ms_a, sim.mesh, Ms)
 
     if any(isnan, Ms_a)
@@ -69,8 +69,8 @@ end
 function set_Ms_cylindrical(sim::MicroSimGPU, Ms::Number; axis=ez, r1=0, r2=0)
     geo = create_cylinder(sim.mesh, axis, r1=r1, r2=r2)
     Float = _cuda_using_double.x ? Float64 : Float32
-    Ms_array = zeros(Float, sim.n_nodes)
-    for i in 1:sim.n_nodes
+    Ms_array = zeros(Float, sim.n_total)
+    for i in 1:sim.n_total
         if geo.shape[i]
             Ms_array[i] = Ms
         end
@@ -81,7 +81,7 @@ end
 
 
 function set_pinning(sim::MicroSimGPU, ids::ArrayOrFunction)
-    pins = zeros(Bool, sim.n_nodes)
+    pins = zeros(Bool, sim.n_total)
     init_scalar!(pins, sim.mesh, ids)
     copyto!(sim.pins, pins)
     return true
@@ -98,11 +98,11 @@ function init_m0(sim::AbstractSimGPU, m0::TupleOrArrayOrFunction; norm=true)
 
   init_vector!(spin, sim.mesh, m0)
   if norm
-    normalise(spin, sim.n_nodes)
+    normalise(spin, sim.n_total)
   end
 
   Ms = isa(sim.mesh, FDMeshGPU) ? Array(sim.Ms) : Array(sim.mu_s)
-  for i = 1:sim.n_nodes
+  for i = 1:sim.n_total
       if Ms[i] == 0
           spin[3*i-2] = 0
           spin[3*i-1] = 0
@@ -125,10 +125,10 @@ end
 Add a static Zeeman energy to the simulation.
 """
 function add_zeeman(sim::AbstractSimGPU, H0::TupleOrArrayOrFunction; name="zeeman")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     T = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(T, 3*n_nodes)
-    energy = zeros(T, n_nodes)
+    field = zeros(T, 3*n_total)
+    energy = zeros(T, n_total)
     init_vector!(field, sim.mesh, H0)
 
     field_gpu = CuArray(field)
@@ -152,9 +152,9 @@ end
 
 
 function update_zeeman(sim::MicroSimGPU, H0::TupleOrArrayOrFunction; name = "zeeman")
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   T = _cuda_using_double.x ? Float64 : Float32
-  field = zeros(T, 3*n_nodes)
+  field = zeros(T, 3*n_total)
   init_vector!(field, sim.mesh, H0)
 
   field_gpu = CuArray(field)
@@ -171,11 +171,11 @@ end
 
 
 function add_zeeman(sim::AbstractSimGPU, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     T = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(T, 3*n_nodes)
-    local_filed = zeros(T, 3*n_nodes)
-    energy = zeros(T, n_nodes)
+    field = zeros(T, 3*n_total)
+    local_filed = zeros(T, 3*n_total)
+    energy = zeros(T, n_total)
     init_vector!(field, sim.mesh, H0)
     init_field = CuArray(field)
     cufield = CuArray(local_filed)
@@ -199,11 +199,11 @@ function add_zeeman(sim::AbstractSimGPU, H0::TupleOrArrayOrFunction, ft::Functio
 end
 
 function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
-    Spatial_A = CUDA.zeros(Float, n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
+    Spatial_A = CUDA.zeros(Float, n_total)
     init_scalar!(Spatial_A , sim.mesh, A)
     exch = ExchangeGPU(Spatial_A, field, energy, Float(0.0), name)
 
@@ -223,11 +223,11 @@ Add exchange anistropy to the system.
 Ref: 10.1103/PhysRevResearch.2.043386
 """
 function add_exch_anis(sim::MicroSimGPU, kea::NumberOrArrayOrFunction; name="exch_anis")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
-    Spatial_kea = CUDA.zeros(Float, n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
+    Spatial_kea = CUDA.zeros(Float, n_total)
     init_scalar!(Spatial_kea , sim.mesh, kea)
     exch = ExchangeAnistropyGPU(Spatial_kea, field, energy, Float(0.0), name)
     push!(sim.interactions, exch)
@@ -246,11 +246,11 @@ function add_exch(sim::MicroSimGPU, geo::Geometry, A::Number; name="exch")
             return nothing
         end
     end
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
-    Spatial_A = CUDA.zeros(Float, n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
+    Spatial_A = CUDA.zeros(Float, n_total)
     update_scalar_geometry(Spatial_A , geo, A)
     exch = ExchangeGPU(Spatial_A, field, energy, Float(0.0), name)
 
@@ -265,12 +265,12 @@ end
 
 
 function add_thermal_noise(sim::MicroSimGPU, T::NumberOrArrayOrFunction; name="thermal", k_B=k_B)
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
-    Spatial_T = CUDA.zeros(Float, n_nodes)
-    eta = CUDA.zeros(Float, 3*n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
+    Spatial_T = CUDA.zeros(Float, n_total)
+    eta = CUDA.zeros(Float, 3*n_total)
     init_scalar!(Spatial_T , sim.mesh, T)
     thermal = StochasticFieldGPU(Spatial_T, eta, field, energy, Float(0.0), -1, name, k_B)
 
@@ -284,11 +284,11 @@ function add_thermal_noise(sim::MicroSimGPU, T::NumberOrArrayOrFunction; name="t
 end
 
 function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch_vector")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
-    Spatial_A = CUDA.zeros(Float, 3*n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
+    Spatial_A = CUDA.zeros(Float, 3*n_total)
     init_vector!(Spatial_A , sim.mesh, A)
     exch = Vector_ExchangeGPU(Spatial_A , field, energy, Float(0.0), name)
     push!(sim.interactions, exch)
@@ -306,10 +306,10 @@ end
 Add RKKY exchange energy to the system.
 """
 function add_exch_rkky(sim::MicroSimGPU, J::Float64; name="rkky")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
     exch = ExchangeRKKYGPU(Float(J), field, energy, Float(0.0), name)
 
     push!(sim.interactions, exch)
@@ -323,10 +323,10 @@ end
 
 
 function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
     dmi = BulkDMIGPU(Float(D[1]), Float(D[2]), Float(D[3]), field, energy, Float(0.0), name)
 
     push!(sim.interactions, dmi)
@@ -355,10 +355,10 @@ The effective field is given
 
 """
 function add_dmi_interlayer(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi_int")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
     dmi = InterlayerDMIGPU(Float(D[1]), Float(D[2]), Float(D[3]), field, energy, Float(0.0), name)
 
     push!(sim.interactions, dmi)
@@ -370,13 +370,13 @@ function add_dmi_interlayer(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="
 end
 
 function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     T = _cuda_using_double.x ? Float64 : Float32
-    Ds = zeros(T, sim.n_nodes)
+    Ds = zeros(T, sim.n_total)
     init_scalar!(Ds, sim.mesh, Dfun)
     Ds_gpu = CuArray(Ds)
-    field = zeros(T, 3*n_nodes)
-    energy = zeros(T, n_nodes)
+    field = zeros(T, 3*n_total)
+    energy = zeros(T, n_total)
     dmi = SpatialBulkDMIGPU(Ds_gpu, field, energy, T(0.0), name)
 
     push!(sim.interactions, dmi)
@@ -396,10 +396,10 @@ end
 
 
 function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     T = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(T, 3*n_nodes)
-    energy = zeros(T, n_nodes)
+    field = zeros(T, 3*n_total)
+    energy = zeros(T, n_total)
     dmi =  InterfacialDMIGPU(T(D), field, energy, T(0.0), name)
     push!(sim.interactions, dmi)
 
@@ -411,13 +411,13 @@ function add_dmi_interfacial(sim::MicroSimGPU, D::Real; name="dmi")
 end
 
 function add_dmi_interfacial(sim::MicroSimGPU, Dfun::Function; name="dmi")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     T = _cuda_using_double.x ? Float64 : Float32
-    Ds = zeros(T, sim.n_nodes)
+    Ds = zeros(T, sim.n_total)
     init_scalar!(Ds, sim.mesh, Dfun)
     Ds_gpu = CuArray(Ds)
-    field = zeros(T, 3*n_nodes)
-    energy = zeros(T, n_nodes)
+    field = zeros(T, 3*n_total)
+    energy = zeros(T, n_total)
     dmi =  SpatialInterfacialDMIGPU(Ds_gpu, field, energy, T(0.0), name)
     push!(sim.interactions, dmi)
 
@@ -430,13 +430,13 @@ end
 
 
 function add_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    Kus = zeros(Float, sim.n_nodes)
+    Kus = zeros(Float, sim.n_total)
     init_scalar!(Kus, sim.mesh, Ku)
     Kus =  CuArray(Kus)
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
     lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
     naxis = (axis[1]/lt,axis[2]/lt,axis[3]/lt)
     anis = AnisotropyGPU(Kus, naxis, field, energy, Float(0.0), name)
@@ -458,13 +458,13 @@ function add_anis(sim::AbstractSimGPU, geo::Geometry, Ku::Number; axis=(0,0,1), 
             return nothing
         end
     end
-    n_nodes = sim.n_nodes
+    n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
-    Kus = zeros(Float, sim.n_nodes)
+    Kus = zeros(Float, sim.n_total)
     update_scalar_geometry(Kus, geo, Ku)
     Kus =  CuArray(Kus)
-    field = zeros(Float, 3*n_nodes)
-    energy = zeros(Float, n_nodes)
+    field = zeros(Float, 3*n_total)
+    energy = zeros(Float, n_total)
     lt = sqrt(axis[1]^2+axis[2]^2+axis[3]^2)
     naxis = (axis[1]/lt,axis[2]/lt,axis[3]/lt)
     anis = AnisotropyGPU(Kus, naxis, field, energy, Float(0.0), name)
@@ -506,7 +506,7 @@ function add_cubic_anis(sim::AbstractSimGPU, Kc::Float64; axis1::Any=nothing, ax
   end
   naxis3= cross_product(axis1,axis2)
 
-  n_nodes = sim.n_nodes
+  n_total = sim.n_total
   Float = _cuda_using_double.x ? Float64 : Float32
   axis = zeros(Float,9)
   for i = 1:3
@@ -514,8 +514,8 @@ function add_cubic_anis(sim::AbstractSimGPU, Kc::Float64; axis1::Any=nothing, ax
     axis[i+3] = naxis2[i]
     axis[i+6] = naxis3[i]
   end
-  field = zeros(Float, 3*n_nodes)
-  energy = zeros(Float, n_nodes)
+  field = zeros(Float, 3*n_total)
+  energy = zeros(Float, n_total)
   anis = CubicAnisotropyGPU(axis, Float(Kc), field, energy, Float(0.0), name)
   push!(sim.interactions, anis)
 
@@ -528,8 +528,8 @@ end
 
 
 function update_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; name = "anis")
-  n_nodes = sim.n_nodes
-  Kus =  zeros(Float64, n_nodes)
+  n_total = sim.n_total
+  Kus =  zeros(Float64, n_total)
   init_scalar!(Kus, sim.mesh, Ku)
   Kus =  CuArray(Kus)
   for i in sim.interactions

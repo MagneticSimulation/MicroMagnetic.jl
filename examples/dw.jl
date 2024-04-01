@@ -31,7 +31,7 @@ using Plots
 gr()
 
 xs = 1:300
-b = reshape(sim.spin, 3, sim.nxyz)
+b = reshape(sim.spin, 3, sim.n_total)
 plot(xs, b[1,:], marker=:h, markersize=3, linewidth=1, label="mx")
 plot!(xs, b[2,:], marker=:c, markersize=3, linewidth=1, label="my")
 plot!(xs, b[3,:], marker=:p, markersize=1.2, linewidth=1, label="mz")

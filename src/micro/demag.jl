@@ -85,8 +85,8 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
 
   h_plan = FFTW.plan_irfft(Hx, nx_fft)
 
-  field = zeros(Float64, 3*sim.n_nodes)
-  energy = zeros(Float64, sim.n_nodes)
+  field = zeros(Float64, 3*sim.n_total)
+  energy = zeros(Float64, sim.n_total)
   demag = Demag(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz,
                 tensor_xy, tensor_xz, tensor_yz, mx, my, mz, Mx, My, Mz,
                 Hx, Hy, Hz, m_plan, h_plan, field, energy, "Demag")
@@ -137,7 +137,7 @@ function effective_field(demag::Demag, sim::MicroSim, spin::Array{Float64, 1}, t
   mu0 = 4*pi*1e-7
   volume = sim.mesh.volume
   field = demag.field
-  for i=1:sim.n_nodes
+  for i=1:sim.n_total
     j = 3*i
     demag.energy[i] = -0.5*mu0*volume*sim.Ms[i]*(field[j-2]*spin[j-2] + field[j-1]*spin[j-1] + field[j]*spin[j])
   end

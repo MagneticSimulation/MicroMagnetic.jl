@@ -18,9 +18,9 @@ mutable struct ModifiedEuler <: Integrator
    rhs_fun::Function
 end
 
-function ModifiedEuler(n_nodes::Int64, rhs_fun, step::Float64)
-  k1 = zeros(Float64,3*n_nodes)
-  k2 = zeros(Float64,3*n_nodes)
+function ModifiedEuler(n_total::Int64, rhs_fun, step::Float64)
+  k1 = zeros(Float64,3*n_total)
+  k2 = zeros(Float64,3*n_total)
   return ModifiedEuler(0.0, step, 0, k1, k2, rhs_fun)
 end
 
@@ -39,7 +39,7 @@ function advance_step(sim::AbstractSim, integrator::ModifiedEuler)
     sim.prespin .= sim.spin
     sim.spin .+= (1/2*h) .* (k1 .+ k2)
 
-    normalise(sim.spin, sim.n_nodes)
+    normalise(sim.spin, sim.n_total)
     integrator.nsteps += 1
     integrator.t = integrator.nsteps*h
 
