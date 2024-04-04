@@ -1,4 +1,4 @@
-export add_zeeman
+export add_zeeman, update_zeeman
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -9,13 +9,13 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
     n_total = sim.n_total
 
     T = single_precision.x ? Float32 : Float64
-    field = zeros(T, 3*n_total)
-    
+    field = zeros(T, 3 * n_total)
+
     init_vector!(field, sim.mesh, H0)
 
     field_kb = KernelAbstractions.zeros(backend[], T, 3 * n_total)
     energy_kb = KernelAbstractions.zeros(backend[], T, n_total)
-    
+
     copyto!(field_kb, field)
 
     zeeman = Zeeman(field_kb, energy_kb, name)
@@ -48,21 +48,22 @@ Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its n
    add_zeeman(sim, (0,0,0), name="my_H")  #create a zeeman energy with field (0,0,0) A/m
    update_zeeman(sim, (0,0,1e5), name="my_H")  #change the field to (0,0,1e5) A/m
 ```
-
 """
 function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
-    N_spins = sim.n_total
-    field = zeros(Float64, 3 * N_spins)
+    n_total = sim.n_total
+    T = single_precision.x ? Float32 : Float64
+    field = zeros(T, 3 * n_total)
     init_vector!(field, sim.mesh, H0)
 
     for i in sim.interactions
         if i.name == name
-            i.field[:] = field[:]
+            copyto!(i.field, field)
             return nothing
         end
     end
     return nothing
 end
+
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
@@ -92,21 +93,27 @@ Example:
 """
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
     n_total = sim.n_total
-    init_field = zeros(Float64, 3 * n_total)
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
+    T = single_precision.x ? Float32 : Float64
+    
+    init_field = zeros(T, 3 * n_total)
     init_vector!(init_field, sim.mesh, H0)
 
-    zeeman = TimeZeeman(ft, init_field, field, energy, name)
+    field_kb = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    energy = KernelAbstractions.zeros(backend[], T, n_total)
+
+    copyto!(field_kb, init_field)
+   
+    zeeman = TimeZeeman(ft, field_kb, field, energy, name)
     push!(sim.interactions, zeeman)
 
     if sim.save_data
         id = length(sim.interactions)
-        if isa(H0, Tuple)
+        if isa(H0, Tuple) && length(H0) == 3  # FIXME: the output should depends on time!!!
             field_item = SaverItem(
                 (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")),
-                ("<A/m>", "<A/m>", "<A/m>"),
-                o::AbstractSim -> (o.interactions[id].field[1], o.interactions[id].field[2], o.interactions[id].field[3])
+                ("A/m", "A/m", "A/m"),
+                o::AbstractSim -> H0
             )
             push!(sim.saver.items, field_item)
         end

@@ -22,15 +22,6 @@ function effective_field(stochastic::StochasticFieldGPU, sim::MicroSimGPU, spin:
   return nothing
 end
 
-function effective_field(zeeman::TimeZeemanGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_total = sim.n_total
-  volume = sim.mesh.volume
-  blocks_n, threads_n = sim.blocks, sim.threads
-  tx, ty, tz = zeeman.time_fun(t)
-  @cuda blocks=blocks_n threads=threads_n time_zeeman_kernel!(spin, sim.field, zeeman.init_field, zeeman.cufield, sim.energy, sim.Ms, volume, T(tx), T(ty), T(tz), n_total)
-  return nothing
-end
-
 function effective_field(exch::ExchangeGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   n_total = sim.n_total
   mesh = sim.mesh
