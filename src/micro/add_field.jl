@@ -1,4 +1,4 @@
-export add_zeeman, update_zeeman, add_anis, add_cubic_anis
+export add_zeeman, update_zeeman, add_anis, add_cubic_anis, add_exch
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -123,51 +123,36 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; 
 end
 
 """
-    add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch")
-
-Add a vector form exchange energy to the system. The exchange constant of 3 directions can be different.
-For example:
-```julia
-add_exc_vector(sim, (2e-12,5e-12,0))
-```
-"""
-function add_exch_vector(sim::AbstractSim, A::TupleOrArrayOrFunction; name="exch_vector")
-    n_total = sim.n_total
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
-    Spatial_A = zeros(Float64, 3 * n_total)
-    init_vector!(Spatial_A, sim.mesh, A)
-    exch = Vector_Exchange(Spatial_A, field, energy, name)
-    push!(sim.interactions, exch)
-
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
-    end
-
-    return exch
-end
-
-"""
     add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
 
 Add exchange energy to the system.
+
+# Examples:
+```julia
+    add_exch(sim, 1e-11)
+```
+
+or 
+
+```julia
+    add_exch(sim, (2e-12,5e-12,0))
+```
 """
 function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
-
     n_total = sim.n_total
-    Spatial_A = zeros(Float64, sim.n_total)
-
-
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
-
+    T = single_precision.x ? Float32 : Float64
+    
+    Spatial_A = zeros(T, sim.n_total)
     init_scalar!(Spatial_A, sim.mesh, A)
-    if isa(sim, MicroSim)
-        exch = Exchange(Spatial_A, field, energy, name)
-    else
-        exch = HeisenbergExchange(A, field, energy, name)
-    end
+
+    A_kb = KernelAbstractions.zeros(backend[], T, n_total)
+    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    energy = KernelAbstractions.zeros(backend[], T, n_total)
+
+    copyto!(A_kb, Spatial_A)
+
+    exch = Exchange(A_kb, field, energy, name)
+
     push!(sim.interactions, exch)
 
     if sim.save_data

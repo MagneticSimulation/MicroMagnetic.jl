@@ -54,7 +54,8 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin, t::Float64)
   return nothing
 end
 
-function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64,1}, t::Float64)
+#we keep this function for debug and testing purpose, only works on CPU
+function effective_field_debug(exch::Exchange, sim::MicroSim, spin::Array{Float64,1}, t::Float64)
   mu0 = 4.0 * pi * 1e-7
   mesh = sim.mesh
   dx = mesh.dx
@@ -98,67 +99,21 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64,1}, 
   end
 end
 
-function effective_field(exch::VectorExchange, sim::MicroSim, spin::Array{Float64,1}, t::Float64)
-  mu0 = 4.0 * pi * 1e-7
-  mesh = sim.mesh
-  dx = mesh.dx
-  dy = mesh.dy
-  dz = mesh.dz
-  ngbs = mesh.ngbs
+
+function effective_field(exch::Exchange, sim::MicroSim, spin, t::Float64)
   n_total = sim.n_total
-  field = exch.field
-  energy = exch.energy
-  A = exch.A
-  Ms = sim.Ms
-  ax = 2.0 / (dx * dx)
-  ay = 2.0 / (dy * dy)
-  az = 2.0 / (dz * dz)
-  nabla = (ax, ax, ay, ay, az, az)
+  mesh = sim.mesh
+  volume = mesh.volume
 
-  for index = 1:n_total
-    i = 3 * index - 2
-    if Ms[index] == 0.0
-      energy[index] = 0.0
-      field[i] = 0.0
-      field[i+1] = 0.0
-      field[i+2] = 0.0
-      continue
-    end
+  groupsize = 512
+  kernel! = exchange_kernel!(backend[], groupsize)
+  
+  T = single_precision.x ? Float32 : Float64
+  dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+  kernel!(spin, exch.field, exch.energy, sim.Ms, exch.A, dx, dy, dz, mesh.ngbs, volume, ndrange=n_total)
+  KernelAbstractions.synchronize(backend[])
 
-    fx, fy, fz = 0.0, 0.0, 0.0
-    for j = 1:2
-      id = ngbs[j, index]
-      if id > 0 && Ms[id] > 0
-        k = 3 * id - 2
-        fx += A[i] * nabla[j] * (spin[k] - spin[i])
-        fy += A[i] * nabla[j] * (spin[k+1] - spin[i+1])
-        fz += A[i] * nabla[j] * (spin[k+2] - spin[i+2])
-      end
-    end
-    for j = 3:4
-      id = ngbs[j, index]
-      if id > 0 && Ms[id] > 0
-        k = 3 * id - 2
-        fx += A[i+1] * nabla[j] * (spin[k] - spin[i])
-        fy += A[i+1] * nabla[j] * (spin[k+1] - spin[i+1])
-        fz += A[i+1] * nabla[j] * (spin[k+2] - spin[i+2])
-      end
-    end
-    for j = 5:6
-      id = ngbs[j, index]
-      if id > 0 && Ms[id] > 0
-        k = 3 * id - 2
-        fx += A[i+2] * nabla[j] * (spin[k] - spin[i])
-        fy += A[i+2] * nabla[j] * (spin[k+1] - spin[i+1])
-        fz += A[i+2] * nabla[j] * (spin[k+2] - spin[i+2])
-      end
-    end
-    Ms_inv = 1.0 / (Ms[index] * mu0)
-    energy[index] = -0.5 * (fx * spin[i] + fy * spin[i+1] + fz * spin[i+2]) * mesh.volume
-    field[i] = fx * Ms_inv
-    field[i+1] = fy * Ms_inv
-    field[i+2] = fz * Ms_inv
-  end
+  return nothing
 end
 
 
@@ -201,7 +156,9 @@ function effective_field(exch::ExchangeRKKY, sim::MicroSim, spin::Array{Float64,
 
 end
 
-function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,1}, t::Float64)
+
+#we keep this function for debug and testing purpose, only works on CPU
+function effective_field_debug(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,1}, t::Float64)
   mu0 = 4 * pi * 1e-7
   mesh = sim.mesh
   dx = mesh.dx

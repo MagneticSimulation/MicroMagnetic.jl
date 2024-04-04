@@ -22,24 +22,6 @@ function set_pinning(sim::MicroSimGPU, ids::ArrayOrFunction)
     return true
 end
 
-function add_exch(sim::MicroSimGPU, A::NumberOrArrayOrFunction; name="exch")
-    n_total = sim.n_total
-    Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_total)
-    energy = zeros(Float, n_total)
-    Spatial_A = CUDA.zeros(Float, n_total)
-    init_scalar!(Spatial_A , sim.mesh, A)
-    exch = ExchangeGPU(Spatial_A, field, energy, Float(0.0), name)
-
-    push!(sim.interactions, exch)
-
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSimGPU->o.interactions[id].total_energy))
-    end
-    return exch
-end
-
 """
     add_exch_anis(sim::MicroSimGPU, kea::NumberOrArrayOrFunction; name="exch_anis")
 
@@ -63,31 +45,6 @@ function add_exch_anis(sim::MicroSimGPU, kea::NumberOrArrayOrFunction; name="exc
     return exch
 end
 
-function add_exch(sim::MicroSimGPU, geo::Geometry, A::Number; name="exch")
-    for interaction in sim.interactions
-        if interaction.name == name
-            update_scalar_geometry(interaction.A, geo, A)
-            return nothing
-        end
-    end
-    n_total = sim.n_total
-    Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_total)
-    energy = zeros(Float, n_total)
-    Spatial_A = CUDA.zeros(Float, n_total)
-    update_scalar_geometry(Spatial_A , geo, A)
-    exch = ExchangeGPU(Spatial_A, field, energy, Float(0.0), name)
-
-    push!(sim.interactions, exch)
-
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSimGPU->o.interactions[id].total_energy))
-    end
-    return exch
-end
-
-
 function add_thermal_noise(sim::MicroSimGPU, T::NumberOrArrayOrFunction; name="thermal", k_B=k_B)
     n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
@@ -105,23 +62,6 @@ function add_thermal_noise(sim::MicroSimGPU, T::NumberOrArrayOrFunction; name="t
         push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSimGPU->o.interactions[id].total_energy))
     end
     return thermal
-end
-
-function add_exch_vector(sim::MicroSimGPU, A::TupleOrArrayOrFunction; name="exch_vector")
-    n_total = sim.n_total
-    Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_total)
-    energy = zeros(Float, n_total)
-    Spatial_A = CUDA.zeros(Float, 3*n_total)
-    init_vector!(Spatial_A , sim.mesh, A)
-    exch = Vector_ExchangeGPU(Spatial_A , field, energy, Float(0.0), name)
-    push!(sim.interactions, exch)
-
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSimGPU->o.interactions[id].total_energy))
-    end
-    return exch
 end
 
 """
@@ -252,20 +192,6 @@ function add_dmi_interfacial(sim::MicroSimGPU, Dfun::Function; name="dmi")
     return dmi
 end
 
-
-function update_anis(sim::AbstractSimGPU, Ku::NumberOrArrayOrFunction; name = "anis")
-  n_total = sim.n_total
-  Kus =  zeros(Float64, n_total)
-  init_scalar!(Kus, sim.mesh, Ku)
-  Kus =  CuArray(Kus)
-  for i in sim.interactions
-    if i.name == name
-      i.Ku[:] = Kus[:]
-      return nothing
-    end
-  end
-  return nothing
-end
 
 function add_demag(sim::MicroSimGPU; name="demag", Nx=0, Ny=0, Nz=0)
     demag = init_demag_gpu(sim, Nx, Ny, Nz)
