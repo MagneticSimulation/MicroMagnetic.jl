@@ -113,26 +113,6 @@ function effective_field(dmi::SpatialBulkDMIGPU, sim::MicroSimGPU, spin::CuArray
 end
 
 
-function effective_field(anis::AnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-    blocks_n, threads_n = sim.blocks, sim.threads
-    axis = anis.axis
-    volume = sim.mesh.volume
-    @cuda blocks=blocks_n threads=threads_n anisotropy_kernel!(spin, sim.field, sim.energy, anis.Ku,
-                                         T(axis[1]), T(axis[2]),T(axis[3]),
-                                         sim.Ms, volume, sim.n_total)
-    return nothing
-end
-
-function effective_field(anis::CubicAnisotropyGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  blocks_n, threads_n = sim.blocks, sim.threads
-  volume = sim.mesh.volume
-  axis = anis.axis
-  @cuda blocks=blocks_n threads=threads_n cubic_anisotropy_kernel!(spin, sim.field, sim.energy, anis.Kc,
-                                       axis[1],axis[2],axis[3],axis[4],axis[5],axis[6],axis[7],axis[8],axis[9],
-                                       sim.Ms, volume, sim.n_total)
-  return nothing
-end
-
 """
     effective_field(sim::AbstractSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
 
