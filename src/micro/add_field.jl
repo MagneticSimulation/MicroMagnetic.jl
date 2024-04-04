@@ -1,4 +1,4 @@
-export add_zeeman, update_zeeman
+export add_zeeman, update_zeeman, add_anis, add_cubic_anis
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -34,7 +34,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
         push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
     end
 
-    @info "Standard Zeeman has been added."
+    @info "Static Zeeman has been added."
 
     return zeeman
 end
@@ -94,7 +94,7 @@ Example:
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
-    
+
     init_field = zeros(T, 3 * n_total)
     init_vector!(init_field, sim.mesh, H0)
 
@@ -103,7 +103,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; 
     energy = KernelAbstractions.zeros(backend[], T, n_total)
 
     copyto!(field_kb, init_field)
-   
+
     zeeman = TimeZeeman(ft, field_kb, field, energy, name)
     push!(sim.interactions, zeeman)
 
@@ -349,24 +349,32 @@ end
 Add Anisotropy to the system, where the energy density is given by
 
 ```math
-E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
+    E_\\mathrm{anis} =  K_{u} (1 - \\vec{m} \\cdot \\hat{u})^2
 ```
 """
 function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1), name="anis")
     n_total = sim.n_total
-    Kus = zeros(Float64, n_total)
+    T = single_precision.x ? Float32 : Float64
+    Kus = zeros(T, n_total)
     init_scalar!(Kus, sim.mesh, Ku)
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
+
+    Kus_kb = KernelAbstractions.zeros(backend[], T, n_total)
+    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    energy = KernelAbstractions.zeros(backend[], T, n_total)
+
     lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
     naxis = (axis[1] / lt, axis[2] / lt, axis[3] / lt)
-    anis = Anisotropy(Kus, naxis, field, energy, name)
+
+    copyto!(Kus_kb, Kus)
+    anis = Anisotropy(Kus_kb, naxis, field, energy, name)
     push!(sim.interactions, anis)
 
     if sim.save_data
         id = length(sim.interactions)
         push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
     end
+
+    @info "Uniaxial Anisotropy has been added."
     return anis
 end
 
@@ -375,6 +383,7 @@ end
 
 Add Anisotropy within the Geometry, or update corresponding Ku if other anis is added.
 """
+#FIXME : fix this function
 function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0, 0, 1), name="anis")
     lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
     naxis = (axis[1] / lt, axis[2] / lt, axis[3] / lt)
@@ -398,6 +407,8 @@ function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0, 0, 1), n
     end
     return anis
 end
+
+
 """
     update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
 
@@ -412,6 +423,7 @@ Example:
     update_anis(sim, 5e4, name="K2")  #update anisotropy K2
 ```
 """
+#FIXME : fix this function
 function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name="anis")
     n_total = sim.n_total
     Kus = zeros(Float64, n_total)
@@ -425,34 +437,43 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name="anis")
     return nothing
 end
 
-"""
-    add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1::Any=nothing, axis2::Any=nothing, name="cubic")
 
-add cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1)
-use axis1=(1,1,0), axis2=(1,-1,0) to set a pair of normal axis, and the third axis will be calculated automatically
+@doc raw"""
+    add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1=(1,0,0), axis2=(0,1,0), name="cubic")
+
+add a cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1). The third axis is defined as axis3 = axis1 x axis2.
+
+```math
+  E_\mathrm{cubic} = -\int_{V} K_c (m_x^4 + m_y^4 + m_z^4) \, dV
+```
+
+# Example
+```julia
+    add_cubic_anis(sim, 1e3, (1, 1, 0), (1, -1, 0))
+```
 """
-function add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1::Any=nothing, axis2::Any=nothing, name="cubic")
-    axis1 = axis1 == nothing ? (1, 0, 0) : axis1
-    axis2 = axis2 == nothing ? (0, 1, 0) : axis2
+function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,0,0), axis2=(0,1,0), name="cubic")
+    n_total = sim.n_total
+    T = single_precision.x ? Float32 : Float64
+    Kcs = zeros(T, n_total)
+    init_scalar!(Kcs, sim.mesh, Kc)
+
     norm1 = sqrt(axis1[1]^2 + axis1[2]^2 + axis1[3]^2)
     norm2 = sqrt(axis2[1]^2 + axis2[2]^2 + axis2[3]^2)
     naxis1, naxis2 = axis1 ./ norm1, axis2 ./ norm2
     if abs.(sum(naxis1 .* naxis2)) > 1e-10
-        @error("cubic axis not normal!")
+        @error("The axis1 and axis2 are not perpendicular to each other!")
         return nothing
     end
     naxis3 = cross_product(axis1, axis2)
-    axis = zeros(Float64, 9)
-    for i = 1:3
-        axis[i] = naxis1[i]
-        axis[i+3] = naxis2[i]
-        axis[i+6] = naxis3[i]
-    end
+    
+    Kcs_kb = KernelAbstractions.zeros(backend[], T, n_total)
+    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    energy = KernelAbstractions.zeros(backend[], T, n_total)
 
-    n_total = sim.n_total
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
-    anis = CubicAnisotropy(axis, Kc, field, energy, name)
+    copyto!(Kcs_kb, Kcs)
+
+    anis = CubicAnisotropy(Kcs_kb, naxis1, naxis2, naxis3, field, energy, name)
     push!(sim.interactions, anis)
 
     if sim.save_data

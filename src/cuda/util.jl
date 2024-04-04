@@ -1,69 +1,3 @@
-@inline function _x_plus_one(i::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, xperiodic::Bool,
-                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
-    if i < nx || xperiodic
-        id = (i==nx) ? index +1 - nx : index +1
-        if Ms[id]>0
-          return id
-        end
-    end
-    return -1
-end
-
-@inline function _x_minus_one(i::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, xperiodic::Bool,
-                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
-    if i > 1 || xperiodic
-        id =  (i==1) ? index - 1 + nx : index -1
-        if Ms[id]>0
-          return id
-        end
-    end
-    return -1
-end
-
-@inline function _y_plus_one(j::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, yperiodic::Bool,
-                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
-    if j < ny || yperiodic
-        id = (j==ny) ? index + nx - nx*ny : index + nx
-        if Ms[id]>0
-          return id
-        end
-    end
-    return -1
-end
-
-@inline function _y_minus_one(j::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, yperiodic::Bool,
-                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
-    if j > 1 || yperiodic
-        id = (j==1) ? index - nx + nx*ny : index - nx
-        if Ms[id]>0
-          return id
-        end
-    end
-    return -1
-end
-
-@inline function _z_plus_one(k::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, zperiodic::Bool,
-                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
-    if k<nz || zperiodic
-        id = (k==nz) ? index + nx*ny*(1-nz) : index + nx*ny
-        if Ms[id]>0
-          return id
-        end
-	end
-    return -1
-end
-
-@inline function _z_minus_one(k::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64, zperiodic::Bool,
-                             Ms::CuDeviceArray{T, 1})::Int64 where {T<:AbstractFloat}
-    if k>1 || zperiodic
-        id = (k==1) ? index + nx*ny*(nz-1) : index - nx*ny
-        if Ms[id]>0
-          return id
-        end
-	end
-    return -1
-end
-
 #compute a = a + b, which is slightly faster than a .+= b
 function addto(a::CuArray{T,1}, b::CuArray{T,1})  where {T<:AbstractFloat}
     function __kernel!(a, b, n)
@@ -107,21 +41,10 @@ function abs!(a::CuArray{T,1})  where {T<:AbstractFloat}
     return nothing
 end
 
-function  init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
-    v[:] .= init
-    return true
-end
 
 function init_scalar!(v::CuArray{T, 1}, mesh::Mesh, init_fun::Function) where {T<:AbstractFloat}
     init_v = zeros(T, mesh.n_total)
     init_scalar!(init_v, mesh, init_fun)
-    copyto!(v, init_v)
-    return true
-end
-
-function  init_scalar!(v::CuArray{T1, 1}, mesh::Mesh, init::Array{T2, 1}) where {T1,T2<:AbstractFloat}
-    init_v  = zeros(T1, mesh.n_total)
-    init_v[:] .= init
     copyto!(v, init_v)
     return true
 end
@@ -140,17 +63,6 @@ function init_vector!(v::Array{T, 1}, mesh::TriangularMeshGPU, init::Function) w
   return nothing
 end
 
-function init_vector!(v::Array{T, 1}, mesh::CubicMeshGPU, init::Function) where {T<:AbstractFloat}
-  n_total = mesh.nx*mesh.ny*mesh.nz
-  b = reshape(v, 3, n_total)
-  for i = 1:mesh.nx, j = 1:mesh.ny, k = 1:mesh.nz
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        vec_value = init(i,j,k, mesh.nx, mesh.ny, mesh.nz)
-        if vec_value != nothing
-          b[:, id] .= vec_value[:]
-        end
-  end
-end
 
 function init_vector!(v::Array{T, 1}, mesh::FccMeshGPU, init::Function) where {T<:AbstractFloat}
   n_spins = mesh.n_total
@@ -173,13 +85,6 @@ function init_vector!(v::Array{T, 1}, mesh::CylindricalTubeMeshGPU, init::Functi
   end
 end
 
-function init_vector!(v::CuArray{T, 1}, mesh::Mesh, init::Any) where {T<:AbstractFloat}
-    F = _cuda_using_double.x ? Float64 : Float32
-    tmp = zeros(F, 3*mesh.n_total)
-    init_vector!(tmp, mesh, init)
-    copyto!(v, tmp)
-    return true
-end
 
 function omega_to_spin(omega::CuArray{T, 1}, spin::CuArray{T, 1}, spin_next::CuArray{T, 1}, N::Int64) where {T<:AbstractFloat}
   #compute Cay(Omega).m where Cay(Omega) = (I - 1/2 Omega)^-1 (I + 1/2 Omega)

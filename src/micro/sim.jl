@@ -31,7 +31,7 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.save_data = save_data
     sim.saver = create_saver(string(name, "_", lowercase(driver), ".txt"), driver)
    
-   @info "Standard Sim (CPU) has been used."
+   @info "MicroSim has been used."
    return sim
 end
 

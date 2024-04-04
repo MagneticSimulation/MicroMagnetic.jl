@@ -112,13 +112,30 @@ mutable struct TimeZeeman <: MicroEnergy
     name::String
 end
 
+mutable struct Anisotropy <: MicroEnergy
+    Ku
+    axis::Tuple
+    field
+    energy
+    name::String
+end
+
+mutable struct CubicAnisotropy <: MicroEnergy
+    Kc
+    axis1::Tuple
+    axis2::Tuple
+    axis3::Tuple
+    field
+    energy
+    name::String
+end
+
 mutable struct Exchange <: MicroEnergy
     A
     field
     energy
     name::String
 end
-
 
 mutable struct VectorExchange <: MicroEnergy
     A::Array{Float64,1}
@@ -151,25 +168,10 @@ mutable struct InterfacialDMI <: MicroEnergy
 end
 
 
-mutable struct Anisotropy <: MicroEnergy
-    Ku::Array{Float64,1}
-    axis::Tuple
-    field::Array{Float64,1}
-    energy::Array{Float64,1}
-    name::String
-end
-
-mutable struct CubicAnisotropy <: MicroEnergy
-    axis::Array{Float64,1}
-    Kc::Float64
-    field::Array{Float64,1}
-    energy::Array{Float64,1}
-    name::String
-end
 
 
 
- 
 
 
- 
+
+
