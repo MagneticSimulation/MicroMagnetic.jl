@@ -104,6 +104,13 @@ mutable struct Zeeman <: MicroEnergy
     name::String
 end
 
+mutable struct TimeZeeman <: MicroEnergy
+    time_fun::Function
+    init_field
+    field
+    energy
+    name::String
+end
 
 mutable struct Exchange <: MicroEnergy
     A
@@ -161,12 +168,8 @@ mutable struct CubicAnisotropy <: MicroEnergy
 end
 
 
-mutable struct TimeZeeman{T} <: MicroEnergy
-    time_fun::Function
-    init_field::Array{T,1}
-    field::Array{Float64,1}
-    energy::Array{Float64,1}
-    name::String
-end
+
  
+
+
  
