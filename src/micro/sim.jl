@@ -1,5 +1,7 @@
 using JLD2
 
+export Sim, init_m0, set_Ms
+
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
 
@@ -14,12 +16,15 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.mesh = mesh
     n_total = mesh.nx*mesh.ny*mesh.nz
     sim.n_total = n_total
-    sim.spin = zeros(Float64,3*n_total)
-    sim.prespin = zeros(Float64,3*n_total)
-    sim.field = zeros(Float64,3*n_total)
-    sim.energy = zeros(Float64,n_total)
-    sim.Ms = zeros(Float64, n_total)
-    sim.pins = zeros(Bool, n_total)
+
+    T = single_precision.x ? Float32 : Float64
+
+    sim.spin = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+    sim.prespin = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+    sim.field = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+    sim.energy = KernelAbstractions.zeros(backend[], T, n_total) 
+    sim.Ms = KernelAbstractions.zeros(backend[], T, n_total) 
+    sim.pins = KernelAbstractions.zeros(backend[], Bool, n_total) 
     sim.driver_name = driver
     sim.driver = create_driver(driver, integrator, n_total)    
     sim.interactions = []
@@ -51,14 +56,18 @@ set_Ms(sim, circular_Ms)
 
 """
 function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
-    init_scalar!(sim.Ms, sim.mesh, Ms)
+    T = single_precision.x ? Float32 : Float64
+    Ms_a = zeros(T, sim.n_total)
+    init_scalar!(Ms_a, sim.mesh, Ms)
 
-    if any(isnan, sim.Ms)
-        error("NaN is given by the input Ms!")
+    if any(isnan, Ms_a)
+      error("NaN is given by the input Ms!")
     end
 
+    copyto!(sim.Ms, Ms_a)
     return true
 end
+
 
 """
     set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
@@ -167,25 +176,33 @@ or
    init_m0(sim, uniform_m0)
 ```
 """
-function init_m0(sim::MicroSim, m0::TupleOrArrayOrFunction; norm=true)
-  init_vector!(sim.prespin, sim.mesh, m0)
+function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
+
+  spin = Array(sim.spin)
+
+  init_vector!(spin, sim.mesh, m0)
   if norm
-    normalise(sim.prespin, sim.n_total)
+    normalise(spin, sim.n_total)
   end
+
+  Ms = isa(sim.mesh, FDMesh) ? Array(sim.Ms) : Array(sim.mu_s)
   for i = 1:sim.n_total
-      if sim.Ms[i] == 0.0
-          sim.prespin[3*i-2] = 0
-          sim.prespin[3*i-1] = 0
-          sim.prespin[3*i] = 0
+      if Ms[i] == 0
+          spin[3*i-2] = 0
+          spin[3*i-1] = 0
+          spin[3*i] = 0
       end
   end
 
-  if any(isnan, sim.prespin)
+  if any(isnan, spin)
     error("NaN is given by the input m0!")
   end
 
-  sim.spin[:] .= sim.prespin[:]
+  copyto!(sim.spin, spin)
+  copyto!(sim.prespin, sim.spin)
+  return true
 end
+
 
 """
     set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince")

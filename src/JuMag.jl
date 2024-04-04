@@ -20,5 +20,21 @@ const backend = Backend[CPU()]
 
 include("const.jl")
 include("micro/mesh.jl")
+include("micro/geometry.jl")
+include("micro/head.jl")
+include("util.jl")
+include("micro/driver.jl")
+include("micro/sd.jl")
+include("llg/llg.jl")
+include("micro/kernels.jl")
+include("micro/field.jl")
+include("micro/add_field.jl")
+include("helper.jl")
+include("integrator/heun.jl")
+include("integrator/rk.jl")
+include("integrator/dopri5.jl")
+include("fileio.jl")
+include("micro/sim.jl")
+include("init_m.jl")
 
 end #module
