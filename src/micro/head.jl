@@ -2,12 +2,7 @@ abstract type Driver end
 abstract type AbstractSim end
 abstract type MicroEnergy end
 abstract type Integrator end
-abstract type IntegratorCayley <:Integrator end
-
-abstract type AbstractSimGPU <:AbstractSim end
-abstract type DriverGPU end
-abstract type EnergyGPU end
-abstract type MicroEnergyGPU end
+abstract type IntegratorCayley <: Integrator end
 
 """
     NumberOrArrayOrFunction
@@ -31,7 +26,7 @@ means that the input parameter could be a number or an array or a function:
     end
     ```
 """
-NumberOrArrayOrFunction = Union{Number, Array, Function}
+NumberOrArrayOrFunction = Union{Number,Array,Function}
 
 """
     NumberOrArray
@@ -39,7 +34,7 @@ NumberOrArrayOrFunction = Union{Number, Array, Function}
 Similar to Union `NumberOrArrayOrFunction`, the Union `NumberOrArray` is designed to deal with cases that a number
 or an array is needed.
 """
-NumberOrArray = Union{Number, Array}
+NumberOrArray = Union{Number,Array}
 
 
 """
@@ -48,7 +43,7 @@ NumberOrArray = Union{Number, Array}
 Similar to Union `NumberOrArrayOrFunction`, the Union `ArrayOrFunction` is designed to deal with cases that
 an array or a function is needed.
 """
-ArrayOrFunction = Union{Array, Function}
+ArrayOrFunction = Union{Array,Function}
 
 
 """
@@ -66,125 +61,112 @@ an array or a function:
     end
     ```
 """
-TupleOrArrayOrFunction = Union{Tuple, Array, Function}
+TupleOrArrayOrFunction = Union{Tuple,Array,Function}
 
 
 mutable struct DataSaver
-  name::String
-  header_saved::Bool
-  t::Float64
-  nsteps::Int
-  items::Array
+    name::String
+    header_saved::Bool
+    t::Float64
+    nsteps::Int
+    items::Array
 end
 
 mutable struct SaverItem
-    name::Union{String, Tuple}
-    unit::Union{String, Tuple}
+    name::Union{String,Tuple}
+    unit::Union{String,Tuple}
     result::Function
 end
 
 mutable struct MicroSim <: AbstractSim
-  mesh::FDMesh
-  driver::Driver
-  saver::DataSaver
-  spin::Array{Float64, 1}
-  prespin::Array{Float64, 1}
-  field::Array{Float64, 1}
-  energy::Array{Float64, 1}
-  Ms::Array{Float64, 1}
-  pins::Array{Bool, 1}
-  n_total::Int64 
-  name::String
-  driver_name::String
-  interactions::Array
-  save_data::Bool
-  MicroSim() = new()
+    time::Float64
+    mesh::FDMesh
+    driver::Driver
+    saver::DataSaver
+    spin
+    prespin
+    field
+    energy
+    Ms
+    pins
+    n_total::Int64
+    name::String
+    driver_name::String
+    interactions::Array
+    save_data::Bool
+    MicroSim() = new()
 end
+
+
+mutable struct Zeeman <: MicroEnergy
+    field
+    energy
+    name::String
+end
+
 
 mutable struct Exchange <: MicroEnergy
-   A::Array{Float64, 1}
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
+    A
+    field
+    energy
+    name::String
 end
 
-mutable struct Vector_Exchange <: MicroEnergy
-   A::Array{Float64, 1}
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
+
+mutable struct VectorExchange <: MicroEnergy
+    A::Array{Float64,1}
+    field::Array{Float64,1}
+    energy::Array{Float64,1}
+    name::String
 end
 
 mutable struct ExchangeRKKY <: MicroEnergy
-   J::Float64
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
+    J::Float64
+    field::Array{Float64,1}
+    energy::Array{Float64,1}
+    name::String
 end
 
 mutable struct BulkDMI <: MicroEnergy
-   Dx::Float64
-   Dy::Float64
-   Dz::Float64
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
-
-mutable struct DMI <: MicroEnergy
-    gamma_A::Float64
-    alpha_A::Float64
-    alpha_S::Float64
-    beta_A::Float64
-    beta_S::Float64
-    xi_11::Float64
-    xi_12::Float64
-    xi_13::Float64
-    xi_21::Float64
-    xi_22::Float64
-    xi_23::Float64
-    xi_31::Float64
-    xi_32::Float64
-    xi_33::Float64
-    field::Array{Float64, 1}
-    energy::Array{Float64, 1}
+    Dx::Float64
+    Dy::Float64
+    Dz::Float64
+    field::Array{Float64,1}
+    energy::Array{Float64,1}
     name::String
 end
 
 mutable struct InterfacialDMI <: MicroEnergy
-   D::Float64
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
+    D::Float64
+    field::Array{Float64,1}
+    energy::Array{Float64,1}
+    name::String
 end
 
 
 mutable struct Anisotropy <: MicroEnergy
-   Ku::Array{Float64, 1}
-   axis::Tuple
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
+    Ku::Array{Float64,1}
+    axis::Tuple
+    field::Array{Float64,1}
+    energy::Array{Float64,1}
+    name::String
 end
 
 mutable struct CubicAnisotropy <: MicroEnergy
-   axis::Array{Float64, 1}
-   Kc::Float64
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
+    axis::Array{Float64,1}
+    Kc::Float64
+    field::Array{Float64,1}
+    energy::Array{Float64,1}
+    name::String
 end
 
-mutable struct Zeeman <: MicroEnergy
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
-end
 
-mutable struct TimeZeeman <: MicroEnergy
-   time_fun::Function
-   init_field::Array{Float64, 1}
-   field::Array{Float64, 1}
-   energy::Array{Float64, 1}
-   name::String
+mutable struct TimeZeeman{T} <: MicroEnergy
+    time_fun::Function
+    init_field::Array{T,1}
+    field::Array{Float64,1}
+    energy::Array{Float64,1}
+    name::String
 end
+ 
+ 

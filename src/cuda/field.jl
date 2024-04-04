@@ -1,13 +1,5 @@
 using CUDA
 
-function effective_field(zeeman::ZeemanGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
-  n_total = sim.n_total
-  volume = sim.mesh.volume
-  blocks_n, threads_n = sim.blocks, sim.threads
-  @cuda blocks=blocks_n threads=threads_n zeeman_kernel!(spin, sim.field, zeeman.cufield, sim.energy, sim.Ms, volume, n_total)
-  return nothing
-end
-
 function effective_field(stochastic::StochasticFieldGPU, sim::MicroSimGPU, spin::CuArray{T, 1}, t::Float64) where {T<:AbstractFloat}
   n_total = sim.n_total
   volume = sim.mesh.volume

@@ -1,12 +1,12 @@
-function effective_field(zee::Zeeman, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
-  mu0 = 4*pi*1e-7
+function effective_field(zee::Zeeman, sim::MicroSim, spin, t::Float64)
   n_total = sim.n_total
-  field = zee.field
   volume = sim.mesh.volume
-  for i = 1:n_total
-    j = 3*(i-1)
-    zee.energy[i] = -mu0*sim.Ms[i]*volume*(spin[j+1]*field[j+1] + spin[j+2]*field[j+2] + spin[j+3]*field[j+3])
-  end
+
+  groupsize = 512
+  kernel! = zeeman_kernel!(backend[], groupsize)
+  kernel!(spin, zee.field, zee.energy, sim.Ms, volume, ndrange=n_total)
+
+  KernelAbstractions.synchronize(backend[])
 end
 
 function effective_field(zee::TimeZeeman, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
@@ -131,7 +131,7 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::Array{Float64, 1},
   end
 end
 
-function effective_field(exch::Vector_Exchange, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
+function effective_field(exch::VectorExchange, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4.0*pi*1e-7
   mesh = sim.mesh
   dx = mesh.dx
@@ -282,81 +282,6 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64, 1}, t
 end
 
 
-function effective_field(dmi::DMI, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
-  mu0 = 4*pi*1e-7
-  mesh = sim.mesh
-  dx = mesh.dx
-  dy = mesh.dy
-  dz = mesh.dz
-  ngbs = mesh.ngbs
-  n_total = sim.n_total
-  field = dmi.field
-  energy = dmi.energy
-  Ms = sim.Ms
-  a = -dmi.gamma_A
-  b = -0.5*(dmi.alpha_S+dmi.alpha_A-dmi.beta_S+dmi.beta_A)
-  c = -0.5*(-dmi.alpha_S+dmi.alpha_A+dmi.beta_S+dmi.beta_A)
-
-  for i = 1:n_total
-
-    if Ms[i] == 0.0
-      energy[i] = 0.0
-      field[3*i-2] = 0.0
-      field[3*i-1] = 0.0
-      field[3*i] = 0.0
-      continue
-    end
-
-    #x-direction
-    i1 = ngbs[1,i]
-    i2 = ngbs[2,i]
-    factor = i1*i2>0 ? 1/(2*dx) : 1/dx
-    i1 < 0 && (i1 = i)
-    i2 < 0 && (i2 = i)
-    j1 = 3*i1-2
-    j2 = 3*i2-2
-    PxSx = (spin[j2] - spin[j1]) * factor
-    PxSy = (spin[j2+1] - spin[j1+1]) * factor
-    PxSz = (spin[j2+2] - spin[j1+2]) * factor
-
-    #y-direction
-    i1 = ngbs[3,i]
-    i2 = ngbs[4,i]
-    factor = i1*i2>0 ? 1/(2*dy) : 1/dy
-    i1 < 0 && (i1 = i)
-    i2 < 0 && (i2 = i)
-    j1 = 3*i1-2
-    j2 = 3*i2-2
-    PySx = (spin[j2] - spin[j1]) * factor
-    PySy = (spin[j2+1] - spin[j1+1]) * factor
-    PySz = (spin[j2+2] - spin[j1+2]) * factor
-
-
-    #z-direction
-    i1 = ngbs[5,i]
-    i2 = ngbs[6,i]
-    factor = i1*i2>0 ? 1/(2*dz) : 1/dz
-    i1 < 0 && (i1 = i)
-    i2 < 0 && (i2 = i)
-    j1 = 3*i1-2
-    j2 = 3*i2-2
-    PzSx = (spin[j2] - spin[j1]) * factor
-    PzSy = (spin[j2+1] - spin[j1+1]) * factor
-    PzSz = (spin[j2+2] - spin[j1+2]) * factor
-
-    fx = -dmi.xi_12*PxSy - dmi.xi_13*PxSz + dmi.xi_21*PySy + 2*c*PySz - 2*a*PzSy + dmi.xi_31*PzSz
-    fy = dmi.xi_12*PxSx - 2*b*PxSz - dmi.xi_21*PySx - dmi.xi_23*PySz + 2*a*PzSx + dmi.xi_32*PzSz
-    fz = dmi.xi_13*PxSx + 2*b*PxSy - 2*c*PySx + dmi.xi_23*PySy - dmi.xi_31*PzSx - dmi.xi_32*PzSy
-
-    Ms_inv = 1.0/(Ms[i]*mu0)
-    energy[i] = -0.5*(fx*spin[3*i-2] + fy*spin[3*i-1] + fz*spin[3*i])*mesh.volume
-    field[3*i-2] = fx*Ms_inv
-    field[3*i-1] = fy*Ms_inv
-    field[3*i] = fz*Ms_inv
-  end
-end
-
-
 function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::Array{Float64, 1}, t::Float64)
   mu0 = 4*pi*1e-7
   mesh = sim.mesh
@@ -427,11 +352,11 @@ For example:
 After running this function, the effective field is calculated and saved in sim.field, 
 and the total energy is saved in sim.energy.
 """
-function effective_field(sim::AbstractSim, spin::Array{Float64, 1}, t::Float64)
+function effective_field(sim::AbstractSim, spin, t::Float64)
   fill!(sim.field, 0.0)
   fill!(sim.energy, 0.0)
   for interaction in sim.interactions
-    effective_field(interaction, sim, spin, t)
+    effective_field(interaction, sim, spin, t::Float64)
     sim.field .+= interaction.field
     sim.energy .+= interaction.energy
   end

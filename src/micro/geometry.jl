@@ -57,18 +57,6 @@ function update_scalar_geometry(v::Array{T,1}, geo::Geometry, u::Number) where T
     end
 end
 
-function update_scalar_geometry(v::CuArray{T,1}, geo::Geometry, u::Number) where T<:AbstractFloat
-    lv,lg = length(v),length(geo.shape)
-    if lv != lg
-        @error("Geometry doesn't fit array!")
-    end
-    for i = 1:lv
-        if geo.shape[i]
-            v[i] = u
-        end
-    end
-end
-
 """
     create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0, xc="unvalued", yc="unvalued", zc="unvalued")
 

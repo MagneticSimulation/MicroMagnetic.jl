@@ -45,7 +45,7 @@ function init_vector!(v::Array{T, 1}, mesh::Mesh, init::Function) where {T<:Abst
         vec_value = init(i,j,k,dx,dy,dz)
 
         # ignore the values for specfic positions that the user do not want to provide or change.
-        if vec_value != nothing
+        if vec_value !== nothing
           b[:, id] .= vec_value[:]
         end
 
