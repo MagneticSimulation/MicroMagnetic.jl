@@ -86,6 +86,42 @@ function effective_field(exch::VectorExchange, sim::MicroSim, spin, t::Float64)
   return nothing
 end
 
+
+function effective_field(dmi::BulkDMI, sim::MicroSim, spin, t::Float64)
+  n_total = sim.n_total
+  mesh = sim.mesh
+  volume = mesh.volume
+
+  groupsize = 512
+  kernel! = bulkdmi_kernel!(backend[], groupsize)
+
+  T = single_precision.x ? Float32 : Float64
+  dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+  kernel!(spin, dmi.field, dmi.energy, sim.Ms, dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs, volume, ndrange=n_total)
+
+  KernelAbstractions.synchronize(backend[])
+  return nothing
+end
+
+
+function effective_field(dmi::SpatialBulkDMI, sim::MicroSim, spin, t::Float64)
+  n_total = sim.n_total
+  mesh = sim.mesh
+  volume = mesh.volume
+
+  groupsize = 512
+  kernel! = spatial_bulkdmi_kernel!(backend[], groupsize)
+
+  T = single_precision.x ? Float32 : Float64
+  dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+  kernel!(spin, dmi.field, dmi.energy, sim.Ms, dmi.D, dx, dy, dz, mesh.ngbs, volume, ndrange=n_total)
+
+  KernelAbstractions.synchronize(backend[])
+  return nothing
+end
+
+
+
 #we keep this function for debug and testing purpose, only works on CPU
 function effective_field_debug(exch::Exchange, sim::MicroSim, spin::Array{Float64,1}, t::Float64)
   mu0 = 4.0 * pi * 1e-7
@@ -190,20 +226,19 @@ function effective_field_debug(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,
   ay = (0.0, 0.0, 1.0, -1.0, 0.0, 0.0)
   az = (0.0, 0.0, 0.0, 0.0, 1.0, -1.0)
 
-  Threads.@threads for i = 1:n_total
-    if Ms[i] == 0.0
-      energy[i] = 0.0
-      field[3*i-2] = 0.0
-      field[3*i-1] = 0.0
-      field[3*i] = 0.0
+  for index = 1:n_total
+    i = 3 * index - 2
+    if Ms[index] == 0.0
+      energy[index] = 0.0
+      field[i] = 0.0
+      field[i+1] = 0.0
+      field[i+2] = 0.0
       continue
     end
-    fx = 0.0
-    fy = 0.0
-    fz = 0.0
+    fx, fy, fz = 0.0, 0.0, 0.0
 
     for j = 1:6
-      id = ngbs[j, i]
+      id = ngbs[j, index]
       if id > 0 && Ms[id] > 0
         k = 3 * (id - 1) + 1
         fx += Ds[j] * cross_x(ax[j], ay[j], az[j], spin[k], spin[k+1], spin[k+2])
@@ -212,11 +247,11 @@ function effective_field_debug(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,
       end
     end
 
-    Ms_inv = 1.0 / (Ms[i] * mu0)
-    energy[i] = -0.5 * (fx * spin[3*i-2] + fy * spin[3*i-1] + fz * spin[3*i]) * mesh.volume
-    field[3*i-2] = fx * Ms_inv
-    field[3*i-1] = fy * Ms_inv
-    field[3*i] = fz * Ms_inv
+    Ms_inv = 1.0 / (Ms[index] * mu0)
+    energy[index] = -0.5 * (fx * spin[i] + fy * spin[i+1] + fz * spin[i+2]) * mesh.volume
+    field[i] = fx * Ms_inv
+    field[i+1] = fy * Ms_inv
+    field[i+2] = fz * Ms_inv
   end
 end
 

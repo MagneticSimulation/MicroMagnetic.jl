@@ -4,6 +4,7 @@ include("test_mesh.jl")
 include("test_zeeman.jl")
 include("test_anis.jl")
 include("test_exch.jl")
+include("test_dmi.jl")
 
 @testset "CPU back-end" begin
   test_FDMesh()
@@ -12,6 +13,7 @@ include("test_exch.jl")
   test_cubic_anis()
   test_exch_scalar()
   test_exch_vectors()
+  test_bulk_dmi()
 end
 
 @testset "NVIDIA CUDA back-end" begin
@@ -23,6 +25,7 @@ end
     test_cubic_anis()
     test_exch_scalar()
     test_exch_vectors()
+    test_bulk_dmi()
   end
 end
 

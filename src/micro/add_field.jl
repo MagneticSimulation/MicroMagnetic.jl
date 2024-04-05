@@ -1,4 +1,4 @@
-export add_zeeman, update_zeeman, add_anis, add_cubic_anis, add_exch
+export add_zeeman, update_zeeman, add_anis, add_cubic_anis, add_exch, add_dmi
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -157,7 +157,7 @@ function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exc
         copyto!(A_kb, Spatial_A)
 
         exch = Exchange(A_kb, field, energy, name)
-        
+
     end
 
     push!(sim.interactions, exch)
@@ -168,6 +168,79 @@ function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exc
     end
     @info "Exchange has been added."
     return exch
+end
+
+
+@doc raw"""
+    add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
+
+Add DMI to the system. `type` could be "bulk" or "interfacial"
+
+The energy of interlayer DMI is defined as 
+
+```math
+E_\mathrm{dmi-int} =  \int_\Gamma \mathbf{D} \cdot \left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right) dA
+```
+where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{i}$ and $\mathbf{m}_{j}$. 
+$\mathbf{D}$ is the effective DMI vector. 
+
+The effective field is given
+```math
+\mathbf{H}_i = \frac{1}{\mu_0 M_s \Delta}  \mathbf{D} \times \mathbf{m}_{j} 
+```
+
+Examples:
+
+```julia
+   add_dmi(sim, 1e-3, type="interfacial")
+```
+or
+```julia
+   add_dmi(sim, 1e-3, type="bulk")
+```
+
+```julia
+   add_dmi(sim, (1e-3, 1e-3, 0), type="bulk")
+```
+
+"""
+function add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
+
+    n_total = sim.n_total
+    T = single_precision.x ? Float32 : Float64
+    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    energy = KernelAbstractions.zeros(backend[], T, n_total)
+
+    if type == "bulk"
+
+        if isa(D, Number)
+            dmi = BulkDMI(T(D), T(D), T(D), field, energy, name)
+        elseif isa(D, Tuple) && length(D) == 3
+            dmi = BulkDMI(T(D[1]), T(D[2]), T(D[3]), field, energy, name)
+        else
+            Spatial_D = zeros(T, sim.n_total)
+            init_scalar!(Spatial_D, sim.mesh, D)
+
+            D_kb = KernelAbstractions.zeros(backend[], T, n_total)
+            copyto!(D_kb, Spatial_D)
+
+            dmi = SpatialBulkDMI(D_kb, field, energy, name)
+        end
+
+        @info "Bulk DMI has been added."
+    elseif type == "interfacial"
+
+    else
+        error("Supported DMI type:", "interfacial", "bulk")
+    end
+
+    push!(sim.interactions, dmi)
+
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+    end
+    return dmi
 end
 
 """ 
@@ -233,92 +306,6 @@ function add_exch_rkky(sim::AbstractSim, J::Float64; name="rkky")
 end
 
 """
-    add_dmi(sim::AbstractSim, D::Tuple{Real, Real, Real}; name="dmi")
-
-Add DMI to the system. Example:
-
-```julia
-   add_dmi(sim, (1e-3, 1e-3, 0))
-```
-"""
-function add_dmi(sim::AbstractSim, D::Tuple{Real,Real,Real}; name="dmi")
-    n_total = sim.n_total
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
-    dmi = BulkDMI(Float64(D[1]), Float64(D[2]), Float64(D[3]), field, energy, name)
-    push!(sim.interactions, dmi)
-
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
-    end
-    return dmi
-end
-
-"""
-    add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
-
-Add DMI to the system. `type` could be "bulk" or "interfacial"
-Examples:
-
-```julia
-   add_dmi(sim, 1e-3, type="interfacial")
-```
-or
-```julia
-   add_dmi(sim, 1e-3, type="bulk")
-```
-"""
-function add_dmi(sim::AbstractSim, D::Real; name="dmi", type="bulk")
-    if type == "interfacial"
-        return add_dmi_interfacial(sim, D, name=name)
-    elseif type == "bulk"
-        return add_dmi(sim, (D, D, D), name=name)
-    else
-        error("Supported DMI type:", "interfacial", "bulk")
-    end
-
-end
-
-function add_dmi_interfacial(sim::AbstractSim, D::Real; name="dmi")
-    n_total = sim.n_total
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
-    dmi = InterfacialDMI(Float64(D), field, energy, name)
-    push!(sim.interactions, dmi)
-
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
-    end
-    return dmi
-end
-
-"""
-    add_dmi(sim::AbstractSim;  name="dmi")
-
-Add DMI to the system. Example:
-
-```julia
-   add_dmi(sim, (1e-3, 1e-3, 0))
-```
-"""
-function add_dmi(sim::AbstractSim, name="dmi")
-    n_total = sim.n_total
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
-    z = 0.0
-    dmi = DMI(z, z, z, z, z, z, z, z, z, z, z, z, z, z, field, energy, name)
-    push!(sim.interactions, dmi)
-
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
-    end
-    return dmi
-end
-
-"""
     add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
 
 Add Demag to the system. `Nx`, `Ny` and `Nz` can be used to describe the macro boundary conditions which means that
@@ -379,6 +366,7 @@ Add Anisotropy within the Geometry, or update corresponding Ku if other anis is 
 #FIXME : fix this function
 function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0, 0, 1), name="anis")
     lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
+
     naxis = (axis[1] / lt, axis[2] / lt, axis[3] / lt)
     for interaction in sim.interactions
         if interaction.name == name
