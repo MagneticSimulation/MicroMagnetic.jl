@@ -15,6 +15,7 @@ CylindricalTubeMeshGPU
 
 ```@docs
 JuMag.NumberOrArrayOrFunction
+JuMag.NumberOrTupleOrArrayOrFunction
 JuMag.NumberOrArray
 JuMag.TupleOrArrayOrFunction
 ```

@@ -28,6 +28,30 @@ means that the input parameter could be a number or an array or a function:
 """
 NumberOrArrayOrFunction = Union{Number,Array,Function}
 
+
+"""
+    NumberOrTupleOrArrayOrFunction
+
+In micromagnetics, there are also cases where the input parameters can be either scalars or vectors and vary with space. For example,
+the parameters for the DMI could be a const for bulk DMI or interfacial DMI. In some materials, the DMI const may differ in different 
+directions and thus a tuple with three numbers is required. In JuMag, the union `NumberOrTupleOrArrayOrFunction` is designed to deal 
+with such situations. Similar to `NumberOrArrayOrFunction`, `NumberOrTupleOrArrayOrFunction` means that the input parameter could be 
+a number, a tuple, an array or a function:
+  - Number: should be Real.
+  - Tuple: should be Real with length 3. For example, `(1,2e-5,0)`.
+  - Array: the length of the array should be `N` or `3N` where `N` is the total spin number of the system.
+  - Function: the parameter of the function should be `(i,j,k,dx,dy,dz)` and the return value should be a tuple with length 3.
+
+    For example,
+    ```julia
+    function uniform_m0(i,j,k,dx,dy,dz)
+        return (0,0,1)
+    end
+    ```
+"""
+NumberOrTupleOrArrayOrFunction = Union{Number,Tuple,Array,Function}
+
+
 """
     NumberOrArray
 
@@ -138,9 +162,11 @@ mutable struct Exchange <: MicroEnergy
 end
 
 mutable struct VectorExchange <: MicroEnergy
-    A::Array{Float64,1}
-    field::Array{Float64,1}
-    energy::Array{Float64,1}
+    Ax::Real
+    Ay::Real
+    Az::Real
+    field
+    energy
     name::String
 end
 

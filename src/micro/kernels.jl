@@ -88,11 +88,48 @@ end
         fx, fy, fz = T(0), T(0), T(0)
         for j = 1:6
             @inbounds id = ngbs[j, I]
-            if id > 0 && Ms_local > 0
+            @inbounds if id > 0 && Ms[id] > 0
                 k = 3 * id - 2
                 @inbounds fx += A[I] * nabla[j] * (m[k] - m[i])
                 @inbounds fy += A[I] * nabla[j] * (m[k+1] - m[i+1])
                 @inbounds fz += A[I] * nabla[j] * (m[k+2] - m[i+2])
+            end
+        end
+        Ms_inv = 1.0 / (Ms_local * mu_0)
+        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i] = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+@kernel function vector_exchange_kernel!(@Const(m), h, energy, @Const(Ms), Ax::T, Ay::T, Az::T,
+    dx::T, dy::T, dz::T, @Const(ngbs), volume::T) where {T<:AbstractFloat}
+
+    I = @index(Global)
+
+    @inbounds Ms_local = Ms[I]
+
+    ax::T = 2 * Ax / (dx * dx)
+    ay::T = 2 * Ay / (dy * dy)
+    az::T = 2 * Az / (dz * dz)
+    nabla = (ax, ax, ay, ay, az, az)
+
+    i = 3 * I - 2
+    if Ms_local == T(0)
+        @inbounds energy[I] = 0
+        @inbounds h[i] = 0
+        @inbounds h[i+1] = 0
+        @inbounds h[i+2] = 0
+    else
+        fx, fy, fz = T(0), T(0), T(0)
+        for j = 1:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && Ms[id] > 0
+                k = 3 * id - 2
+                @inbounds fx += nabla[j] * (m[k] - m[i])
+                @inbounds fy += nabla[j] * (m[k+1] - m[i+1])
+                @inbounds fz += nabla[j] * (m[k+2] - m[i+2])
             end
         end
         Ms_inv = 1.0 / (Ms_local * mu_0)

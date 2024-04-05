@@ -40,7 +40,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 end
 
 """
-    update_zeeman(sim::AbstractSim, H0::Tuple; name="zeeman")
+    update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 
 Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its name. For example,
 
@@ -123,7 +123,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; 
 end
 
 """
-    add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
+    add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
 
 Add exchange energy to the system.
 
@@ -138,20 +138,27 @@ or
     add_exch(sim, (2e-12,5e-12,0))
 ```
 """
-function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
+function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
-    
-    Spatial_A = zeros(T, sim.n_total)
-    init_scalar!(Spatial_A, sim.mesh, A)
-
-    A_kb = KernelAbstractions.zeros(backend[], T, n_total)
     field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(backend[], T, n_total)
 
-    copyto!(A_kb, Spatial_A)
+    exch = nothing
+    if isa(A, Number)
+        exch = VectorExchange(T(A), T(A), T(A), field, energy, name)
+    elseif isa(A, Tuple) && length(A) == 3
+        exch = VectorExchange(T(A[1]), T(A[2]), T(A[3]), field, energy, name)
+    else
+        Spatial_A = zeros(T, sim.n_total)
+        init_scalar!(Spatial_A, sim.mesh, A)
 
-    exch = Exchange(A_kb, field, energy, name)
+        A_kb = KernelAbstractions.zeros(backend[], T, n_total)
+        copyto!(A_kb, Spatial_A)
+
+        exch = Exchange(A_kb, field, energy, name)
+        
+    end
 
     push!(sim.interactions, exch)
 
@@ -159,6 +166,7 @@ function add_exch(sim::AbstractSim, A::NumberOrArrayOrFunction; name="exch")
         id = length(sim.interactions)
         push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
     end
+    @info "Exchange has been added."
     return exch
 end
 
@@ -437,7 +445,7 @@ add a cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1). The thi
     add_cubic_anis(sim, 1e3, (1, 1, 0), (1, -1, 0))
 ```
 """
-function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,0,0), axis2=(0,1,0), name="cubic")
+function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1, 0, 0), axis2=(0, 1, 0), name="cubic")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
     Kcs = zeros(T, n_total)
@@ -451,7 +459,7 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
         return nothing
     end
     naxis3 = cross_product(axis1, axis2)
-    
+
     Kcs_kb = KernelAbstractions.zeros(backend[], T, n_total)
     field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(backend[], T, n_total)
