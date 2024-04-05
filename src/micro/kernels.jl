@@ -139,3 +139,80 @@ end
         @inbounds h[i+2] = fz * Ms_inv
     end
 end
+
+
+@kernel function bulkdmi_kernel!(@Const(m), h, energy, @Const(Ms), Dx::T, Dy::T, Dz::T,
+    dx::T, dy::T, dz::T, @Const(ngbs), volume::T) where {T<:AbstractFloat}
+
+    I = @index(Global)
+
+    @inbounds Ms_local = Ms[I]
+
+    Ds = (Dx / dx, Dx / dx, Dy / dy, Dy / dy, Dz / dz, Dz / dz)
+    ax = (T(1), T(-1), T(0), T(0), T(0), T(0))
+    ay = (T(0), T(0), T(1), T(-1), T(0), T(0))
+    az = (T(0), T(0), T(0), T(0), T(1), T(-1))
+
+    i = 3 * I - 2
+    if Ms_local == T(0)
+        @inbounds energy[I] = 0
+        @inbounds h[i] = 0
+        @inbounds h[i+1] = 0
+        @inbounds h[i+2] = 0
+    else
+        fx, fy, fz = T(0), T(0), T(0)
+        for j = 1:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && Ms[id] > 0
+                k = 3 * id - 2
+                @inbounds fx += Ds[j] * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                @inbounds fy += Ds[j] * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                @inbounds fz += Ds[j] * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+            end
+        end
+        Ms_inv = 1.0 / (Ms_local * mu_0)
+        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i] = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+
+@kernel function spatial_bulkdmi_kernel!(@Const(m), h, energy, @Const(Ms), @Const(Ds),
+    dx::T, dy::T, dz::T, @Const(ngbs), volume::T) where {T<:AbstractFloat}
+
+    I = @index(Global)
+
+    @inbounds Ms_local = Ms[I]
+    @inbounds D = Ds[I]
+
+    Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy), T(1 / dz), T(1 / dz))
+    ax = (T(1), T(-1), T(0), T(0), T(0), T(0))
+    ay = (T(0), T(0), T(1), T(-1), T(0), T(0))
+    az = (T(0), T(0), T(0), T(0), T(1), T(-1))
+
+    i = 3 * I - 2
+    if Ms_local == T(0)
+        @inbounds energy[I] = 0
+        @inbounds h[i] = 0
+        @inbounds h[i+1] = 0
+        @inbounds h[i+2] = 0
+    else
+        fx, fy, fz = T(0), T(0), T(0)
+        for j = 1:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && Ms[id] > 0
+                k = 3 * id - 2
+                @inbounds fx += D * Dd[j] * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                @inbounds fy += D * Dd[j] * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                @inbounds fz += D * Dd[j] * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+            end
+        end
+        Ms_inv = 1.0 / (Ms_local * mu_0)
+        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i] = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end

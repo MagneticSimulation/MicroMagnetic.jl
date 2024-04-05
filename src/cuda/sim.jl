@@ -86,38 +86,6 @@ function add_exch_rkky(sim::MicroSimGPU, J::Float64; name="rkky")
 end
 
 
-function add_dmi(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi")
-    n_total = sim.n_total
-    Float = _cuda_using_double.x ? Float64 : Float32
-    field = zeros(Float, 3*n_total)
-    energy = zeros(Float, n_total)
-    dmi = BulkDMIGPU(Float(D[1]), Float(D[2]), Float(D[3]), field, energy, Float(0.0), name)
-
-    push!(sim.interactions, dmi)
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSimGPU->o.interactions[id].total_energy))
-    end
-    return dmi
-end
-
-@doc raw"""
-    add_dmi_interlayer(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi_int")
-
-Add an interlayer DMI to the system. The energy of interlayer DMI is defined as 
-
-```math
-E_\mathrm{dmi-int} =  \int_\Gamma \mathbf{D} \cdot \left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right) dA
-```
-where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{i}$ and $\mathbf{m}_{j}$. 
-$\mathbf{D}$ is the effective DMI vector. 
-
-The effective field is given
-```math
-\mathbf{H}_i = \frac{1}{\mu_0 M_s \Delta}  \mathbf{D} \times \mathbf{m}_{j} 
-```
-
-"""
 function add_dmi_interlayer(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="dmi_int")
     n_total = sim.n_total
     Float = _cuda_using_double.x ? Float64 : Float32
@@ -131,31 +99,6 @@ function add_dmi_interlayer(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; name="
         push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSimGPU->o.interactions[id].total_energy))
     end
     return dmi
-end
-
-function add_dmi(sim::MicroSimGPU, Dfun::Function; name="dmi")
-    n_total = sim.n_total
-    T = _cuda_using_double.x ? Float64 : Float32
-    Ds = zeros(T, sim.n_total)
-    init_scalar!(Ds, sim.mesh, Dfun)
-    Ds_gpu = CuArray(Ds)
-    field = zeros(T, 3*n_total)
-    energy = zeros(T, n_total)
-    dmi = SpatialBulkDMIGPU(Ds_gpu, field, energy, T(0.0), name)
-
-    push!(sim.interactions, dmi)
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSimGPU->o.interactions[id].total_energy))
-    end
-    return dmi
-end
-
-function add_dmi(sim::MicroSimGPU, D::Real; name="dmi", type="bulk")
-    if type == "interfacial"
-        return add_dmi_interfacial(sim, D, name=name)
-    end
-   return add_dmi(sim, (D,D,D), name=name)
 end
 
 
