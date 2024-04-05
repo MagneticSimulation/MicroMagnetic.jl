@@ -14,6 +14,7 @@ include("test_dmi.jl")
   test_exch_scalar()
   test_exch_vectors()
   test_bulk_dmi()
+  test_interfacial_dmi()
 end
 
 @testset "NVIDIA CUDA back-end" begin
@@ -26,6 +27,7 @@ end
     test_exch_scalar()
     test_exch_vectors()
     test_bulk_dmi()
+    test_interfacial_dmi()
   end
 end
 
