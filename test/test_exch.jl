@@ -1,16 +1,18 @@
 using JuMag
 using Test
 
-Nx = 50
-
-function m0_fun(i, j, k, dx, dy, dz)
-    L = Nx * dx
-    x = i * dx
-    return sin(2 * pi * x / L), sin(2 * pi * x / L + 1.2), sin(2 * pi * x / L + 2.3)
+function A_fun(i, j, k, dx, dy, dz)
+    return 1.3e-11
 end
 
-function test_exch_scalar()
-    
+function test_exch_scalar(Nx=50)
+
+    function m0_fun(i, j, k, dx, dy, dz)
+        L = Nx * dx
+        x = i * dx
+        return sin(2 * pi * x / L), sin(2 * pi * x / L + 1.2), sin(2 * pi * x / L + 2.3)
+    end
+
     mesh = FDMesh(dx=2e-9, nx=Nx, ny=1, nz=1, pbc="x")
     @test mesh.dx == 2e-9
     @test mesh.nx == Nx
@@ -23,22 +25,20 @@ function test_exch_scalar()
     Ms = 8.6e5
     A = 1.3e-11
 
+
     sim = Sim(mesh)
     set_Ms(sim, Ms)
     init_m0(sim, m0_fun, norm=false)
-    exch = add_exch(sim, A)
+    exch = add_exch(sim, A_fun)
 
     JuMag.effective_field(sim, sim.spin, 0.0)
 
     if isa(sim.spin, Array)
-
-      f1 = Array(exch.field)
-
-      JuMag.effective_field_debug(exch, sim, sim.spin, 0.0)
-
-      @test isapprox(f1, exch.field, atol=1e-10)
+        f1 = Array(exch.field)
+        JuMag.effective_field_debug(exch, sim, sim.spin, 0.0)
+        @test isapprox(f1, exch.field, atol=1e-10)
     end
-    
+
     xs = (1:Nx) * 2e-9
     mu0 = 4 * pi * 1e-7
     L = Nx * 2e-9
@@ -52,150 +52,77 @@ function test_exch_scalar()
     @test (maximum(b[3, :] .- expected_z) ./ Ms < 2e-4)
 
 
-  Delta = 2e-9
-  mesh = FDMesh(dx=2e-9, dz=Delta, nx=1, ny=1, nz=3, pbc="x")
-  sim = Sim(mesh)
-  set_Ms(sim, Ms)
+    Delta = 2e-9
+    mesh = FDMesh(dx=2e-9, dz=Delta, nx=1, ny=1, nz=3, pbc="x")
+    sim = Sim(mesh)
+    set_Ms(sim, Ms)
 
-  sigma = 1e-5
-  init_m0(sim, (0.6, 0.8, 0))
-  #r = add_exch_rkky(sim, sigma)
+    sigma = 1e-5
+    init_m0(sim, (0.6, 0.8, 0))
+    #r = add_exch_rkky(sim, sigma)
 
-  #JuMag.effective_field(sim, sim.spin, 0.0)
-  #b = reshape(sim.field, 3, sim.n_total)
-  
-  #fx = sigma / Delta / (mu0 * Ms) * 0.6
-  #fy = sigma / Delta / (mu0 * Ms) * 0.8
-  #println(fx - b[1, 1])
-  #@test fx - b[1, 1] == 0.0
+    #JuMag.effective_field(sim, sim.spin, 0.0)
+    #b = reshape(sim.field, 3, sim.n_total)
+
+    #fx = sigma / Delta / (mu0 * Ms) * 0.6
+    #fy = sigma / Delta / (mu0 * Ms) * 0.8
+    #println(fx - b[1, 1])
+    #@test fx - b[1, 1] == 0.0
 
 
 end
 
-
-
-
-
-
-
-
-
-
-mesh = FDMesh(nx=3, ny=3, nz=3)
-function m(i, j, k, dx, dy, dz)
-  return (i^2, j + 1.0, k * j)
+function Ms_x(i, j, k, dx, dy, dz)
+    return j == 2 && k == 2 ? 1e5 : 0
 end
 
-function test_exch_vector_x(mesh)
-  function Ms_x(i, j, k, dx, dy, dz)
-    if j == 2 && k == 2
-      return 1e5
-    else
-      return 0
+function Ms_y(i, j, k, dx, dy, dz)
+    return i == 2 && k == 2 ? 1e5 : 0
+end
+
+function Ms_z(i, j, k, dx, dy, dz)
+    return i == 2 && j == 2 ? 1e5 : 0
+end
+
+function test_exch_vector(direction=:x)
+    mesh = FDMesh(nx=3, ny=3, nz=3)
+    function m_fun(i, j, k, dx, dy, dz)
+        return (i^2, j + 1.0, k * j)
     end
-  end
-  sim1 = Sim(mesh)
-  sim2 = Sim(mesh)
-  set_Ms(sim1, Ms_x)
-  set_Ms(sim2, Ms_x)
-  add_exch(sim1, 1e-12)
-  add_exch_vector(sim2, (1e-12, 0, 0))
-  init_m0(sim1, m)
-  init_m0(sim2, m)
-  JuMag.effective_field(sim1, sim1.spin, 0.0)
-  JuMag.effective_field(sim2, sim2.spin, 0.0)
-  for i = 1:3*27
-    @test sim1.field[i] - sim2.field[i] == 0.0
-  end
-end
-function test_exch_vector_x(mesh)
-  function Ms_x(i, j, k, dx, dy, dz)
-    if j == 2 && k == 2
-      return 1e5
-    else
-      return 0
+
+    sim = Sim(mesh)
+
+    if direction == :x
+        set_Ms(sim, Ms_x)
+        A = (1.3e-11, 0, 0)
+    elseif direction == :y
+        set_Ms(sim, Ms_y)
+        A = (0, 1.3e-11, 0)
+    elseif direction == :z
+        set_Ms(sim, Ms_z)
+        A = (0, 0, 1.3e-11)
     end
-  end
-  sim1 = Sim(mesh)
-  sim2 = Sim(mesh)
-  set_Ms(sim1, Ms_x)
-  set_Ms(sim2, Ms_x)
-  add_exch(sim1, 1e-12)
-  add_exch_vector(sim2, (1e-12, 0, 0))
-  init_m0(sim1, m)
-  init_m0(sim2, m)
-  JuMag.effective_field(sim1, sim1.spin, 0.0)
-  JuMag.effective_field(sim2, sim2.spin, 0.0)
-  for i = 1:3*27
-    @test sim1.field[i] - sim2.field[i] == 0.0
-  end
-end
-function test_exch_vector_y(mesh)
-  function Ms_y(i, j, k, dx, dy, dz)
-    if i == 2 && k == 2
-      return 1e5
-    else
-      return 0
-    end
-  end
-  sim1 = Sim(mesh)
-  sim2 = Sim(mesh)
-  set_Ms(sim1, Ms_y)
-  set_Ms(sim2, Ms_y)
-  add_exch(sim1, 1e-12)
-  add_exch_vector(sim2, (0, 1e-12, 0))
-  init_m0(sim1, m)
-  init_m0(sim2, m)
-  JuMag.effective_field(sim1, sim1.spin, 0.0)
-  JuMag.effective_field(sim2, sim2.spin, 0.0)
-  for i = 1:3*27
-    @test sim1.field[i] - sim2.field[i] == 0.0
-  end
-end
-function test_exch_vector_z(mesh)
-  function Ms_z(i, j, k, dx, dy, dz)
-    if i == 2 && j == 2
-      return 1e5
-    else
-      return 0
-    end
-  end
-  sim1 = Sim(mesh)
-  sim2 = Sim(mesh)
-  set_Ms(sim1, Ms_z)
-  set_Ms(sim2, Ms_z)
-  add_exch(sim1, 1e-12)
-  add_exch_vector(sim2, (0, 0, 1e-12))
-  init_m0(sim1, m)
-  init_m0(sim2, m)
-  JuMag.effective_field(sim1, sim1.spin, 0.0)
-  JuMag.effective_field(sim2, sim2.spin, 0.0)
-  for i = 1:3*27
-    @test sim1.field[i] - sim2.field[i] == 0.0
-  end
-end
-function test_exch_vector_all(mesh)
-  function Ms_all(i, j, k, dx, dy, dz)
-    return i^2 + j * 1e3 + k
-  end
-  sim1 = Sim(mesh)
-  sim2 = Sim(mesh)
-  set_Ms(sim1, Ms_all)
-  set_Ms(sim2, Ms_all)
-  add_exch(sim1, 1e-12)
-  add_exch_vector(sim2, (1e-12, 1e-12, 1e-12))
-  init_m0(sim1, m)
-  init_m0(sim2, m)
-  JuMag.effective_field(sim1, sim1.spin, 0.0)
-  JuMag.effective_field(sim2, sim2.spin, 0.0)
-  for i = 1:3*27
-    @test sim1.field[i] - sim2.field[i] == 0.0
-  end
+
+    init_m0(sim, m_fun)
+
+    ex1 = add_exch(sim, A_fun, name="ex1")
+    ex2 = add_exch(sim, A, name="ex2")
+
+    JuMag.effective_field(sim, sim.spin, 0.0)
+
+    f1 = Array(ex1.field)
+    f2 = Array(ex2.field)
+
+    #print(maximum(abs.(f1.-f2)))
+    @test isapprox(f1, f2, atol=1e-7)
 end
 
-#test_exch_vector_x(mesh)
-#test_exch_vector_y(mesh)
-#test_exch_vector_z(mesh)
-#test_exch_vector_all(mesh)
 
-test_exch_scalar()
+function test_exch_vectors()
+    test_exch_vector(:x)
+    test_exch_vector(:y)
+    test_exch_vector(:z)
+end
+
+#test_exch_scalar()
+#test_exch_vectors()

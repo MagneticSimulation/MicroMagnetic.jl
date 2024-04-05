@@ -11,6 +11,7 @@ include("test_exch.jl")
   test_anis()
   test_cubic_anis()
   test_exch_scalar()
+  test_exch_vectors()
 end
 
 @testset "NVIDIA CUDA back-end" begin
@@ -21,6 +22,7 @@ end
     test_anis()
     test_cubic_anis()
     test_exch_scalar()
+    test_exch_vectors()
   end
 end
 

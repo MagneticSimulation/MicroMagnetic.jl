@@ -54,6 +54,38 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin, t::Float64)
   return nothing
 end
 
+function effective_field(exch::Exchange, sim::MicroSim, spin, t::Float64)
+  n_total = sim.n_total
+  mesh = sim.mesh
+  volume = mesh.volume
+
+  groupsize = 512
+  kernel! = exchange_kernel!(backend[], groupsize)
+
+  T = single_precision.x ? Float32 : Float64
+  dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+  kernel!(spin, exch.field, exch.energy, sim.Ms, exch.A, dx, dy, dz, mesh.ngbs, volume, ndrange=n_total)
+  KernelAbstractions.synchronize(backend[])
+
+  return nothing
+end
+
+function effective_field(exch::VectorExchange, sim::MicroSim, spin, t::Float64)
+  n_total = sim.n_total
+  mesh = sim.mesh
+  volume = mesh.volume
+
+  groupsize = 512
+  kernel! = vector_exchange_kernel!(backend[], groupsize)
+
+  T = single_precision.x ? Float32 : Float64
+  dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+  kernel!(spin, exch.field, exch.energy, sim.Ms, exch.Ax, exch.Ay, exch.Az, dx, dy, dz, mesh.ngbs, volume, ndrange=n_total)
+  KernelAbstractions.synchronize(backend[])
+
+  return nothing
+end
+
 #we keep this function for debug and testing purpose, only works on CPU
 function effective_field_debug(exch::Exchange, sim::MicroSim, spin::Array{Float64,1}, t::Float64)
   mu0 = 4.0 * pi * 1e-7
@@ -97,23 +129,6 @@ function effective_field_debug(exch::Exchange, sim::MicroSim, spin::Array{Float6
     field[i+1] = fy * Ms_inv
     field[i+2] = fz * Ms_inv
   end
-end
-
-
-function effective_field(exch::Exchange, sim::MicroSim, spin, t::Float64)
-  n_total = sim.n_total
-  mesh = sim.mesh
-  volume = mesh.volume
-
-  groupsize = 512
-  kernel! = exchange_kernel!(backend[], groupsize)
-  
-  T = single_precision.x ? Float32 : Float64
-  dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
-  kernel!(spin, exch.field, exch.energy, sim.Ms, exch.A, dx, dy, dz, mesh.ngbs, volume, ndrange=n_total)
-  KernelAbstractions.synchronize(backend[])
-
-  return nothing
 end
 
 
