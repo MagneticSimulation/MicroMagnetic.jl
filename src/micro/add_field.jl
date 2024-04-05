@@ -229,6 +229,14 @@ function add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi"
 
         @info "Bulk DMI has been added."
     elseif type == "interfacial"
+        Spatial_D = zeros(T, sim.n_total)
+        init_scalar!(Spatial_D, sim.mesh, D)
+
+        D_kb = KernelAbstractions.zeros(backend[], T, n_total)
+        copyto!(D_kb, Spatial_D)
+
+        dmi = InterfacialDMI(D_kb, field, energy, name)
+        @info "Interfacial DMI has been added."
 
     else
         error("Supported DMI type:", "interfacial", "bulk")

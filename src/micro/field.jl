@@ -120,6 +120,22 @@ function effective_field(dmi::SpatialBulkDMI, sim::MicroSim, spin, t::Float64)
   return nothing
 end
 
+function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin, t::Float64)
+  n_total = sim.n_total
+  mesh = sim.mesh
+  volume = mesh.volume
+
+  groupsize = 512
+  kernel! = interfacial_dmi_kernel!(backend[], groupsize)
+
+  T = single_precision.x ? Float32 : Float64
+  dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+  kernel!(spin, dmi.field, dmi.energy, sim.Ms, dmi.D, dx, dy, dz, mesh.ngbs, volume, ndrange=n_total)
+
+  KernelAbstractions.synchronize(backend[])
+  return nothing
+end
+
 
 
 #we keep this function for debug and testing purpose, only works on CPU
@@ -255,53 +271,6 @@ function effective_field_debug(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,
   end
 end
 
-
-function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::Array{Float64,1}, t::Float64)
-  mu0 = 4 * pi * 1e-7
-  mesh = sim.mesh
-  dx = mesh.dx
-  dy = mesh.dy
-  dz = mesh.dz
-  ngbs = mesh.ngbs
-  n_total = sim.n_total
-  field = dmi.field
-  energy = dmi.energy
-  Ms = sim.Ms
-  D = dmi.D
-  Ds = (D / dx, D / dx, D / dy, D / dy)
-  ax = (0.0, 0.0, -1.0, 1.0) #Dij = D r_ij x z
-  ay = (1.0, -1.0, 0.0, 0.0)
-  az = (0.0, 0.0, 0.0, 0.0)
-
-  Threads.@threads for i = 1:n_total
-    if Ms[i] == 0.0
-      energy[i] = 0.0
-      field[3*i-2] = 0.0
-      field[3*i-1] = 0.0
-      field[3*i] = 0.0
-      continue
-    end
-    fx = 0.0
-    fy = 0.0
-    fz = 0.0
-
-    for j = 1:4
-      id = ngbs[j, i]
-      if id > 0 && Ms[id] > 0
-        k = 3 * (id - 1) + 1
-        fx += Ds[j] * cross_x(ax[j], ay[j], az[j], spin[k], spin[k+1], spin[k+2])
-        fy += Ds[j] * cross_y(ax[j], ay[j], az[j], spin[k], spin[k+1], spin[k+2])
-        fz += Ds[j] * cross_z(ax[j], ay[j], az[j], spin[k], spin[k+1], spin[k+2])
-      end
-    end
-
-    Ms_inv = 1.0 / (Ms[i] * mu0)
-    energy[i] = -0.5 * (fx * spin[3*i-2] + fy * spin[3*i-1] + fz * spin[3*i]) * mesh.volume
-    field[3*i-2] = fx * Ms_inv
-    field[3*i-1] = fy * Ms_inv
-    field[3*i] = fz * Ms_inv
-  end
-end
 
 """
     effective_field(sim::AbstractSim, spin::Array{Float64, 1}, t::Float64)
