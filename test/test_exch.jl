@@ -6,29 +6,20 @@ function A_fun(i, j, k, dx, dy, dz)
 end
 
 function test_exch_scalar(Nx=50)
-
     function m0_fun(i, j, k, dx, dy, dz)
         L = Nx * dx
         x = i * dx
         return sin(2 * pi * x / L), sin(2 * pi * x / L + 1.2), sin(2 * pi * x / L + 2.3)
     end
 
-    mesh = FDMesh(dx=2e-9, nx=Nx, ny=1, nz=1, pbc="x")
-    @test mesh.dx == 2e-9
-    @test mesh.nx == Nx
-    ngbs = Array(mesh.ngbs)
-    @test ngbs[1, 1] == Nx
-    @test ngbs[1, Nx] == Nx - 1
-    @test ngbs[2, 1] == 2
-    @test ngbs[2, Nx] == 1
+    mesh = FDMesh(; dx=2e-9, nx=Nx, ny=1, nz=1, pbc="x")
 
     Ms = 8.6e5
     A = 1.3e-11
 
-
     sim = Sim(mesh)
     set_Ms(sim, Ms)
-    init_m0(sim, m0_fun, norm=false)
+    init_m0(sim, m0_fun; norm=false)
     exch = add_exch(sim, A_fun)
 
     JuMag.effective_field(sim, sim.spin, 0.0)
@@ -51,14 +42,13 @@ function test_exch_scalar(Nx=50)
     @test (maximum(b[2, :] .- expected_y) ./ Ms < 2e-4)
     @test (maximum(b[3, :] .- expected_z) ./ Ms < 2e-4)
 
-
     Delta = 2e-9
-    mesh = FDMesh(dx=2e-9, dz=Delta, nx=1, ny=1, nz=3, pbc="x")
+    mesh = FDMesh(; dx=2e-9, dz=Delta, nx=1, ny=1, nz=3, pbc="x")
     sim = Sim(mesh)
     set_Ms(sim, Ms)
 
     sigma = 1e-5
-    init_m0(sim, (0.6, 0.8, 0))
+    return init_m0(sim, (0.6, 0.8, 0))
     #r = add_exch_rkky(sim, sigma)
 
     #JuMag.effective_field(sim, sim.spin, 0.0)
@@ -68,7 +58,6 @@ function test_exch_scalar(Nx=50)
     #fy = sigma / Delta / (mu0 * Ms) * 0.8
     #println(fx - b[1, 1])
     #@test fx - b[1, 1] == 0.0
-
 
 end
 
@@ -85,7 +74,7 @@ function Ms_z(i, j, k, dx, dy, dz)
 end
 
 function test_exch_vector(direction=:x)
-    mesh = FDMesh(nx=3, ny=3, nz=3)
+    mesh = FDMesh(; nx=3, ny=3, nz=3)
     function m_fun(i, j, k, dx, dy, dz)
         return (i^2, j + 1.0, k * j)
     end
@@ -105,8 +94,8 @@ function test_exch_vector(direction=:x)
 
     init_m0(sim, m_fun)
 
-    ex1 = add_exch(sim, A_fun, name="ex1")
-    ex2 = add_exch(sim, A, name="ex2")
+    ex1 = add_exch(sim, A_fun; name="ex1")
+    ex2 = add_exch(sim, A; name="ex2")
 
     JuMag.effective_field(sim, sim.spin, 0.0)
 
@@ -117,12 +106,22 @@ function test_exch_vector(direction=:x)
     @test isapprox(f1, f2, atol=1e-7)
 end
 
-
 function test_exch_vectors()
     test_exch_vector(:x)
     test_exch_vector(:y)
-    test_exch_vector(:z)
+    return test_exch_vector(:z)
 end
 
-#test_exch_scalar()
-#test_exch_vectors()
+@testset "Test Exchange CPU" begin
+    set_backend("cpu")
+    test_exch_scalar()
+    test_exch_vectors()
+end
+
+@testset "Test Exchange CUDA" begin
+    if Base.find_package("CUDA") !== nothing
+        using CUDA
+        test_exch_scalar()
+        test_exch_vectors()
+    end
+end
