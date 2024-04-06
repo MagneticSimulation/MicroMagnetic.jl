@@ -15,5 +15,33 @@ function test_FDMesh()
 	  @test ngbs[5, id] == JuMag._z_minus_one(k, id, nx, ny, nz, mesh.zperiodic)
 	  @test ngbs[6, id] == JuMag._z_plus_one(k, id, nx, ny, nz, mesh.zperiodic)
     end
+
+	Nx = 50
+	mesh = FDMesh(; dx=2e-9, nx=Nx, ny=1, nz=1, pbc="x")
+    @test mesh.dx == 2e-9
+    @test mesh.nx == Nx
+    ngbs = Array(mesh.ngbs)
+    @test ngbs[1, 1] == Nx
+    @test ngbs[1, Nx] == Nx - 1
+    @test ngbs[2, 1] == 2
+    @test ngbs[2, Nx] == 1
+
+
+	mesh = FDMesh(; dx=1.1e-9, nx=10, ny=2)
+    @test isapprox(mesh.dx * 1.0, 1.1e-9, rtol=1e-7)
+    @test mesh.nx == 10
+    @test isapprox(mesh.volume * 1.0, 1.1e-27, rtol=1e-7)
 end
 
+
+@testset "Test Mesh CPU" begin
+    set_backend("cpu")
+    test_FDMesh()
+end
+
+@testset "Test Mesh CUDA" begin
+    if Base.find_package("CUDA") !== nothing
+        using CUDA
+        test_FDMesh()
+    end
+end

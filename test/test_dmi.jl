@@ -1,9 +1,7 @@
 using JuMag
 using Test
 
-
 function test_bulk_dmi()
-
     function m0_fun(i, j, k, dx, dy, dz)
         if i == 1
             return (1, 2, 3)
@@ -13,7 +11,7 @@ function test_bulk_dmi()
         return (1, 0, 0)
     end
 
-    mesh = FDMesh(dx=2e-9, nx=2, ny=1, nz=1)
+    mesh = FDMesh(; dx=2e-9, nx=2, ny=1, nz=1)
 
     Ms = 8.6e5
     A = 1.3e-11
@@ -25,9 +23,9 @@ function test_bulk_dmi()
 
     sim = Sim(mesh)
     set_Ms(sim, Ms)
-    init_m0(sim, m0_fun, norm=false)
+    init_m0(sim, m0_fun; norm=false)
     dmi = add_dmi(sim, D)
-    dmi2 = add_dmi(sim, D_fun, name="dmi2")
+    dmi2 = add_dmi(sim, D_fun; name="dmi2")
 
     JuMag.effective_field(sim, sim.spin, 0.0)
     f1 = Array(dmi.field)
@@ -42,14 +40,16 @@ function test_bulk_dmi()
 
     dx = 2e-9
 
-    @test isapprox(f1[1], -1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_x(1, 0, 0, 4, 5, 6))
-    @test isapprox(f1[2], -1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_y(1, 0, 0, 4, 5, 6))
-    @test isapprox(f1[3], -1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_z(1, 0, 0, 4, 5, 6))
+    expected_fx = -1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_x(1, 0, 0, 4, 5, 6)
+    expected_fy = -1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_y(1, 0, 0, 4, 5, 6)
+    expected_fz = -1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_z(1, 0, 0, 4, 5, 6)
+
+    @test isapprox(f1[1], expected_fx)
+    @test isapprox(f1[2], expected_fy)
+    @test isapprox(f1[3], expected_fz)
 end
 
-
 function test_interfacial_dmi()
-
     function m0_fun(i, j, k, dx, dy, dz)
         if i == 1
             return (1, 2, 3)
@@ -59,7 +59,7 @@ function test_interfacial_dmi()
         return (1, 0, 0)
     end
 
-    mesh = FDMesh(dx=2e-9, nx=2, ny=1, nz=1)
+    mesh = FDMesh(; dx=2e-9, nx=2, ny=1, nz=1)
 
     Ms = 8.6e5
     A = 1.3e-11
@@ -67,17 +67,33 @@ function test_interfacial_dmi()
 
     sim = Sim(mesh)
     set_Ms(sim, Ms)
-    init_m0(sim, m0_fun, norm=false)
-    dmi = add_dmi(sim, D, type="interfacial")
+    init_m0(sim, m0_fun; norm=false)
+    dmi = add_dmi(sim, D; type="interfacial")
 
     JuMag.effective_field(sim, sim.spin, 0.0)
     f1 = Array(dmi.field)
 
     dx = 2e-9
 
-    @test isapprox(f1[1], 1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_x(0, -1, 0, 4, 5, 6))
-    @test isapprox(f1[2], 1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_y(0, -1, 0, 4, 5, 6))
-    @test isapprox(f1[3], 1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_z(0, -1, 0, 4, 5, 6))
+    expected_fx = 1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_x(0, -1, 0, 4, 5, 6)
+    expected_fy = 1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_y(0, -1, 0, 4, 5, 6)
+    expected_fz = 1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_z(0, -1, 0, 4, 5, 6)
+
+    @test isapprox(f1[1], expected_fx)
+    @test isapprox(f1[2], expected_fy)
+    @test isapprox(f1[3], expected_fz)
 end
 
-#test_interfacial_dmi()
+@testset "Test DMI CPU" begin
+    set_backend("cpu")
+    test_bulk_dmi()
+    test_interfacial_dmi()
+end
+
+@testset "Test DMI CUDA" begin
+    if Base.find_package("CUDA") !== nothing
+        using CUDA
+        test_bulk_dmi()
+        test_interfacial_dmi()
+    end
+end

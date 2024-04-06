@@ -2,7 +2,7 @@ using JuMag
 using Test
 
 function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
-    precession = gamma / (1 + alpha*alpha)
+    precession = gamma / (1 + alpha * alpha)
     beta = precession * H0 * ts
 
     mx = cos.(beta) ./ cosh.(alpha .* beta)
@@ -13,9 +13,9 @@ end
 
 function test_llg()
     #Test mesh
-    mesh =  FDMesh(nx=1, ny=1, dx=1e-9)
+    mesh = FDMesh(; nx=1, ny=1, dx=1e-9)
 
-    sim = Sim(mesh, name="spin")
+    sim = Sim(mesh; name="spin")
 
     set_Ms(sim, 8e5)
     sim.driver.alpha = 0.05
@@ -26,10 +26,9 @@ function test_llg()
 
     init_m0(sim, (1.0, 0, 0))
 
-    for i=1:300
-      run_until(sim, 1e-12*i)
+    for i in 1:300
+        run_until(sim, 1e-12 * i)
     end
-
 
     #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
     ts = Array([3e-10])
@@ -37,9 +36,19 @@ function test_llg()
 
     m = Array(sim.spin)
 
-    @test abs(mx[1]-m[1]) < 8e-7
-    @test abs(my[1]-m[2]) < 8e-7
-    @test abs(mz[1]-m[3]) < 8e-7
+    @test abs(mx[1] - m[1]) < 8e-7
+    @test abs(my[1] - m[2]) < 8e-7
+    @test abs(mz[1] - m[3]) < 8e-7
 end
 
+@testset "Test LLG CPU" begin
+    set_backend("cpu")
+    test_llg()
+end
 
+@testset "Test LLG CUDA" begin
+    if Base.find_package("CUDA") !== nothing
+        using CUDA
+        test_llg()
+    end
+end

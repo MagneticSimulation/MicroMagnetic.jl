@@ -4,9 +4,6 @@ using Test
 function test_sim()
     #Test mesh
     mesh = FDMesh(; dx=1.1e-9, nx=10, ny=2)
-    @test isapprox(mesh.dx * 1.0, 1.1e-9, rtol=1e-7)
-    @test mesh.nx == 10
-    @test isapprox(mesh.volume * 1.0, 1.1e-27, rtol=1e-7)
 
     sim = Sim(mesh; driver="LLG")
     set_Ms(sim, 1.0)
@@ -32,4 +29,14 @@ function test_sim()
     #println(sim.spin)
 end
 
-#test_sim()
+@testset "Test Exchange CPU" begin
+    set_backend("cpu")
+    test_sim()
+end
+
+@testset "Test Exchange CUDA" begin
+    if Base.find_package("CUDA") !== nothing
+        using CUDA
+        test_sim()
+    end
+end
