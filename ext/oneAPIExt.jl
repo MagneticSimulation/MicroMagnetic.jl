@@ -4,8 +4,8 @@ import JuMag
 using oneAPI
 
 function set_oneApi_backend()
-    JuMag.backend[] = oneAPI.oneAPIBackend()
-    @info("Intel oneAPI backend is used!")
+    JuMag.all_backends[3] = oneAPI.oneAPIBackend()
+    JuMag.set_backend("intel")
     return nothing
 end
 

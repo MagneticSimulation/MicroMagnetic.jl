@@ -4,8 +4,8 @@ import JuMag
 using Metal
 
 function set_metal_backend()
-    JuMag.backend[] = Metal.MetalBackend()
-    @info("Apple Metal backend is used!")
+    JuMag.all_backends[4] = Metal.MetalBackend()
+    JuMag.set_backend("apple")
     return nothing
 end
 
