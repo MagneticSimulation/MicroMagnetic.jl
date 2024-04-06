@@ -26,27 +26,20 @@ function test_llg()
 
     init_m0(sim, (1.0, 0, 0))
 
-    ts = Float64[]
-    mx = Float64[]
-    my = Float64[]
-    mz = Float64[]
     for i=1:300
       run_until(sim, 1e-12*i)
     end
 
-    println(sim.driver.ode.t)
 
-    println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
+    #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
     ts = Array([3e-10])
     mx, my, mz = analytical(0.05, -2.21e5, 1e5, ts)
-    println(mx[1]-sim.spin[1])
-    println(my[1]-sim.spin[2])
-    println(mz[1]-sim.spin[3])
 
-    @test abs(mx[1]-sim.spin[1]) < 8e-7
-    @test abs(my[1]-sim.spin[2]) < 8e-7
-    @test abs(mz[1]-sim.spin[3]) < 8e-7
+    m = Array(sim.spin)
+
+    @test abs(mx[1]-m[1]) < 8e-7
+    @test abs(my[1]-m[2]) < 8e-7
+    @test abs(mz[1]-m[3]) < 8e-7
 end
 
 
-test_llg()

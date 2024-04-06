@@ -1,6 +1,6 @@
 using JLD2
 
-export Sim, init_m0, set_Ms
+export Sim, init_m0, set_Ms, run_until
 
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
@@ -136,23 +136,16 @@ function set_aj(sim::AbstractSim, init_aj)
 	init_scalar!(sim.driver.aj, sim.mesh, init_aj)
 end
 
+
+"""
+Compute the average magnetization defined as
+
+TODO: add the equations
+"""
 function average_m(sim::AbstractSim)
   b = reshape(sim.spin, 3, sim.n_total)
-  mx,my,mz = 0.0,0.0,0.0
-  n = 0
   ms = isa(sim, MicroSim) ? sim.Ms : sim.mu_s
-  for i = 1:sim.n_total
-    if ms[i]>0
-      n += 1
-      mx += b[1,i]
-      my += b[2,i]
-      mz += b[3,i]
-    end
-  end
-  if n == 0
-    error("n should not be zero!")
-  end
-  return (mx/n, my/n, mz/n)
+  return Tuple(sum(b.*ms', dims=2)./sum(ms))
 end
 
 """
