@@ -34,7 +34,7 @@ include("integrator/heun.jl")
 include("integrator/rk.jl")
 include("integrator/dopri5.jl")
 include("fileio.jl")
-include("micro/sim.jl")
+include("sim.jl")
 include("init_m.jl")
 
 end #module
