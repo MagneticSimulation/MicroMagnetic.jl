@@ -1,4 +1,4 @@
-export add_zeeman, update_zeeman, add_anis, add_cubic_anis, add_exch, add_dmi
+export add_zeeman, update_zeeman, add_anis, add_cubic_anis, add_exch, add_dmi, add_demag
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -24,14 +24,14 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
     if sim.save_data
         id = length(sim.interactions)
         if isa(H0, Tuple) && length(H0) == 3
-            field_item = SaverItem(
-                (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")),
-                ("A/m", "A/m", "A/m"),
-                o::AbstractSim -> H0
-            )
+            field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
+                                    string(name, "_Hz")), ("A/m", "A/m", "A/m"),
+                                   o::AbstractSim -> H0)
             push!(sim.saver.items, field_item)
         end
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
 
     @info "Static Zeeman has been added."
@@ -64,7 +64,6 @@ function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeema
     return nothing
 end
 
-
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
 
@@ -91,7 +90,8 @@ Example:
   add_zeeman(sim, spatial_H, time_fun)
 ```
 """
-function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
+function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
+                    name="timezeeman")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
 
@@ -110,14 +110,14 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; 
     if sim.save_data
         id = length(sim.interactions)
         if isa(H0, Tuple) && length(H0) == 3  # FIXME: the output should depends on time!!!
-            field_item = SaverItem(
-                (string(name, "_Hx"), string(name, "_Hy"), string(name, "_Hz")),
-                ("A/m", "A/m", "A/m"),
-                o::AbstractSim -> H0
-            )
+            field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
+                                    string(name, "_Hz")), ("A/m", "A/m", "A/m"),
+                                   o::AbstractSim -> H0)
             push!(sim.saver.items, field_item)
         end
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return zeeman
 end
@@ -157,19 +157,19 @@ function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exc
         copyto!(A_kb, Spatial_A)
 
         exch = Exchange(A_kb, field, energy, name)
-
     end
 
     push!(sim.interactions, exch)
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     @info "Exchange has been added."
     return exch
 end
-
 
 @doc raw"""
     add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
@@ -204,15 +204,14 @@ or
 ```
 
 """
-function add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
-
+function add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi",
+                 type="bulk")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
     field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(backend[], T, n_total)
 
     if type == "bulk"
-
         if isa(D, Number)
             dmi = BulkDMI(T(D), T(D), T(D), field, energy, name)
         elseif isa(D, Tuple) && length(D) == 3
@@ -246,7 +245,9 @@ function add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi"
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return dmi
 end
@@ -277,7 +278,9 @@ function add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return exch
 end
@@ -308,7 +311,9 @@ function add_exch_rkky(sim::AbstractSim, J::Float64; name="rkky")
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return exch
 end
@@ -326,7 +331,9 @@ function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0)
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return demag
 end
@@ -340,7 +347,8 @@ Add Anisotropy to the system, where the energy density is given by
     E_\\mathrm{anis} =  K_{u} (1 - \\vec{m} \\cdot \\hat{u})^2
 ```
 """
-function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1), name="anis")
+function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
+                  name="anis")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
     Kus = zeros(T, n_total)
@@ -359,7 +367,9 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
 
     @info "Uniaxial Anisotropy has been added."
@@ -392,11 +402,12 @@ function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0, 0, 1), n
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return anis
 end
-
 
 """
     update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name = "anis")
@@ -426,7 +437,6 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name="anis")
     return nothing
 end
 
-
 @doc raw"""
     add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1=(1,0,0), axis2=(0,1,0), name="cubic")
 
@@ -441,7 +451,8 @@ add a cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1). The thi
     add_cubic_anis(sim, 1e3, (1, 1, 0), (1, -1, 0))
 ```
 """
-function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1, 0, 0), axis2=(0, 1, 0), name="cubic")
+function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1, 0, 0),
+                        axis2=(0, 1, 0), name="cubic")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
     Kcs = zeros(T, n_total)
@@ -467,7 +478,9 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items, SaverItem(string("E_", name), "J", o::AbstractSim -> sum(o.interactions[id].energy)))
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return anis
 end
