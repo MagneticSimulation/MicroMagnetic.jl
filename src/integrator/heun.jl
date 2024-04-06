@@ -9,18 +9,19 @@
 #   - A simulation instance with field "spin" and "prespin"
 #   - A call back function
 
-mutable struct ModifiedEuler <: Integrator
+mutable struct ModifiedEuler{T<:AbstractFloat} <: Integrator
    t::Float64
    step::Float64
    nsteps::Int64
-   k1::Array{Float64, 1}
-   k2::Array{Float64, 1}
+   k1::AbstractArray{T,1}
+   k2::AbstractArray{T,1}
    rhs_fun::Function
 end
 
 function ModifiedEuler(n_total::Int64, rhs_fun, step::Float64)
-  k1 = zeros(Float64,3*n_total)
-  k2 = zeros(Float64,3*n_total)
+  T = single_precision.x ? Float32 : Float64
+  k1 = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+  k2 = KernelAbstractions.zeros(backend[], T, 3 * n_total)
   return ModifiedEuler(0.0, step, 0, k1, k2, rhs_fun)
 end
 

@@ -7,6 +7,7 @@ include("test_exch.jl")
 include("test_dmi.jl")
 include("test_sim.jl")
 include("test_llg.jl")
+include("test_integrator.jl")
 
 
 @testset "CPU back-end" begin
@@ -21,6 +22,7 @@ include("test_llg.jl")
   
   test_sim()
   test_llg()
+  test_integrators()
 end
 
 @testset "NVIDIA CUDA back-end" begin
@@ -37,6 +39,7 @@ end
 
     test_sim()
     test_llg()
+    test_integrators()
   end
 end
 
