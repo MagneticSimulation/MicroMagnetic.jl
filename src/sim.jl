@@ -8,31 +8,31 @@ export Sim, init_m0, set_Ms, run_until
 Create a simulation instance for given mesh.
 
 """
-function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
-
+function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
+             save_data=true)
     sim = MicroSim()
 
     sim.name = name
     sim.mesh = mesh
-    n_total = mesh.nx*mesh.ny*mesh.nz
+    n_total = mesh.nx * mesh.ny * mesh.nz
     sim.n_total = n_total
 
     T = single_precision.x ? Float32 : Float64
 
-    sim.spin = KernelAbstractions.zeros(backend[], T, 3*n_total) 
-    sim.prespin = KernelAbstractions.zeros(backend[], T, 3*n_total) 
-    sim.field = KernelAbstractions.zeros(backend[], T, 3*n_total) 
-    sim.energy = KernelAbstractions.zeros(backend[], T, n_total) 
-    sim.Ms = KernelAbstractions.zeros(backend[], T, n_total) 
-    sim.pins = KernelAbstractions.zeros(backend[], Bool, n_total) 
+    sim.spin = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    sim.prespin = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    sim.field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    sim.energy = KernelAbstractions.zeros(backend[], T, n_total)
+    sim.Ms = KernelAbstractions.zeros(backend[], T, n_total)
+    sim.pins = KernelAbstractions.zeros(backend[], Bool, n_total)
     sim.driver_name = driver
-    sim.driver = create_driver(driver, integrator, n_total)    
+    sim.driver = create_driver(driver, integrator, n_total)
     sim.interactions = []
     sim.save_data = save_data
     sim.saver = create_saver(string(name, "_", lowercase(driver), ".txt"), driver)
-   
-   @info "MicroSim has been used."
-   return sim
+
+    @info "MicroSim has been used."
+    return sim
 end
 
 """
@@ -61,13 +61,12 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     init_scalar!(Ms_a, sim.mesh, Ms)
 
     if any(isnan, Ms_a)
-      error("NaN is given by the input Ms!")
+        error("NaN is given by the input Ms!")
     end
 
     copyto!(sim.Ms, Ms_a)
     return true
 end
-
 
 """
     set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
@@ -76,8 +75,8 @@ Set the saturation magnetization Ms of the studied system to a cylindrical shape
 axis could be JuMag.ex, JuMag.ey or JuMag.ez.
 """
 function set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
-    geo = create_cylinder(sim.mesh, axis, r1=r1, r2=r2)
-    for i in 1:sim.n_total
+    geo = create_cylinder(sim.mesh, axis; r1=r1, r2=r2)
+    for i in 1:(sim.n_total)
         if geo.shape[i]
             sim.Ms[i] = Ms
         end
@@ -94,7 +93,6 @@ function set_Ms(sim::AbstractSim, geo::Geometry, Ms::Number)
     update_scalar_geometry(sim.Ms, geo, Ms)
     return true
 end
-
 
 """
     set_pinning(sim::MicroSim, ids::ArrayOrFunction)
@@ -117,7 +115,7 @@ function set_pinning(sim::MicroSim, ids::ArrayOrFunction)
 end
 
 function set_ux(sim::AbstractSim, init_ux)
-    init_scalar!(sim.driver.ux, sim.mesh, init_ux)
+    return init_scalar!(sim.driver.ux, sim.mesh, init_ux)
 end
 
 function set_ux_bounary(sim::AbstractSim, ux)
@@ -125,17 +123,16 @@ function set_ux_bounary(sim::AbstractSim, ux)
 end
 
 function set_uy(sim::AbstractSim, init_uy)
-    init_scalar!(sim.driver.uy, sim.mesh, init_uy)
+    return init_scalar!(sim.driver.uy, sim.mesh, init_uy)
 end
 
 function set_uz(sim::AbstractSim, init_uz)
-    init_scalar!(sim.driver.uz, sim.mesh, init_uz)
+    return init_scalar!(sim.driver.uz, sim.mesh, init_uz)
 end
 
 function set_aj(sim::AbstractSim, init_aj)
-	init_scalar!(sim.driver.aj, sim.mesh, init_aj)
+    return init_scalar!(sim.driver.aj, sim.mesh, init_aj)
 end
-
 
 """
 Compute the average magnetization defined as
@@ -143,9 +140,9 @@ Compute the average magnetization defined as
 TODO: add the equations
 """
 function average_m(sim::AbstractSim)
-  b = reshape(sim.spin, 3, sim.n_total)
-  ms = isa(sim, MicroSim) ? sim.Ms : sim.mu_s
-  return Tuple(sum(b.*ms', dims=2)./sum(ms))
+    b = reshape(sim.spin, 3, sim.n_total)
+    ms = isa(sim, MicroSim) ? sim.Ms : sim.mu_s
+    return Tuple(sum(b .* ms'; dims=2) ./ sum(ms))
 end
 
 """
@@ -170,32 +167,30 @@ or
 ```
 """
 function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
+    spin = Array(sim.spin)
 
-  spin = Array(sim.spin)
+    init_vector!(spin, sim.mesh, m0)
+    if norm
+        normalise(spin, sim.n_total)
+    end
 
-  init_vector!(spin, sim.mesh, m0)
-  if norm
-    normalise(spin, sim.n_total)
-  end
+    Ms = isa(sim.mesh, FDMesh) ? Array(sim.Ms) : Array(sim.mu_s)
+    for i in 1:(sim.n_total)
+        if Ms[i] == 0
+            spin[3 * i - 2] = 0
+            spin[3 * i - 1] = 0
+            spin[3 * i] = 0
+        end
+    end
 
-  Ms = isa(sim.mesh, FDMesh) ? Array(sim.Ms) : Array(sim.mu_s)
-  for i = 1:sim.n_total
-      if Ms[i] == 0
-          spin[3*i-2] = 0
-          spin[3*i-1] = 0
-          spin[3*i] = 0
-      end
-  end
+    if any(isnan, spin)
+        error("NaN is given by the input m0!")
+    end
 
-  if any(isnan, spin)
-    error("NaN is given by the input m0!")
-  end
-
-  copyto!(sim.spin, spin)
-  copyto!(sim.prespin, sim.spin)
-  return true
+    copyto!(sim.spin, spin)
+    copyto!(sim.prespin, sim.spin)
+    return true
 end
-
 
 """
     set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince")
@@ -203,13 +198,13 @@ end
 Set the driver of the simulation, can be used to switch the driver.
 """
 function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", args...)
-
     args = Dict(args)
 
     if sim.driver_name != driver
         # if the driver is updated, we create a new saver
         if sim.save_data
-            sim.saver = create_saver(string(sim.name, "_", lowercase(driver), ".txt"), driver)
+            sim.saver = create_saver(string(sim.name, "_", lowercase(driver), ".txt"),
+                                     driver)
         end
 
         if isa(sim, AbstractSimGPU)
@@ -217,11 +212,11 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
         else
             sim.driver = create_driver(driver, integrator, sim.n_total)
         end
-        sim.driver_name = driver    
+        sim.driver_name = driver
     end
 
     # FIXME: we have to consider all the situations here
-    
+
     if haskey(args, :alpha) && startswith(driver, "LLG")
         sim.driver.alpha = args[:alpha]
         delete!(args, :alpha)
@@ -273,9 +268,9 @@ Fields can be stored in vtks as well
 relax(sim, save_vtk_every = 10, fields = ["demag", "exch", "anis"])
 ```
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_factor=true, 
-    save_m_every = -1, save_ovf_every=-1, save_vtk_every=-1, 
-    ovf_format = "binary", ovf_folder="ovfs", vtk_folder="vtks", fields::Array{String, 1} = String[])
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_factor=true,
+               save_m_every=-1, save_ovf_every=-1, save_vtk_every=-1, ovf_format="binary",
+               ovf_folder="ovfs", vtk_folder="vtks", fields::Array{String,1}=String[])
 
     # to dertermine which driver is used.
     llg_driver = false
@@ -283,17 +278,16 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
         llg_driver = true
     end
 
-    time_factor =  using_time_factor ? 2.21e5/2 : 1.0
+    time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
 
     N_spins = sim.n_total
 
     if _cuda_available.x && (isa(sim, MicroSimGPU) || isa(sim, AtomicSimGPU))
         T = _cuda_using_double.x ? Float64 : Float32
-        dm = CUDA.zeros(T, 3*sim.n_total)
+        dm = CUDA.zeros(T, 3 * sim.n_total)
     else
-        dm = zeros(Float64,3*N_spins)
+        dm = zeros(Float64, 3 * N_spins)
     end
-
 
     dmdt_factor = (2 * pi / 360) * 1e9
     if _cuda_available.x && isa(sim, AtomicSimGPU)
@@ -311,54 +305,57 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
     step = 0
     driver = sim.driver
     @info @sprintf("Running Driver : %s.", typeof(driver))
-    for i=1:maxsteps
-
+    for i in 1:maxsteps
         run_step(sim, driver)
 
-        step_size = llg_driver ? driver.ode.step : driver.tau/time_factor
+        step_size = llg_driver ? driver.ode.step : driver.tau / time_factor
 
         compute_dm!(dm, sim.prespin, sim.spin, N_spins)
-        max_dmdt = maximum(dm)/step_size
+        max_dmdt = maximum(dm) / step_size
 
         t = llg_driver ? sim.driver.ode.t : 0.0
         if llg_driver
-            @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
-                            i, step_size, t, max_dmdt/dmdt_factor)
+            @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e", i,
+                           step_size, t, max_dmdt / dmdt_factor)
         else
-            @info @sprintf("step =%5d  step_size=%10.6e    max_dmdt=%10.6e",
-                            i, step_size, max_dmdt/dmdt_factor)
+            @info @sprintf("step =%5d  step_size=%10.6e    max_dmdt=%10.6e", i, step_size,
+                           max_dmdt / dmdt_factor)
         end
-        
-        if save_m_every>0 && i%save_m_every == 0
+
+        if save_m_every > 0 && i % save_m_every == 0
             compute_system_energy(sim, sim.spin, t)
             write_data(sim)
         end
 
-        if save_vtk_every > 0 && i%save_vtk_every == 0
-            save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+        if save_vtk_every > 0 && i % save_vtk_every == 0
+            save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i));
+                            fields=fields)
         end
 
-        if save_ovf_every > 0 && i%save_ovf_every == 0
-            save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
+        if save_ovf_every > 0 && i % save_ovf_every == 0
+            save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i));
+                     dataformat=ovf_format)
         end
-        
+
         if sim.save_data
             sim.saver.nsteps += 1
         end
 
-        if max_dmdt < stopping_dmdt*dmdt_factor
+        if max_dmdt < stopping_dmdt * dmdt_factor
             @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
-            if save_m_every>0 
+            if save_m_every > 0
                 compute_system_energy(sim, sim.spin, t)
                 write_data(sim)
             end
-    
+
             if save_vtk_every > 0
-                save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+                save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i));
+                                fields=fields)
             end
-    
-            if save_ovf_every > 0 
-                save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
+
+            if save_ovf_every > 0
+                save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i));
+                         dataformat=ovf_format)
             end
             step = i
             break
@@ -367,70 +364,74 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
 
     if step == maxsteps
         if save_vtk_every > 0
-            save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)), fields = fields)
+            save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i));
+                            fields=fields)
         end
 
-        if save_ovf_every > 0 
-            save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i)), dataformat = ovf_format)
+        if save_ovf_every > 0
+            save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i));
+                     dataformat=ovf_format)
         end
     end
-  return nothing
+    return nothing
 end
 
-
-function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayley, save_data::Bool)
-      if t_end < integrator.t - integrator.step
-          println("Run_until: t_end >= integrator.t - integrator.step")
-          return
-      elseif t_end == integrator.t
-          integrator.omega_t[:] = integrator.omega[:]
-          omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
-          sim.saver.t = t_end
-          sim.saver.nsteps += 1
-          if save_data
-              compute_system_energy(sim, sim.spin, t_end)
-              write_data(sim)
+function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayley,
+                   save_data::Bool)
+    if t_end < integrator.t - integrator.step
+        println("Run_until: t_end >= integrator.t - integrator.step")
+        return
+    elseif t_end == integrator.t
+        integrator.omega_t[:] = integrator.omega[:]
+        omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
+        sim.saver.t = t_end
+        sim.saver.nsteps += 1
+        if save_data
+            compute_system_energy(sim, sim.spin, t_end)
+            write_data(sim)
         end
-          return
-      elseif t_end > integrator.t - integrator.step && integrator.step > 0 && t_end < integrator.t
-          interpolation_dopri5(integrator, t_end)
-          omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
-          sim.saver.t = t_end
-          sim.saver.nsteps += 1
-          if save_data
-              compute_system_energy(sim, sim.spin, t_end)
-              write_data(sim)
-          end
-          return
-      end
+        return
+    elseif t_end > integrator.t - integrator.step &&
+           integrator.step > 0 &&
+           t_end < integrator.t
+        interpolation_dopri5(integrator, t_end)
+        omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
+        sim.saver.t = t_end
+        sim.saver.nsteps += 1
+        if save_data
+            compute_system_energy(sim, sim.spin, t_end)
+            write_data(sim)
+        end
+        return
+    end
 
-      # so we have t_end > self.t
-      if integrator.step_next<=0
-          integrator.step_next = compute_init_step(sim, t_end - integrator.t)
-      end
+    # so we have t_end > self.t
+    if integrator.step_next <= 0
+        integrator.step_next = compute_init_step(sim, t_end - integrator.t)
+    end
 
-      while integrator.t < t_end
-          ratio = (t_end - integrator.t)/integrator.step_next
-          if ratio<1.2 && ratio>0.8
-              integrator.step_next = t_end - integrator.t
-          end
+    while integrator.t < t_end
+        ratio = (t_end - integrator.t) / integrator.step_next
+        if ratio < 1.2 && ratio > 0.8
+            integrator.step_next = t_end - integrator.t
+        end
 
-          advance_step(sim, integrator)
-      end
+        advance_step(sim, integrator)
+    end
 
-      interpolation_dopri5(integrator, t_end)
-      omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
-      sim.saver.t = t_end
-      sim.saver.nsteps += 1
-      if save_data
-          compute_system_energy(sim, sim.spin, t_end)
-          write_data(sim)
-      end
-      return nothing
+    interpolation_dopri5(integrator, t_end)
+    omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
+    sim.saver.t = t_end
+    sim.saver.nsteps += 1
+    if save_data
+        compute_system_energy(sim, sim.spin, t_end)
+        write_data(sim)
+    end
+    return nothing
 end
 
-
-function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator, save_data::Bool)
+function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator,
+                   save_data::Bool)
     if t_end < integrator.t - integrator.step
         @info("Run_until: t_end >= integrator.t - integrator.step")
         return
@@ -445,12 +446,12 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator, sav
     end
 
     # so we have t_end > self.t
-    if integrator.step_next<=0
+    if integrator.step_next <= 0
         integrator.step_next = compute_init_step_DP(sim, t_end - integrator.t)
     end
 
     while integrator.t < t_end
-        if integrator.step_next + integrator.t> t_end
+        if integrator.step_next + integrator.t > t_end
             integrator.step_next = t_end - integrator.t
         end
         advance_step(sim, integrator)
@@ -465,7 +466,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator, sav
 end
 
 function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
-    run_until(sim, t_end, sim.driver.ode, save_data)
+    return run_until(sim, t_end, sim.driver.ode, save_data)
 end
 
 """
@@ -502,7 +503,7 @@ function create_sim(mesh; args...)
     name = haskey(args, :name) ? args[:name] : "unnamed"
 
     #Create the mesh using given driver and name
-    sim = Sim(mesh, driver=driver, name = name)
+    sim = Sim(mesh; driver=driver, name=name)
 
     #If the simulation is the standard micromagnetic simulation.
     if isa(mesh, FDMesh) || isa(mesh, FDMeshGPU) || isa(mesh, FDMeshGPU)
@@ -519,7 +520,7 @@ function create_sim(mesh; args...)
         # add the DMI if D is given
         if haskey(args, :D)
             dmi_type = haskey(args, :dmi_type) ? args[:dmi_type] : "bulk"
-            add_dmi(sim, args[:D], type=dmi_type)
+            add_dmi(sim, args[:D]; type=dmi_type)
         end
 
         # add the demag
@@ -531,18 +532,16 @@ function create_sim(mesh; args...)
             haskey(args, key) && delete!(args, key)
         end
 
-    
-    #If the simulation is atomistic
+        #If the simulation is atomistic
     elseif isa(mesh, AtomicMeshGPU)
-
-        mu_s = haskey(args, :mu_s) ? args[:mu_s] : 2*mu_B
+        mu_s = haskey(args, :mu_s) ? args[:mu_s] : 2 * mu_B
         set_mu_s(sim, mu_s)
 
         # add the exchange if A is given
         if haskey(args, :J)
             add_exch(sim, args[:J])
         end
-        
+
         # add the DMI if D is given
         if haskey(args, :D)
             add_dmi(sim, args[:D])
@@ -557,8 +556,8 @@ function create_sim(mesh; args...)
 
     # add the anisotropy
     if haskey(args, :Ku)
-        axis = haskey(args, :axis) ? args[:axis] : (0,0,1)
-        add_anis(sim, args[:Ku], axis=axis)
+        axis = haskey(args, :axis) ? args[:axis] : (0, 0, 1)
+        add_anis(sim, args[:Ku]; axis=axis)
         haskey(args, :axis) && delete!(args, :axis)
     end
 
@@ -600,19 +599,17 @@ function create_sim(mesh; args...)
     # set m0 anyway
     m0_value = haskey(args, :m0) ? args[:m0] : (0.8, 0.6, 0)
     init_m0(sim, m0_value)
-  
+
     for key in [:driver, :name, :Ku, :H, :m0]
         haskey(args, key) && delete!(args, key)
     end
-    
+
     for key in args
         @warn @sprintf("Key '%s' is not used.", key)
     end
-    
-    return sim
-    
-  end
 
+    return sim
+end
 
 """
     run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=nothing)
@@ -632,9 +629,9 @@ center and save it to a text file, we can define the following saver
 ```
 
 """
-function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=nothing)
-
-    if save_data && saver===nothing
+function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1,
+                 saver=nothing)
+    if save_data && saver === nothing
         saver = sim.saver
     end
 
@@ -655,16 +652,16 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
         m_group = JLD2.Group(file, "m")
     end
 
-    for i = 1:steps
-        run_until(sim, i*dt, save_data=save_data)
-        @info @sprintf("step =%5d  t = %10.6e", i, i*dt)
+    for i in 1:steps
+        run_until(sim, i * dt; save_data=save_data)
+        @info @sprintf("step =%5d  t = %10.6e", i, i * dt)
 
         save_data && write_data(sim, saver)
 
-        if (save_m_every>1 && i%save_m_every == 1) || save_m_every == 1
+        if (save_m_every > 1 && i % save_m_every == 1) || save_m_every == 1
             index = @sprintf("%d", i)
             m_group[index] = Array(sim.spin)
         end
     end
-    close(file)
+    return close(file)
 end
