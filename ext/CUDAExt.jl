@@ -6,8 +6,8 @@ using CUDA
 CUDA.allowscalar(false)
 
 function set_cuda_backend()
-    JuMag.backend[] = CUDA.CUDABackend()
-    @info("NVIDIA CUDA backend is used!")
+    JuMag.all_backends[1] = CUDA.CUDABackend()
+    JuMag.set_backend("cuda")
     return nothing
 end
 
