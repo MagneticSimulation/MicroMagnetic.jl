@@ -5,6 +5,7 @@ include("test_zeeman.jl")
 include("test_anis.jl")
 include("test_exch.jl")
 include("test_dmi.jl")
+include("test_llg.jl")
 
 @testset "CPU back-end" begin
   test_FDMesh()
@@ -15,6 +16,8 @@ include("test_dmi.jl")
   test_exch_vectors()
   test_bulk_dmi()
   test_interfacial_dmi()
+
+  test_llg()
 end
 
 @testset "NVIDIA CUDA back-end" begin
@@ -28,6 +31,8 @@ end
     test_exch_vectors()
     test_bulk_dmi()
     test_interfacial_dmi()
+
+    test_llg()
   end
 end
 

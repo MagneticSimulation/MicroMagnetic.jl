@@ -5,7 +5,7 @@
 #   - A simulation instance with field "spin" and "prespin"
 #   - A call back function
 
-mutable struct DormandPrince <: Integrator
+mutable struct DormandPrince{T<:AbstractFloat} <: Integrator
     tol::Float64
     t::Float64
     step::Float64
@@ -15,31 +15,33 @@ mutable struct DormandPrince <: Integrator
     safety::Float64
     nsteps::Int64
     nfevals::Int64
-    errors::Array{Float64, 1}
-    k1::Array{Float64, 1}
-    k2::Array{Float64, 1}
-    k3::Array{Float64, 1}
-    k4::Array{Float64, 1}
-    k5::Array{Float64, 1}
-    k6::Array{Float64, 1}
-    k7::Array{Float64, 1}
+    errors::AbstractArray{T}
+    k1::AbstractArray{T}
+    k2::AbstractArray{T}
+    k3::AbstractArray{T}
+    k4::AbstractArray{T}
+    k5::AbstractArray{T}
+    k6::AbstractArray{T}
+    k7::AbstractArray{T}
     rhs_fun::Function
     succeed::Bool
 end
 
 function DormandPrince(n_total::Int64, rhs_fun, tol::Float64)
-  errors = zeros(Float64,3*n_total)
-  k1 = zeros(Float64, 3*n_total)
-  k2 = zeros(Float64, 3*n_total)
-  k3 = zeros(Float64, 3*n_total)
-  k4 = zeros(Float64, 3*n_total)
-  k5 = zeros(Float64, 3*n_total)
-  k6 = zeros(Float64, 3*n_total)
-  k7 = zeros(Float64, 3*n_total)
+  
+  T = single_precision.x ? Float32 : Float64
+  errors = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+  k1 = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+  k2 = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+  k3 = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+  k4 = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+  k5 = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+  k6 = KernelAbstractions.zeros(backend[], T, 3*n_total) 
+  k7 = KernelAbstractions.zeros(backend[], T, 3*n_total) 
   facmax = 5.0
   facmin = 0.2
   safety = 0.824
-  return DormandPrince(tol, 0.0, 0, 0, facmax, facmin, safety, 0, 0, errors,
+  return DormandPrince(tol, 0.0, 0.0, 0.0, facmax, facmin, safety, 0, 0, errors,
                 k1, k2, k3, k4, k5, k6, k7, rhs_fun, false)
 end
 
@@ -84,9 +86,9 @@ function dopri5_step_inner(sim::AbstractSim, step::Float64, t::Float64)
   ode.nfevals += 7
   ode.errors .= (w[1].*k1 + w[2].*k2 .+ w[3].*k3 .+ w[4].*k4 .+ w[5].*k5 + w[6].*k6 + w[7].*k7).*step
 
-  #max_error =  maximum(abs.(ode.errors)) + eps() #the CuArray version eat memory
-  abs!(ode.errors)
-  max_error =  maximum(ode.errors) + eps()
+  max_error =  maximum(abs.(ode.errors)) + eps() #TODO: check whether CUDA has fixed this eat memory bug
+  #abs!(ode.errors)
+  #max_error =  maximum(ode.errors) + eps()
 
   return max_error
 end
@@ -98,8 +100,8 @@ function compute_init_step_DP(sim::AbstractSim, dt::Float64)
   integrator = sim.driver.ode
   integrator.step = 1e-15
   integrator.rhs_fun(sim, integrator.errors, sim.spin, integrator.t)
-  abs!(integrator.errors)
-  r_step = maximum(integrator.errors)/(integrator.safety*integrator.tol^0.2)
+  #abs!(integrator.errors)
+  r_step = maximum(abs.(integrator.errors))/(integrator.safety*integrator.tol^0.2)
   integrator.nfevals += 1
   #FIXME: how to obtain a reasonable init step?
   if abs_step*r_step > 0.001

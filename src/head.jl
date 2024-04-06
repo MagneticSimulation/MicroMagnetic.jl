@@ -122,9 +122,9 @@ mutable struct MicroSim <: AbstractSim
 end
 
 
-mutable struct Zeeman <: MicroEnergy
-    field
-    energy
+mutable struct Zeeman{T<:AbstractFloat} <: MicroEnergy
+    field::AbstractArray{T}
+    energy::AbstractArray{T}
     name::String
 end
 

@@ -50,7 +50,7 @@ function llg_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
 
     groupsize = 512
     kernel! = llg_rhs_kernel!(backend[], groupsize)
-    kernel!(dm_dt, spin, driver.field, sim.pins, T(driver.alpha), T(driver.gamma),
+    kernel!(dm_dt, spin, sim.field, sim.pins, T(driver.alpha), T(driver.gamma),
             driver.precession; ndrange=N)
     KernelAbstractions.synchronize(backend[])
 
@@ -58,7 +58,7 @@ function llg_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
 end
 
 """
-compute tau = (u.nabla) m.  \vec{u} \cdot \nabla \vec{m}
+compute tau = (u.nabla) m.
 """
 @kernel function field_stt_kernel!(h_stt, @Const(m), @Const(ux), @Const(uy), @Const(uz),
                                    @Const(ngbs), dx::T, dy::T,
@@ -84,7 +84,7 @@ compute tau = (u.nabla) m.  \vec{u} \cdot \nabla \vec{m}
     #y-direction
     i1 = ngbs[3, I]
     i2 = ngbs[4, I]
-    factor::T = i1 * i2 > 0 ? 1 / (2 * dy) : 1 / dy
+    factor = i1 * i2 > 0 ? 1 / (2 * dy) : 1 / dy
     i1 < 0 && (i1 = I)
     i2 < 0 && (i2 = I)
     j1 = 3 * i1 - 2
@@ -97,7 +97,7 @@ compute tau = (u.nabla) m.  \vec{u} \cdot \nabla \vec{m}
     #z-direction
     i1 = ngbs[5, I]
     i2 = ngbs[6, I]
-    factor::T = i1 * i2 > 0 ? 1 / (2 * dz) : 1 / dz
+    factor = i1 * i2 > 0 ? 1 / (2 * dz) : 1 / dz
     i1 < 0 && (i1 = I)
     i2 < 0 && (i2 = I)
     j1 = 3 * i1 - 2
@@ -197,8 +197,8 @@ function llg_stt_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
 
     groupsize = 512
     kernel! = llg_stt_rhs_kernel!(backend[], groupsize)
-    kernel!(dm_dt, spin, driver.field, driver.h_stt, sim.pins, T(driver.gamma),
-            T(driver.alpha), T(driver.beta); ndrange=N)
+    kernel!(dm_dt, spin, sim.field, driver.h_stt, sim.pins, T(driver.gamma),
+            T(driver.alpha), T(driver.beta); ndrange=sim.n_total)
     KernelAbstractions.synchronize(backend[])
 
     return nothing
@@ -273,7 +273,7 @@ function llg_cpp_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
 
     groupsize = 512
     kernel! = llg_cpp_rhs_kernel!(backend[], groupsize)
-    kernel!(dm_dt, spin, driver.field, sim.pins, driver.aj, T(driver.bj), T(driver.gamma),
+    kernel!(dm_dt, spin, sim.field, sim.pins, driver.aj, T(driver.bj), T(driver.gamma),
             T(driver.alpha), px, py, pz; ndrange=sim.n_total)
 
     KernelAbstractions.synchronize(backend[])

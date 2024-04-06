@@ -306,7 +306,7 @@ function effective_field(sim::AbstractSim, spin, t::Float64)
   return 0
 end
 
-function compute_system_energy(sim::AbstractSim, spin::Array{Float64,1}, t::Float64)
+function compute_system_energy(sim::AbstractSim, spin::AbstractArray, t::Float64)
   #sim.total_energy = 0
   fill!(sim.energy, 0.0)
   for interaction in sim.interactions
