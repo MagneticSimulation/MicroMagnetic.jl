@@ -76,26 +76,42 @@ function init_vector!(v::Array{T1,1}, mesh::Mesh,
     return nothing
 end
 
-function normalise(a::AbstractArray{T,1},  N::Int64) where {T<:AbstractFloat}
+function normalise(a::AbstractArray{T,1}, N::Int64) where {T<:AbstractFloat}
+    @kernel function local_kernal!(a)
+        id = @index(Global)
+        j = 3 * id - 2
 
-  @kernel function local_kernal!(a)
-    id = @index(Global)
-    j = 3 * id - 2
-  
-    @inbounds m2 = a[j] * a[j] + a[j + 1] * a[j + 1] + a[j + 2] * a[j + 2]
-    if m2 > 0
-        length::T = 1/sqrt(m2)
-        @inbounds a[j] *= length
-        @inbounds a[j + 1] *= length
-        @inbounds a[j + 2] *= length
+        @inbounds m2 = a[j] * a[j] + a[j + 1] * a[j + 1] + a[j + 2] * a[j + 2]
+        if m2 > 0
+            length::T = 1 / sqrt(m2)
+            @inbounds a[j] *= length
+            @inbounds a[j + 1] *= length
+            @inbounds a[j + 2] *= length
+        end
     end
-  end
 
-  groupsize = 512
-  bd = get_backend(a)
-  local_kernal!(bd, groupsize)(a, ndrange = N)
-  KernelAbstractions.synchronize(bd)
-  return nothing
+    groupsize = 512
+    local_kernal!(get_backend(a), groupsize)(a; ndrange=N)
+    KernelAbstractions.synchronize(get_backend(a))
+    return nothing
+end
+
+function compute_dm!(dm::AbstractArray{T,1}, m1::AbstractArray{T,1}, m2::AbstractArray{T,1},
+                     N::Int64) where {T<:AbstractFloat}
+    @kernel function local_kernal!(c, a, b)
+        I = @index(Global)
+        j = 3 * I - 2
+        @inbounds mx = a[j] - b[j]
+        @inbounds my = a[j + 1] - b[j + 1]
+        @inbounds mz = a[j + 2] - b[j + 2]
+        @inbounds c[I] = sqrt(mx * mx + my * my + mz * mz)
+    end
+
+    groupsize = 512
+    local_kernal!(get_backend(dm), groupsize)(dm, m1, m2; ndrange=N)
+    KernelAbstractions.synchronize(get_backend(dm))
+
+    return nothing
 end
 
 function error_length_m(a::Array{Float64,1}, N::Int64)

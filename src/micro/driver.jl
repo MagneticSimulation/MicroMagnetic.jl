@@ -1,84 +1,136 @@
-mutable struct EmptyDriver <: Driver
+mutable struct EmptyDriver <: Driver end
+
+mutable struct EnergyMinimization{T<:AbstractFloat} <: Driver
+    gk::AbstractArray{T,1}
+    ss::AbstractArray{T,1}
+    sf::AbstractArray{T,1}
+    ff::AbstractArray{T,1}
+    tau::T
+    max_tau::T
+    min_tau::T
+    steps::Int64
 end
 
-mutable struct EnergyMinimization <: Driver
-  gk::Array{Float64, 1}
-  tau::Float64
-  max_tau::Float64
-  min_tau::Float64
-  steps::Int64
+mutable struct LLG{T<:AbstractFloat} <: Driver
+    precession::Bool
+    alpha::T
+    gamma::T
+    ode::Integrator
+    tol::Float64
 end
 
-mutable struct LLG <: Driver
-  precession::Bool
-  alpha::Float64
-  gamma::Float64
-  ode::Integrator
+mutable struct LLG_CPP{T<:AbstractFloat} <: Driver
+    alpha::T
+    beta::T
+    gamma::T
+    aj::AbstractArray{T,1}
+    bj::T
+    ode::Integrator
+    tol::Float64
+    p::Tuple{Real,Real,Real}
 end
 
-mutable struct LLG_STT <: Driver
-  alpha::Float64
-  beta::Float64
-  gamma::Float64
-  ode::Integrator
-  tol::Float64
-  ux::Array{Float64, 1}
-  uy::Array{Float64, 1}
-  uz::Array{Float64, 1}
-  h_stt::Array{Float64, 1}
+mutable struct LLG_STT{T<:AbstractFloat} <: Driver
+    alpha::T
+    beta::T
+    gamma::T
+    ode::Integrator
+    tol::Float64
+    ux::AbstractArray{T,1}
+    uy::AbstractArray{T,1}
+    uz::AbstractArray{T,1}
+    h_stt::AbstractArray{T,1}
+    ufun::Function
 end
+
+mutable struct LLG_STT_CPP{T<:AbstractFloat} <: Driver
+    alpha::T
+    beta::T
+    gamma::T
+    bj::T
+    ode::Integrator
+    tol::Float64
+    p::Tuple{Real, Real, Real}
+    aj::AbstractArray{T, 1}
+    ux::AbstractArray{T, 1}
+    uy::AbstractArray{T, 1}
+    uz::AbstractArray{T, 1}
+    h_stt::AbstractArray{T, 1}
+    ufun::Function
+end
+
 
 function create_driver(driver::String, integrator::String, n_total::Int64)
-    supported_drivers = ["None", "SD", "LLG", "LLG_STT"]
+    supported_drivers = ["None", "SD", "LLG", "LLG_STT", "LLG_CPP"]
     if !(driver in supported_drivers)
-        error("Supported drivers for CPU: ", join(supported_drivers, " "))
+        error("Supported drivers: ", join(supported_drivers, " "))
     end
+
+    T = single_precision.x ? Float32 : Float64
 
     if driver == "None"
         return EmptyDriver()
     end
 
-    if driver=="SD" #Steepest Descent
-        gk = zeros(Float64,3*n_total)
-        return EnergyMinimization(gk, 0.0, 100.0, 1e-12, 0)
+    if driver == "SD"
+        gk = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+        ss = KernelAbstractions.zeros(backend[], T, n_total)
+        sf = KernelAbstractions.zeros(backend[], T, n_total)
+        ff = KernelAbstractions.zeros(backend[], T, n_total)
+        max_tau = 1.0
+        return EnergyMinimization(gk, ss, sf, ff, T(0.0), T(max_tau),
+                                     T(1e-10), 0)
     end
 
     supported_integrators = ["Heun", "RungeKutta", "DormandPrince", "DormandPrinceCayley"]
     if !(integrator in supported_integrators)
-        error("Supported integrators for CPU: ", join(supported_integrators, " "))
+        error("Supported integrators for GPU: ", join(supported_integrators, " "))
     end
 
-    if driver=="LLG"
-        if integrator == "Heun"
-            henu = ModifiedEuler(n_total, llg_call_back, 1e-14)
-            return LLG(true, 0.1, 2.21e5, henu)
-        elseif integrator == "RungeKutta"
-            rungekutta = RungeKutta(n_total, llg_call_back, 5e-13)
-            return LLG(true, 0.1, 2.21e5, rungekutta)
-        elseif integrator == "DormandPrince"
-            tol = 1e-6
-            dopri5 = DormandPrince(n_total, llg_call_back, tol)
-            return LLG(true, 0.1, 2.21e5, dopri5)
-        else
-            tol = 1e-6
-            dopri5 = DormandPrinceCayley(n_total, llg_cay_call_back, tol)
-            return LLG(true, 0.1, 2.21e5, dopri5)
-        end
-    elseif driver=="LLG_STT"
+    if driver == "LLG"
         tol = 1e-6
-        if integrator == "DormandPrince"
+        if integrator == "Heun"
+            dopri5 = ModifiedEuler(n_total, llg_call_back, 1e-14)
+        elseif integrator == "RungeKutta"
+            dopri5 = RungeKutta(n_total, llg_call_back, 5e-14)
+        elseif integrator == "DormandPrince"
+            dopri5 = DormandPrince(n_total, llg_call_back, tol)
+        else
+            dopri5 = DormandPrinceCayley(n_total, llg_cayley_call_back, tol)
+        end
+        return LLG(true, T(0.1), T(2.21e5), dopri5, tol)
+    elseif driver == "LLG_STT"
+        tol = 1e-6
+        ux = KernelAbstractions.zeros(backend[], T, n_total)
+        uy = KernelAbstractions.zeros(backend[], T, n_total)
+        uz = KernelAbstractions.zeros(backend[], T, n_total)
+        hstt = KernelAbstractions.zeros(backend[], T, 3*n_total)
+        fun = t::Float64 -> 1.0
+        if integrator == "Heun"
+            dopri5 = ModifiedEuler(n_total, llg_stt_call_back, 1e-14)
+        elseif integrator == "RungeKutta"
+            dopri5 = RungeKutta(n_total, llg_stt_call_back, 5e-14)
+        elseif integrator == "DormandPrince"
             dopri5 = DormandPrince(n_total, llg_stt_call_back, tol)
         else
-            dopri5 = DormandPrinceCayley(n_total, llg_stt_cay_call_back, tol)
+            dopri5 = DormandPrinceCayley(n_total, llg_stt_cayley_call_back, tol)
         end
-        ux = zeros(n_total)
-        uy = zeros(n_total)
-        uz = zeros(n_total)
-        hstt = zeros(3*n_total)
-        return LLG_STT(0.5, 0.0, 2.21e5, dopri5, tol, ux, uy, uz, hstt)
-
-    else
-       error("Supported drivers: SD, LLG, LLG_STT")
+        return LLG_STT(T(0.5), T(0), T(2.21e5), dopri5, tol, ux, uy, uz, hstt, fun)
+    elseif driver == "LLG_CPP"
+        tol = 1e-6
+        aj = KernelAbstractions.zeros(backend[], T, n_total)
+        fun = t::Float64 -> 1.0
+        p = (0, 0, 1)
+        if integrator == "Heun"
+            dopri5 = ModifiedEuler(n_total, llg_cpp_call_back, 1e-14)
+        elseif integrator == "RungeKutta"
+            dopri5 = RungeKutta(n_total, llg_cpp_call_back, 5e-14)
+        elseif integrator == "DormandPrince"
+            dopri5 = DormandPrince(n_total, llg_cpp_call_back, tol)
+        else
+            error(@sprintf("Unsupported combination driver %s and %s.", driver, integrator))
+        end
+        return LLG_CPP(T(0.5), T(0), T(2.21e5), aj, T(0), dopri5, tol, p)
     end
     return nothing
 end

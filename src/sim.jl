@@ -1,6 +1,6 @@
 using JLD2
 
-export Sim, init_m0, set_Ms, run_until
+export Sim, init_m0, set_Ms, run_until, relax
 
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
@@ -273,26 +273,18 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
                ovf_folder="ovfs", vtk_folder="vtks", fields::Array{String,1}=String[])
 
     # to dertermine which driver is used.
-    llg_driver = false
-    if isa(sim.driver, LLG) || (_cuda_available.x && isa(sim.driver, LLG_GPU))
-        llg_driver = true
-    end
+    llg_driver = isa(sim.driver, LLG)
 
     time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
 
     N_spins = sim.n_total
-
-    if _cuda_available.x && (isa(sim, MicroSimGPU) || isa(sim, AtomicSimGPU))
-        T = _cuda_using_double.x ? Float64 : Float32
-        dm = CUDA.zeros(T, 3 * sim.n_total)
-    else
-        dm = zeros(Float64, 3 * N_spins)
-    end
+    T = single_precision.x ? Float32 : Float64
+    dm = KernelAbstractions.zeros(backend[], T, 3 * N_spins)
 
     dmdt_factor = (2 * pi / 360) * 1e9
-    if _cuda_available.x && isa(sim, AtomicSimGPU)
-        dmdt_factor = 1.0
-    end
+    #if _cuda_available.x && isa(sim, AtomicSimGPU)
+    #    dmdt_factor = 1.0
+    #end
 
     if save_ovf_every > 0
         isdir(ovf_folder) || mkdir(ovf_folder)
