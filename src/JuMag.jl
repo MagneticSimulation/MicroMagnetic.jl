@@ -80,5 +80,7 @@ include("integrator/dopri5.jl")
 include("fileio.jl")
 include("sim.jl")
 include("init_m.jl")
+include("ovf2.jl")
+include("vtk.jl")
 
 end #module
