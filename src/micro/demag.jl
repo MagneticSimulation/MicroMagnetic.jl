@@ -444,7 +444,7 @@ end
     @inbounds h[p + 1] = -1.0 * hy[i, j, k]
     @inbounds h[p + 2] = -1.0 * hz[i, j, k]
 
-    @inbounds mh = m[p] * h[p] + m[p + 1] * h[p + 1] + m[p + 2] * p[j + 2]
+    @inbounds mh = m[p] * h[p] + m[p + 1] * h[p + 1] + m[p + 2] * h[p + 2]
 
     @inbounds energy[I] = -0.5 * mu_0 * Ms[I] * volume * mh
 end
