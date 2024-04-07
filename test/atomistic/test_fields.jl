@@ -56,3 +56,17 @@ if JuMag._cuda_available.x
     test_fields(mesh)
   end
 end
+
+@testset "Test Anisotropy CPU" begin
+    set_backend("cpu")
+    test_anis()
+    test_cubic_anis()
+end
+
+@testset "Test Anisotropy CUDA" begin
+    if Base.find_package("CUDA") !== nothing
+        using CUDA
+        test_anis()
+        test_cubic_anis()
+    end
+end

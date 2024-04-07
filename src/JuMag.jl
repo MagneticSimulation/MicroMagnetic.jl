@@ -6,13 +6,13 @@ using KernelAbstractions
 
 const single_precision = Ref(false)
 """
-    using_single_precision(false)
+    set_sim_precision_type(type="double")
 
-Set the floating-point precision for simulation, 'true' for single and 'false' for double precision.
+Set the floating-point precision type for simulation, "single" for single and "double" for double precision.
 By default the double precision will be used. 
 """
-function using_single_precision(flag=false)
-    single_precision[] = flag
+function set_sim_precision_type(type="double")
+    single_precision[] = type == "single" ? true : false
     return nothing
 end
 
