@@ -28,7 +28,6 @@ means that the input parameter could be a number or an array or a function:
 """
 NumberOrArrayOrFunction = Union{Number,Array,Function}
 
-
 """
     NumberOrTupleOrArrayOrFunction
 
@@ -51,7 +50,6 @@ a number, a tuple, an array or a function:
 """
 NumberOrTupleOrArrayOrFunction = Union{Number,Tuple,Array,Function}
 
-
 """
     NumberOrArray
 
@@ -60,7 +58,6 @@ or an array is needed.
 """
 NumberOrArray = Union{Number,Array}
 
-
 """
     ArrayOrFunction
 
@@ -68,7 +65,6 @@ Similar to Union `NumberOrArrayOrFunction`, the Union `ArrayOrFunction` is desig
 an array or a function is needed.
 """
 ArrayOrFunction = Union{Array,Function}
-
 
 """
     TupleOrArrayOrFunction
@@ -87,7 +83,6 @@ an array or a function:
 """
 TupleOrArrayOrFunction = Union{Tuple,Array,Function}
 
-
 mutable struct DataSaver
     name::String
     header_saved::Bool
@@ -102,71 +97,70 @@ mutable struct SaverItem
     result::Function
 end
 
-mutable struct MicroSim <: AbstractSim
+mutable struct MicroSim{T<:AbstractFloat} <: AbstractSim
     time::Float64
     mesh::FDMesh
     driver::Driver
     saver::DataSaver
-    spin
-    prespin
-    field
-    energy
-    Ms
-    pins
+    spin::AbstractArray{T,1}
+    prespin::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    Ms::AbstractArray{T,1}
+    pins::AbstractArray{Bool,1}
     n_total::Int64
     name::String
     driver_name::String
     interactions::Array
     save_data::Bool
-    MicroSim() = new()
+    MicroSim{T}() where {T<:AbstractFloat} = new()
 end
-
 
 mutable struct Zeeman{T<:AbstractFloat} <: MicroEnergy
-    field::AbstractArray{T}
-    energy::AbstractArray{T}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
 
-mutable struct TimeZeeman <: MicroEnergy
+mutable struct TimeZeeman{T<:AbstractFloat} <: MicroEnergy
     time_fun::Function
-    init_field
-    field
-    energy
+    init_field::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
 
-mutable struct Anisotropy <: MicroEnergy
-    Ku
+mutable struct Anisotropy{T<:AbstractFloat} <: MicroEnergy
+    Ku::AbstractArray{T,1}
     axis::Tuple
-    field
-    energy
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
 
-mutable struct CubicAnisotropy <: MicroEnergy
-    Kc
+mutable struct CubicAnisotropy{T<:AbstractFloat} <: MicroEnergy
+    Kc::AbstractArray{T,1}
     axis1::Tuple
     axis2::Tuple
     axis3::Tuple
-    field
-    energy
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
 
-mutable struct Exchange <: MicroEnergy
-    A
-    field
-    energy
+mutable struct Exchange{T<:AbstractFloat} <: MicroEnergy
+    A::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
 
-mutable struct VectorExchange <: MicroEnergy
+mutable struct VectorExchange{T<:AbstractFloat} <: MicroEnergy
     Ax::Real
     Ay::Real
     Az::Real
-    field
-    energy
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
 
@@ -177,34 +171,25 @@ mutable struct ExchangeRKKY <: MicroEnergy
     name::String
 end
 
-mutable struct BulkDMI <: MicroEnergy
+mutable struct BulkDMI{T<:AbstractFloat} <: MicroEnergy
     Dx::Real
     Dy::Real
     Dz::Real
-    field
-    energy
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
 
-mutable struct SpatialBulkDMI <: MicroEnergy
-    D
-    field
-    energy
+mutable struct SpatialBulkDMI{T<:AbstractFloat} <: MicroEnergy
+    D::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
 
-mutable struct InterfacialDMI <: MicroEnergy
-    D
-    field
-    energy
+mutable struct InterfacialDMI{T<:AbstractFloat} <: MicroEnergy
+    D::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
-
-
-
-
-
-
-
-
-

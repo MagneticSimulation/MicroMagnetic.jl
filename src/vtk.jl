@@ -2,6 +2,8 @@ using WriteVTK
 using ReadVTK
 using Printf
 
+export save_vtk, ovf2vtk
+
 """
     save_m(sim::AbstractSim, fname::String; vtk::Bool=false, vtk_folder::String="vtks")
 

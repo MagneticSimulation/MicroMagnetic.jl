@@ -14,7 +14,7 @@ Create a png from the given ovf file.
 
 """
 function ovf2png(ovf_name, output=nothing; k = 1, component='z')
-  if output == nothing
+  if output === nothing
     output = endswith(ovf_name, ".ovf") ? ovf_name[1:end-4] : ovf_name
   end
 
@@ -72,7 +72,7 @@ Create a moive from the given jdl2 file. `k` indicates the layer index (starting
 output is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
 """
 function jdl2movie(jdl_file; k = 1, component='z', r=12, rm_png=false, output=nothing)
-  if output==nothing
+  if output===nothing
     base_name = jdl_file[1:length(jdl_file)-5]
     output = @sprintf("%s.mp4", base_name)
   end

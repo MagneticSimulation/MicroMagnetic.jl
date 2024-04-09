@@ -14,7 +14,7 @@ struct FDMesh{T} <: Mesh
     zperiodic::Bool
     n_total::Int64
     volume::T
-    ngbs
+    ngbs::AbstractArray{Int32, 2}
 end
 
 

@@ -1,4 +1,6 @@
 
+export init_m0_random, init_m0_skyrmion
+
 """
     init_m0_random(sim::MicroSim)
 

@@ -5,6 +5,7 @@ using Printf
 using KernelAbstractions
 
 const single_precision = Ref(false)
+export set_sim_precision_type
 """
     set_sim_precision_type(type="double")
 
@@ -20,26 +21,29 @@ const backend = Backend[CPU()]
 const all_backends = Backend[CPU(), CPU(), CPU(), CPU()]
 
 export set_backend
-
-"""
+@doc raw"""
     set_backend(backend="cuda")
-Set the backend of JuMag, options are: 
-    - "cpu"                :  CPU
-    - "cuda" or "nvidia"   :  NVIDIA GPU
-    - "amd"                :  AMD GPU
-    - "oneAPI" or "intel"  :  Intel GPU 
-    - "metal"  or "apple"  :  Apple GPU
+Set the backend of JuMag. Options, hardwares and the corresponding backends are shown as follows: 
+
+| Option                 | Hardware            | Backend                  |
+| :---------------------- | :------------------- | :------------------------ |
+| "cpu"                  | CPU                 | `KernelAbstractions.CPU()` |
+| "cuda" or "nvidia"     | NVIDIA GPU          | `CUDA.CUDABackend()`     |
+| "amd"                  | AMD GPU             | `AMDGPU.ROCBackend()`    |
+| "oneAPI" or "intel"    | Intel GPU           | `oneAPI.oneAPIBackend()` |
+| "metal"  or "apple"    | Apple GPU           | `Metal.MetalBackend()`   |
+
 """
 function set_backend(x="cuda")
     backend_names = ["CUDA", "AMDGPU", "oneAPI", "Metal"]
     card_id = 0
     if x == "cuda" || x == "nvidia"
         card_id = 1
-    elseif x == "amd" 
+    elseif x == "amd"
         card_id = 2
-    elseif x == "oneAPI" ||  x == "intel"
+    elseif x == "oneAPI" || x == "intel"
         card_id = 3
-    elseif x == "metal"  ||  x == "apple"
+    elseif x == "metal" || x == "apple"
         card_id = 4
     end
 
@@ -48,17 +52,18 @@ function set_backend(x="cuda")
         backend_name = backend_names[card_id]
         if Base.find_package(backend_name) === nothing
             @info(@sprintf("Please install %s.jl!", backend_name))
-            return 
+            return
         end
 
         if backend[] == CPU()
             @info(@sprintf("Please import %s!", backend_name))
             return
         end
+    else
+        backend[] = CPU()
     end
 
     @info(@sprintf("Switch the backend to %s", backend[]))
-    
 end
 
 include("const.jl")

@@ -133,6 +133,7 @@ function create_cylinder(mesh::Mesh, axis::Axis; r1=0, r2=0, xc="unvalued", yc="
     return geo
 end
 
+export create_box, create_cylinder
 """
     create_box(mesh::Mesh; x1=0, y1=0, z1=0, x2=0, y2=0, z2=0)
 
