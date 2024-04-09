@@ -1,6 +1,7 @@
 using JLD2
 
-export Sim, init_m0, set_Ms, run_until, relax
+export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
+       set_driver
 
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
@@ -10,15 +11,13 @@ Create a simulation instance for given mesh.
 """
 function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
              save_data=true)
-    sim = MicroSim()
+    T = single_precision.x ? Float32 : Float64
+    sim = MicroSim{T}()
 
     sim.name = name
     sim.mesh = mesh
     n_total = mesh.nx * mesh.ny * mesh.nz
     sim.n_total = n_total
-
-    T = single_precision.x ? Float32 : Float64
-
     sim.spin = KernelAbstractions.zeros(backend[], T, 3 * n_total)
     sim.prespin = KernelAbstractions.zeros(backend[], T, 3 * n_total)
     sim.field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
@@ -466,8 +465,7 @@ end
 
 Create a micromagnetic simulation instance with given arguments. 
 
-- `mesh`: a mesh has to be provided to start the simulation. The mesh could be [`FDMesh`](@ref), 
-[`FDMeshGPU`](@ref), [`CubicMeshGPU`](@ref), or [`TriangularMeshGPU`](@ref).
+- `mesh`: a mesh has to be provided to start the simulation. The mesh could be [`FDMesh`](@ref), [`CubicMesh`](@ref), or [`TriangularMesh`](@ref).
 
 # Arguments
 - `name` : the simulation name, should be a string.

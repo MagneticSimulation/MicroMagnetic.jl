@@ -1,4 +1,4 @@
-export add_zeeman, update_zeeman, add_anis, add_cubic_anis, add_exch, add_dmi, add_demag
+export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_exch, add_dmi, add_demag
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -423,8 +423,7 @@ Example:
     update_anis(sim, 5e4, name="K2")  #update anisotropy K2
 ```
 """
-#FIXME : fix this function
-function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name="anis")
+function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name="anis")  #FIXME : fix this function
     n_total = sim.n_total
     Kus = zeros(Float64, n_total)
     init_scalar!(Kus, sim.mesh, Ku)

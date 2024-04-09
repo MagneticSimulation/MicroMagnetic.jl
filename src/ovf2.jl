@@ -11,6 +11,9 @@ mutable struct OVF2{T<:AbstractFloat}
     OVF2{T}() where {T<:AbstractFloat} = new()
 end
 
+
+export save_ovf, read_ovf
+
 """
     save_ovf(sim::AbstractSim, fname::String; type::DataType = Float64)
 
