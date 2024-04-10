@@ -88,4 +88,13 @@ include("init_m.jl")
 include("ovf2.jl")
 include("vtk.jl")
 
+include("atomistic/mesh.jl")
+#include("atomistic/field.jl")
+#include("atomistic/sim.jl")
+#include("atomistic/kernels.jl")
+
+function __init__()
+    
+end
+
 end #module
