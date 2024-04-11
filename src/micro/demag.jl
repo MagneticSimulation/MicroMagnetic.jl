@@ -111,7 +111,7 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1},
     fill!(demag.my, 0)
     fill!(demag.mz, 0)
 
-    distribute_m(spin, demag.mx, demag.my, demag.mz, sim.Ms, nx, ny, nz)
+    distribute_m(spin, demag.mx, demag.my, demag.mz, sim.mu0_Ms, nx, ny, nz)
 
     #synchronize()
     mul!(demag.Mx, demag.m_plan, demag.mx)
@@ -130,7 +130,7 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1},
     mul!(demag.my, demag.h_plan, demag.Hy)
     mul!(demag.mz, demag.h_plan, demag.Hz)
 
-    collect_h_energy(demag.field, demag.energy, spin, demag.mx, demag.my, demag.mz, sim.Ms,
+    collect_h_energy(demag.field, demag.energy, spin, demag.mx, demag.my, demag.mz, sim.mu0_Ms,
                      T(mesh.volume), nx, ny, nz)
 
     return nothing
@@ -435,18 +435,19 @@ function distribute_m(m, mx_pad, my_pad, mz_pad, Ms, nx::Int64, ny::Int64, nz::I
 end
 
 @kernel function collect_h_kernel!(h, energy, @Const(m), @Const(hx), @Const(hy), @Const(hz),
-                                   @Const(Ms), volume::T) where {T<:AbstractFloat}
+                                   @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
     i, j, k = @index(Global, NTuple)
     I = @index(Global)
 
     p = 3 * I - 2
-    @inbounds h[p] = -1.0 * hx[i, j, k]
-    @inbounds h[p + 1] = -1.0 * hy[i, j, k]
-    @inbounds h[p + 2] = -1.0 * hz[i, j, k]
+    factor::T = -1.0/mu_0 
+    @inbounds h[p] = factor * hx[i, j, k]
+    @inbounds h[p + 1] = factor * hy[i, j, k]
+    @inbounds h[p + 2] = factor * hz[i, j, k]
 
     @inbounds mh = m[p] * h[p] + m[p + 1] * h[p + 1] + m[p + 2] * h[p + 2]
 
-    @inbounds energy[I] = -0.5 * mu_0 * Ms[I] * volume * mh
+    @inbounds energy[I] = -0.5 * mu0_Ms[I] * volume * mh
 end
 
 function collect_h_energy(h, energy, m, hx, hy, hz, Ms, volume::T, nx::Int64, ny::Int64,
