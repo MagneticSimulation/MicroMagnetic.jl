@@ -278,7 +278,7 @@ function add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items,
+        push!(sim.saver.ite,
               SaverItem(string("E_", name), "J",
                         o::AbstractSim -> sum(o.interactions[id].energy)))
     end
@@ -311,7 +311,7 @@ function add_exch_rkky(sim::AbstractSim, J::Float64; name="rkky")
 
     if sim.save_data
         id = length(sim.interactions)
-        push!(sim.saver.items,
+        push!(sim.saver.ite,
               SaverItem(string("E_", name), "J",
                         o::AbstractSim -> sum(o.interactions[id].energy)))
     end

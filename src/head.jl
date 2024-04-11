@@ -106,7 +106,7 @@ mutable struct MicroSim{T<:AbstractFloat} <: AbstractSim
     prespin::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
-    Ms::AbstractArray{T,1}
+    mu0_Ms::AbstractArray{T,1}
     pins::AbstractArray{Bool,1}
     n_total::Int64
     name::String
