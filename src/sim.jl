@@ -9,10 +9,16 @@ export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, r
 Create a simulation instance for given mesh.
 
 """
-function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
+function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
              save_data=true)
+
     T = single_precision.x ? Float32 : Float64
-    sim = MicroSim{T}()
+
+    if isa(mesh, FDMesh)
+        sim = MicroSim{T}() 
+    else
+        sim = AtomisticSim{T}()
+    end
 
     sim.name = name
     sim.mesh = mesh
@@ -22,7 +28,11 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.prespin = KernelAbstractions.zeros(backend[], T, 3 * n_total)
     sim.field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
     sim.energy = KernelAbstractions.zeros(backend[], T, n_total)
-    sim.Ms = KernelAbstractions.zeros(backend[], T, n_total)
+    if isa(mesh, FDMesh)
+        sim.mu0_Ms = KernelAbstractions.zeros(backend[], T, n_total)
+    else
+        sim.mu_s = KernelAbstractions.zeros(backend[], T, n_total)
+    end
     sim.pins = KernelAbstractions.zeros(backend[], Bool, n_total)
     sim.driver_name = driver
     sim.driver = create_driver(driver, integrator, n_total)
@@ -30,7 +40,12 @@ function Sim(mesh::FDMesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.save_data = save_data
     sim.saver = create_saver(string(name, "_", lowercase(driver), ".txt"), driver)
 
-    @info "MicroSim has been used."
+    if isa(mesh, FDMesh)
+        @info "MicroSim has been created."
+    else
+        @info "AtomisticSim has been created."
+    end
+    
     return sim
 end
 
@@ -63,7 +78,9 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
         error("NaN is given by the input Ms!")
     end
 
-    copyto!(sim.Ms, Ms_a)
+    Ms_a .*= mu_0  #we convert A/m to Tesla
+
+    copyto!(sim.mu0_Ms, Ms_a)
     return true
 end
 
@@ -77,7 +94,7 @@ function set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
     geo = create_cylinder(sim.mesh, axis; r1=r1, r2=r2)
     for i in 1:(sim.n_total)
         if geo.shape[i]
-            sim.Ms[i] = Ms
+            sim.mu0_Ms[i] = Ms
         end
     end
     return true
@@ -89,7 +106,7 @@ end
 Set the saturation magnetization Ms within the Geometry.
 """
 function set_Ms(sim::AbstractSim, geo::Geometry, Ms::Number)
-    update_scalar_geometry(sim.Ms, geo, Ms)
+    update_scalar_geometry(sim.mu0_Ms, geo, Ms)
     return true
 end
 
@@ -140,7 +157,7 @@ TODO: add the equations
 """
 function average_m(sim::AbstractSim)
     b = reshape(sim.spin, 3, sim.n_total)
-    ms = isa(sim, MicroSim) ? sim.Ms : sim.mu_s
+    ms = isa(sim, MicroSim) ? sim.mu0_Ms : sim.mu_s
     return Tuple(sum(b .* ms'; dims=2) ./ sum(ms))
 end
 
@@ -173,7 +190,7 @@ function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
         normalise(spin, sim.n_total)
     end
 
-    Ms = isa(sim.mesh, FDMesh) ? Array(sim.Ms) : Array(sim.mu_s)
+    Ms = isa(sim.mesh, FDMesh) ? Array(sim.mu0_Ms) : Array(sim.mu_s)
     for i in 1:(sim.n_total)
         if Ms[i] == 0
             spin[3 * i - 2] = 0

@@ -132,7 +132,7 @@ end
 
 mutable struct Anisotropy{T<:AbstractFloat} <: MicroEnergy
     Ku::AbstractArray{T,1}
-    axis::Tuple
+    axis::Tuple{T, T, T}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
@@ -193,3 +193,13 @@ mutable struct InterfacialDMI{T<:AbstractFloat} <: MicroEnergy
     energy::AbstractArray{T,1}
     name::String
 end
+
+mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy
+    temperature::AbstractArray{T, 1}
+    eta::AbstractArray{T, 1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    nsteps::Int64
+    name::String
+    k_B::Float64
+ end

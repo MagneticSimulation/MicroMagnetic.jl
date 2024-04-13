@@ -1,4 +1,5 @@
-export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_exch, add_dmi, add_demag
+export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_exch, add_dmi,
+       add_demag
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -482,4 +483,45 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
                         o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return anis
+end
+
+@doc raw"""
+    add_thermal_noise(sim::AbstractSim, T::NumberOrArrayOrFunction; name="thermal", k_B=k_B
+
+add the thermal noise field defined as
+
+```math
+\mathbf{b}^u = \eta \sqrt \frac{2 \alpha k_B T}{\mu_0 M_s \gamma \Delta V dt}
+```
+
+where $\eta$ is a random number follows the normal distribution.
+
+
+# Example
+```julia
+    add_thermal_noise(sim, 100)
+```
+"""
+function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal",
+                           k_B=k_B)
+    N = sim.n_total
+    T = single_precision.x ? Float32 : Float64
+    field = KernelAbstractions.zeros(backend[], T, 3 * N)
+    energy = KernelAbstractions.zeros(backend[], T, N)
+
+    Spatial_T = KernelAbstractions.zeros(backend[], T, N)
+    eta = KernelAbstractions.zeros(backend[], T, 3 * N)
+
+    init_scalar!(Spatial_T, sim.mesh, Temp)
+    thermal = StochasticField(Spatial_T, eta, field, energy, -1, name, k_B)
+
+    push!(sim.interactions, thermal)
+
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> o.interactions[id].total_energy))
+    end
+    return thermal
 end

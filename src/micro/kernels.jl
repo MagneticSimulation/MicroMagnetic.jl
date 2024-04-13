@@ -6,9 +6,8 @@ where factor = cell_size for the micromagnetic model and factor = 1 for atomisti
                                 factor::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
-    @inbounds energy[id] = -factor *
-    mu0_Ms[id] *
-                           (m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3])
+    @inbounds mh::T = m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3]
+    @inbounds energy[id] = -factor * mu0_Ms[id] * mh
 end
 
 """
@@ -23,11 +22,13 @@ and factor = cell_size for the micromagnetic model and factor = 1 for atomistic 
     @inbounds h[j + 1] = h_static[j + 1] * fx
     @inbounds h[j + 2] = h_static[j + 2] * fy
     @inbounds h[j + 3] = h_static[j + 3] * fz
-    @inbounds energy[I] = -factor *
-    mu0_Ms[I] *
-                          (m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3])
+    @inbounds mh::T = m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3]
+    @inbounds energy[I] = -factor * mu0_Ms[I] * mh
 end
 
+"""
+The kernel anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
+"""
 @kernel function anisotropy_kernel!(@Const(m), h, energy, @Const(Ku), axis_x::T, axis_y::T,
                                     axis_z::T, @Const(mu0_Ms),
                                     volume::T) where {T<:AbstractFloat}
@@ -42,7 +43,7 @@ end
         @inbounds h[j + 2] = 0
         @inbounds h[j + 3] = 0
     else
-        Ms_inv::T = 2.0 / Ms_local 
+        Ms_inv::T = 2.0 / Ms_local
         @inbounds sa = m[j + 1] * axis_x + m[j + 2] * axis_y + m[j + 3] * axis_z
         @inbounds h[j + 1] = Ku[id] * sa * axis_x * Ms_inv
         @inbounds h[j + 2] = Ku[id] * sa * axis_y * Ms_inv
@@ -51,9 +52,43 @@ end
     end
 end
 
+"""
+The kernel spatial_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
+"""
+@kernel function spatial_anisotropy_kernel!(@Const(m), h, energy, @Const(Ku), @Const(axes),
+                                            @Const(mu0_Ms),
+                                            volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu0_Ms[id]
+
+    @inbounds ax = axes[1, I]
+    @inbounds ay = axes[2, I]
+    @inbounds az = axes[3, I]
+
+    if Ms_local == 0.0
+        @inbounds energy[id] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        Ms_inv::T = 2.0 / Ms_local
+        @inbounds sa = m[j + 1] * axis_x + m[j + 2] * axis_y + m[j + 3] * axis_z
+        @inbounds h[j + 1] = Ku[id] * sa * ax * Ms_inv
+        @inbounds h[j + 2] = Ku[id] * sa * ay * Ms_inv
+        @inbounds h[j + 3] = Ku[id] * sa * az * Ms_inv
+        @inbounds energy[id] = Ku[id] * (1.0 - sa * sa) * volume
+    end
+end
+
+"""
+The kernel cubic_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
+"""
 @kernel function cubic_anisotropy_kernel!(@Const(m), h, energy, @Const(Kc), a1x::T, a1y::T,
                                           a1z::T, a2x::T, a2y::T, a2z::T, a3x::T, a3y::T,
-                                          a3z::T, @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
+                                          a3z::T, @Const(mu0_Ms),
+                                          volume::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
@@ -79,8 +114,9 @@ end
     end
 end
 
-@kernel function exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(A), dx::T, dy::T,
-                                  dz::T, @Const(ngbs), volume::T) where {T<:AbstractFloat}
+@kernel function exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(A), dx::T,
+                                  dy::T, dz::T, @Const(ngbs),
+                                  volume::T) where {T<:AbstractFloat}
     I = @index(Global)
 
     @inbounds Ms_local = mu0_Ms[I]
@@ -277,5 +313,32 @@ end
         @inbounds h[i] = fx * Ms_inv
         @inbounds h[i + 1] = fy * Ms_inv
         @inbounds h[i + 2] = fz * Ms_inv
+    end
+end
+
+@kernel function stochastic_field_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(eta),
+                                          @Const(Temp), factor::T,
+                                          volume::T) where {T<:AbstractFloat}
+    I = @index(Global)
+
+    j = 3 * (I - 1)
+    @inbounds Ms_local = mu0_Ms[I]
+    @inbounds T_local = Temp[I]
+
+    if Ms_local > 0
+        @inbounds scale = sqrt(factor * T_local / Ms_local)
+        @inbounds h[j + 1] = eta[j + 1] * scale
+        @inbounds h[j + 2] = eta[j + 2] * scale
+        @inbounds h[j + 3] = eta[j + 3] * scale
+        @inbounds energy[I] = -Ms_local *
+                              volume *
+                              (m[j + 1] * h[j + 1] +
+                               m[j + 2] * h[j + 2] +
+                               m[j + 3] * h[j + 3])
+    else
+        @inbounds energy[I] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
     end
 end

@@ -26,12 +26,13 @@ end
 function effective_field(anis::Anisotropy, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
+    axis = anis.axis
     volume = sim.mesh.volume
 
     groupsize = 512
     anisotropy_kernel!(backend[], groupsize)(spin, anis.field, anis.energy, anis.Ku,
-                                             T(anis.axis[1]), T(anis.axis[2]),
-                                             T(anis.axis[3]), sim.mu0_Ms, volume; ndrange=N)
+                                             axis[1], axis[2], axis[3], sim.mu0_Ms, volume;
+                                             ndrange=N)
 
     KernelAbstractions.synchronize(backend[])
     return nothing
@@ -135,10 +136,37 @@ function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::AbstractArray
     return nothing
 end
 
+function effective_field(stochastic::StochasticField, sim::MicroSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    volume = sim.mesh.volume
+    integrator = sim.driver.ode
+
+    if integrator.nsteps > stochastic.nsteps
+        randn!(stochastic.eta)
+        stochastic.nsteps = integrator.nsteps
+    end
+
+    dt = integrator.step
+    gamma = sim.driver.gamma
+    alpha = sim.driver.alpha
+    k_B = stochastic.k_B
+    factor = 2 * alpha * k_B / (volume * gamma * dt)
+
+    groupsize = 512
+    stochastic_field_kernel!(backend[], groupsize)(spin, stochastic.field,
+                                                   stochastic.energy, sim.mu0_Ms,
+                                                   stochastic.eta, stochastic.temperature, factor,
+                                                   volume; ndrange=N)
+
+    KernelAbstractions.synchronize(backend[])
+
+    return nothing
+end
+
 #we keep this function for debug and testing purpose, only works on CPU
 function effective_field_debug(exch::Exchange, sim::MicroSim, spin::Array{Float64,1},
                                t::Float64)
-    mu0 = 4.0 * pi * 1e-7
     mesh = sim.mesh
     dx = mesh.dx
     dy = mesh.dy
@@ -224,7 +252,6 @@ end
 #we keep this function for debug and testing purpose, only works on CPU
 function effective_field_debug(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,1},
                                t::Float64)
-    mu0 = 4 * pi * 1e-7
     mesh = sim.mesh
     dx = mesh.dx
     dy = mesh.dy
