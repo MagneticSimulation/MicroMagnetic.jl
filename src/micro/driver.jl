@@ -73,10 +73,10 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
     end
 
     if driver == "SD"
-        gk = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-        ss = KernelAbstractions.zeros(backend[], T, n_total)
-        sf = KernelAbstractions.zeros(backend[], T, n_total)
-        ff = KernelAbstractions.zeros(backend[], T, n_total)
+        gk = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
+        ss = KernelAbstractions.zeros(default_backend[], T, n_total)
+        sf = KernelAbstractions.zeros(default_backend[], T, n_total)
+        ff = KernelAbstractions.zeros(default_backend[], T, n_total)
         max_tau = 1.0
         return EnergyMinimization(gk, ss, sf, ff, T(0.0), T(max_tau),
                                      T(1e-10), 0)
@@ -101,10 +101,10 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         return LLG(true, T(0.1), T(2.21e5), dopri5, tol)
     elseif driver == "LLG_STT"
         tol = 1e-6
-        ux = KernelAbstractions.zeros(backend[], T, n_total)
-        uy = KernelAbstractions.zeros(backend[], T, n_total)
-        uz = KernelAbstractions.zeros(backend[], T, n_total)
-        hstt = KernelAbstractions.zeros(backend[], T, 3*n_total)
+        ux = KernelAbstractions.zeros(default_backend[], T, n_total)
+        uy = KernelAbstractions.zeros(default_backend[], T, n_total)
+        uz = KernelAbstractions.zeros(default_backend[], T, n_total)
+        hstt = KernelAbstractions.zeros(default_backend[], T, 3*n_total)
         fun = t::Float64 -> 1.0
         if integrator == "Heun"
             dopri5 = ModifiedEuler(n_total, llg_stt_call_back, 1e-14)
@@ -118,7 +118,7 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         return LLG_STT(T(0.5), T(0), T(2.21e5), dopri5, tol, ux, uy, uz, hstt, fun)
     elseif driver == "LLG_CPP"
         tol = 1e-6
-        aj = KernelAbstractions.zeros(backend[], T, n_total)
+        aj = KernelAbstractions.zeros(default_backend[], T, n_total)
         fun = t::Float64 -> 1.0
         p = (0, 0, 1)
         if integrator == "Heun"

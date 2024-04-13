@@ -43,13 +43,12 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     ny_fft = mesh.ny > cn ? 2 * mesh.ny : 2 * mesh.ny - 1
     nz_fft = mesh.nz > cn ? 2 * mesh.nz : 2 * mesh.nz - 1
 
-    T = single_precision.x ? Float32 : Float64
-    mx_pad = KernelAbstractions.zeros(backend[], T, nx_fft, ny_fft, nz_fft)
-    my_pad = KernelAbstractions.zeros(backend[], T, nx_fft, ny_fft, nz_fft)
-    mz_pad = KernelAbstractions.zeros(backend[], T, nx_fft, ny_fft, nz_fft)
+    mx_pad = create_zeros(nx_fft, ny_fft, nz_fft)
+    my_pad = create_zeros(nx_fft, ny_fft, nz_fft)
+    mz_pad = create_zeros(nx_fft, ny_fft, nz_fft)
     plan = plan_rfft(mx_pad)
 
-    tensor = KernelAbstractions.zeros(backend[], T, nx, ny, nz)
+    tensor = create_zeros(nx, ny, nz)
 
     #Nxx
     compute_demag_tensors(tensor, tensors_kernel_xx!, Nx, Ny, Nz, dx, dy, dz)
@@ -83,18 +82,19 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
 
     lenx = (nx_fft % 2 > 0) ? nx : nx + 1
 
-    Mx = KernelAbstractions.zeros(backend[], Complex{T}, lenx, ny_fft, nz_fft)
-    My = KernelAbstractions.zeros(backend[], Complex{T}, lenx, ny_fft, nz_fft)
-    Mz = KernelAbstractions.zeros(backend[], Complex{T}, lenx, ny_fft, nz_fft)
-    Hx = KernelAbstractions.zeros(backend[], Complex{T}, lenx, ny_fft, nz_fft)
-    Hy = KernelAbstractions.zeros(backend[], Complex{T}, lenx, ny_fft, nz_fft)
-    Hz = KernelAbstractions.zeros(backend[], Complex{T}, lenx, ny_fft, nz_fft)
+    T = single_precision.x ? Float32 : Float64
+    Mx = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
+    My = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
+    Mz = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
+    Hx = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
+    Hy = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
+    Hz = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
 
     m_plan = plan_rfft(mx_pad)
     h_plan = plan_irfft(Hx, nx_fft)
 
-    field = KernelAbstractions.zeros(backend[], T, 3 * sim.n_total)
-    energy = KernelAbstractions.zeros(backend[], T, sim.n_total)
+    field = create_zeros(3 * sim.n_total)
+    energy = create_zeros(sim.n_total)
 
     demag = Demag(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz, tensor_xy,
                   tensor_xz, tensor_yz, mx_pad, my_pad, mz_pad, Mx, My, Mz, Hx, Hy, Hz,
@@ -130,8 +130,8 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1},
     mul!(demag.my, demag.h_plan, demag.Hy)
     mul!(demag.mz, demag.h_plan, demag.Hz)
 
-    collect_h_energy(demag.field, demag.energy, spin, demag.mx, demag.my, demag.mz, sim.mu0_Ms,
-                     T(mesh.volume), nx, ny, nz)
+    collect_h_energy(demag.field, demag.energy, spin, demag.mx, demag.my, demag.mz,
+                     sim.mu0_Ms, T(mesh.volume), nx, ny, nz)
 
     return nothing
 end
@@ -428,9 +428,9 @@ end
 
 function distribute_m(m, mx_pad, my_pad, mz_pad, Ms, nx::Int64, ny::Int64, nz::Int64)
     groupsize = 512
-    kernel! = distribute_m_kernel!(backend[], groupsize)
+    kernel! = distribute_m_kernel!(default_backend[], groupsize)
     kernel!(m, mx_pad, my_pad, mz_pad, Ms; ndrange=(nx, ny, nz))
-    KernelAbstractions.synchronize(backend[])
+    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -440,7 +440,7 @@ end
     I = @index(Global)
 
     p = 3 * I - 2
-    factor::T = -1.0/mu_0 
+    factor::T = -1.0 / mu_0
     @inbounds h[p] = factor * hx[i, j, k]
     @inbounds h[p + 1] = factor * hy[i, j, k]
     @inbounds h[p + 2] = factor * hz[i, j, k]
@@ -453,8 +453,8 @@ end
 function collect_h_energy(h, energy, m, hx, hy, hz, Ms, volume::T, nx::Int64, ny::Int64,
                           nz::Int64) where {T<:AbstractFloat}
     groupsize = 512
-    kernel! = collect_h_kernel!(backend[], groupsize)
+    kernel! = collect_h_kernel!(default_backend[], groupsize)
     kernel!(h, energy, m, hx, hy, hz, Ms, volume; ndrange=(nx, ny, nz))
-    KernelAbstractions.synchronize(backend[])
+    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end

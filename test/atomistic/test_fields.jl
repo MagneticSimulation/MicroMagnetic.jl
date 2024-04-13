@@ -17,7 +17,9 @@ function load_field_data()
     return Ms, m0, demag, exch, dmi, anis, data[N, 3:6]
 end
 
-function test_fields(mesh; A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0,0,1))
+function test_fields(A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0,0,1))
+    mesh =  CubicMesh(nx=39, ny=11, nz=3, dx=0.5e-9, dy=0.5e-9, dz=0.5e-9)
+
     mu_s, m0, fd, fe, fdmi, fan, energy = load_field_data()
     sim = Sim(mesh)
 
@@ -49,24 +51,14 @@ function test_fields(mesh; A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0,0,1))
     @test (abs((sum(anis.energy)-energy[4])/energy[4]))<1e-15
 end
 
-if JuMag._cuda_available.x
-  JuMag.cuda_using_double()
-  @testset "Test atomistic fields GPU" begin
-    mesh =  CubicMeshGPU(nx=39, ny=11, nz=3, dx=0.5e-9, dy=0.5e-9, dz=0.5e-9)
-    test_fields(mesh)
-  end
-end
-
 @testset "Test Anisotropy CPU" begin
     set_backend("cpu")
-    test_anis()
-    test_cubic_anis()
+    test_fields()
 end
 
 @testset "Test Anisotropy CUDA" begin
     if Base.find_package("CUDA") !== nothing
         using CUDA
-        test_anis()
-        test_cubic_anis()
+        test_fields()
     end
 end

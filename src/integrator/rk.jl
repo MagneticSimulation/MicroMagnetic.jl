@@ -13,10 +13,10 @@ end
 
 function RungeKutta(n_total::Int64, rhs_fun, step::Float64)
     T = single_precision.x ? Float32 : Float64
-    k1 = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    k2 = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    k3 = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    k4 = KernelAbstractions.zeros(backend[], T, 3 * n_total)
+    k1 = create_zeros(3 * n_total)
+    k2 = create_zeros(3 * n_total)
+    k3 = create_zeros(3 * n_total)
+    k4 = create_zeros(3 * n_total)
 
     return RungeKutta(0.0, step, 0, k1, k2, k3, k4, rhs_fun)
 end

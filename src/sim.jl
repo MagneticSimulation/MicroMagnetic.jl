@@ -11,11 +11,10 @@ Create a simulation instance for given mesh.
 """
 function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
              save_data=true)
-
     T = single_precision.x ? Float32 : Float64
 
     if isa(mesh, FDMesh)
-        sim = MicroSim{T}() 
+        sim = MicroSim{T}()
     else
         sim = AtomisticSim{T}()
     end
@@ -24,16 +23,16 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.mesh = mesh
     n_total = mesh.nx * mesh.ny * mesh.nz
     sim.n_total = n_total
-    sim.spin = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    sim.prespin = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    sim.field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    sim.energy = KernelAbstractions.zeros(backend[], T, n_total)
+    sim.spin = create_zeros(3 * n_total)
+    sim.prespin = create_zeros(3 * n_total)
+    sim.field = create_zeros(3 * n_total)
+    sim.energy = create_zeros(n_total)
     if isa(mesh, FDMesh)
-        sim.mu0_Ms = KernelAbstractions.zeros(backend[], T, n_total)
+        sim.mu0_Ms = create_zeros(n_total)
     else
-        sim.mu_s = KernelAbstractions.zeros(backend[], T, n_total)
+        sim.mu_s = create_zeros(n_total)
     end
-    sim.pins = KernelAbstractions.zeros(backend[], Bool, n_total)
+    sim.pins = create_zeros(Bool, n_total)
     sim.driver_name = driver
     sim.driver = create_driver(driver, integrator, n_total)
     sim.interactions = []
@@ -45,7 +44,7 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     else
         @info "AtomisticSim has been created."
     end
-    
+
     return sim
 end
 
@@ -295,7 +294,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
 
     N_spins = sim.n_total
     T = single_precision.x ? Float32 : Float64
-    dm = KernelAbstractions.zeros(backend[], T, 3 * N_spins)
+    dm = KernelAbstractions.zeros(default_backend[], T, 3 * N_spins)
 
     dmdt_factor = (2 * pi / 360) * 1e9
     #if _cuda_available.x && isa(sim, AtomicSimGPU)

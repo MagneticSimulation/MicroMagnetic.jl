@@ -62,8 +62,8 @@ function TriangularMesh(; dx=1e-9, dz=1e-9, nx=1, ny=1, pbc="open")
     end
     dy = dx * sqrt(3) / 2
 
-    ngbs = KernelAbstractions.Arrays(ngbs)
-    nngbs = KernelAbstractions.Arrays(nngbs)
+    ngbs = kernel_array(ngbs)
+    nngbs = kernel_array(nngbs)
 
     return TriangularMesh(dx, dy, dz, nx, ny, nz, n_total, 6, ngbs, nngbs, pbc_x, pbc_y, pbc_z)
 end
@@ -112,7 +112,7 @@ function CubicMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
         ngbs[6, id] = indexpbc(i, j, k + 1, nx, ny, nz, pbc_x, pbc_y, pbc_z)
     end
 
-    ngbs = KernelAbstractions.Array(ngbs)
+    ngbs = kernel_array(ngbs)
     return CubicMesh(dx, dy, dz, nx, ny, nz, n_total, 6, 12, 8, 6, ngbs, Int32[], Int32[], Int32[], pbc_x, pbc_y, pbc_z)
 end
 
@@ -144,7 +144,7 @@ function compute_2nd_ngbs(mesh::CubicMesh)
     end
 
     mesh.n_ngbs2 = 12
-    mesh.ngbs2 = KernelAbstractions.Array(ngbs)
+    mesh.ngbs2 = kernel_array(ngbs)
     return nothing
 end
 
@@ -172,7 +172,7 @@ function compute_3rd_ngbs(mesh::CubicMesh)
     end
 
     mesh.n_ngbs3 = 8
-    mesh.ngbs3 = KernelAbstractions.Array(ngbs)
+    mesh.ngbs3 = kernel_array(ngbs)
     return nothing
 end
 
@@ -198,7 +198,7 @@ function compute_4th_ngbs(mesh::CubicMesh)
     end
 
     mesh.n_ngbs4 = 6
-    mesh.ngbs4 = KernelAbstractions.Array(ngbs)
+    mesh.ngbs4 = kernel_array(ngbs)
     return nothing
 end
 
@@ -254,9 +254,9 @@ function SquareMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     end
     n_total = nx * ny * nz
 
-    ngbs = KernelAbstractions.Array(ngbs)
-    nngbs = KernelAbstractions.Array(nngbs)
-    nnngbs = KernelAbstractions.Array(nnngbs)
+    ngbs = kernel_array(ngbs)
+    nngbs = kernel_array(nngbs)
+    nnngbs = kernel_array(nnngbs)
     return CubicMeshGPU(dx, dy, dz, nx, ny, nz, n_total, 4, 4, 4, ngbs, nngbs, nnngbs,
                         pbc_x, pbc_y, pbc_z)
 end
@@ -308,7 +308,7 @@ function CylindricalTubeMesh(; dz=1e-9, R=20e-9, nz=1, nr=10, pbc="open")
     end
     n_total = nr * nz
     n_ngbs = 4
-    ngbs = KernelAbstractions.Array(ngbs)
+    ngbs = kernel_array(ngbs)
     return CylindricalTubeMesh(dz, R, nz, nr, n_total, n_ngbs, ngbs, pbc_z, coordinates)
 end
 
@@ -407,8 +407,8 @@ function FccMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=2, ny=2, nz=2, pbc="xyz")
         ngbs[:, i] .= ngbs_array[i]
         nngbs[:, i] .= nngbs_array[i]
     end
-    ngbs = KernelAbstractions.Array(ngbs)
-    nngbs = KernelAbstractions.Array(nngbs)
+    ngbs = kernel_array(ngbs)
+    nngbs = kernel_array(nngbs)
     return FccMesh(dx, dy, dz, nx, ny, nz, N, n_ngbs, n_nngbs, ngbs, nngbs, pbc_x, pbc_y,
                    pbc_z, cds)
 end
