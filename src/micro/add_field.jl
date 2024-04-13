@@ -14,10 +14,8 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 
     init_vector!(field, sim.mesh, H0)
 
-    field_kb = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    energy_kb = KernelAbstractions.zeros(backend[], T, n_total)
-
-    copyto!(field_kb, field)
+    field_kb = kernel_array(field)
+    energy_kb = create_zeros(n_total)
 
     zeeman = Zeeman(field_kb, energy_kb, name)
     push!(sim.interactions, zeeman)
@@ -99,11 +97,9 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
     init_field = zeros(T, 3 * n_total)
     init_vector!(init_field, sim.mesh, H0)
 
-    field_kb = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    energy = KernelAbstractions.zeros(backend[], T, n_total)
-
-    copyto!(field_kb, init_field)
+    field_kb = kernel_array(init_field)
+    field = create_zeros(3 * n_total)
+    energy = create_zeros(n_total)
 
     zeeman = TimeZeeman(ft, field_kb, field, energy, name)
     push!(sim.interactions, zeeman)
@@ -142,8 +138,8 @@ or
 function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
-    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    energy = KernelAbstractions.zeros(backend[], T, n_total)
+    field = create_zeros(3 * n_total)
+    energy = create_zeros(n_total)
 
     exch = nothing
     if isa(A, Number)
@@ -154,8 +150,7 @@ function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exc
         Spatial_A = zeros(T, sim.n_total)
         init_scalar!(Spatial_A, sim.mesh, A)
 
-        A_kb = KernelAbstractions.zeros(backend[], T, n_total)
-        copyto!(A_kb, Spatial_A)
+        A_kb = kernel_array(Spatial_A)
 
         exch = Exchange(A_kb, field, energy, name)
     end
@@ -209,8 +204,8 @@ function add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi"
                  type="bulk")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
-    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    energy = KernelAbstractions.zeros(backend[], T, n_total)
+    field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
+    energy = KernelAbstractions.zeros(default_backend[], T, n_total)
 
     if type == "bulk"
         if isa(D, Number)
@@ -221,7 +216,7 @@ function add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi"
             Spatial_D = zeros(T, sim.n_total)
             init_scalar!(Spatial_D, sim.mesh, D)
 
-            D_kb = KernelAbstractions.zeros(backend[], T, n_total)
+            D_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
             copyto!(D_kb, Spatial_D)
 
             dmi = SpatialBulkDMI(D_kb, field, energy, name)
@@ -232,7 +227,7 @@ function add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi"
         Spatial_D = zeros(T, sim.n_total)
         init_scalar!(Spatial_D, sim.mesh, D)
 
-        D_kb = KernelAbstractions.zeros(backend[], T, n_total)
+        D_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
         copyto!(D_kb, Spatial_D)
 
         dmi = InterfacialDMI(D_kb, field, energy, name)
@@ -355,9 +350,9 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
     Kus = zeros(T, n_total)
     init_scalar!(Kus, sim.mesh, Ku)
 
-    Kus_kb = KernelAbstractions.zeros(backend[], T, n_total)
-    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    energy = KernelAbstractions.zeros(backend[], T, n_total)
+    Kus_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
+    field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
+    energy = KernelAbstractions.zeros(default_backend[], T, n_total)
 
     lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
     naxis = (axis[1] / lt, axis[2] / lt, axis[3] / lt)
@@ -467,9 +462,9 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
     end
     naxis3 = cross_product(axis1, axis2)
 
-    Kcs_kb = KernelAbstractions.zeros(backend[], T, n_total)
-    field = KernelAbstractions.zeros(backend[], T, 3 * n_total)
-    energy = KernelAbstractions.zeros(backend[], T, n_total)
+    Kcs_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
+    field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
+    energy = KernelAbstractions.zeros(default_backend[], T, n_total)
 
     copyto!(Kcs_kb, Kcs)
 
@@ -506,11 +501,11 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
                            k_B=k_B)
     N = sim.n_total
     T = single_precision.x ? Float32 : Float64
-    field = KernelAbstractions.zeros(backend[], T, 3 * N)
-    energy = KernelAbstractions.zeros(backend[], T, N)
+    field = KernelAbstractions.zeros(default_backend[], T, 3 * N)
+    energy = KernelAbstractions.zeros(default_backend[], T, N)
 
-    Spatial_T = KernelAbstractions.zeros(backend[], T, N)
-    eta = KernelAbstractions.zeros(backend[], T, 3 * N)
+    Spatial_T = KernelAbstractions.zeros(default_backend[], T, N)
+    eta = KernelAbstractions.zeros(default_backend[], T, 3 * N)
 
     init_scalar!(Spatial_T, sim.mesh, Temp)
     thermal = StochasticField(Spatial_T, eta, field, energy, -1, name, k_B)

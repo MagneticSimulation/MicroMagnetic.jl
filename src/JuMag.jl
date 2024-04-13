@@ -17,7 +17,7 @@ function set_sim_precision_type(type="double")
     return nothing
 end
 
-const backend = Backend[CPU()]
+const default_backend = Backend[CPU()]
 const all_backends = Backend[CPU(), CPU(), CPU(), CPU()]
 
 export set_backend
@@ -48,23 +48,40 @@ function set_backend(x="cuda")
     end
 
     if card_id > 0
-        backend[] = all_backends[card_id]
+        default_backend[] = all_backends[card_id]
         backend_name = backend_names[card_id]
         if Base.find_package(backend_name) === nothing
             @info(@sprintf("Please install %s.jl!", backend_name))
             return
         end
 
-        if backend[] == CPU()
+        if default_backend[] == CPU()
             @info(@sprintf("Please import %s!", backend_name))
             return
         end
     else
-        backend[] = CPU()
+        default_backend[] = CPU()
     end
 
-    @info(@sprintf("Switch the backend to %s", backend[]))
+    @info(@sprintf("Switch the backend to %s", default_backend[]))
 end
+
+
+function kernel_array(a::Array)
+    A = KernelAbstractions.zeros(default_backend[], eltype(a), size(a))
+    copyto!(A, a)
+    return A
+end
+
+function create_zeros(dims...)
+    T = single_precision.x ? Float32 : Float64
+    return KernelAbstractions.zeros(default_backend[], T, dims)
+end
+
+function create_zeros(::Type{T}, dims...) where T
+    return KernelAbstractions.zeros(default_backend[], T, dims)
+end
+
 
 include("const.jl")
 include("micro/mesh.jl")

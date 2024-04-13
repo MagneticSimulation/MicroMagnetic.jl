@@ -65,12 +65,11 @@ function FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     end
     volume = dx * dy * dz
     n_total = nx * ny * nz
-    if backend[] == CPU()
+    if default_backend[] == CPU()
         return FDMesh(dx, dy, dz, nx, ny, nz, xperiodic, yperiodic, zperiodic, n_total, volume, ngbs)
     end
 
-    ngbs_kb = KernelAbstractions.zeros(backend[], Int32, 6, nx * ny * nz)
-    copyto!(ngbs_kb, ngbs)
+    ngbs_kb = kernel_array(ngbs)
     return FDMesh(dx, dy, dz, nx, ny, nz, xperiodic, yperiodic, zperiodic, n_total, volume, ngbs_kb)
 end
 
