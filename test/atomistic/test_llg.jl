@@ -13,7 +13,7 @@ end
 
 function test_llg()
     #Test mesh
-    mesh =  CubicMeshGPU(nx=1, ny=1, dx=1e-9)
+    mesh =  CubicMesh(nx=1, ny=1, dx=1e-9)
 
     sim = Sim(mesh, name="spin")
 
