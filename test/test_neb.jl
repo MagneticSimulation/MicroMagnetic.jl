@@ -1,6 +1,5 @@
 using JuMag
 using Printf
-using NPZ
 using Test
 
 function test_neb_cpu()

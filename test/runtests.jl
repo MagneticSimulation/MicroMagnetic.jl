@@ -12,7 +12,8 @@ include("test_sim.jl")
 include("test_llg.jl")
 include("test_integrator.jl")
 include("test_relax.jl")
-
+include("test_pins.jl")
 
 include("atomistic/test_mesh.jl")
+include("atomistic/test_llg.jl")
 include("atomistic/test_fields.jl")

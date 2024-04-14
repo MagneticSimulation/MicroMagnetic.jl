@@ -42,7 +42,10 @@ function save_vtk(sim::AbstractSim, fname::String; fields::Array{String,1}=Strin
         xyz[3, i, j, k] = (k - 0.5 - nz / 2) * dz
     end
     vtk = vtk_grid(fname, xyz)
-    b = reshape(sim.spin, (3, nx, ny, nz))
+    spin = zeros(eltype(sim.spin), length(sim.spin))
+    copyto!(spin, sim.spin)
+
+    b = reshape(spin, (3, nx, ny, nz))
     vtk_cell_data(vtk, b, "m")
 
     if length(fields) > 0
