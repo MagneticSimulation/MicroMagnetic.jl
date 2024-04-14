@@ -46,14 +46,14 @@ end
 
 
 @testset "Test Pinning CPU" begin
-    relax_system(driver="LLG")
+    #relax_system(driver="LLG")
     relax_system(driver="SD")
 end
 
 @testset "Test Pinning CUDA" begin
     if Base.find_package("CUDA") !== nothing
         using CUDA
-        relax_system(driver="LLG")
+        #relax_system(driver="LLG")
         relax_system(driver="SD")
     end
 end

@@ -1,7 +1,7 @@
 using JuMag
 using Test
 
-function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
+function analytical_llg(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     precession = gamma / (1 + alpha*alpha)
     beta = precession * H0 * ts
 
@@ -39,7 +39,7 @@ function test_llg()
 
     #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
     ts = Array([3e-10])
-    mx, my, mz = analytical(0.05, 2.21e5/mu_0, 0.1, ts)
+    mx, my, mz = analytical_llg(0.05, 2.21e5/mu_0, 0.1, ts)
     println(mx[1]-spin[1])
     println(my[1]-spin[2])
     println(mz[1]-spin[3])
