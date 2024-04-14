@@ -14,7 +14,7 @@ end
 
 function test_driver()
     #Test mesh
-    mesh = CubicMeshGPU(nx=200, ny=1, nz=1, dx=1e-9)
+    mesh = CubicMesh(nx=200, ny=1, nz=1, dx=1e-9)
 
     sim = Sim(mesh, name="spin", driver="SD")
     
