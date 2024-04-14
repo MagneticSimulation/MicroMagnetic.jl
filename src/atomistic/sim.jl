@@ -1,4 +1,6 @@
 
+export set_mu_s, set_mu_s_kagome
+
 """
     set_mu_s(sim::AtomisticSim, Ms::NumberOrArrayOrFunction)
 
@@ -42,25 +44,64 @@ function set_mu_s_kagome(sim::AtomisticSim, Ms::Number)
 end
 
 """
-    add_exch(sim::AtomisticSim, J::Array; name="exch")
+    add_exch(sim::AtomisticSim, J::NumberOrArray; name="exch")
 
 Add exchange energy to the system. The length of J should be equal to the length of neigbours.
 """
 function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0, J4=0)
-    n_total = sim.n_total
+    mesh = sim.mesh
     T = single_precision.x ? Float32 : Float64
-    field = zeros(T, 3 * n_total)
-    energy = zeros(T, n_total)
-    n_ngbs = sim.mesh.n_ngbs
-    Js = CUDA.zeros(Float, n_ngbs)
 
-    if length(J) != n_ngbs
-        @error("The length of given Js is $(length(Js)) but we need an array with $a.")
+    Js = create_zeros(mesh.n_ngbs)
+    if isa(J1, Number)
+        Js .= J1
+    elseif length(J1) == length(Js)
+        copyto!(Js, J1)
     else
-        copyto!(Js, [Float(i) for i in J])
+        @error("J1 should be a number or an array with length $(mesh.n_ngbs)!")
     end
 
-    exch = HeisenbergExchange(Js, field, energy, Float(0.0), name)
+    Js2 = T[]
+    if J2 != 0
+        Js2 = create_zeros(mesh.n_ngbs2)
+        if isa(J2, Number)
+            Js2 .= J2
+        elseif length(J2) == length(Js2)
+            copyto!(Js2, J2)
+        else
+            @error("J2 should be a number or an array with length $(mesh.n_ngbs2)!")
+        end
+    end
+
+    Js3 = T[]
+    if J3 != 0
+        Js3 = create_zeros(mesh.n_ngbs3)
+        if isa(J3, Number)
+            Js3 .= J3
+        elseif length(J3) == length(Js3)
+            copyto!(Js3, J3)
+        else
+            @error("J3 should be a number or an array with length $(mesh.n_ngbs3)!")
+        end
+    end
+
+    Js4 = T[]
+    if J4 != 0
+        Js4 = create_zeros(mesh.n_ngbs4)
+        if isa(J4, Number)
+            Js4 .= J4
+        elseif length(J4) == length(Js4)
+            copyto!(Js4, J4)
+        else
+            @error("J4 should be a number or an array with length $(mesh.n_ngbs4)!")
+        end
+    end
+
+    N = sim.n_total
+    field = create_zeros(3 * N)
+    energy = create_zeros(N)
+    
+    exch = HeisenbergExchange(Js, Js2, Js3, Js4, field, energy, name)
     push!(sim.interactions, exch)
     if sim.save_data
         id = length(sim.interactions)
@@ -71,160 +112,67 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
     return exch
 end
 
-"""
-    add_exch(sim::AtomisticSim, J::Number; name="exch")
-
-Add exchange energy to the system.
-"""
-function add_exch(sim::AtomisticSim, J::Number; name="exch")
-    n_ngbs = sim.mesh.n_ngbs
-    Js = zeros(n_ngbs)
-    Js .= J
-    return add_exch(sim, Js; name=name)
-end
-
-"""
-    add_next_exch()
-
-Add next-nearest neigbours exchange energy to the system
-"""
-
-function add_next_exch(sim::AtomisticSim, J::Number; name="next_exch")
-    nn_ngbs = sim.mesh.nn_ngbs
-    Js = zeros(nn_ngbs)
-    Js .= J
-    return add_next_exch(sim, Js; name=name)
-end
-
-function add_next_exch(sim::AtomisticSim, J::Array; name="next_exch")
-    n_total = sim.n_total
-    T = single_precision.x ? Float32 : Float64
-    field = zeros(T, 3 * n_total)
-    energy = zeros(T, n_total)
-    nn_ngbs = sim.mesh.nn_ngbs
-    Js = CUDA.zeros(Float, nn_ngbs)
-
-    if length(J) != nn_ngbs
-        @error("The length of given Js is $(length(Js)) but we need an array with $a.")
-    else
-        copyto!(Js, [Float(i) for i in J])
-    end
-
-    next_exch = NextHeisenbergExchange(Js, field, energy, Float(0.0), name)
-    push!(sim.interactions, next_exch)
-    if sim.save_data
-        id = length(sim.interactions)
-        item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> o.interactions[id].total_energy)
-        push!(sim.saver.items, item)
-    end
-    return next_exch
-end
-
-"""
-    add_next_next_exch()
-
-Add next-next-nearest neigbours exchange energy to the system
-"""
-function add_next_next_exch(sim::AtomisticSim, J::Number; name="next_next_exch")
-    nnn_ngbs = sim.mesh.nnn_ngbs
-    Js = zeros(nnn_ngbs)
-    Js .= J
-    return add_next_next_exch(sim, Js; name=name)
-end
-
-function add_next_next_exch(sim::AtomisticSim, J::Array; name="next_next_exch")
-    n_total = sim.n_total
-    T = single_precision.x ? Float32 : Float64
-    field = zeros(T, 3 * n_total)
-    energy = zeros(T, n_total)
-    nnn_ngbs = sim.mesh.nnn_ngbs
-    Js = CUDA.zeros(Float, nnn_ngbs)
-
-    if length(J) != nnn_ngbs
-        @error("The length of given Js is $(length(Js)) but we need an array with $a.")
-    else
-        copyto!(Js, [Float(i) for i in J])
-    end
-
-    next_next_exch = NextNextHeisenbergExchange(Js, field, energy, Float(0.0), name)
-    push!(sim.interactions, next_next_exch)
-    if sim.save_data
-        id = length(sim.interactions)
-        item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> o.interactions[id].total_energy)
-        push!(sim.saver.items, item)
-    end
-    return next_next_exch
-end
-
-"""
-    add_next_next_exch()
-
-Add 4th next_next-next-nearest neigbours exchange energy to the system
-"""
-function add_next_next_next_exch(sim::AtomisticSim, J::Number; name="next_next_next_exch")
-    nnnn_ngbs = sim.mesh.nnnn_ngbs
-    Js = zeros(nnnn_ngbs)
-    Js .= J
-    return add_next_next_next_exch(sim, Js; name=name)
-end
-
-function add_next_next_next_exch(sim::AtomisticSim, J::Array; name="next_next_next_exch")
-    n_total = sim.n_total
-    T = single_precision.x ? Float32 : Float64
-    field = zeros(Float, 3 * n_total)
-    energy = zeros(Float, n_total)
-    nnnn_ngbs = sim.mesh.nnnn_ngbs
-    Js = CUDA.zeros(Float, nnnn_ngbs)
-
-    if length(J) != nnnn_ngbs
-        @error("The length of given Js is $(length(Js)) but we need an array with $a.")
-    else
-        copyto!(Js, [Float(i) for i in J])
-    end
-
-    next_next_next_exch = NextNextNextHeisenbergExchange(Js, field, energy, Float(0.0),
-                                                         name)
-    push!(sim.interactions, next_next_next_exch)
-    if sim.save_data
-        id = length(sim.interactions)
-        item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> o.interactions[id].total_energy)
-        push!(sim.saver.items, item)
-    end
-    return next_next_next_exch
-end
 
 @doc raw"""
-    add_dmi(sim::AtomisticSim, D::Real; name="dmi")
+    add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
 
-Add bulk dmi energy to the system. The bulk dmi is defined as
+Add bulk dmi energy to the system. The DMI is defined as
 ```math
-\mathcal{H}_\mathrm{dmi} =  \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
+\mathcal{H}_\mathrm{dmi} = \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
 ```
-where $\mathbf{D}_{i j}$ is the DM vector. For the bulk dmi as implemented in this function, 
-$\mathbf{D}_{i j} = D \hat{r}_{ij}$.
+where $\mathbf{D}_{i j}$ is the DM vector. For the bulk dmi $\mathbf{D}_{i j} = D \hat{r}_{ij}$ and for interfacial dmi 
+$\mathbf{D}_{i j} = D \hat{r}_{ij} \times \hat{z}$
 """
-function add_dmi(sim::AtomisticSim, D::Real; name="dmi")
-    n_total = sim.n_total
+function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
+    N = sim.n_total
+    mesh = sim.mesh
     T = single_precision.x ? Float32 : Float64
-    field = zeros(Float, 3 * n_total)
-    energy = zeros(Float, n_total)
-    n_ngbs = sim.mesh.n_ngbs
+    field = create_zeros(3*N)
+    energy = create_zeros(N)
 
-    # TODO: implement the effective field for both TriangularMeshGPU and CubicMeshGPU
-    # TODO: check the sign of D
-    if isa(sim.mesh, TriangularMeshGPU)
-        error("bulk dmi for triangular mesh has not implemented yet")
-    elseif isa(sim.mesh, CubicMeshGPU)
-        dmi = HeisenbergBulkDMI(Float(D), field, energy, Float(0.0), name)
-    elseif isa(sim.mesh, CylindricalTubeMeshGPU)
+    Dij = zeros(T, (3, mesh.n_ngbs))
+    
+    if isa(sim.mesh, TriangularMesh)
+        for i = 1:6
+            theta = (i-1)*2*pi/6
+            Dij[:, i] .= [D*cos(theta), D*sin[theta], 0]
+        end
+
+        if type == "interfacial"
+            for i = 1:6
+                Dij[:, i] .=  cross_product(Dij[:, i], [0,0,1.0])
+            end
+            @info("Interfacial DMI for TriangularMesh has been added!")
+        else
+            @info("Bulk DMI  for TriangularMesh has been added!")
+        end
+
+        Dij = kernel_array(Dij)
+        dmi = HeisenbergDMI(Dij, field, energy, name)
+    elseif isa(sim.mesh, CubicMesh)
+        Dij[:, 1] .= [-D, 0, 0]
+        Dij[:, 2] .= [D, 0, 0]
+        Dij[:, 3] .= [0, -D, 0]
+        Dij[:, 4] .= [0, D, 0]
+        Dij[:, 5] .= [0, 0, -D]
+        Dij[:, 6] .= [0, 0, D]
+        
+        if type == "interfacial"
+            for i = 1:6
+                Dij[:, i] .=  cross_product(Dij[:, i], [0,0,1.0])
+            end
+            @info("Interfacial DMI for CubicMesh has been added!")
+        else
+            @info("Bulk DMI for CubicMesh has been added!")
+        end
+        Dij = kernel_array(Dij)
+        dmi = HeisenbergDMI(Dij, field, energy, name)
+    elseif isa(sim.mesh, CylindricalTubeMesh)
         nr = sim.mesh.nr
         coords = sim.mesh.coordinates
         ngbs = Array(sim.mesh.ngbs)
         #Dij stores D*r_{ij}, i.e., r_{n_r, 1}, r12, r23, ..., r_{(n_r-1)n_r},  r_{n_r, 1}
-        Dij = zeros(Float, 3, nr + 1)
+        Dij = zeros(T, 3, nr + 1)
         for i in 1:nr
             j = ngbs[1, i]  # the left one
             rx = coords[1, i] - coords[1, j]
@@ -236,14 +184,16 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi")
             Dij[3, i] = D * rz / r
         end
         Dij[:, nr + 1] .= Dij[:, 1]
-        dmi = HeisenbergTubeBulkDMI(Float(D), CuArray(Dij), field, energy, Float(0.0), name)
+        Dij = kernel_array(Dij)
+        dmi = HeisenbergTubeBulkDMI(T(D), Dij, field, energy, name)
+        @info("Bulk DMI for CylindricalTubeMesh has been added!")
     end
 
     push!(sim.interactions, dmi)
     if sim.save_data
         id = length(sim.interactions)
         item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> o.interactions[id].total_energy)
+                         o::AbstractSim -> sum(o.interactions[id]))
         push!(sim.saver.items, item)
     end
     return dmi
@@ -330,7 +280,6 @@ function add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
     return anis
 end
 
-
 """
     add_magnetoelectric_laser(sim::AtomisticSim, lambda::Float64, E::Float64, B::Float64, omega::Float64; delta=0, direction=001, name="lasers")
 
@@ -382,7 +331,7 @@ add dipolar interaction into the system.
 ```
 """
 function add_demag(sim::AtomisticSim; name="demag", Nx=0, Ny=0, Nz=0)
-    demag = init_demag_gpu(sim, Nx, Ny, Nz)
+    demag = init_demag(sim, Nx, Ny, Nz)
     demag.name = name
     push!(sim.interactions, demag)
 

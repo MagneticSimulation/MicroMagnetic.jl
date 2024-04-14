@@ -18,6 +18,10 @@ end
     return (-x3*y2 + x2*y3, x3*y1 - x1*y3, -x2*y1 + x1*y2)
 end
 
+@inline function cross_product(x::Array{T, 1}, y::Array{T, 1}) where {T<:AbstractFloat}
+    return [-x[3]*y[2] + x[2]*y[3], x[3]*y[1] - x[1]*y[3], -x[2]*y[1] + x[1]*y[2]]
+end
+
 @inline function cross_product(x::Tuple{Number, Number, Number}, y::Tuple{Number, Number, Number})
     return (-x[3]*y[2] + x[2]*y[3], x[3]*y[1] - x[1]*y[3], -x[2]*y[1] + x[1]*y[2])
 end

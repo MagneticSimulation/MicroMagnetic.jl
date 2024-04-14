@@ -11,9 +11,9 @@ struct TriangularMesh <: AtomisticMesh
     nz::Int64
     n_total::Int64
     n_ngbs::Int64
-    n_nngbs::Int64
+    n_ngbs2::Int64
     ngbs::AbstractArray{Int32,2}
-    nngbs::AbstractArray{Int32,2}
+    ngbs2::AbstractArray{Int32,2}
     xperiodic::Bool
     yperiodic::Bool
     zperiodic::Bool
@@ -39,8 +39,8 @@ function TriangularMesh(; dx=1e-9, dz=1e-9, nx=1, ny=1, pbc="open")
     nz = 1
     dz = 1e-9
     n_total = nx * ny * nz
-    ngbs = zeros(Int32, 8, n_total)
-    nngbs = zeros(Int32, 8, n_total)
+    ngbs = zeros(Int32, 6, n_total)
+    nngbs = zeros(Int32, 6, n_total)
     pbc_x = 'x' in pbc ? true : false
     pbc_y = 'y' in pbc ? true : false
     pbc_z = 'z' in pbc ? true : false
@@ -65,7 +65,8 @@ function TriangularMesh(; dx=1e-9, dz=1e-9, nx=1, ny=1, pbc="open")
     ngbs = kernel_array(ngbs)
     nngbs = kernel_array(nngbs)
 
-    return TriangularMesh(dx, dy, dz, nx, ny, nz, n_total, 6, ngbs, nngbs, pbc_x, pbc_y, pbc_z)
+    return TriangularMesh(dx, dy, dz, nx, ny, nz, n_total, 6, 6, ngbs, nngbs, pbc_x, pbc_y,
+                          pbc_z)
 end
 
 mutable struct CubicMesh <: AtomisticMesh
@@ -81,19 +82,19 @@ mutable struct CubicMesh <: AtomisticMesh
     n_ngbs3::Int64  #number of next-next-nearest neighbours
     n_ngbs4::Int64  #number of next-next-next-nearest neighbours
     ngbs::AbstractArray{Int32,2}  # nearest neighbours
-    ngbs2::AbstractArray{Int32,2}  # next-nearest neighbours (warnning: the corresponding interaction function is named as "next_exch", not "nnexch")
+    ngbs2::AbstractArray{Int32,2}  # next-nearest neighbours 
     ngbs3::AbstractArray{Int32,2}  # next-next-nearest neighbours
     ngbs4::AbstractArray{Int32,2}  # next-next-next-nearest neighbours
-    pbc_x::Bool
-    pbc_y::Bool
-    pbc_z::Bool
+    xperiodic::Bool
+    yperiodic::Bool
+    zperiodic::Bool
 end
 
-@doc raw"""
-Create a CubicMesh 
-	 
+@doc raw"""	 
 	CubicMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
 
+Create a simple cubic mesh, in which each cell is only connected to six nearest neighbors 
+and forming a simple cube structure.
 """
 function CubicMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     n_total = nx * ny * nz
@@ -113,7 +114,9 @@ function CubicMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     end
 
     ngbs = kernel_array(ngbs)
-    return CubicMesh(dx, dy, dz, nx, ny, nz, n_total, 6, 12, 8, 6, ngbs, Int32[], Int32[], Int32[], pbc_x, pbc_y, pbc_z)
+    empty_ngbs = Array{Int32}(undef, 1, 0)
+    return CubicMesh(dx, dy, dz, nx, ny, nz, n_total, 6, 12, 8, 6, ngbs, empty_ngbs,
+                     empty_ngbs, empty_ngbs, pbc_x, pbc_y, pbc_z)
 end
 
 """
@@ -217,9 +220,9 @@ struct SquareMesh <: AtomisticMesh
     ngbs::AbstractArray{Int32,2}  #  nearest neighbours
     ngbs2::AbstractArray{Int32,2}  # next-nearest neighbours(warnning: the corresponding interaction function is named as "next_exch", not "nnexch")
     ngbs3::AbstractArray{Int32,2}  # next-next-nearest neighbours
-    pbc_x::Bool
-    pbc_y::Bool
-    pbc_z::Bool
+    xperiodic::Bool
+    yperiodic::Bool
+    zperiodic::Bool
 end
 
 """
@@ -327,9 +330,9 @@ struct FccMesh <: AtomisticMesh
     nn_ngbs::Int64
     ngbs::AbstractArray{Int32,2}  #  nearest neighbours
     nngbs::AbstractArray{Int32,2}  # next-nearest neighbours
-    pbc_x::Bool
-    pbc_y::Bool
-    pbc_z::Bool
+    xperiodic::Bool
+    yperiodic::Bool
+    zperiodic::Bool
     coordinates::Array{Float64,2}  #coordinates array
 end
 

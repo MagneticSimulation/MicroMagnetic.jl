@@ -3,9 +3,9 @@ function effective_field(zee::Zeeman, sim::AtomisticSim, spin::AbstractArray{T,1
     N = sim.n_total
 
     groupsize = 512
-    zeeman_kernel!(backend[], groupsize)(spin, zee.field, zee.energy, sim.mu_s, T(1);
-                                         ndrange=N)
-    KernelAbstractions.synchronize(backend[])
+    kernal = zeeman_kernel!(default_backend[], groupsize)
+    kernal(spin, zee.field, zee.energy, sim.mu_s, T(1); ndrange=N)
+    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -14,10 +14,10 @@ function effective_field(zee::TimeZeeman, sim::AtomisticSim, spin::AbstractArray
     N = sim.n_total
     tx, ty, tz = zee.time_fun(t)
     groupsize = 512
-    time_zeeman_kernel!(backend[], groupsize)(spin, zee.field, zee.init_field, zee.energy,
-                                              sim.mu_s, T(1), T(tx), T(ty), T(tz);
-                                              ndrange=N)
-    KernelAbstractions.synchronize(backend[])
+    kernal = time_zeeman_kernel!(default_backend[], groupsize)
+    kernal(spin, zee.field, zee.init_field, zee.energy, sim.mu_s, T(1), T(tx), T(ty), T(tz);
+           ndrange=N)
+    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -27,11 +27,11 @@ function effective_field(anis::Anisotropy, sim::AtomisticSim, spin::AbstractArra
     axis = anis.axis
 
     groupsize = 512
-    anisotropy_kernel!(backend[], groupsize)(spin, anis.field, anis.energy, anis.Ku,
-                                             axis[1], axis[2], axis[3], sim.mu_s, T(1);
-                                             ndrange=N)
+    kernal = anisotropy_kernel!(default_backend[], groupsize)
+    kernal(spin, anis.field, anis.energy, anis.Ku, axis[1], axis[2], axis[3], sim.mu_s,
+           T(1); ndrange=N)
 
-    KernelAbstractions.synchronize(backend[])
+    KernelAbstractions.synchronize(default_backend[])
 
     return nothing
 end
@@ -40,9 +40,9 @@ function effective_field(anis::TubeAnisotropy, sim::AtomisticSim, spin::Abstract
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     groupsize = 512
-    spatial_anisotropy_kernel!(backend[], groupsize)(spin, anis.field, anis.energy, anis.Ku,
-                                                     anis.axes, sim.mu_s, T(1); ndrange=N)
-    KernelAbstractions.synchronize(backend[])
+    kernal = spatial_anisotropy_kernel!(default_backend[], groupsize)
+    kernal(spin, anis.field, anis.energy, anis.Ku, anis.axes, sim.mu_s, T(1); ndrange=N)
+    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -53,48 +53,46 @@ function effective_field(exch::HeisenbergExchange, sim::AtomisticSim,
     groupsize = 512
 
     # The exchange interaction for nearest neighbours
-    atomistic_exchange_kernel!(backend[], groupsize)(exch.field, exch.energy, exch.Js1,
-                                                     spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs,
-                                                     T(0); ndrange=N)
-    KernelAbstractions.synchronize(backend[])
+    kernal = atomistic_exchange_kernel!(default_backend[], groupsize)
+    kernal(exch.field, exch.energy, exch.Js1, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs, T(0);
+           ndrange=N)
+    KernelAbstractions.synchronize(default_backend[])
 
     # The exchange interaction for next-nearest neighbours
-    if hasproperty(mesh, n_ngbs2) && length(exch.Js2) == mesh.n_ngbs2
-        atomistic_exchange_kernel!(backend[], groupsize)(exch.field, exch.energy, exch.Js2,
-                                                         spin, sim.mu_s, mesh.ngbs2,
-                                                         mesh.n_ngbs2, T(1); ndrange=N)
-        KernelAbstractions.synchronize(backend[])
+    if hasproperty(mesh, :n_ngbs2) && length(exch.Js2) == mesh.n_ngbs2
+        kernal(exch.field, exch.energy, exch.Js2, spin, sim.mu_s, mesh.ngbs2, mesh.n_ngbs2,
+               T(1); ndrange=N)
+        KernelAbstractions.synchronize(default_backend[])
     end
 
     # The exchange interaction for next-next-nearest neighbours
-    if hasproperty(mesh, n_ngbs3) && length(exch.Js3) == mesh.n_ngbs3
-        atomistic_exchange_kernel!(backend[], groupsize)(exch.field, exch.energy, exch.Js3,
-                                                         spin, sim.mu_s, mesh.ngbs3,
-                                                         mesh.n_ngbs3, T(1); ndrange=N)
-        KernelAbstractions.synchronize(backend[])
+    if hasproperty(mesh, :n_ngbs3) && length(exch.Js3) == mesh.n_ngbs3
+        kernal(exch.field, exch.energy, exch.Js3, spin, sim.mu_s, mesh.ngbs3, mesh.n_ngbs3,
+               T(1); ndrange=N)
+        KernelAbstractions.synchronize(default_backend[])
     end
 
     # The exchange interaction for next-next-next-nearest neighbours
-    if hasproperty(mesh, n_ngbs4) && length(exch.Js4) == mesh.n_ngbs4
-        atomistic_exchange_kernel!(backend[], groupsize)(exch.field, exch.energy, exch.Js4,
-                                                         spin, sim.mu_s, mesh.ngbs4,
-                                                         mesh.n_ngbs4, T(1); ndrange=N)
-        KernelAbstractions.synchronize(backend[])
+    if hasproperty(mesh, :n_ngbs4) && length(exch.Js4) == mesh.n_ngbs4
+        kernal(exch.field, exch.energy, exch.Js4, spin, sim.mu_s, mesh.ngbs4, mesh.n_ngbs4,
+               T(1); ndrange=N)
+        KernelAbstractions.synchronize(default_backend[])
     end
 
     return nothing
 end
 
-function effective_field(dmi::HeisenbergBulkDMI, sim::AtomisticSim,
-                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(dmi::HeisenbergDMI, sim::AtomisticSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
 
     groupsize = 512
-    atomistic_dmi_kernel!(backend[], groupsize)(dmi.field, dmi.energy, dmi.Dij, spin,
-                                                sim.mu_s, mesh.ngbs, mesh.n_ngbs; ndrange=N)
+    kernal = atomistic_dmi_kernel!(default_backend[], groupsize)
+    kernal(dmi.field, dmi.energy, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
+           ndrange=N)
 
-    KernelAbstractions.synchronize(backend[])
+    KernelAbstractions.synchronize(default_backend[])
 
     return nothing
 end
@@ -105,10 +103,10 @@ function effective_field(dmi::HeisenbergTubeBulkDMI, sim::AtomisticSim,
     mesh = sim.mesh
 
     groupsize = 512
-    tube_bulk_dmi_kernel!(backend[], groupsize)(dmi.field, dmi.energy, dmi.D, dmi.Dij, spin,
-                                                sim.mu_s, mesh.ngbs, mesh.n_ngbs, mesh.nr;
-                                                ndrange=N)
-    KernelAbstractions.synchronize(backend[])
+    kernal = tube_bulk_dmi_kernel!(default_backend[], groupsize)
+    kernal(dmi.field, dmi.energy, dmi.D, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs,
+           mesh.nr; ndrange=N)
+    KernelAbstractions.synchronize(default_backend[])
 
     return nothing
 end
@@ -132,11 +130,12 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
 
     volume = 1.0 / mu0 # we need this factor to make the energy density correctly
     groupsize = 512
-    stochastic_field_kernel!(backend[], groupsize)(spin, stochastic.field,
-                                                   stochastic.energy, sim.mu_s,
-                                                   stochastic.eta, stochastic.temperature,
-                                                   factor, volume; ndrange=N)
+    stochastic_field_kernel!(default_backend[], groupsize)(spin, stochastic.field,
+                                                           stochastic.energy, sim.mu_s,
+                                                           stochastic.eta,
+                                                           stochastic.temperature, factor,
+                                                           volume; ndrange=N)
 
-    KernelAbstractions.synchronize(backend[])
+    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
