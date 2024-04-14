@@ -29,15 +29,15 @@ Note that the return value is h * alpha + h_ex
         for j in 1:n_ngbs
             @inbounds id = ngbs[j, I]
             if id > 0 && mu_s[id] > 0
-                k = 3 * j - 2
-                @inbounds fx += Js[j] * m[k + 0]
-                @inbounds fy += Js[j] * m[k + 1]
-                @inbounds fz += Js[j] * m[k + 2]
+                k = 3 * id - 2
+                @inbounds fx += (Js[j]) * m[k + 0]
+                @inbounds fy += (Js[j]) * m[k + 1]
+                @inbounds fz += (Js[j]) * m[k + 2]
             end
         end
 
-        @inbounds energy_I::T = -0.5 * (fx * m[j] + fy * m[j + 1] + fz * m[j + 2])
-        @inbounds energy[I] = energy[i] * alpha + energy_I
+        @inbounds energy_I::T = -0.5 * (fx * m[i] + fy * m[i + 1] + fz * m[i + 2])
+        @inbounds energy[I] = energy[I] * alpha + energy_I
         @inbounds h[i + 0] = h[i + 0] * alpha + fx * ms_inv
         @inbounds h[i + 1] = h[i + 1] * alpha + fy * ms_inv
         @inbounds h[i + 2] = h[i + 2] * alpha + fz * ms_inv
@@ -81,10 +81,10 @@ Jij is a 2d array with size (3, n_ngbs)
                 @inbounds fz += cross_z(Dx, Dy, Dz, m[x], m[x + 1], m[x + 2])
             end
         end
-        @inbounds energy[i] = -0.5 * (fx * m[j] + fy * m[j + 1] + fz * m[j + 2])
-        @inbounds h[j + 1] = fx * ms_inv
-        @inbounds h[j + 2] = fy * ms_inv
-        @inbounds h[j + 3] = fz * ms_inv
+        @inbounds energy[I] = -0.5 * (fx * m[j] + fy * m[j + 1] + fz * m[j + 2])
+        @inbounds h[j] = fx * ms_inv
+        @inbounds h[j + 1] = fy * ms_inv
+        @inbounds h[j + 2] = fz * ms_inv
     end
 end
 

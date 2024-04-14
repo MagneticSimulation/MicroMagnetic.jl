@@ -30,10 +30,10 @@ mutable struct HeisenbergExchange{T<:AbstractFloat} <: Interaction
     name::String
 end
 
-# HeisenbergBulkDMI denotes the Bulk DM interaction that can be used in 
+# HeisenbergDMI denotes the DM interaction that can be used in 
 # cubic and triangular meshes. 
-mutable struct HeisenbergBulkDMI{T<:AbstractFloat} <: Interaction
-    D::T
+mutable struct HeisenbergDMI{T<:AbstractFloat} <: Interaction
+    Dij::AbstractArray{T,2} 
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String

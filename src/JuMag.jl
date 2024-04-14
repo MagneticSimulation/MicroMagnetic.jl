@@ -110,6 +110,7 @@ include("atomistic/head.jl")
 include("atomistic/field.jl")
 include("atomistic/sim.jl")
 include("atomistic/kernels.jl")
+include("atomistic/demag.jl")
 
 function __init__()
     

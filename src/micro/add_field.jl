@@ -200,7 +200,7 @@ or
 ```
 
 """
-function add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi",
+function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi",
                  type="bulk")
     n_total = sim.n_total
     T = single_precision.x ? Float32 : Float64
@@ -253,7 +253,7 @@ end
 
 Add exchange interaction within the Geometry, or update corresponding A if other exch is added.
 """
-function add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
+function add_exch(sim::MicroSim, geo::Geometry, A::Number; name="exch")
     for interaction in sim.interactions
         if interaction.name == name
             update_scalar_geometry(interaction.A, geo, A)
@@ -297,7 +297,7 @@ The effective field is given then as
 \mathbf{H}_i = \frac{1}{\mu_0 M_s}  \frac{J_\mathrm{rkky}}{\Delta} \mathbf{m}_{j} 
 ```
 """
-function add_exch_rkky(sim::AbstractSim, J::Float64; name="rkky")
+function add_exch_rkky(sim::MicroSim, J::Float64; name="rkky")
     n_total = sim.n_total
     field = zeros(Float64, 3 * n_total)
     energy = zeros(Float64, n_total)
