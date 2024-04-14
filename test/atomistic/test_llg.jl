@@ -50,4 +50,14 @@ function test_llg()
 end
 
 
-test_llg()
+@testset "Test LLG CPU" begin
+  set_backend("cpu")
+  test_llg()
+end
+
+@testset "Test LLG CUDA" begin
+  if Base.find_package("CUDA") !== nothing
+      using CUDA
+      test_llg()
+  end
+end

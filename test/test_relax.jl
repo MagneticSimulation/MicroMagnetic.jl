@@ -1,6 +1,5 @@
 using JuMag
 using Test
-using NPZ
 
 function init_dw(i, j, k, dx, dy, dz)
     if i < 240

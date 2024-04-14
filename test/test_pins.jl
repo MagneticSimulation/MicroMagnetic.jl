@@ -1,6 +1,5 @@
 using JuMag
 using Test
-using NPZ
 
 function init_mm(i,j,k,dx,dy,dz)
     if i == 1
@@ -19,7 +18,8 @@ function pinning_boundary(i,j,k,dx,dy,dz)
     return false
 end
 
-function relax_system(mesh; driver="LLG")
+function relax_system(;driver="LLG")
+    mesh =  FDMesh(nx=100, ny=1, nz=1, dx=2e-9, dy=2e-9, dz=1e-9)
 	sim = Sim(mesh, name="test_pinning", driver=driver)
     if driver == "LLG"
         sim.driver.precession = false
@@ -45,17 +45,15 @@ function relax_system(mesh; driver="LLG")
 end
 
 
-@testset "TestPinning" begin
-    mesh =  FDMesh(nx=100, ny=1, nz=1, dx=2e-9, dy=2e-9, dz=1e-9)
-    relax_system(mesh, driver="LLG")
-    relax_system(mesh, driver="SD")
+@testset "Test Pinning CPU" begin
+    relax_system(driver="LLG")
+    relax_system(driver="SD")
 end
 
-if JuMag._cuda_available.x
-  JuMag.cuda_using_double()
-  @testset "TestPinning GPU" begin
-      mesh =  FDMeshGPU(nx=100, ny=1, nz=1, dx=2e-9, dy=2e-9, dz=1e-9)
-      relax_system(mesh, driver="LLG")
-      relax_system(mesh, driver="SD")
-  end
+@testset "Test Pinning CUDA" begin
+    if Base.find_package("CUDA") !== nothing
+        using CUDA
+        relax_system(driver="LLG")
+        relax_system(driver="SD")
+    end
 end

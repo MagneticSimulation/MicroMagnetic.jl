@@ -1,7 +1,7 @@
 using JLD2
 
 export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
-       set_driver
+       set_driver, set_pinning
 
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
@@ -125,7 +125,9 @@ set_pinning(sim, pinning_boundary)
 ```
 """
 function set_pinning(sim::MicroSim, ids::ArrayOrFunction)
-    init_scalar!(sim.pins, sim.mesh, ids)
+    pins = zeros(Bool, sim.n_total)
+    init_scalar!(pins, sim.mesh, ids)
+    copyto!(sim.pins, pins)
     return true
 end
 
