@@ -100,11 +100,11 @@ function set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
 end
 
 """
-    set_Ms(sim::AbstractSim, geo::Geometry, Ms::Number)
+    set_Ms(sim::AbstractSim, geo::Shape, Ms::Number)
 
-Set the saturation magnetization Ms within the Geometry.
+Set the saturation magnetization Ms within the Shape.
 """
-function set_Ms(sim::AbstractSim, geo::Geometry, Ms::Number)
+function set_Ms(sim::AbstractSim, geo::Shape, Ms::Number)
     update_scalar_geometry(sim.mu0_Ms, geo, Ms)
     return true
 end

@@ -249,14 +249,14 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi",
 end
 
 """ 
-    add_exch(sim::AbstractSim, geo::Geometry, A::Number; name="exch")
+    add_exch(sim::AbstractSim, geo::Shape, A::Number; name="exch")
 
-Add exchange interaction within the Geometry, or update corresponding A if other exch is added.
+Add exchange interaction within the Shape, or update corresponding A if other exch is added.
 """
-function add_exch(sim::MicroSim, geo::Geometry, A::Number; name="exch")
+function add_exch(sim::MicroSim, geo::Shape, A::Number; name="exch")
     for interaction in sim.interactions
         if interaction.name == name
-            update_scalar_geometry(interaction.A, geo, A)
+            update_scalar_Shape(interaction.A, geo, A)
             return nothing
         end
     end
@@ -264,7 +264,7 @@ function add_exch(sim::MicroSim, geo::Geometry, A::Number; name="exch")
     field = zeros(Float64, 3 * n_total)
     energy = zeros(Float64, n_total)
     Spatial_A = zeros(Float64, n_total)
-    update_scalar_geometry(Spatial_A, geo, A)
+    update_scalar_Shape(Spatial_A, geo, A)
     if isa(sim, MicroSim)
         exch = Exchange(Spatial_A, field, energy, name)
     else
@@ -373,12 +373,12 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
 end
 
 """
-    add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0,0,1), name="anis")
+    add_anis(sim::AbstractSim, geo::Shape, Ku::Number; axis=(0,0,1), name="anis")
 
-Add Anisotropy within the Geometry, or update corresponding Ku if other anis is added.
+Add Anisotropy within the Shape, or update corresponding Ku if other anis is added.
 """
 #FIXME : fix this function
-function add_anis(sim::AbstractSim, geo::Geometry, Ku::Number; axis=(0, 0, 1), name="anis")
+function add_anis(sim::AbstractSim, geo::Shape, Ku::Number; axis=(0, 0, 1), name="anis")
     lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
 
     naxis = (axis[1] / lt, axis[2] / lt, axis[3] / lt)
