@@ -85,9 +85,9 @@ end
 
 include("const.jl")
 include("micro/mesh.jl")
-include("micro/geometry.jl")
 include("head.jl")
 include("util.jl")
+include("csg.jl")
 include("micro/driver.jl")
 include("micro/sd.jl")
 include("llg/llg.jl")
