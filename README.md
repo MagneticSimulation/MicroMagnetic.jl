@@ -66,25 +66,21 @@ Precompiling CUDAExt
 ```
 
 
-# Quick Start
+# Quick start
 Assuming we have a cylindrical FeG sample with a diameter of 100 nm and a height of 40 nm, we want to know its magnetization distribution and the stray field around it. 
 We can use the following script: 
 
 ```julia
-using JuMag #Import JuMag
-
+using JuMag
 @using_gpu() #Import available GPU packages such as CUDA, AMDGPU, oneAPI or Metal
 
 geo = Cylinder(radius=50e-9, height=40e-9) #Create a cylindrical shape with a diameter of 100 nm and a height of 40 nm
-
 mesh = FDMesh(nx=80, ny=80, nz=30, dx=2e-9, dy=2e-9, dz=2e-9) #Create a finite difference mesh to trigger the simulation
 
 sim = create_sim(mesh, shape=geo, Ms=3.87e5, A = 8.78e-12, D = 1.58e-3, demag=true) #create a Sim instance with Fe parameters
-
 init_m0_random(sim) #Initialize a random state
 
 relax(sim, maxsteps=5000, stopping_dmdt=0.1) #Relax the system to obtain a stable magnetization distribution
-
 save_vtk(sim, "m_demag", fields=["demag"]) # Save the magnetization and the stray field into vtk.
 ```
 The magnetization and the stray field around the cylindrical sample are stored in `m_demag.vts`, which can be opened using Paraview. 
