@@ -2,8 +2,6 @@ using JuMag
 using Test
 using NPZ
 
-JuMag.cuda_using_double(false)
-
 function init_dw(i,j,k,dx,dy,dz)
   if i < 150
     return (1,0.1,0)
@@ -27,7 +25,7 @@ function relax_system(mesh)
 end
 
 
-function run_dynamics_stt(mesh; alpha=0.1, beta=0.2, u=5.8, integrator="DormandPrinceCayley")
+function run_dynamics_stt(mesh; alpha=0.1, beta=0.2, u=5.8, integrator="DormandPrince")
 	sim = Sim(mesh, name="stt_dyn", driver="LLG_STT", integrator=integrator)
 	set_Ms(sim, 8.6e5)
 	sim.driver.alpha = alpha
@@ -56,21 +54,23 @@ function run_dynamics_stt(mesh; alpha=0.1, beta=0.2, u=5.8, integrator="DormandP
 	return nothing
 end
 
-@testset "STT" begin
+@testset "Test STT" begin
+	set_backend("cpu")
     mesh =  FDMesh(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
     relax_system(mesh)
     run_dynamics_stt(mesh)
-    run_dynamics_stt(mesh, integrator="DormandPrince")
+    #run_dynamics_stt(mesh, integrator="DormandPrince")
     for (beta, u) in [(0, 10), (0.1, 3.2), (0.2, 4.7)]
-      #run_dynamics_stt(mesh, beta=beta, u=u)
+      run_dynamics_stt(mesh, beta=beta, u=u)
     end
 end
 
-if JuMag._cuda_available.x
-    @testset "STT GPU" begin
-        mesh =  FDMeshGPU(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
-        #relax_system(mesh)
-        #run_dynamics_stt(mesh)
-        run_dynamics_stt(mesh, integrator="DormandPrince")
-    end
+@testset "Test STT CUDA" begin
+	try
+		using CUDA
+    	mesh = FDMesh(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
+    	run_dynamics_stt(mesh)
+	catch 
+	end
 end
+

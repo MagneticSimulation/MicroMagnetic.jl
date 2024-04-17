@@ -1,7 +1,7 @@
 using JLD2
 
 export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
-       set_driver, set_pinning
+       set_driver, set_pinning, set_ux, set_uy, set_uz
 
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
@@ -224,11 +224,7 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
                                      driver)
         end
 
-        if isa(sim, AbstractSimGPU)
-            sim.driver = create_driver_gpu(driver, integrator, sim.n_total)
-        else
-            sim.driver = create_driver(driver, integrator, sim.n_total)
-        end
+        sim.driver = create_driver(driver, integrator, sim.n_total)
         sim.driver_name = driver
     end
 
