@@ -56,7 +56,7 @@ function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7
     dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
     m = Array(sim.spin)
     b = reshape(m, (3,nx,ny,nz))
-    Ms= Array(sim.Ms)
+    Ms= Array(sim.mu0_Ms)
 
     eps = 1e-6
     for i=1:nx, j=1:ny

@@ -2,6 +2,7 @@ using JuMag
 using Test
 
 include("test_mesh.jl")
+include("test_shapes.jl")
 include("test_zeeman.jl")
 include("test_anis.jl")
 include("test_exch.jl")
@@ -13,7 +14,7 @@ include("test_llg.jl")
 include("test_integrator.jl")
 include("test_relax.jl")
 include("test_pins.jl")
-include("test_shapes.jl")
+include("test_stt.jl")
 
 include("atomistic/test_mesh.jl")
 include("atomistic/test_llg.jl")

@@ -1,37 +1,30 @@
-function init_scalar!(v::Array{T,1}, mesh::Mesh, init::Number) where {T<:AbstractFloat}
+
+function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh,
+                      init::Number) where {T<:AbstractFloat}
+    a = isa(v, Array) ? v : Array(v)
     for i in 1:(mesh.n_total)
-        v[i] = init
+        a[i] = init
     end
-    return nothing
-end
-
-function init_scalar!(v::Array{T1,1}, mesh::Mesh,
-                      init::Array{T2,1}) where {T1,T2<:AbstractFloat}
-    v .= init
-    return nothing
-end
-
-function init_scalar!(v::Array{Bool,1}, mesh::Mesh, init::Array{Bool,1})
-    v .= init
-    return nothing
-end
-
-function init_scalar!(v::Array{T,1}, mesh::Mesh,
-                      init_fun::Function) where {T<:AbstractFloat}
-    mesh = mesh
-    for k in 1:(mesh.nz), j in 1:(mesh.ny), i in 1:(mesh.nx)
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        v[id] = init_fun(i, j, k, mesh.dx, mesh.dy, mesh.dz)
-    end
+    isa(v, Array) || copyto!(v, a)
     return true
 end
 
-function init_scalar!(v::Array{Bool,1}, mesh::Mesh, init_fun::Function)
-    mesh = mesh
+function init_scalar!(v::AbstractArray{T1,1}, mesh::Mesh,
+                      init::Array{T2}) where {T1, T2}
+    a = isa(v, Array) ? v : Array(v)
+    a .= init
+    isa(v, Array) || copyto!(v, a)
+    return true
+end
+
+function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh,
+                      init_fun::Function) where T
+    a = isa(v, Array) ? v : Array(v)
     for k in 1:(mesh.nz), j in 1:(mesh.ny), i in 1:(mesh.nx)
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        v[id] = init_fun(i, j, k, mesh.dx, mesh.dy, mesh.dz)
+        a[id] = init_fun(i, j, k, mesh.dx, mesh.dy, mesh.dz)
     end
+    isa(v, Array) || copyto!(v, a)
     return true
 end
 
@@ -552,7 +545,7 @@ function compute_guiding_center(sim::AbstractSim; xmin=1, xmax=-1, ymin=1, ymax=
     spin = Array(sim.spin)
     mesh = sim.mesh
 
-    if isa(mesh, CylindricalTubeMeshGPU)
+    if isa(mesh, CylindricalTubeMesh)
         return compute_guiding_center(sim, sim.mesh)
     end
 

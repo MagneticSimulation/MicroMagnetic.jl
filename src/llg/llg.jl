@@ -115,7 +115,7 @@ end
 """
 Wrapper for function field_stt_kernel! [to compute tau = (u.nabla) m]
 """
-function compute_field_stt(h_stt, m, ux::T, uy::T, uz::T, ngbs, dx::T, dy::T, dz::T,
+function compute_field_stt(h_stt, m, ux, uy, uz, ngbs, dx::T, dy::T, dz::T,
                            N::Int64) where {T<:AbstractFloat}
     groupsize = 512
     kernel! = field_stt_kernel!(default_backend[], groupsize)
