@@ -125,7 +125,7 @@ function point_inside_cylinder(point::Tuple{Real,Real,Real}, cylinder::Cylinder)
 
     # Check the z direction
     height_difference = abs(point[3] - cylinder.center[3])
-    if height_difference > cylinder.height
+    if height_difference > cylinder.height / 2.0
         return false
     end
 

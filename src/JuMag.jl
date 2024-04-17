@@ -21,6 +21,7 @@ const default_backend = Backend[CPU()]
 const all_backends = Backend[CPU(), CPU(), CPU(), CPU()]
 
 export set_backend
+export set_backend_
 @doc raw"""
     set_backend(backend="cuda")
 Set the backend of JuMag. Options, hardwares and the corresponding backends are shown as follows: 
@@ -29,7 +30,7 @@ Set the backend of JuMag. Options, hardwares and the corresponding backends are 
 | :---------------------- | :------------------- | :------------------------ |
 | "cpu"                  | CPU                 | `KernelAbstractions.CPU()` |
 | "cuda" or "nvidia"     | NVIDIA GPU          | `CUDA.CUDABackend()`     |
-| "amd"                  | AMD GPU             | `AMDGPU.ROCBackend()`    |
+| "amd"  or "roc"        | AMD GPU             | `AMDGPU.ROCBackend()`    |
 | "oneAPI" or "intel"    | Intel GPU           | `oneAPI.oneAPIBackend()` |
 | "metal"  or "apple"    | Apple GPU           | `Metal.MetalBackend()`   |
 
@@ -39,7 +40,7 @@ function set_backend(x="cuda")
     card_id = 0
     if x == "cuda" || x == "nvidia"
         card_id = 1
-    elseif x == "amd"
+    elseif x == "amd" || x == "roc"
         card_id = 2
     elseif x == "oneAPI" || x == "intel"
         card_id = 3
@@ -66,7 +67,6 @@ function set_backend(x="cuda")
     @info(@sprintf("Switch the backend to %s", default_backend[]))
 end
 
-
 function kernel_array(a::Array)
     A = KernelAbstractions.zeros(default_backend[], eltype(a), size(a))
     copyto!(A, a)
@@ -78,10 +78,31 @@ function create_zeros(dims...)
     return KernelAbstractions.zeros(default_backend[], T, dims)
 end
 
-function create_zeros(::Type{T}, dims...) where T
+function create_zeros(::Type{T}, dims...) where {T}
     return KernelAbstractions.zeros(default_backend[], T, dims)
 end
 
+export using_gpu
+macro using_gpu()
+    quote
+        try
+            using CUDA
+        catch
+        end
+        try
+            using AMDGPU
+        catch
+        end
+        try
+            using oneAPI
+        catch
+        end
+        try
+            using Metal
+        catch
+        end
+    end
+end
 
 include("const.jl")
 include("micro/mesh.jl")
@@ -112,8 +133,6 @@ include("atomistic/sim.jl")
 include("atomistic/kernels.jl")
 include("atomistic/demag.jl")
 
-function __init__()
-    
-end
+function __init__() end
 
 end #module

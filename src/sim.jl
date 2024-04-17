@@ -84,28 +84,12 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
 end
 
 """
-    set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
-
-Set the saturation magnetization Ms of the studied system to a cylindrical shape,
-axis could be JuMag.ex, JuMag.ey or JuMag.ez.
-"""
-function set_Ms_cylindrical(sim::MicroSim, Ms::Number; axis=ez, r1=0, r2=0)
-    geo = create_cylinder(sim.mesh, axis; r1=r1, r2=r2)
-    for i in 1:(sim.n_total)
-        if geo.shape[i]
-            sim.mu0_Ms[i] = Ms
-        end
-    end
-    return true
-end
-
-"""
     set_Ms(sim::AbstractSim, geo::Shape, Ms::Number)
 
 Set the saturation magnetization Ms within the Shape.
 """
-function set_Ms(sim::AbstractSim, geo::Shape, Ms::Number)
-    update_scalar_geometry(sim.mu0_Ms, geo, Ms)
+function set_Ms(sim::AbstractSim, shape::Shape, Ms::Number)
+    init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms*mu_0)
     return true
 end
 
@@ -495,9 +479,10 @@ Create a micromagnetic simulation instance with given arguments.
 - `dmi_type` : the type of DMI, could be "bulk" or "interfacial".
 - `Ku`: the anisotropy constant, should be [`NumberOrArrayOrFunction`](@ref).
 - `axis`: the anisotropy axis, should be a tuple, such as (0,0, 1)
-- `demag` : include demagnetization or not, should be a boolean, i.e., true or false.
+- `demag` : include demagnetization or not, should be a boolean, i.e., true or false. By default,  demag=false.
 - `H`: the external field, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
 - `m0` : the initial magnetization, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
+- `shape` : the shape defines the geometry of the sample, where parameters are configured.
 """
 function create_sim(mesh; args...)
     #convert args to a dict
@@ -505,16 +490,21 @@ function create_sim(mesh; args...)
     #Ms=8e5, A=1.3e-11, D=0, Ku=0, axis=(0,0,1), H=(0,0,0), m0=(0,0,1), demag=false, driver="SD", name="relax"
     driver = haskey(args, :driver) ? args[:driver] : "SD"
     name = haskey(args, :name) ? args[:name] : "unnamed"
+    shape = haskey(args, :shape) ? args[:shape] : nothing
 
     #Create the mesh using given driver and name
     sim = Sim(mesh; driver=driver, name=name)
 
     #If the simulation is the standard micromagnetic simulation.
-    if isa(mesh, FDMesh) || isa(mesh, FDMeshGPU) || isa(mesh, FDMeshGPU)
+    if isa(mesh, FDMesh)
 
         # we set the Ms anyway
         Ms = haskey(args, :Ms) ? args[:Ms] : 8e5
-        set_Ms(sim, Ms)
+        if shape === nothing
+            set_Ms(sim, Ms)
+        else
+            set_Ms(sim, shape, Ms)
+        end
 
         # add the exchange if A is given
         if haskey(args, :A)
@@ -537,7 +527,7 @@ function create_sim(mesh; args...)
         end
 
         #If the simulation is atomistic
-    elseif isa(mesh, AtomicMeshGPU)
+    elseif isa(mesh, AtomisticMesh)
         mu_s = haskey(args, :mu_s) ? args[:mu_s] : 2 * mu_B
         set_mu_s(sim, mu_s)
 
@@ -604,7 +594,7 @@ function create_sim(mesh; args...)
     m0_value = haskey(args, :m0) ? args[:m0] : (0.8, 0.6, 0)
     init_m0(sim, m0_value)
 
-    for key in [:driver, :name, :Ku, :H, :m0]
+    for key in [:driver, :name, :Ku, :H, :m0, :shape]
         haskey(args, key) && delete!(args, key)
     end
 
