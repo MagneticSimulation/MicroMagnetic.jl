@@ -86,8 +86,7 @@ dx, dy, dz = 1.0, 1.0, 1.0
 Nx, Ny, Nz = 3, 1, 1
 tensor = CUDA.zeros(Float64, nx, ny, nz)
 
-groupsize = 512
-kernel! = compute_tensors_kernel_xx!(get_backend(tensor), groupsize)
+kernel! = compute_tensors_kernel_xx!(get_backend(tensor), groupsize[])
 kernel!(tensor, dx, dy, dz, Nx, Ny, Nz; ndrange=size(tensor))
 KernelAbstractions.synchronize(get_backend(tensor))
 

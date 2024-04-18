@@ -3,52 +3,82 @@ using Printf
 abstract type NEBDriver end
 
 mutable struct NEB <: AbstractSim
-    N::Int64  #number of images
-    n_total::Int64 # n_total = neb.sim.n_total*N
+    num_images::Int64  #number of images
+    n_total::Int64 # n_total = neb.sim.n_total*num_images
     sim::AbstractSim
-    init_m::Any
     driver::NEBDriver
-    images::Array{Float64, 2}  #size(images) = (3*n_total, N)
-    pre_images::Array{Float64, 2}
-    spin::Array{Float64, 1} #A pointer to images
-    prespin::Array{Float64, 1} #A pointer to pre_images
+    images  #size(images) = (3*n_total, N)
+    pre_images
+    spin #A pointer to images
+    prespin #A pointer to pre_images
+    field
+    energy
+    distance
+    total_distance
+    tangents
     name::String
-    field::Array{Float64, 2}
-    energy::Array{Float64, 1}
-    distance::Array{Float64, 1}
     saver_energy::DataSaver
     saver_distance::DataSaver
     spring_constant::Float64
-    tangents::Array{Float64, 2}
     NEB() = new()
 end
 
-function NEB(sim::AbstractSim, init_m::Any, intervals::Any; name="NEB", spring_constant=1.0e5, driver="LLG")
+"""
+    NEB(sim::AbstractSim, init_images::Tuple, frames_between_images::Tuple; 
+name="NEB", spring_constant=1.0e5, driver="LLG")
+
+Create a NEB instance.
+args:
+    sim: Sim instance that include the interactions.
+    init_images::Tuple:
+
+"""
+function NEB(sim::AbstractSim, given_images::Tuple, frames_between_images::Tuple; 
+    name="NEB", spring_constant=1.0e5, driver="LLG")
+
     n_total = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
-    N = sum(intervals)+length(intervals)+1
+    num_images = sum(frames_between_images)+length(given_images)
 
     neb = NEB()
-    neb.N = N
-    neb.n_total = n_total * N
+    neb.num_images = num_images
+    neb.n_total = n_total * num_images
     neb.sim = sim
     neb.name = name
-    neb.init_m = init_m
-    neb.driver = create_neb_driver(driver, n_total, N)
-    neb.images = zeros(Float64, 3*sim.n_total, N)
-    neb.pre_images = zeros(Float64, 3*sim.n_total, N)
-    neb.spin = reshape(neb.images, 3*sim.n_total*N)
-    neb.prespin = reshape(neb.pre_images, 3*sim.n_total*N)
-    neb.field = zeros(Float64,3*n_total, N)
-    neb.energy = zeros(Float64, N)
-    neb.distance=zeros(Float64,N-1)
+    neb.pre_images = create_zeros(3*sim.n_total, num_images)
+    neb.field = create_zeros(3*sim.n_total, num_images)
+    neb.distance = create_zeros(sim.n_total, num_images-1)
+    neb.total_distance = create_zeros(num_images-1)
+    neb.energy = create_zeros(num_images)
     neb.spring_constant = spring_constant
-    neb.tangents = zeros(Float64,3*sim.n_total,N)
+    neb.tangents = create_zeros(3*sim.n_total, num_images)
 
-    init_saver(neb)
-    init_images(neb, intervals)
-    compute_distance(neb.distance,neb.images,N,n_total)
-    compute_system_energy(neb)
+    neb.images = init_images(given_images, frames_between_images, sim.n_total)
+
+    neb.spin = reshape(neb.images, 3*sim.n_total*num_images)
+    neb.prespin = reshape(neb.pre_images, 3*sim.n_total*num_images)
+
+    effective_field_NEB!(neb)
+    #init_saver(neb)
+    #neb.driver = create_neb_driver(driver, n_total, num_images)
     return neb
+end
+
+function init_images(given_images::Tuple, frames_between_images::Tuple, n_total)
+    num_images = length(given_images) + sum(frames_between_images)
+    images = create_zeros(3*n_total, num_images)
+    images[:, 1] .= given_images[1]
+    image_count = 2
+    for i = 1:(length(given_images)-1)
+        if frames_between_images[i] > 0
+            for j = 1:frames_between_images[i]
+                images[:, image_count] .= slerp(given_images[i], given_images[i+1], j/(frames_between_images[i]+1), n_total)
+                image_count += 1
+            end
+            images[:, image_count] .= given_images[i+1]
+            image_count += 1
+        end
+    end
+    return images
 end
 
 function create_neb_driver(driver::String, n_total::Int64, N::Int64) #TODO: FIX ME
@@ -62,36 +92,6 @@ function create_neb_driver(driver::String, n_total::Int64, N::Int64) #TODO: FIX 
   else
     error("Only Driver 'SD' or 'LLG' is supported!")
   end
-end
-
-function init_images(neb::NEB, intervals::Any)
-  sim=neb.sim
-  n_total=sim.n_total
-  N=neb.N
-  images = neb.images
-  pics = neb.init_m
-  if length(pics)==length(intervals)+1
-    n=1
-    for i=1:length(intervals)
-        init_m0(sim, pics[i])
-        m1 = Array(sim.spin)
-        init_m0(sim, pics[i+1])
-        m2 = Array(sim.spin)
-        M = interpolate_m(m1, m2, Int(intervals[i]))
-        #M = interpolate_m_spherical(m1,m2,Int(intervals[i]))
-        for j=1:intervals[i]+1
-          images[:,n]=M[:,j]
-          n += 1
-        end
-    end
-    init_m0(sim, pics[end])
-    images[:,N] .= Array(sim.spin)
-  else
-    println("Input error!")
-  end
-
-  #normalise(neb.spin, neb.n_total)
-  neb.pre_images[:]=neb.images[:]
 end
 
 function init_saver(neb::NEB)
@@ -112,103 +112,57 @@ function init_saver(neb::NEB)
     end
 end
 
-function effective_field_NEB(neb::NEB, spin::Array{Float64, 1})
+function effective_field_NEB!(neb::NEB)
     sim = neb.sim
-    n_total = sim.n_total
-    #neb.spin[:] = spin[:], we already copy spin to neb.images in dopri5
-    images = neb.images
-    N = neb.N
-    fill!(neb.field, 0.0)
-    fill!(neb.energy, 0.0)
-
-
-    for n = 2:neb.N-1
-        effective_field(sim, images[:,n], 0.0)
+    for n = 2:neb.num_images-1
+        effective_field(sim, neb.images[:,n], 0.0)
         neb.field[:,n] .= sim.field
         neb.energy[n] = sum(sim.energy)
     end
+    compute_tangents!(neb.images, neb.energy,neb.tangents, neb.num_images)
+    compute_distance!(neb.images, neb.distance, neb.total_distance, neb.num_images, sim.n_total)
 
-
-    compute_tangents(neb.tangents,neb.images,neb.energy,N,n_total)
-
-    for n=1:N-1
-      f = neb.field[:,n]'*neb.tangents[:,n]
-      neb.field[:,n] .-= f*neb.tangents[:,n]
+    dev = default_backend[]
+    for i = 2:neb.num_images-1
+        reduce_tangent_kernel!(dev, groupsize[])(neb.field[:,i], neb.tangents[:,i], ndrange=sim.n_total)
     end
-
-    compute_distance(neb.distance,neb.images,N,n_total)
-
-    for n=2:N-1
-      neb.field[:,n] .+= neb.spring_constant*(neb.distance[n]-neb.distance[n-1])*neb.tangents[:,n]
+    KernelAbstractions.synchronize(dev)
+    for i = 2:neb.num_images-1
+        neb.field[:,i] .+= neb.spring_constant*(neb.total_distance[i]-neb.total_distance[i-1])*neb.tangents[:,i]
     end
 end
 
-
-function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy::Array{Float64, 1},N::Int,n_total::Int)
-  Threads.@threads  for n = 1:N
-    if (n==1)||(n==N)
-      continue
+function compute_tangents!(images, energy, tangents, num_images)
+    Threads.@threads for i=2:num_images-1
+        if energy[i+1] > energy[i] > energy[i-1]
+            tangents[:, i] .= images[:, i+1] - images[:, i]
+        elseif energy[i+1] <= energy[i] <= energy[i-1]
+            tangents[:, i] .= images[:, i] - images[:, i-1]
+        elseif (energy[i+1] > energy[i]) && (energy[i-1] > energy[i])
+                v1 = images[:, i+1] - images[:, i]
+                v2 = images[:, i] - images[:, i-1]
+                w1 = max(abs(E[i+1]-E[i]), abs(E[i-1]-E[i]))
+                w2 = min(abs(E[i+1]-E[i]), abs(E[i-1]-E[i]))
+            if energy[i+1] > energy[i-1]
+                tangents[:, i] .= w1*v1+w2*v2
+            else
+                tangents[:, i] .= w1*v2+w2*v1
+            end
+        end
     end
-    E1 = energy[n-1]
-    E2 = energy[n]
-    E3 = energy[n+1]
-    dEmax = max(abs(E3-E2),abs(E2-E1))
-    dEmin = min(abs(E3-E2),abs(E2-E1))
-    tip = images[:,n+1]-images[:,n]
-    tim = images[:,n]-images[:,n-1]
-
-    if (E1>E2)&&(E2>E3)
-      t[:,n] = tim
-    elseif (E3>E2)&&(E2>E1)
-      t[:,n] = tip
-    elseif E3>E1
-      t[:,n] = dEmax*tip+dEmin*tim
-    elseif E3<E1
-      t[:,n] = dEmin*tip+dEmax*tim
-    else
-      t[:,n] = tim + tip
-    end
-
-    for i = 1:n_total
-      j = 3*i - 2
-      fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], t[j,n],t[j+1,n],t[j+2,n])
-      t[j,n],t[j+1,n],t[j+2,n] = cross_product(fx,fy,fz, images[j,n],images[j+1,n],images[j+2,n])
-    end
-
-    norm_t = LinearAlgebra.norm(t[:,n])
-    t[:,n] = t[:,n]/norm_t
-
-  end
-
-   return nothing
 end
 
-function compute_distance(distance::Array{Float64,1},images::Array{Float64, 2},N::Int,n_total::Int)
-    Threads.@threads for n=1:N-1
-    m1 = images[:,n]
-    m2 = images[:,n+1]
-    l =zeros(n_total)
-    for i=1:n_total
-        j=3*i-2
-        m1xm2=cross_product(m1[j],m1[j+1],m1[j+2],m2[j],m2[j+1],m2[j+2])
-        l[i]=atan(norm(m1xm2),m1[j]*m2[j]+m1[j+1]*m2[j+1]+m1[j+2]*m2[j+2])
+function compute_distance!(images, distance, total_distance, num_images::Int, n_total::Int)
+    dev = default_backend[]
+    kernel! = compute_distance_kernel!(dev, groupsize[])
+    for i=1:num_images-1
+        kernel!(images[:, i], images[:, i+1], distance[:, i], ndrange=n_total)
     end
-    distance[n] = LinearAlgebra.norm(l)
-  end
-end
-
-function compute_system_energy(neb::NEB)
-  sim = neb.sim
-  images = neb.images
-  #sim.total_energy = 0
-  fill!(neb.energy, 0.0)
-
-  for n = 1:neb.N
-      effective_field(sim, images[:,n], 0.0)
-      neb.energy[n] = sum(sim.energy)
-  end
-
-  return 0
+    KernelAbstractions.synchronize(dev)
+    Threads.@threads for i=1:num_images-1
+        total_distance[i] = LinearAlgebra.norm(distance[:, i])
+    end
+    KernelAbstractions.synchronize(dev)
 end
 
 function relax(neb::NEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, 
@@ -252,106 +206,56 @@ function save_ovf(neb::NEB, name::String; type::DataType=Float64)
   end
 end
 
-#rotate m1 in the m1_m2 plane by theta. If m1 is parallel to m2 (m1 x m2 = 0), the plane
-#is determined by m1 and ez (unless m1 itself is ez).
-function rotate_to(m1::Array{T,1}, m2::Array{T,1}, theta::T) where T<:AbstractFloat
-    normalise(m1, 1)
-    normalise(m2, 1)
-    if m1 == m2
-      return m1
-    end
-    m = get_rotation_axis(m1,m2)
-    return rotation_operator(m1,m,theta)
-end
+# function compute_system_energy(neb::NEB)
+#   sim = neb.sim
+#   images = neb.images
+#   #sim.total_energy = 0
+#   fill!(neb.energy, 0.0)
 
-function get_rotation_axis(m1::Array{T,1}, m2::Array{T,1})where T<:AbstractFloat
-    m = LinearAlgebra.cross(m1, m2)
-    if m == [0.0,0,0]
-        if m1 == [0,0,1.0]
-            m = [1.0,0,0]
-        else
-            m = LinearAlgebra.cross(m1,[0,0,1.0])
-        end
-    end
-    normalise(m, 1)
-    return m
-end
-##rotate m1 with normalised axis m, angle theta
-function rotation_operator(m1::Array{T,1}, m::Array{T,1}, theta::T) where T<:AbstractFloat
-  st, ct = sin(theta), cos(theta)
-  a11 = ct+(1-ct)*m[1]^2
-  a12 = (1-ct)*m[1]*m[2] - st*m[3]
-  a13 = (1-ct)*m[1]*m[3] + st*m[2]
-  a21 = (1-ct)*m[2]*m[1] + st*m[3]
-  a22 = ct+(1-ct)*m[2]*m[2]
-  a23 = (1-ct)*m[2]*m[3] - st*m[1]
-  a31 = (1-ct)*m[1]*m[3] - st*m[2]
-  a32 = (1-ct)*m[2]*m[3] + st*m[1]
-  a33 = ct+(1-ct)*m[3]*m[3]
-  op=[a11 a12 a13; a21 a22 a23; a31 a32 a33]
+#   for n = 1:neb.N
+#       effective_field(sim, images[:,n], 0.0)
+#       neb.energy[n] = sum(sim.energy)
+#   end
 
-  return op*m1
-end
+#   return 0
+# end
 
-#Interpolate magnetization between image m1 and image m2, where the total images
-#number is N+1
-function interpolate_m(m1::Array{T,1}, m2::Array{T,1}, N::Int) where T<:AbstractFloat
-    n_total = Int(length(m1)/3)
-    m = zeros(3*n_total,N+1)
-    b1 = reshape(m1,3,n_total)
-    b2 = reshape(m2,3,n_total)
 
-    for i=1:N+1
-        for j=1:n_total
-            k=3*j-2
-            amp = b1[:,j]'*b2[:,j]
-            if amp > 1
-                amp = 1.0
-            end
-            if amp < -1
-                amp = -1.0
-            end
-            theta = acos(amp)
-            dtheta = theta/(N+1)
-            angle = (i-1)*dtheta
-            m[k,i],m[k+1,i],m[k+2,i]=rotate_to(b1[:,j],b2[:,j],angle)
-        end
-    end
-    return m
-end
-
-function cartesian2spherical(m, n_total)
-    R, theta, phi  = zeros(n_total), zeros(n_total), zeros(n_total)
-    for j=1:n_total
-        k=3*j-2
-        r = sqrt(m[k]^2+m[k+1]^2)
-        theta[j] = atan(r, m[k+2])
-        phi[j] = atan(m[k+1], m[k])
-        R[j] = sqrt(r^2+m[k+2]^2)
-    end
-    return R, theta, phi
-end
-
-#Interpolate magnetization between image m1 and image m2, where the total images
-#number is N+1
-function interpolate_m_spherical(m1::Array{T,1}, m2::Array{T,1}, N::Int) where T<:AbstractFloat
-    n_total = Int(length(m1)/3)
-
-    R1, theta1, phi1 = cartesian2spherical(m1, n_total)
-    R2, theta2, phi2  = cartesian2spherical(m2, n_total)
-
-    m = zeros(3*n_total,N+1)
-
-    for i=1:N+1
-        v = view(m, :, i)
-        for j = 1:n_total
-            k = 3*j-2
-            theta = theta1[j] + (i-1)/(N+1)*(theta2[j] - theta1[j])
-            phi = phi1[j] + (i-1)/(N+1)*(phi2[j] - phi1[j])
-            v[k] = R1[j]*sin(theta)*cos(phi)
-            v[k+1] = R1[j]*sin(theta)*sin(phi)
-            v[k+2] = R1[j]*cos(theta)
-        end
-    end
-    return m
-end
+# function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy::Array{Float64, 1},N::Int,n_total::Int)
+#     Threads.@threads  for n = 1:N
+#       if (n==1)||(n==N)
+#         continue
+#       end
+#       E1 = energy[n-1]
+#       E2 = energy[n]
+#       E3 = energy[n+1]
+#       dEmax = max(abs(E3-E2),abs(E2-E1))
+#       dEmin = min(abs(E3-E2),abs(E2-E1))
+#       tip = images[:,n+1]-images[:,n]
+#       tim = images[:,n]-images[:,n-1]
+  
+#       if (E1>E2)&&(E2>E3)
+#         t[:,n] = tim
+#       elseif (E3>E2)&&(E2>E1)
+#         t[:,n] = tip
+#       elseif E3>E1
+#         t[:,n] = dEmax*tip+dEmin*tim
+#       elseif E3<E1
+#         t[:,n] = dEmin*tip+dEmax*tim
+#       else
+#         t[:,n] = tim + tip
+#       end
+  
+#       for i = 1:n_total
+#         j = 3*i - 2
+#         fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], t[j,n],t[j+1,n],t[j+2,n])
+#         t[j,n],t[j+1,n],t[j+2,n] = cross_product(fx,fy,fz, images[j,n],images[j+1,n],images[j+2,n])
+#       end
+  
+#       norm_t = LinearAlgebra.norm(t[:,n])
+#       t[:,n] = t[:,n]/norm_t
+  
+#     end
+  
+#      return nothing
+#   end

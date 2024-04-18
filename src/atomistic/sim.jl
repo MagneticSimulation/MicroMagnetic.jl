@@ -21,7 +21,7 @@ set_mu_s(sim, circular_shape)
 ```
 """
 function set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     Ms = zeros(T, sim.n_total)
     init_scalar!(Ms, sim.mesh, init)
     copyto!(sim.mu_s, Ms)
@@ -30,7 +30,7 @@ end
 
 function set_mu_s_kagome(sim::AtomisticSim, Ms::Number)
     mesh = sim.mesh
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     mu_s = zeros(T, sim.n_total)
     for k in 1:(mesh.nz), j in 1:(mesh.ny), i in 1:(mesh.nx)
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
@@ -50,7 +50,7 @@ Add exchange energy to the system. The length of J should be equal to the length
 """
 function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0, J4=0)
     mesh = sim.mesh
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
 
     Js = create_zeros(mesh.n_ngbs)
     if isa(J1, Number)
@@ -126,7 +126,7 @@ $\mathbf{D}_{i j} = D \hat{r}_{ij} \times \hat{z}$
 function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
     N = sim.n_total
     mesh = sim.mesh
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     field = create_zeros(3*N)
     energy = create_zeros(N)
 

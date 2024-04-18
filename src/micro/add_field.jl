@@ -9,7 +9,7 @@ Add a static Zeeman energy to the simulation.
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
     n_total = sim.n_total
 
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     field = zeros(T, 3 * n_total)
 
     init_vector!(field, sim.mesh, H0)
@@ -50,7 +50,7 @@ Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its n
 """
 function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
     n_total = sim.n_total
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     field = zeros(T, 3 * n_total)
     init_vector!(field, sim.mesh, H0)
 
@@ -92,7 +92,7 @@ Example:
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
                     name="timezeeman")
     n_total = sim.n_total
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
 
     init_field = zeros(T, 3 * n_total)
     init_vector!(init_field, sim.mesh, H0)
@@ -137,7 +137,7 @@ or
 """
 function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
     n_total = sim.n_total
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)
 
@@ -203,7 +203,7 @@ or
 function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi",
                  type="bulk")
     n_total = sim.n_total
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
 
@@ -346,7 +346,7 @@ Add Anisotropy to the system, where the energy density is given by
 function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
                   name="anis")
     n_total = sim.n_total
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     Kus = zeros(T, n_total)
     init_scalar!(Kus, sim.mesh, Ku)
 
@@ -449,7 +449,7 @@ add a cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1). The thi
 function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1, 0, 0),
                         axis2=(0, 1, 0), name="cubic")
     n_total = sim.n_total
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     Kcs = zeros(T, n_total)
     init_scalar!(Kcs, sim.mesh, Kc)
 
@@ -500,7 +500,7 @@ where $\eta$ is a random number follows the normal distribution.
 function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal",
                            k_B=k_B)
     N = sim.n_total
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     field = KernelAbstractions.zeros(default_backend[], T, 3 * N)
     energy = KernelAbstractions.zeros(default_backend[], T, N)
 
