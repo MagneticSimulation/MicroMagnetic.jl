@@ -28,7 +28,7 @@ mutable struct DormandPrince{T<:AbstractFloat} <: Integrator
 end
 
 function DormandPrince(n_total::Int64, rhs_fun, tol::Float64)
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     errors = create_zeros(3 * n_total)
     k1 = create_zeros(3 * n_total)
     k2 = create_zeros(3 * n_total)

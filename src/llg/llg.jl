@@ -46,10 +46,9 @@ function llg_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
 
     effective_field(sim, spin, t)
 
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
 
-    groupsize = 512
-    kernel! = llg_rhs_kernel!(default_backend[], groupsize)
+    kernel! = llg_rhs_kernel!(default_backend[], groupsize[])
     kernel!(dm_dt, spin, sim.field, sim.pins, T(driver.alpha), T(driver.gamma),
             driver.precession; ndrange=N)
     KernelAbstractions.synchronize(default_backend[])
@@ -117,8 +116,8 @@ Wrapper for function field_stt_kernel! [to compute tau = (u.nabla) m]
 """
 function compute_field_stt(h_stt, m, ux, uy, uz, ngbs, dx::T, dy::T, dz::T,
                            N::Int64) where {T<:AbstractFloat}
-    groupsize = 512
-    kernel! = field_stt_kernel!(default_backend[], groupsize)
+
+    kernel! = field_stt_kernel!(default_backend[], groupsize[])
     kernel!(h_stt, m, ux, uy, uz, ngbs, dx, dy, dz; ndrange=N)
 
     KernelAbstractions.synchronize(default_backend[])
@@ -190,13 +189,12 @@ function llg_stt_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
 
     effective_field(sim, spin, t)
 
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
 
     compute_field_stt(driver.h_stt, spin, driver.ux, driver.uy, driver.uz, mesh.ngbs,
                       T(mesh.dx), T(mesh.dy), T(mesh.dz), sim.n_total)
 
-    groupsize = 512
-    kernel! = llg_stt_rhs_kernel!(default_backend[], groupsize)
+    kernel! = llg_stt_rhs_kernel!(default_backend[], groupsize[])
     kernel!(dm_dt, spin, sim.field, driver.h_stt, sim.pins, T(driver.gamma),
             T(driver.alpha), T(driver.beta); ndrange=sim.n_total)
     KernelAbstractions.synchronize(default_backend[])
@@ -268,11 +266,10 @@ function llg_cpp_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
 
     effective_field(sim, spin, t)
 
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     px, py, pz = T(driver.p[1]), T(driver.p[2]), T(driver.p[3])
 
-    groupsize = 512
-    kernel! = llg_cpp_rhs_kernel!(default_backend[], groupsize)
+    kernel! = llg_cpp_rhs_kernel!(default_backend[], groupsize[])
     kernel!(dm_dt, spin, sim.field, sim.pins, driver.aj, T(driver.bj), T(driver.gamma),
             T(driver.alpha), px, py, pz; ndrange=sim.n_total)
 

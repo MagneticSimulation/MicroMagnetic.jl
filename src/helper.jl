@@ -101,8 +101,7 @@ function normalise(a::AbstractArray{T,1}, N::Int64) where {T<:AbstractFloat}
         end
     end
 
-    groupsize = 512
-    local_kernal!(get_backend(a), groupsize)(a; ndrange=N)
+    local_kernal!(get_backend(a), groupsize[])(a; ndrange=N)
     KernelAbstractions.synchronize(get_backend(a))
     return nothing
 end
@@ -118,8 +117,7 @@ function compute_dm!(dm::AbstractArray{T,1}, m1::AbstractArray{T,1}, m2::Abstrac
         @inbounds c[I] = sqrt(mx * mx + my * my + mz * mz)
     end
 
-    groupsize = 512
-    local_kernal!(get_backend(dm), groupsize)(dm, m1, m2; ndrange=N)
+    local_kernal!(get_backend(dm), groupsize[])(dm, m1, m2; ndrange=N)
     KernelAbstractions.synchronize(get_backend(dm))
 
     return nothing

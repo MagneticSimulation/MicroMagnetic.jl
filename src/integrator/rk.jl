@@ -12,7 +12,7 @@ mutable struct RungeKutta{T<:AbstractFloat} <: Integrator
 end
 
 function RungeKutta(n_total::Int64, rhs_fun, step::Float64)
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     k1 = create_zeros(3 * n_total)
     k2 = create_zeros(3 * n_total)
     k3 = create_zeros(3 * n_total)

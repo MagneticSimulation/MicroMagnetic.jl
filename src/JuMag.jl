@@ -4,17 +4,19 @@ module JuMag
 using Printf
 using KernelAbstractions
 
-const single_precision = Ref(false)
-export set_sim_precision_type
+const Float = Ref(Float64)
 """
-    set_sim_precision_type(type="double")
+    set_float(x=Float64)
+Set the floating-point type for JuMag. 
+Defaults to Float64. Use Float32 if single-precision computation is required.
+"""
+function set_float(x::Type{<:AbstractFloat}=Float64)
+    Float[] = x
+end
 
-Set the floating-point precision type for simulation, "single" for single and "double" for double precision.
-By default the double precision will be used. 
-"""
-function set_sim_precision_type(type="double")
-    single_precision[] = type == "single" ? true : false
-    return nothing
+const groupsize = Ref(512)
+function set_groupsize(x=n)
+    groupsize[] = x
 end
 
 const default_backend = Backend[CPU()]
@@ -74,7 +76,7 @@ function kernel_array(a::Array)
 end
 
 function create_zeros(dims...)
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     return KernelAbstractions.zeros(default_backend[], T, dims)
 end
 
@@ -132,6 +134,10 @@ include("atomistic/field.jl")
 include("atomistic/sim.jl")
 include("atomistic/kernels.jl")
 include("atomistic/demag.jl")
+
+include("neb/neb.jl")
+include("neb/math.jl")
+include("neb/neb_kernels.jl")
 
 function __init__() end
 

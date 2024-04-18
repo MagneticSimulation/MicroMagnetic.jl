@@ -66,7 +66,7 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         error("Supported drivers: ", join(supported_drivers, " "))
     end
 
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
 
     if driver == "None"
         return EmptyDriver()

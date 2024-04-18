@@ -2,8 +2,7 @@ function effective_field(zee::Zeeman, sim::AtomisticSim, spin::AbstractArray{T,1
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
 
-    groupsize = 512
-    kernal = zeeman_kernel!(default_backend[], groupsize)
+    kernal = zeeman_kernel!(default_backend[], groupsize[])
     kernal(spin, zee.field, zee.energy, sim.mu_s, T(1); ndrange=N)
     KernelAbstractions.synchronize(default_backend[])
     return nothing
@@ -13,8 +12,7 @@ function effective_field(zee::TimeZeeman, sim::AtomisticSim, spin::AbstractArray
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     tx, ty, tz = zee.time_fun(t)
-    groupsize = 512
-    kernal = time_zeeman_kernel!(default_backend[], groupsize)
+    kernal = time_zeeman_kernel!(default_backend[], groupsize[])
     kernal(spin, zee.field, zee.init_field, zee.energy, sim.mu_s, T(1), T(tx), T(ty), T(tz);
            ndrange=N)
     KernelAbstractions.synchronize(default_backend[])
@@ -26,8 +24,7 @@ function effective_field(anis::Anisotropy, sim::AtomisticSim, spin::AbstractArra
     N = sim.n_total
     axis = anis.axis
 
-    groupsize = 512
-    kernal = anisotropy_kernel!(default_backend[], groupsize)
+    kernal = anisotropy_kernel!(default_backend[], groupsize[])
     kernal(spin, anis.field, anis.energy, anis.Ku, axis[1], axis[2], axis[3], sim.mu_s,
            T(1); ndrange=N)
 
@@ -39,8 +36,7 @@ end
 function effective_field(anis::TubeAnisotropy, sim::AtomisticSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
-    groupsize = 512
-    kernal = spatial_anisotropy_kernel!(default_backend[], groupsize)
+    kernal = spatial_anisotropy_kernel!(default_backend[], groupsize[])
     kernal(spin, anis.field, anis.energy, anis.Ku, anis.axes, sim.mu_s, T(1); ndrange=N)
     KernelAbstractions.synchronize(default_backend[])
     return nothing
@@ -50,10 +46,9 @@ function effective_field(exch::HeisenbergExchange, sim::AtomisticSim,
                          spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
-    groupsize = 512
 
     # The exchange interaction for nearest neighbours
-    kernal = atomistic_exchange_kernel!(default_backend[], groupsize)
+    kernal = atomistic_exchange_kernel!(default_backend[], groupsize[])
     kernal(exch.field, exch.energy, exch.Js1, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs, T(0);
            ndrange=N)
     KernelAbstractions.synchronize(default_backend[])
@@ -87,8 +82,7 @@ function effective_field(dmi::HeisenbergDMI, sim::AtomisticSim, spin::AbstractAr
     N = sim.n_total
     mesh = sim.mesh
 
-    groupsize = 512
-    kernal = atomistic_dmi_kernel!(default_backend[], groupsize)
+    kernal = atomistic_dmi_kernel!(default_backend[], groupsize[])
     kernal(dmi.field, dmi.energy, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
            ndrange=N)
 
@@ -102,8 +96,7 @@ function effective_field(dmi::HeisenbergTubeBulkDMI, sim::AtomisticSim,
     N = sim.n_total
     mesh = sim.mesh
 
-    groupsize = 512
-    kernal = tube_bulk_dmi_kernel!(default_backend[], groupsize)
+    kernal = tube_bulk_dmi_kernel!(default_backend[], groupsize[])
     kernal(dmi.field, dmi.energy, dmi.D, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs,
            mesh.nr; ndrange=N)
     KernelAbstractions.synchronize(default_backend[])
@@ -129,8 +122,7 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
     factor = 2 * alpha * k_B / (gamma * dt)
 
     volume = 1.0 / mu0 # we need this factor to make the energy density correctly
-    groupsize = 512
-    stochastic_field_kernel!(default_backend[], groupsize)(spin, stochastic.field,
+    stochastic_field_kernel!(default_backend[], groupsize[])(spin, stochastic.field,
                                                            stochastic.energy, sim.mu_s,
                                                            stochastic.eta,
                                                            stochastic.temperature, factor,
