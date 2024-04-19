@@ -13,15 +13,14 @@
 using JuMag
 using Printf
 
-# We use the double float precision in the simulation
-JuMag.cuda_using_double(true)
+@using_gpu()
 
 # The studied system is a 800nm x 300nm x 2nm film with periodic boundary conditions.
-mesh =  FDMeshGPU(nx=400, ny=150, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
+mesh =  FDMesh(nx=400, ny=150, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
 
 # We create a Sim instance using `create_sim` function, and set basic simulation parameters such as
 # 'Ms', 'A', 'D' and 'H'.
-sim = create_sim(mesh,  Ms=3.87e5, A = 5.2e-12, D = 1e-3, H=(0,0,160*mT), name="skx")
+sim = create_sim(mesh,  Ms=3.87e5, A=5.2e-12, D=1e-3, H=(0,0,160*mT), name="skx")
 
 # We set the initial magnetization configuration to a skyrmion at position (200nm, 80nm) with radius 20 nm.
 # Note that the initialized magnetization is a roughly guessing for the skyrimon. 

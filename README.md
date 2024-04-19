@@ -41,12 +41,12 @@ julia> ]
 
 To enable GPU support, one has to install one of the following packages:
 
-    | GPU Manufacturer      | Julia Package                                      |
-    | :------------------:  | :-----------------------------------------------:  |
-    | NVIDIA                | [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)     |
-    | AMD                   | [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl) |
-    | Intel                 | [oneAPI.jl](https://github.com/JuliaGPU/oneAPI.jl) |
-    | Apple                 | [Metal.jl](https://github.com/JuliaGPU/Metal.jl)   |
+| GPU Manufacturer      | Julia Package                                      |
+| :------------------:  | :-----------------------------------------------:  |
+| NVIDIA                | [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)     |
+| AMD                   | [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl) |
+| Intel                 | [oneAPI.jl](https://github.com/JuliaGPU/oneAPI.jl) |
+| Apple                 | [Metal.jl](https://github.com/JuliaGPU/Metal.jl)   |
 
 
 To install [JuMag.jl](https://github.com/ww1g11/JuMag.jl), simply using

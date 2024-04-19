@@ -83,7 +83,7 @@ function create_zeros(::Type{T}, dims...) where {T}
     return KernelAbstractions.zeros(default_backend[], T, dims)
 end
 
-export using_gpu
+export @using_gpu
 macro using_gpu()
     quote
         try

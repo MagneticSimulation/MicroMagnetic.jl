@@ -1,6 +1,6 @@
 # API
 
-### Meshes
+## Meshes
 ```@docs
 FDMesh
 CubicMesh
@@ -8,29 +8,23 @@ TriangularMesh
 CylindricalTubeMesh
 ```
 
-### DataTypes
-
+## Shapes
 ```@docs
-JuMag.NumberOrArrayOrFunction
-JuMag.NumberOrTupleOrArrayOrFunction
-JuMag.NumberOrArray
-JuMag.TupleOrArrayOrFunction
+Cylinder
+Box
+Torus
 ```
 
-### Interfaces
+## Interfaces
 
 ```@docs
-set_sim_precision_type
 set_backend
 create_sim
 run_sim
 Sim
 set_Ms
-set_Ms_cylindrical
 set_driver
-create_box
-create_cylinder
-#set_mu_s
+set_mu_s
 init_m0
 init_m0_random
 init_m0_skyrmion
@@ -53,7 +47,7 @@ relax
 #compute_guiding_center
 ```
 
-### DataSaving
+## DataSaving
 
 ```@docs
 #save_m
@@ -63,7 +57,7 @@ read_ovf
 ```
 
 
-### Tools
+## Tools
 
 ```@docs
 ovf2vtk
@@ -71,5 +65,18 @@ ovf2vtk
 #jdl2movie
 ```
 
-### Others
+## DataTypes
 
+```@docs
+JuMag.NumberOrArrayOrFunction
+JuMag.NumberOrTupleOrArrayOrFunction
+JuMag.NumberOrArray
+JuMag.TupleOrArrayOrFunction
+```
+
+## Others
+
+```@docs
+JuMag.MicroSim
+JuMag.AtomisticSim
+```

@@ -57,7 +57,7 @@ function plot_spatial_m()
     mx = m[1,:,:,1]
     my = m[2,:,:,1]
     
-    fig = Figure(resolution = (800, 200))
+    fig = Figure(size = (800, 200))
     ax = Axis(fig[1, 1], backgroundcolor = "white")
 
     arrows!(ax, xs, ys, mx, my, arrowsize = 10, lengthscale = 2, 

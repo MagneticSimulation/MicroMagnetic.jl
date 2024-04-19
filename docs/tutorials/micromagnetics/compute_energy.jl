@@ -10,16 +10,11 @@
 using JuMag
 
 # Create a finite difference mesh
-mesh =  FDMesh(dx=5e-9, dy=5e-9, dz=5e-9, nx=1, ny=1, nz=1)
+mesh =  FDMesh(dx=5e-9, dy=5e-9, dz=5e-9, nx=1, ny=1, nz=1);
 
-# Create a Simulation 
-sim = Sim(mesh);
-
-# Set the saturation magnetization Ms
-set_Ms(sim, 8.6e5)
-
+# Create a Simulation with saturation magnetization Ms=8.6e5 A/m
 # Initilize the magnetization to (1,1,1) direction, note that |m|=1 so the magnetization vector m = (1,1,1)/sqrt(3). 
-init_m0(sim, (1,1,1))
+sim = create_sim(mesh, Ms=8.6e5, m0=(1,1,1));
 
 # Consider the demagnetization energy
 demag = add_demag(sim);

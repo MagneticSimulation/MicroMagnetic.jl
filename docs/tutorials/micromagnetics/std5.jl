@@ -9,12 +9,10 @@
 using JuMag
 using NPZ
 
-# Enable long float gpu simulation.
-JuMag.cuda_using_double(true)
+@using_gpu()
 
 # The system is a rectangular film of magnetic material with dimensions 100 nm × 100 nm × 10 nm.
-mesh_cpu = FDMesh(nx=20,ny=20,nz=2,dx=5e-9,dy=5e-9,dz=5e-9)
-mesh_gpu = FDMeshGPU(nx=20,ny=20,nz=2,dx=5e-9,dy=5e-9,dz=5e-9)
+mesh = FDMesh(nx=20,ny=20,nz=2,dx=5e-9,dy=5e-9,dz=5e-9)
 
 # Initialize a vortex roughly.
 function init_fun(i,j,k,dx,dy,dz)
@@ -95,7 +93,6 @@ function applied_current(mesh, ux, beta)
 end
 
 # Choose using either CPU or GPU and run the first step.
-mesh = mesh_gpu # mesh = mesh_cpu
 isfile("std5_m0.npy") || relax_vortex(mesh)
 
 # Choose a proper current density and run the second step.
@@ -114,7 +111,7 @@ function plot_spatial_m()
     nx, ny, nz = 20, 20, 2    
     m = reshape(m, 3, nx, ny, nz)
   
-    fig = Figure(resolution = (1600, 1600), fontsize=28)
+    fig = Figure(size = (1600, 1600), fontsize=28)
     ax = Axis(fig[1, 1],
         xlabel = "X (nm)",
         ylabel = "Y (nm)"
@@ -138,7 +135,7 @@ using DelimitedFiles
 
 function plot_center() 
     data_center = readdlm("std5_center.txt", skipstart=1)
-    fig = Figure(resolution = (800, 800), fontsize=28)
+    fig = Figure(size = (800, 800), fontsize=28)
     ax = Axis(fig[1, 1],
         xlabel = "dX (nm)",
         ylabel = "dY (nm)"
@@ -155,7 +152,7 @@ plot_center()
 function plot_m() 
     data = readdlm("std5_dyn_llg_stt.txt", skipstart=2)
     ts, mx, my, mz = data[:,2]*1e9, data[:,4],data[:,5],data[:,6]
-    fig = Figure(resolution = (800, 800), fontsize=24)
+    fig = Figure(size = (800, 800), fontsize=24)
     ax = Axis(fig[1, 1],
         xlabel = "Time (ns)",
         ylabel = "<M>"

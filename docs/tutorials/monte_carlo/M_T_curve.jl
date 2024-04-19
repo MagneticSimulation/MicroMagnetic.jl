@@ -20,7 +20,7 @@ In this example, we will assume $J=300k_B$ which gives $T_c = 431 K$. The full s
 using JuMag
 
 
-JuMag.cuda_using_double(true)
+#JuMag.cuda_using_double(true)
 
 function relax_system_single(T)
   mesh =  CubicMeshGPU(nx=30, ny=30, nz=30, pbc="xyz")
@@ -71,7 +71,7 @@ using CairoMakie
 
 function plot_m_H()
   
-  fig = Figure(resolution = (400, 300))
+  fig = Figure(size = (400, 300))
   ax = Axis(fig[1, 1],
       xlabel = "T (K)",
       ylabel = "m"

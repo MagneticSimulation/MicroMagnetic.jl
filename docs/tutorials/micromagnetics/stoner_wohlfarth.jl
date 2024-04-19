@@ -45,7 +45,7 @@ using JuMag
 
 function relax_sw_loop()
     #We create a mesh for a cubic geometry 4nm x 4nm x 4nm
-    mesh = FDMeshGPU(nx=4, ny=4, nz=4, dx=1e-9, dy=1e-9, dz=1e-9)
+    mesh = FDMesh(nx=4, ny=4, nz=4, dx=1e-9, dy=1e-9, dz=1e-9)
 
     #We create a simulation with the SD driver. 
     sim = Sim(mesh, name="sw_cubic", driver="SD")
@@ -91,7 +91,7 @@ function plot_loop()
     data = readdlm(folder*"/sw_cubic_sd.txt", skipstart=2)
     m, H = data[:, 3], data[:, 8]
     
-    fig = Figure(resolution = (800, 500))
+    fig = Figure(size = (800, 500))
     ax = Axis(fig[1, 1],
         xlabel = "H (A/m)",
         ylabel = "mx"

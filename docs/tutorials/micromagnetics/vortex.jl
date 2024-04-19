@@ -10,11 +10,10 @@
 # We import JuMag and use double float precision in the simulation
 using JuMag
 using NPZ
-JuMag.cuda_using_double(true)
 
 # In this example, the studied system is a round nanodisk. Since we are using finite different method,
 # we create a FDMesh with dimensions 200nm x 200nm x 20 nm. 
-mesh =  FDMeshGPU(dx=2e-9, dy=2e-9, dz=5e-9, nx=100, ny=100, nz=4)
+mesh =  FDMesh(dx=2e-9, dy=2e-9, dz=5e-9, nx=100, ny=100, nz=4)
 
 # The shape of the studied system can be controlled by setting a zero Ms in the unnecessary region. 
 # Here we defined a function that return a nonzero Ms within the circle and otherwise return zero. 
@@ -84,7 +83,7 @@ function plot_spatial_m()
     mx = m[1,1:3:nx,1:3:ny,1]
     my = m[2,1:3:nx,1:3:ny,1]
     
-    fig = Figure(resolution = (600, 600))
+    fig = Figure(size = (600, 600))
     ax = Axis(fig[1, 1], backgroundcolor = "white")
 
     lml = sqrt.(mx .^ 2 .+ my .^ 2)
@@ -100,4 +99,4 @@ function plot_spatial_m()
 
 end
 
-plot_spatial_m()
+#plot_spatial_m()

@@ -10,10 +10,12 @@
 # We import JuMag and use double float precision in the simulation.
 using JuMag
 using NPZ
-JuMag.cuda_using_double(true)
+#JuMag.cuda_using_double(true)
+
+#using CUDA
 
 # We create a CubicMesh
-mesh =  CubicMeshGPU(nx=120, ny=120, nz=1, pbc="xy")
+mesh =  CubicMesh(nx=120, ny=120, nz=1, pbc="xy")
 
 # To start the simulation, we need to give an initial state.
 # We define a function in which we set the spins around site (60,60) to be negative
@@ -51,7 +53,7 @@ function relax_system(mesh)
   npzwrite("skx.npy", Array(sim.spin))
   
   #Save the vtk as well
-  save_vtk(sim, "skx", fields=["exch", "dmi"])
+  #save_vtk(sim, "skx", fields=["exch", "dmi"])
 end
 
 # Recall the function 
@@ -70,7 +72,7 @@ function plot_spatial_m()
   mf = [Vec3f(m[1, i, j], m[2, i,j], m[3, i,j]) for i in 1:5:nx for j in 1:5:ny]
   mz = [m[3, i, j]  for i in 1:5:nx for j in 1:5:ny]
 
-  fig = Figure(resolution = (1000, 1000))
+  fig = Figure(size = (1000, 1000))
   ax = Axis(fig[1, 1], backgroundcolor = "white")
 
   arrows!(ax, points, mf, fxaa=true, # turn on anti-aliasing
