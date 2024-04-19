@@ -23,7 +23,6 @@ const default_backend = Backend[CPU()]
 const all_backends = Backend[CPU(), CPU(), CPU(), CPU()]
 
 export set_backend
-export set_backend_
 @doc raw"""
     set_backend(backend="cuda")
 Set the backend of JuMag. Options, hardwares and the corresponding backends are shown as follows: 

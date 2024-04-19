@@ -11,7 +11,7 @@ Create a simulation instance for given mesh.
 """
 function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
              save_data=true)
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
 
     if isa(mesh, FDMesh)
         sim = MicroSim{T}()
@@ -69,7 +69,7 @@ set_Ms(sim, circular_Ms)
 
 """
 function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
-    T = single_precision.x ? Float32 : Float64
+    T = Float[]
     Ms_a = zeros(T, sim.n_total)
     init_scalar!(Ms_a, sim.mesh, Ms)
 
@@ -275,8 +275,8 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
     time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
 
     N_spins = sim.n_total
-    T = single_precision.x ? Float32 : Float64
-    dm = KernelAbstractions.zeros(default_backend[], T, 3 * N_spins)
+
+    dm = create_zeros(3 * N_spins)
 
     dmdt_factor = (2 * pi / 360) * 1e9
     #if _cuda_available.x && isa(sim, AtomicSimGPU)

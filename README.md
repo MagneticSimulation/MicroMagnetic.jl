@@ -41,12 +41,12 @@ julia> ]
 
 To enable GPU support, one has to install one of the following packages:
 
- | GPU Manufacturer      | Julia Package           |
- | :------------------- | :------------------------ |
- | NVIDIA         | [NVIDIA CUDA](https://github.com/JuliaGPU/CUDA.jl)    |
- | AMD              | [AMD ROCm](https://github.com/JuliaGPU/AMDGPU.jl)    |
- | Intel            | [Intel oneAPI](https://github.com/JuliaGPU/oneAPI.jl) |
- | Apple            | [Apple Metal](https://github.com/JuliaGPU/Metal.jl)  |
+    | GPU Manufacturer      | Julia Package                                      |
+    | :------------------:  | :-----------------------------------------------:  |
+    | NVIDIA                | [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)     |
+    | AMD                   | [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl) |
+    | Intel                 | [oneAPI.jl](https://github.com/JuliaGPU/oneAPI.jl) |
+    | Apple                 | [Metal.jl](https://github.com/JuliaGPU/Metal.jl)   |
 
 
 To install [JuMag.jl](https://github.com/ww1g11/JuMag.jl), simply using
@@ -67,20 +67,20 @@ Precompiling CUDAExt
 
 
 # Quick start
-Assuming we have a cylindrical FeG sample with a diameter of 100 nm and a height of 40 nm, we want to know its magnetization distribution and the stray field around it. 
-We can use the following script: 
+Assuming we have a cylindrical FeG sample with a diameter of 100 nm and a height of 40 nm, we want to know 
+its magnetization distribution and the stray field around it. We can use the following script: 
 
 ```julia
 using JuMag
 @using_gpu() #Import available GPU packages such as CUDA, AMDGPU, oneAPI or Metal
 
-geo = Cylinder(radius=50e-9, height=40e-9) #Create a cylindrical shape with a diameter of 100 nm and a height of 40 nm
-mesh = FDMesh(nx=80, ny=80, nz=30, dx=2e-9, dy=2e-9, dz=2e-9) #Create a finite difference mesh to trigger the simulation
+geo = Cylinder(radius=50e-9, height=40e-9) #Create the desired cylindrical shape
+mesh = FDMesh(nx=80, ny=80, nz=30, dx=2e-9, dy=2e-9, dz=2e-9) #Create a finite difference mesh
 
-sim = create_sim(mesh, shape=geo, Ms=3.87e5, A = 8.78e-12, D = 1.58e-3, demag=true) #create a Sim instance with Fe parameters
+sim = create_sim(mesh, shape=geo, Ms=3.87e5, A=8.78e-12, D=1.58e-3, demag=true) #Create a Sim
 init_m0_random(sim) #Initialize a random state
 
-relax(sim, maxsteps=5000, stopping_dmdt=0.1) #Relax the system to obtain a stable magnetization distribution
-save_vtk(sim, "m_demag", fields=["demag"]) # Save the magnetization and the stray field into vtk.
+relax(sim, maxsteps=5000, stopping_dmdt=0.1) #Relax the system
+save_vtk(sim, "m", fields=["demag"]) # Save the magnetization and the stray field into vtk.
 ```
-The magnetization and the stray field around the cylindrical sample are stored in `m_demag.vts`, which can be opened using Paraview. 
+The magnetization and the stray field around the cylindrical sample are stored in `m.vts`, which can be opened using Paraview. 
