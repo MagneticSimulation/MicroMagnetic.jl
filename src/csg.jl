@@ -210,10 +210,12 @@ function save_vtk(mesh::Mesh, shape::Union{CSGNode,Shape}, fname::String)
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     xyz = zeros(Float32, 3, nx + 1, ny + 1, nz + 1)
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+
+    scale_factor = 10 ^ floor(log10(dx))
     for k in 1:(nz + 1), j in 1:(ny + 1), i in 1:(nx + 1)
-        xyz[1, i, j, k] = (i - 1 - nx / 2) * dx
-        xyz[2, i, j, k] = (j - 1 - ny / 2) * dy
-        xyz[3, i, j, k] = (k - 1 - nz / 2) * dz
+        xyz[1, i, j, k] = (i - 1 - nx / 2) * dx / scale_factor
+        xyz[2, i, j, k] = (j - 1 - ny / 2) * dy / scale_factor
+        xyz[3, i, j, k] = (k - 1 - nz / 2) * dz / scale_factor
     end
     vtk = vtk_grid(fname, xyz)
 
@@ -229,6 +231,10 @@ function save_vtk(mesh::Mesh, shape::Union{CSGNode,Shape}, fname::String)
     end
 
     vtk_cell_data(vtk, data, "shape")
+
+    if scale_factor != 1.0 
+        vtk["scale_factor", VTKFieldData()] = string(scale_factor)
+    end
 
     return vtk_save(vtk)
 end
