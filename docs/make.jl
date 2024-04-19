@@ -3,7 +3,7 @@ using DemoCards
 using JuMag
 #using DocumenterTools: Themes
 
-#tutorials, tutorials_cb = makedemos("tutorials")
+tutorials, tutorials_cb = makedemos("tutorials")
 #examples, examples_cb = makedemos("examples")
 
 format = Documenter.HTML(
@@ -12,14 +12,13 @@ format = Documenter.HTML(
     assets=["assets/init.js"]
 )
 
-PAGES = ["index.md",
-        #tutorials,
+PAGES = ["Home" =>"index.md",
+        "basics.md",
+        tutorials,
         "equations.md",
          #examples,
         "functions.md",
-        "notes.md",
-        "developer.md",
-        "questions.md"]
+        "developer.md"]
 
 if "warnonly=true" in ARGS
     @info("Option warnonly=true is enabled.")
@@ -43,7 +42,8 @@ else
     )
 end
 
-#tutorials_cb()
+
+tutorials_cb()
 #examples_cb()
 
 deploydocs(

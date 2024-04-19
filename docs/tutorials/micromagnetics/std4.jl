@@ -11,10 +11,10 @@ using JuMag
 using Printf
 using NPZ
 # We use the double float precision in the simulation
-JuMag.cuda_using_double(true)
+#using CUDA
 
 # The geometry of the studied system is a film of thickness t=3 nm, length L=500 nm and width d=125 nm.
-mesh =  FDMeshGPU(nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
+mesh =  FDMesh(nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
 
 # The first step is to relax the system, after which we should obtain a 'S' state.
 function relax_system(mesh)
@@ -74,7 +74,7 @@ function plot_m()
     data = readdlm("std4_llg.txt", skipstart=2)
     oommf = readdlm("assets/std4_oommf.txt")
 
-    fig = Figure(resolution = (800, 480))
+    fig = Figure(size = (800, 480))
     ax = Axis(fig[1, 1],
         xlabel = "Time (ns)",
         ylabel = "m"

@@ -1,5 +1,7 @@
 abstract type Interaction end
-
+"""
+    AtomisticSim{T<:AbstractFloat} <: AbstractSim
+"""
 mutable struct AtomisticSim{T<:AbstractFloat} <: AbstractSim
     time::Float64
     mesh::AtomisticMesh

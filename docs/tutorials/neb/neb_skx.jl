@@ -13,13 +13,13 @@ using DelimitedFiles
 using CubicSplines
 
 using JuMag
-JuMag.cuda_using_double(true);
+#JuMag.cuda_using_double(true);
 
 # In this example, we will compute the energy barrier of a skyrmion collapse into the ferromagnetic state using the NEB method. 
 # Firstly, we create a create_sim method to describe the studied system. For example, the system is a thin film (120x120x2 nm^3) 
 # with periodic boundary conditions, and three energies are considered.
 function create_sim(init_m_fun=(0,0,1))
-    mesh =  FDMeshGPU(nx=60, ny=60, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
+    mesh =  FDMesh(nx=60, ny=60, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
     sim = Sim(mesh, name="neb", driver="SD")
     set_Ms(sim, 3.84e5)
 
@@ -94,8 +94,8 @@ init_images = [npzread("skx.npy"),  (0, 0, 1)]
 interpolation  = [6]
 
 # We create the NEB instance and set the spring_constant.
-neb = NEB_GPU(sim, init_images, interpolation; name="skx_fm", driver="LLG")
-neb.spring_constant = 1e7
+# neb = NEB_GPU(sim, init_images, interpolation; name="skx_fm", driver="LLG")
+# neb.spring_constant = 1e7
 
 # Relax the whole system, uncomment the line 102 
 if !isfile("skx_fm_energy.txt")

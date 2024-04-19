@@ -97,6 +97,9 @@ mutable struct SaverItem
     result::Function
 end
 
+"""
+    MicroSim{T<:AbstractFloat} <: AbstractSim
+"""
 mutable struct MicroSim{T<:AbstractFloat} <: AbstractSim
     time::Float64
     mesh::FDMesh
