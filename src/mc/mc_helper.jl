@@ -1,204 +1,132 @@
 abstract type MonteCarloEnergy end
 
-mutable struct ExchangeMC{TF<:AbstractFloat} <: MonteCarloEnergy
-    J::CuArray{TF, 1} #nearest exchange constant
-    J1::CuArray{TF, 1} #next-nearest exchange constant
+mutable struct ExchangeDMI{T<:AbstractFloat} <: MonteCarloEnergy
+    Jx::T #nearest exchange constant
+    Jy::T
+    Jz::T
+    D::AbstractArray{T,2} #nearest DMI vector
 end
 
-mutable struct NearestExchangeMC{TF<:AbstractFloat} <: MonteCarloEnergy
-    J::CuArray{TF, 1} #nearest exchange constant
+mutable struct ZeemanMC{T<:AbstractFloat} <: MonteCarloEnergy
+    Hx::T
+    Hy::T
+    Hz::T
 end
 
-mutable struct Nearest_DMI_MC{TF<:AbstractFloat} <: MonteCarloEnergy
-    D::CuArray{TF, 2} #nearest DMI vector
+mutable struct AnisotropyMC{T<:AbstractFloat} <: MonteCarloEnergy
+    Ku::T
+    axis::Tuple{T,T,T}
+    Kc::T
 end
 
-mutable struct ZeemanMC{TF<:AbstractFloat}
-    Hx::TF
-    Hy::TF
-    Hz::TF
+mutable struct KagomeAnisotropyMC{T<:AbstractFloat} <: MonteCarloEnergy
+    Ku::T
 end
 
-mutable struct DMI_MC{TF<:AbstractFloat} <: MonteCarloEnergy
-    D::CuArray{TF, 2} #nearest DMI vector
-    D1::CuArray{TF, 2} #next-nearest DMI vector
+mutable struct MonteCarlo{T<:AbstractFloat} <: AbstractSim
+    mesh::Mesh
+    shape::AbstractArray{Bool,1}
+    exch::MonteCarloEnergy
+    zeeman::MonteCarloEnergy
+    anis::MonteCarloEnergy
+    saver::DataSaver
+    spin::AbstractArray{T,1}
+    nextspin::AbstractArray{T,1}
+    rnd::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    delta_E::AbstractArray{T,1}
+    n_total::Int64
+    steps::Int64
+    name::String
+    T::Float64
+    mc_2d::Bool
+    MonteCarlo{T}() where {T<:AbstractFloat} = new()
 end
 
-mutable struct UniformAnisotropyMC{TF<:AbstractFloat} <: MonteCarloEnergy
-    Ku::TF
-    ux::TF
-    uy::TF
-    uz::TF
-    Kc::TF
-end
-
-mutable struct KagomeAnisotropyMC{TF<:AbstractFloat} <: MonteCarloEnergy
-    Ku::TF
-end
-
-
-mutable struct MonteCarlo{TF<:AbstractFloat} <:AbstractSimGPU
-  mesh::Mesh
-  shape::CuArray{Bool, 1}
-  exch::MonteCarloEnergy
-  dmi::MonteCarloEnergy
-  zee::ZeemanMC
-  anis::MonteCarloEnergy
-  saver::DataSaver
-  spin::CuArray{TF, 1}
-  nextspin::CuArray{TF, 1}
-  rnd::CuArray{TF, 1}
-  energy::CuArray{TF, 1}
-  delta_E::CuArray{TF, 1}
-  total_energy::TF
-  n_total::Int64
-  steps::Int64
-  name::String
-  T::Float64
-  mc_2d::Bool
-  MonteCarlo{T}() where {T<:AbstractFloat} = new()
-end
-
-function uniform_random_sphere(spin::CuArray{T, 1}, rnd::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
-
+function uniform_random_sphere(spin::AbstractArray{T,1}, rnd::AbstractArray{T,1},
+                               N::Int64) where {T<:AbstractFloat}
     rand!(rnd)
-    blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr uniform_random_sphere_kernel!(spin, rnd, N)
+    kernel! = uniform_random_sphere_kernel!(default_backend[], groupsize[])
+    kernel!(spin, rnd; ndrange=N)
+    KernelAbstractions.synchronize(default_backend[])
 
-    return  nothing
+    return nothing
 end
 
-function uniform_random_circle_xy(spin::CuArray{T, 1}, rnd::CuArray{T, 1}, N::Int64) where{T<:AbstractFloat}
-
+function uniform_random_circle_xy(spin::AbstractArray{T,1}, rnd::AbstractArray{T,1},
+                                  N::Int64) where {T<:AbstractFloat}
     rand!(rnd)
-    blk, thr = cudims(N)
-    @cuda blocks=blk threads=thr uniform_random_circle_xy_kernel!(spin, rnd, N)
-
-    return  nothing
-end
-
-function compute_site_energy_exch_dmi(sim::MonteCarlo, energy::ExchangeMC, bias::Int64, mesh::CubicMeshGPU)
-    exch = sim.exch
-    dmi = sim.dmi
-    blk, thr = cudims(sim.n_total)
-    @cuda blocks=blk threads=thr add_dE_exch_dmi_cubic_mesh_kernel!(sim.spin, sim.nextspin,
-                                        sim.shape,
-                                        sim.energy, mesh.ngbs, mesh.nngbs,
-                                        mesh.n_ngbs,
-                                        exch.J, exch.J1, dmi.D, dmi.D1,
-                                        mesh.nx, mesh.ny, mesh.nz, bias)
-end
-
-function compute_site_energy_exch_dmi(sim::MonteCarlo, energy::NearestExchangeMC, bias::Int64, mesh::TriangularMeshGPU)
-    exch = sim.exch
-    dmi = sim.dmi
-    blk, thr = cudims(sim.n_total)
-    @cuda blocks=blk threads=thr add_dE_exch_dmi_triangular_mesh_kernel!(sim.spin, sim.nextspin,
-                                        sim.shape,
-                                        sim.energy, mesh.ngbs,
-                                        mesh.n_ngbs,
-                                        exch.J, dmi.D,
-                                        mesh.nx, mesh.ny, mesh.nz, bias)
-end
-
-
-function compute_site_energy_zeeman_anis(sim::MonteCarlo, energy::UniformAnisotropyMC, bias::Int64, mesh::CubicMeshGPU)
-    zee = sim.zee
-    anis = sim.anis
-    blk, thr = cudims(sim.n_total)
-    @cuda blocks=blk threads=thr dE_zeeman_anisotropy_cubic_mesh_kernel!(sim.spin,
-                                        sim.nextspin, sim.shape,
-                                        sim.energy, mesh.ngbs,
-                                        zee.Hx, zee.Hy, zee.Hz,
-                                        anis.Ku, anis.Kc, anis.ux, anis.uy, anis.uz,
-                                        mesh.nx, mesh.ny, mesh.nz, bias)
-end
-
-function compute_site_energy_zeeman_anis(sim::MonteCarlo, energy::UniformAnisotropyMC, bias::Int64, mesh::TriangularMeshGPU)
-    zee = sim.zee
-    anis = sim.anis
-    blk, thr = cudims(sim.n_total)
-    @cuda blocks=blk threads=thr dE_zeeman_anisotropy_triangular_mesh_kernel!(sim.spin,
-                                        sim.nextspin, sim.shape,
-                                        sim.energy, mesh.ngbs,
-                                        zee.Hx, zee.Hy, zee.Hz,
-                                        anis.Ku, anis.ux, anis.uy, anis.uz,
-                                        mesh.nx, mesh.ny, mesh.nz, bias)
-end
-
-function compute_site_energy_zeeman_anis(sim::MonteCarlo, energy::KagomeAnisotropyMC, bias::Int64, mesh::TriangularMeshGPU)
-    zee = sim.zee
-    anis = sim.anis
-    blk, thr = cudims(sim.n_total)
-    @cuda blocks=blk threads=thr dE_zeeman_kagome_anisotropy_triangular_mesh_kernel!(sim.spin,
-                                        sim.nextspin, sim.shape,
-                                        sim.energy, mesh.ngbs,
-                                        zee.Hx, zee.Hy, zee.Hz,
-                                        anis.Ku,
-                                        mesh.nx, mesh.ny, mesh.nz, bias)
-end
-
-function compute_site_energy_single(sim::MonteCarlo, bias::Int64, mesh::AtomicMeshGPU)
-
-    compute_site_energy_zeeman_anis(sim, sim.anis, bias, mesh) #include external fields as well
-    compute_site_energy_exch_dmi(sim, sim.exch, bias, mesh) #include DMI as well
+    kernel! = uniform_random_circle_xy_kernel!(default_backend[], groupsize[])
+    kernel!(spin, rnd; ndrange=N)
+    KernelAbstractions.synchronize(default_backend[])
 
     return nothing
 end
 
-function compute_system_energy(sim::MonteCarlo, energy::UniformAnisotropyMC, mesh::AtomicMeshGPU)
+function compute_dE_zeeman_anisotropy_energy(sim::MonteCarlo, za::AnisotropyMC, bias::Int64)
+    mesh = sim.mesh
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    cubic = isa(mesh, CubicMesh)
 
-    zee = sim.zee
-    anis = sim.anis
-    blk, thr = cudims(sim.n_total)
-    @cuda blocks=blk threads=thr total_E_zeeman_anisotropy_kernel!(sim.spin,
-                                        sim.shape,
-                                        sim.energy,
-                                        zee.Hx, zee.Hy, zee.Hz,
-                                        anis.Ku, anis.Kc, anis.ux, anis.uy, anis.uz,
-                                        mesh.n_total)
-
+    ze = sim.zeeman
+    kernel! = dE_zeeman_anisotropy_energy_kernel!(default_backend[], groupsize[])
+    kernel!(sim.spin, sim.nextspin, sim.shape, sim.delta_E, ze.Hx, ze.Hy, ze.Hz, za.Ku,
+            za.Kc, za.axis[1], za.axis[2], za.axis[3], bias, cubic; ndrange=(nx, ny, nz))
+    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
-
-function compute_system_energy(sim::MonteCarlo, energy::ExchangeMC, mesh::CubicMeshGPU)
-
-    exch = sim.exch
-    dmi = sim.dmi
-    blk, thr = cudims(sim.n_total)
-    @cuda blocks=blk threads=thr add_total_E_exch_dmi_cubic_mesh_kernel!(sim.spin,
-                                        sim.shape,
-                                        sim.energy, mesh.ngbs, mesh.nngbs,
-                                        mesh.n_ngbs,
-                                        exch.J, exch.J1, dmi.D, dmi.D1,
-                                        mesh.n_total)
-
+function compute_zeeman_anisotropy_energy(sim::MonteCarlo, za::AnisotropyMC)
+    ze = sim.zeeman
+    kernel! = zeeman_anisotropy_energy_kernel!(default_backend[], groupsize[])
+    kernel!(sim.spin, sim.shape, sim.energy, ze.Hx, ze.Hy, ze.Hz, za.Ku, za.Kc,
+            za.axis[1], za.axis[2], za.axis[3]; ndrange=sim.n_total)
+    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
+function add_dE_exch_dmi_energy(sim::MonteCarlo, exch::ExchangeDMI, bias::Int64)
+    mesh = sim.mesh
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    cubic = isa(mesh, CubicMesh)
 
-function compute_system_energy(sim::MonteCarlo, energy::NearestExchangeMC, mesh::TriangularMeshGPU)
+    ex = exch
+    kernel! = add_dE_exch_dmi_energy_kernel!(default_backend[], groupsize[])
+    kernel!(sim.spin, sim.nextspin, sim.shape, sim.delta_E, mesh.ngbs, mesh.n_ngbs,
+            ex.Jx, ex.Jy, ex.Jz, ex.D, bias, cubic; ndrange=(nx, ny, nz))
+    KernelAbstractions.synchronize(default_backend[])
+    return nothing
+end
 
-    exch = sim.exch
-    dmi = sim.dmi
-    blk, thr = cudims(sim.n_total)
-    @cuda blocks=blk threads=thr add_total_E_exch_dmi_triangular_mesh_kernel!(sim.spin,
-                                        sim.shape,
-                                        sim.energy, mesh.ngbs,
-                                        mesh.n_ngbs,
-                                        exch.J,  dmi.D,
-                                        mesh.n_total)
-
+function add_exch_dmi_energy(sim::MonteCarlo, exch::ExchangeDMI)
+    mesh = sim.mesh
+    ex = exch
+    kernel! = add_exch_dmi_energy_kernel!(default_backend[], groupsize[])
+    kernel!(sim.spin, sim.shape, sim.energy, mesh.ngbs, mesh.n_ngbs, ex.Jx, ex.Jy,
+            ex.Jz, ex.D; ndrange=sim.n_total)
+    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
 function compute_system_energy(sim::MonteCarlo)
+    compute_zeeman_anisotropy_energy(sim, sim.anis)
+    add_exch_dmi_energy(sim, sim.exch)
+    return sum(sim.energy)
+end
 
-    compute_system_energy(sim, sim.anis, sim.mesh)
-    compute_system_energy(sim, sim.exch, sim.mesh)
+function run_step_bias(sim::MonteCarlo, bias::Int64)
+    mesh = sim.mesh
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
 
-    sim.total_energy = sum(sim.energy)*k_B
+    compute_dE_zeeman_anisotropy_energy(sim, sim.anis, bias) #compute zeeman and anis energy
+    add_dE_exch_dmi_energy(sim, sim.exch, bias) #include exch and DMI 
 
-    return sim.total_energy
+    cubic = isa(mesh, CubicMesh)
+
+    kernel! = run_monte_carlo_kernel!(default_backend[], groupsize[])
+    kernel!(sim.spin, sim.nextspin, sim.rnd, sim.shape, sim.delta_E, sim.T,
+            bias, cubic; ndrange=(nx, ny, nz))
+    KernelAbstractions.synchronize(default_backend[])
+
+    return nothing
 end

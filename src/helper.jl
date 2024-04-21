@@ -9,16 +9,14 @@ function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh,
     return true
 end
 
-function init_scalar!(v::AbstractArray{T1,1}, mesh::Mesh,
-                      init::Array{T2}) where {T1, T2}
+function init_scalar!(v::AbstractArray{T1,1}, mesh::Mesh, init::Array{T2}) where {T1,T2}
     a = isa(v, Array) ? v : Array(v)
     a .= init
     isa(v, Array) || copyto!(v, a)
     return true
 end
 
-function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh,
-                      init_fun::Function) where T
+function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, init_fun::Function) where {T}
     a = isa(v, Array) ? v : Array(v)
     for k in 1:(mesh.nz), j in 1:(mesh.ny), i in 1:(mesh.nx)
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
@@ -28,7 +26,8 @@ function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh,
     return true
 end
 
-function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::Shape, init::Number) where T
+function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::Shape,
+                      init::Number) where {T}
     a = isa(v, Array) ? v : Array(v)
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
@@ -44,7 +43,6 @@ function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::Shape, init::Num
     isa(v, Array) || copyto!(v, a)
     return true
 end
-
 
 function init_vector!(v::Array{T,1}, mesh::Mesh, init::Function) where {T<:AbstractFloat}
     n_total = mesh.nx * mesh.ny * mesh.nz

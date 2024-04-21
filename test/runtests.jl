@@ -19,3 +19,5 @@ include("test_stt.jl")
 include("atomistic/test_mesh.jl")
 include("atomistic/test_llg.jl")
 include("atomistic/test_fields.jl")
+
+include("test_mc.jl")
