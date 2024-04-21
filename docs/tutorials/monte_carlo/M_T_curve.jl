@@ -28,7 +28,7 @@ function relax_system_single(T)
   init_m0(sim, (0,0,1))
 
   add_exch(sim, J=300*k_B)
-  add_dmi(sim, D=0, D1=0)
+  add_dmi(sim, D=0)
   add_zeeman(sim, Hx=0, Hy=0, Hz=0)
   add_anis(sim, Ku=0, Kc=0)
 

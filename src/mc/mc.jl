@@ -91,7 +91,9 @@ function add_dmi(sim::MonteCarlo; D=0, Dz=0, type="bulk")
         end
     end
 
-    Dij[3, :] .+= Dz
+    if type == "interfacial"
+        Dij[3, :] .+= Dz
+    end
     copyto!(sim.exch.D, Dij)
     return nothing
 end
