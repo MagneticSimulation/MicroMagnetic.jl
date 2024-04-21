@@ -346,29 +346,30 @@ where
 
 ## Monte Carlo Simulation
 
-For cubic mesh, the implemented energy reads
+The implemented energy reads
 
 ```math
-\mathcal{H} = - J \sum_{\langle \langle i, j\rangle \rangle} \mathbf{m}_{i} \cdot \mathbf{m}_{j}
-+\sum_{\langle \langle i, j \rangle \rangle }  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
-- K \sum_{i}\left(\mathbf{u} \cdot \mathbf{m}_i\right)^2 - \sum_{i} \mathbf{H} \cdot \mathbf{m}_i
+\mathcal{H} = -\sum_{\langle i, j\rangle} \left( J_x S_i^x  S_j^x + J_y S_i^y  S_j^y + J_z S_i^z  S_j^z \right)
+
++ \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{S}_{i} \times \mathbf{S}_{j}\right)
+
+- K \sum_{i}\left(\mathbf{u} \cdot \mathbf{S}_i\right)^2 - \sum_{i} \mathbf{H} \cdot \mathbf{S}_i
 ```
 
-where $\mathbf{m}_i$ is unit vector of the classical spin at site _i_.
+where $\mathbf{S}_i$ is unit vector of the classical spin at site _i_.
 
-For triangular mesh (2D), the system energy reads
-
-```math
-H= \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{S}_{i} \times \mathbf{S}_{j}\right)
--J \sum_{\langle i, j\rangle} \mathbf{S}_{i} \cdot \mathbf{S}_{j}- \lambda \sum_{\langle i, j\rangle} S_{i}^{z} S_{j}^{z}
--K \sum_{i}\left(S_{i}^{z}\right)^{2}
-```
-
-where
+For interfacial DMI,
 
 ```math
 \mathbf{D}_{i j} = D \hat{z} \times \hat{r}_{ij}  + D_z^{j} \hat{z}
 ```
+while for Bulk DMI, 
+
+```math
+\mathbf{D}_{i j} = D \hat{r}_{ij}
+```
+
+Note that the Monte Carlo only works for triangular and cubic meshes.
 
 ## NEB (Nudged elastic band)
 

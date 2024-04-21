@@ -16,22 +16,22 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 - Supports periodic boundary conditions.
 - Easily extensible to add new features.
 
-
 ## Installation
 
 Install JuMag is straightforward as long as Julia (<http://julialang.org/downloads/>) is installed, and it is equally easy in Windows, Linux and Mac.  
 
-In [Julia](http://julialang.org), packages can be easily installed using
+In [Julia](http://julialang.org), packages can be easily installed with the Julia package manager.
+From the Julia REPL, type ] to enter the Pkg REPL mode and run:
 
+```julia
+pkg> add JuMag
 ```
-using Pkg;
-Pkg.add("CUDA")
-```
-or
 
-```
-julia> ]
-(v1.9) pkg> add CUDA
+Or, equivalently:
+
+```julia
+julia> using Pkg;
+julia> Pkg.add("JuMag")
 ```
 
 To enable GPU support, one has to install one of the following packages:
@@ -44,10 +44,10 @@ To enable GPU support, one has to install one of the following packages:
     | Intel                 | [oneAPI.jl](https://github.com/JuliaGPU/oneAPI.jl) |
     | Apple                 | [Metal.jl](https://github.com/JuliaGPU/Metal.jl)   |
 
-To install [JuMag.jl](https://github.com/ww1g11/JuMag.jl), simply using
+For example, we can install `CUDA` for NVIDIA GPUs:
 
-```
-(v1.9) pkg> add https://github.com/ww1g11/JuMag.jl
+```julia
+pkg> add CUDA
 ```
 
 Now we will see similar messages if we type `using JuMag`
@@ -59,7 +59,6 @@ Precompiling CUDAExt
   1 dependency successfully precompiled in 8 seconds. 383 already precompiled.
 [ Info: Switch the backend to CUDA.CUDAKernels.CUDABackend(false, false)
 ```
-
 
 # Quick start
 Assuming we have a cylindrical FeG sample with a diameter of 100 nm and a height of 40 nm, we want to know its magnetization distribution and the stray field around it. 
