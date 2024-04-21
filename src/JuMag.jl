@@ -83,6 +83,10 @@ function create_zeros(::Type{T}, dims...) where {T}
     return KernelAbstractions.zeros(default_backend[], T, dims)
 end
 
+function create_ones(::Type{T}, dims...) where {T}
+    return KernelAbstractions.ones(default_backend[], T, dims)
+end
+
 export @using_gpu
 macro using_gpu()
     quote
@@ -133,6 +137,10 @@ include("atomistic/field.jl")
 include("atomistic/sim.jl")
 include("atomistic/kernels.jl")
 include("atomistic/demag.jl")
+
+include("mc/kernels.jl")
+include("mc/mc_helper.jl")
+include("mc/mc.jl")
 
 include("neb/neb.jl")
 include("neb/math.jl")
