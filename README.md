@@ -30,14 +30,14 @@ In [Julia](http://julialang.org), packages can be easily installed with the Juli
 From the Julia REPL, type ] to enter the Pkg REPL mode and run:
 
 ```julia
-pkg> add JuMag
+pkg> add https://github.com/ww1g11/JuMag.jl
 ```
 
 Or, equivalently:
 
 ```julia
 julia> using Pkg;
-julia> Pkg.add("JuMag")
+julia> Pkg.add("https://github.com/ww1g11/JuMag.jl")
 ```
 
 To enable GPU support, one has to install one of the following packages:
