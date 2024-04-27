@@ -121,6 +121,39 @@ function compute_dm!(dm::AbstractArray{T,1}, m1::AbstractArray{T,1}, m2::Abstrac
     return nothing
 end
 
+function omega_to_spin(omega::AbstractArray{T,1}, spin::AbstractArray{T,1},
+                       spin_next::AbstractArray{T,1}, N::Int64) where {T<:AbstractFloat}
+    #compute Cay(Omega).m where Cay(Omega) = (I - 1/2 Omega)^-1 (I + 1/2 Omega)
+    #where Omega = Skew[w1, w2, w3] = {{0, -w3, w2}, {w3, 0, -w1}, {-w2, w1, 0}}
+    @kernel function local_kernal!(a, b, c)
+        I = @index(Global)
+        j = 3 * I - 2
+        @inbounds w1 = a[j] * 0.5
+        @inbounds w2 = a[j + 1] * 0.5
+        @inbounds w3 = a[j + 2] * 0.5
+        @inbounds m1 = b[j]
+        @inbounds m2 = b[j + 1]
+        @inbounds m3 = b[j + 2]
+        r = 1 + w1 * w1 + w2 * w2 + w3 * w3
+        a11 = 1 + w1 * w1 - w2 * w2 - w3 * w3
+        a12 = 2 * (w1 * w2 - w3)
+        a13 = 2 * (w2 + w1 * w3)
+        a21 = 2 * (w1 * w2 + w3)
+        a22 = 1 - w1 * w1 + w2 * w2 - w3 * w3
+        a23 = -2 * (w1 - w2 * w3)
+        a31 = 2 * (-w2 + w1 * w3)
+        a32 = 2 * (w1 + w2 * w3)
+        a33 = 1 - w1 * w1 - w2 * w2 + w3 * w3
+        @inbounds c[j] = (a11 * m1 + a12 * m2 + a13 * m3) / r
+        @inbounds c[j + 1] = (a21 * m1 + a22 * m2 + a23 * m3) / r
+        @inbounds c[j + 2] = (a31 * m1 + a32 * m2 + a33 * m3) / r
+    end
+
+    local_kernal!(default_backend[], groupsize[])(omega, spin, spin_next; ndrange=N)
+    KernelAbstractions.synchronize(default_backend[])
+    return nothing
+end
+
 function error_length_m(a::Array{Float64,1}, N::Int64)
     maxlength = 0.0
     minlength = 1.0
