@@ -28,7 +28,7 @@ export set_backend
 Set the backend of JuMag. Options, hardwares and the corresponding backends are shown as follows: 
 
 | Option                 | Hardware            | Backend                  |
-| :---------------------- | :------------------- | :------------------------ |
+| :--------------------- | :------------------ | :------------------------ |
 | "cpu"                  | CPU                 | `KernelAbstractions.CPU()` |
 | "cuda" or "nvidia"     | NVIDIA GPU          | `CUDA.CUDABackend()`     |
 | "amd"  or "roc"        | AMD GPU             | `AMDGPU.ROCBackend()`    |
@@ -114,9 +114,10 @@ include("micro/mesh.jl")
 include("head.jl")
 include("util.jl")
 include("csg.jl")
-include("micro/driver.jl")
+include("driver.jl")
 include("micro/sd.jl")
 include("llg/llg.jl")
+include("llg/llg_cayley.jl")
 include("micro/kernels.jl")
 include("micro/field.jl")
 include("micro/demag.jl")
@@ -125,6 +126,7 @@ include("helper.jl")
 include("integrator/heun.jl")
 include("integrator/rk.jl")
 include("integrator/dopri5.jl")
+include("integrator/dopri5_cayley.jl")
 include("fileio.jl")
 include("sim.jl")
 include("init_m.jl")

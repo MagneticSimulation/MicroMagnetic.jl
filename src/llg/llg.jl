@@ -40,13 +40,12 @@ end
 """
 LLG call_back function that will be called by the integrator.
 """
-function llg_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
+function llg_call_back(sim::AbstractSim, dm_dt::AbstractArray{T,1},
+                       spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     driver = sim.driver
 
     effective_field(sim, spin, t)
-
-    T = Float[]
 
     kernel! = llg_rhs_kernel!(default_backend[], groupsize[])
     kernel!(dm_dt, spin, sim.field, sim.pins, T(driver.alpha), T(driver.gamma),
@@ -116,7 +115,6 @@ Wrapper for function field_stt_kernel! [to compute tau = (u.nabla) m]
 """
 function compute_field_stt(h_stt, m, ux, uy, uz, ngbs, dx::T, dy::T, dz::T,
                            N::Int64) where {T<:AbstractFloat}
-
     kernel! = field_stt_kernel!(default_backend[], groupsize[])
     kernel!(h_stt, m, ux, uy, uz, ngbs, dx, dy, dz; ndrange=N)
 

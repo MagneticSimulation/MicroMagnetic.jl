@@ -11,11 +11,11 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     return mx, my, mz
 end
 
-function test_llg()
+function test_llg(integrator="DormandPrince")
     #Test mesh
     mesh = FDMesh(; nx=1, ny=1, dx=1e-9)
 
-    sim = Sim(mesh; name="spin")
+    sim = Sim(mesh; name="spin", integrator=integrator)
 
     set_Ms(sim, 8e5)
     sim.driver.alpha = 0.05
@@ -43,12 +43,16 @@ end
 
 @testset "Test LLG CPU" begin
     set_backend("cpu")
-    test_llg()
+    for integrator in ["DormandPrince", "DormandPrinceCayley"]
+        test_llg(integrator)
+    end
 end
 
 @testset "Test LLG CUDA" begin
     if Base.find_package("CUDA") !== nothing
         using CUDA
-        test_llg()
+        for integrator in ["DormandPrince", "DormandPrinceCayley"]
+            test_llg(integrator)
+        end
     end
 end
