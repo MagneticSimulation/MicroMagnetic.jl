@@ -31,7 +31,7 @@ function MonteCarlo(mesh::Mesh; name="mc", mc_2d=false)
     sim.anis = AnisotropyMC(F(0), axis, F(0))
 
     saver = init_saver(string(name, ".txt"), "MC")
-    push!(saver.items, SaverItem("E_total", "<J>", o::AbstractSim -> o.total_energy))
+    push!(saver.items, SaverItem("E_total", "<J>", o::AbstractSim -> sum(o.energy)))
     push!(saver.items,
           SaverItem(("m_x", "m_y", "m_z"), ("<>", "<>", "<>"), average_m))
 
@@ -238,7 +238,7 @@ function run_sim(sim::MonteCarlo; maxsteps=10000, save_m_every=10, save_vtk_ever
         if save_m_every > 0
             if sim.steps % save_m_every == 0
                 energy = compute_system_energy(sim)
-                @info @sprintf("step=%5d  total_energy=%g J", sim.steps, energy)
+                @info @sprintf("step = %5d  total_energy=%g k_B", sim.steps, energy)
                 sim.saver.nsteps += 1
                 write_data(sim)
             end
