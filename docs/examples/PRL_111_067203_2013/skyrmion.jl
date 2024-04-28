@@ -23,9 +23,8 @@ using JuMag
 using Printf
 using NPZ
 
-JuMag.cuda_using_double(true)
 
-mesh =  CubicMeshGPU(nx=150, ny=50, nz=1, pbc="xy")
+mesh =  CubicMesh(nx=150, ny=50, nz=1, pbc="xy")
 
 function m0_fun(i,j,k, dx, dy, dz)
   r2 = (i-70)^2 + (j-25)^2

@@ -1,4 +1,6 @@
 
+export compute_skyrmion_number
+
 function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh,
                       init::Number) where {T<:AbstractFloat}
     a = isa(v, Array) ? v : Array(v)

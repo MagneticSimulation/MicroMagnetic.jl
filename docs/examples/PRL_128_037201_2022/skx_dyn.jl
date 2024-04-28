@@ -32,7 +32,6 @@ using Printf
 using NPZ
 using DelimitedFiles
 using CairoMakie
-JuMag.cuda_using_double(true)
 
 # We define a function to roughly initialize a skyrmion
 function m0_fun(i, j, k, dx, dy, dz)
@@ -46,7 +45,7 @@ end
 # We create a function to describe the basic setup of the problem
 function basic_setup(;driver="SD", m0=(0,0,1))
 
-    mesh = CubicMeshGPU(nx=200, ny=200, nz=1, dx=1, dy=1, dz=1,  pbc="xy")
+    mesh = CubicMesh(nx=200, ny=200, nz=1, dx=1, dy=1, dz=1,  pbc="xy")
 
     sim = Sim(mesh, driver=driver, name="skx")
     set_mu_s(sim, 1)

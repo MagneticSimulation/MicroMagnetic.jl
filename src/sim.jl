@@ -297,12 +297,12 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
     for i in 1:maxsteps
         run_step(sim, driver)
 
-        step_size = llg_driver ? driver.ode.step : driver.tau / time_factor
+        step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
 
         compute_dm!(dm, sim.prespin, sim.spin, N_spins)
         max_dmdt = maximum(dm) / step_size
 
-        t = llg_driver ? sim.driver.ode.t : 0.0
+        t = llg_driver ? sim.driver.integrator.t : 0.0
         if llg_driver
             @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e", i,
                            step_size, t, max_dmdt / dmdt_factor)
@@ -455,7 +455,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator,
 end
 
 function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
-    return run_until(sim, t_end, sim.driver.ode, save_data)
+    return run_until(sim, t_end, sim.driver.integrator, save_data)
 end
 
 """

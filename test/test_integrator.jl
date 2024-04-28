@@ -19,20 +19,20 @@ function test_integrator(; integrator="RungeKutta")
     sim.driver.alpha = 0.05
     sim.driver.gamma = 2.21e5
     if integrator == "DormandPrinceCayley" || integrator == "DormandPrince"
-        sim.driver.ode.tol = 1e-6
+        sim.driver.integrator.tol = 1e-6
     end
     add_zeeman(sim, (0, 0, 1e5))
 
     init_m0(sim, (1.0, 0, 0))
 
     for i in 1:300
-        JuMag.advance_step(sim, sim.driver.ode)
+        JuMag.advance_step(sim, sim.driver.integrator)
     end
-    t = sim.driver.ode.t
+    t = sim.driver.integrator.t
     #println("Running at time=", t)
 
     #run_until(sim, t+5e-10)
-    #t = sim.driver.ode.t
+    #t = sim.driver.integrator.t
     #println("Running at time=", t)
 
     ts = Array([t])
