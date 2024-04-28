@@ -152,10 +152,11 @@ JuMag implements energy terms
 
 ```@raw html
 <div class="mermaid">
-graph LR;
+graph TD;
     MicroEnergy --> Exchange
-    MicroEnergy --> VectorExchange
-    MicroEnergy --> ExchangeRKKY
+    Exchange --> UniformExchange
+    Exchange --> SpatialExchange
+    Exchange --> ExchangeRKKY
     MicroEnergy --> BulkDMI
     MicroEnergy --> SpatialBulkDMI
     MicroEnergy --> Zeeman

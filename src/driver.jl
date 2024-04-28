@@ -80,22 +80,36 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         return EnergyMinimization(gk, ss, sf, ff, T(0.0), T(max_tau), T(1e-10), 0)
     end
 
-    supported_integrators = ["Heun", "RungeKutta", "DormandPrince", "DormandPrinceCayley"]
+    supported_integrators = ["Heun", "RungeKutta", "RungeKuttaCayley", "DormandPrince",
+                             "DormandPrinceCayley"]
     if !(integrator in supported_integrators)
         error("Supported integrators for GPU: ", join(supported_integrators, " "))
     end
 
     if driver == "LLG"
-        tol = 1e-6
-        if integrator == "Heun"
-            dopri5 = ModifiedEuler(n_total, llg_call_back, 1e-14)
-        elseif integrator == "RungeKutta"
-            dopri5 = RungeKutta(n_total, llg_call_back, 5e-14)
-        elseif integrator == "DormandPrince"
-            dopri5 = DormandPrince(n_total, llg_call_back, tol)
-        else
-            dopri5 = DormandPrinceCayley(n_total, llg_cayley_call_back, tol)
-        end
+        call_back_fun = contains(integrator, "Cayley") ? llg_cayley_call_back :
+                        llg_call_back
+    elseif driver == "LLG_STT"
+        call_back_fun = contains(integrator, "Cayley") ? llg_stt_cayley_call_back :
+                        llg_stt_call_back
+    elseif driver == "LLG_CPP"
+        call_back_fun = llg_cpp_call_back
+    end
+
+    tol = 1e-6
+    if integrator == "Heun"
+        dopri5 = ModifiedEuler(n_total, call_back_fun, 1e-14)
+    elseif integrator == "RungeKutta"
+        dopri5 = RungeKutta(n_total, call_back_fun, 5e-14)
+    elseif integrator == "RungeKuttaCayley"
+        dopri5 = RungeKuttaCayley(n_total, call_back_fun, 5e-14)
+    elseif integrator == "DormandPrince"
+        dopri5 = DormandPrince(n_total, call_back_fun, tol)
+    elseif integrator == "DormandPrinceCayley"
+        dopri5 = DormandPrinceCayley(n_total, call_back_fun, tol)
+    end
+
+    if driver == "LLG"
         return LLG(true, T(0.1), T(2.21e5), dopri5, tol)
     elseif driver == "LLG_STT"
         tol = 1e-6
@@ -104,28 +118,13 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         uz = create_zeros(n_total)
         hstt = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
         fun = t::Float64 -> 1.0
-        if integrator == "Heun"
-            dopri5 = ModifiedEuler(n_total, llg_stt_call_back, 1e-14)
-        elseif integrator == "RungeKutta"
-            dopri5 = RungeKutta(n_total, llg_stt_call_back, 5e-14)
-        elseif integrator == "DormandPrince"
-            dopri5 = DormandPrince(n_total, llg_stt_call_back, tol)
-        else
-            dopri5 = DormandPrinceCayley(n_total, llg_stt_cayley_call_back, tol)
-        end
         return LLG_STT(T(0.5), T(0), T(2.21e5), dopri5, tol, ux, uy, uz, hstt, fun)
     elseif driver == "LLG_CPP"
         tol = 1e-6
         aj = create_zeros(n_total)
         fun = t::Float64 -> 1.0
         p = (0, 0, 1)
-        if integrator == "Heun"
-            dopri5 = ModifiedEuler(n_total, llg_cpp_call_back, 1e-14)
-        elseif integrator == "RungeKutta"
-            dopri5 = RungeKutta(n_total, llg_cpp_call_back, 5e-14)
-        elseif integrator == "DormandPrince"
-            dopri5 = DormandPrince(n_total, llg_cpp_call_back, tol)
-        else
+        if integrator == "DormandPrinceCayley"
             error(@sprintf("Unsupported combination driver %s and %s.", driver, integrator))
         end
         return LLG_CPP(T(0.5), T(0), T(2.21e5), aj, T(0), dopri5, tol, p)
