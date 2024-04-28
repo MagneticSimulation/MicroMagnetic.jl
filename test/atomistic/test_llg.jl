@@ -20,7 +20,7 @@ function test_llg()
     set_mu_s(sim, 2*mu_B)
     sim.driver.alpha = 0.05
     sim.driver.gamma = 2.21e5/mu_0
-    sim.driver.ode.tol = 1e-8
+    sim.driver.integrator.tol = 1e-8
 
     add_zeeman(sim, (0, 0, 0.1)) #Tesla
 
@@ -34,7 +34,7 @@ function test_llg()
       run_until(sim, 1e-12*i)
     end
 
-    println(sim.driver.ode.t)
+    println(sim.driver.integrator.t)
     spin = Array(sim.spin)
 
     #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])

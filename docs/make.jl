@@ -3,7 +3,7 @@ using DemoCards
 using JuMag
 #using DocumenterTools: Themes
 
-#tutorials, tutorials_cb = makedemos("tutorials")
+tutorials, tutorials_cb = makedemos("tutorials")
 #examples, examples_cb = makedemos("examples")
 
 format = Documenter.HTML(
@@ -14,9 +14,9 @@ format = Documenter.HTML(
 
 PAGES = ["Home" =>"index.md",
         "basics.md",
-        #tutorials,
+        tutorials,
         "equations.md",
-         #examples,
+        #examples,
         "functions.md",
         "developer.md"]
 
@@ -43,7 +43,7 @@ else
 end
 
 
-#tutorials_cb()
+tutorials_cb()
 #examples_cb()
 
 deploydocs(

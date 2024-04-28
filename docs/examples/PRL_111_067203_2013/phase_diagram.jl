@@ -10,10 +10,8 @@ using JuMag
 using Printf
 using NPZ
 
-JuMag.cuda_using_double(true)
-
 function relax_system(;H=0.2, T=5)
-  mesh =  CubicMeshGPU(nx=28*3, ny=16*5, nz=1, pbc="xy")
+  mesh =  CubicMesh(nx=28*3, ny=16*5, nz=1, pbc="xy")
 
   sim = Sim(mesh, driver="LLG", name="skx")
   sim.driver.alpha = 0.1

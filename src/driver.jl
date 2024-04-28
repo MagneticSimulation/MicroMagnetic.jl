@@ -15,7 +15,7 @@ mutable struct LLG{T<:AbstractFloat} <: Driver
     precession::Bool
     alpha::T
     gamma::T
-    ode::Integrator
+    integrator::Integrator
     tol::Float64
 end
 
@@ -25,7 +25,7 @@ mutable struct LLG_CPP{T<:AbstractFloat} <: Driver
     gamma::T
     aj::AbstractArray{T,1}
     bj::T
-    ode::Integrator
+    integrator::Integrator
     tol::Float64
     p::Tuple{Real,Real,Real}
 end
@@ -34,7 +34,7 @@ mutable struct LLG_STT{T<:AbstractFloat} <: Driver
     alpha::T
     beta::T
     gamma::T
-    ode::Integrator
+    integrator::Integrator
     tol::Float64
     ux::AbstractArray{T,1}
     uy::AbstractArray{T,1}
@@ -48,7 +48,7 @@ mutable struct LLG_STT_CPP{T<:AbstractFloat} <: Driver
     beta::T
     gamma::T
     bj::T
-    ode::Integrator
+    integrator::Integrator
     tol::Float64
     p::Tuple{Real,Real,Real}
     aj::AbstractArray{T,1}

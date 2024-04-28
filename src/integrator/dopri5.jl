@@ -52,7 +52,7 @@ function dopri5_step_inner(sim::AbstractSim, step::Float64, t::Float64)
     d = (9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656)
     v = (35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84)
     w = (71 / 57600, 0, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40)
-    ode = sim.driver.ode
+    ode = sim.driver.integrator
     rhs = ode.rhs_fun
 
     k1, k2, k3, k4, k5, k6, k7 = ode.k1, ode.k2, ode.k3, ode.k4, ode.k5, ode.k6, ode.k7
@@ -101,7 +101,7 @@ end
 function compute_init_step_DP(sim::AbstractSim, dt::Float64)
     abs_step = dt
     abs_step_tmp = dt
-    integrator = sim.driver.ode
+    integrator = sim.driver.integrator
     integrator.step = 1e-15
     integrator.rhs_fun(sim, integrator.errors, sim.spin, integrator.t)
     #abs!(integrator.errors)
@@ -162,9 +162,9 @@ function advance_step(sim::AbstractSim, integrator::DormandPrince)
 end
 
 function run_step(sim::AbstractSim, driver::LLG)
-    return advance_step(sim, driver.ode)
+    return advance_step(sim, driver.integrator)
 end
 
 function run_step(sim::AbstractSim, driver::LLG_STT)
-    return advance_step(sim, driver.ode)
+    return advance_step(sim, driver.integrator)
 end

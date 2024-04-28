@@ -27,8 +27,6 @@ using JuMag
 using Printf
 using NPZ
 
-JuMag.cuda_using_double(true)
-
 function m0_fun(i, j, k, dx, dy, dz)
     r = 25
     if ((i - 80)^2 + (j - 40)^2 < r^2)
@@ -41,7 +39,7 @@ function relax_system()
     J = 1*meV
     D = 0.18*J
 
-    mesh = CubicMeshGPU(nx=166, ny=80, nz=1, dx=0.5e-9, dy=0.5e-9, pbc="xy")
+    mesh = CubicMesh(nx=166, ny=80, nz=1, dx=0.5e-9, dy=0.5e-9, pbc="xy")
 
     sim = Sim(mesh, driver="SD", name="skx")
     set_mu_s(sim, mu_s_1)

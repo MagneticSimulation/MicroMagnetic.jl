@@ -9,8 +9,6 @@
 using JuMag
 using NPZ
 
-JuMag.cuda_using_double(true)
-
 function m0_fun(i, j, k, dx, dy, dz)
   i0, j0, r = 166, 96, 25
   i1 = i % i0
@@ -26,7 +24,7 @@ function m0_fun(i, j, k, dx, dy, dz)
 end
 
 function relax_system()
-  mesh =  CubicMeshGPU(nx=166*2, ny=96*3, nz=1, pbc="xy")
+  mesh =  CubicMesh(nx=166*2, ny=96*3, nz=1, pbc="xy")
   sim = Sim(mesh, driver="SD", name="skx")
   set_mu_s(sim, 1.0)
 

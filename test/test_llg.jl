@@ -19,8 +19,8 @@ function test_llg(integrator="DormandPrince")
 
     set_Ms(sim, 8e5)
     sim.driver.alpha = 0.05
-    sim.driver.gamma = -2.21e5
-    sim.driver.ode.tol = 1e-8
+    sim.driver.gamma = 2.21e5
+    sim.driver.integrator.tol = 1e-8
 
     add_zeeman(sim, (0, 0, 1e5))
 
@@ -32,7 +32,7 @@ function test_llg(integrator="DormandPrince")
 
     #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
     ts = Array([3e-10])
-    mx, my, mz = analytical(0.05, -2.21e5, 1e5, ts)
+    mx, my, mz = analytical(0.05, 2.21e5, 1e5, ts)
 
     m = Array(sim.spin)
 
@@ -49,8 +49,8 @@ function test_llg_rk(integrator="RungeKutta")
     sim = Sim(mesh; name="spin", integrator=integrator)
     set_Ms(sim, 8e5)
     sim.driver.alpha = 0.05
-    sim.driver.gamma = -2.21e5
-    sim.driver.ode.dt = 1e-12
+    sim.driver.gamma = 2.21e5
+    sim.driver.integrator.dt = 1e-12
 
     add_zeeman(sim, (0, 0, 1e5))
     init_m0(sim, (1.0, 0, 0))
@@ -61,7 +61,7 @@ function test_llg_rk(integrator="RungeKutta")
 
     #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
     ts = Array([3e-10])
-    mx, my, mz = analytical(0.05, -2.21e5, 1e5, ts)
+    mx, my, mz = analytical(0.05, 2.21e5, 1e5, ts)
 
     m = Array(sim.spin)
 
