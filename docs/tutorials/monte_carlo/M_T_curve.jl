@@ -19,8 +19,6 @@ In this example, we will assume $J=300k_B$ which gives $T_c = 431 K$. The full s
 ======================#
 using JuMag
 
-using BenchmarkTools
-
 JuMag.set_float(Float32)
 
 @using_gpu()
@@ -51,7 +49,7 @@ function relax_system_single(T)
 end
 
 function relax_system()
-  f = open("assets/M_H22.txt", "w")
+  f = open("assets/M_H.txt", "w")
   write(f, "#T(K)     m \n")
   for T = 10:20:20
       println("Running for $T ...")
@@ -62,7 +60,7 @@ function relax_system()
 end
 
 # Run the relax_system function.
-if filesize("assets/M_H22.txt") == 0
+if filesize("assets/M_H.txt") == 0
   relax_system()
 end
 
@@ -84,7 +82,6 @@ function plot_m_H()
   sc1.strokewidth = 1
   sc1.strokecolor = :purple
   lines!(ax, data[:, 1], data[:, 2])
-   
   
   axislegend()
 

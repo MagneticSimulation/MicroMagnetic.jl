@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - master
-      - v0.3
+
+permissions:
+  actions: write
+  contents: read
 
 jobs:
   build:
@@ -12,9 +15,10 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/cache@v1
       
       - run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-              
       - run: julia --project=docs/ --code-coverage=user docs/make.jl warnonly=true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

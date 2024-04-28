@@ -44,4 +44,6 @@ function advance_step(sim::AbstractSim, integrator::ModifiedEuler)
     integrator.nsteps += 1
     integrator.t = integrator.nsteps*h
 
+    return nothing
+
 end
