@@ -19,11 +19,14 @@ In this example, we will assume $J=300k_B$ which gives $T_c = 431 K$. The full s
 ======================#
 using JuMag
 
+using BenchmarkTools
 
-#JuMag.cuda_using_double(true)
+JuMag.set_float(Float32)
+
+@using_gpu()
 
 function relax_system_single(T)
-  mesh =  CubicMeshGPU(nx=30, ny=30, nz=30, pbc="xyz")
+  mesh =  CubicMesh(nx=30, ny=30, nz=30, pbc="xyz")
   sim = MonteCarlo(mesh, name="mc")
   init_m0(sim, (0,0,1))
 
@@ -33,9 +36,9 @@ function relax_system_single(T)
   add_anis(sim, Ku=0, Kc=0)
 
   sim.T = 100000
-  run_sim(sim, maxsteps=50000, save_vtk_every=-1, save_m_every=-1)
+  run_sim(sim, maxsteps=10000, save_vtk_every=-1, save_m_every=-1)
   sim.T = T
-  run_sim(sim, maxsteps=200000, save_vtk_every=-1, save_m_every=-1)
+  run_sim(sim, maxsteps=50000, save_vtk_every=-1, save_m_every=-1)
 
   ms = zeros(1000)
   sim.T = T
@@ -48,9 +51,9 @@ function relax_system_single(T)
 end
 
 function relax_system()
-  f = open("assets/M_H.txt", "w")
+  f = open("assets/M_H22.txt", "w")
   write(f, "#T(K)     m \n")
-  for T = 10:20:500
+  for T = 10:20:20
       println("Running for $T ...")
       m = relax_system_single(T)
       write(f, "$T    $m \n")
@@ -58,10 +61,8 @@ function relax_system()
   close(f)
 end
 
-
-
 # Run the relax_system function.
-if filesize("assets/M_H.txt") == 0
+if filesize("assets/M_H22.txt") == 0
   relax_system()
 end
 

@@ -23,22 +23,22 @@ mutable struct KagomeAnisotropyMC{T<:AbstractFloat} <: MonteCarloEnergy
     Ku::T
 end
 
-mutable struct MonteCarlo{T<:AbstractFloat} <: AbstractSim
+mutable struct MonteCarlo{TF<:AbstractFloat} <: AbstractSim
     mesh::Mesh
     shape::AbstractArray{Bool,1}
     exch::MonteCarloEnergy
     zeeman::MonteCarloEnergy
     anis::MonteCarloEnergy
     saver::DataSaver
-    spin::AbstractArray{T,1}
-    nextspin::AbstractArray{T,1}
-    rnd::AbstractArray{T,1}
-    energy::AbstractArray{T,1}
-    delta_E::AbstractArray{T,1}
+    spin::AbstractArray{TF,1}
+    nextspin::AbstractArray{TF,1}
+    rnd::AbstractArray{TF,1}
+    energy::AbstractArray{TF,1}
+    delta_E::AbstractArray{TF,1}
     n_total::Int64
     steps::Int64
     name::String
-    T::Float64
+    T::TF
     mc_2d::Bool
     MonteCarlo{T}() where {T<:AbstractFloat} = new()
 end
@@ -79,8 +79,8 @@ end
 function compute_zeeman_anisotropy_energy(sim::MonteCarlo, za::AnisotropyMC)
     ze = sim.zeeman
     kernel! = zeeman_anisotropy_energy_kernel!(default_backend[], groupsize[])
-    kernel!(sim.spin, sim.shape, sim.energy, ze.Hx, ze.Hy, ze.Hz, za.Ku, za.Kc,
-            za.axis[1], za.axis[2], za.axis[3]; ndrange=sim.n_total)
+    kernel!(sim.spin, sim.shape, sim.energy, ze.Hx, ze.Hy, ze.Hz, za.Ku, za.Kc, za.axis[1],
+            za.axis[2], za.axis[3]; ndrange=sim.n_total)
     KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
@@ -92,8 +92,8 @@ function add_dE_exch_dmi_energy(sim::MonteCarlo, exch::ExchangeDMI, bias::Int64)
 
     ex = exch
     kernel! = add_dE_exch_dmi_energy_kernel!(default_backend[], groupsize[])
-    kernel!(sim.spin, sim.nextspin, sim.shape, sim.delta_E, mesh.ngbs, mesh.n_ngbs,
-            ex.Jx, ex.Jy, ex.Jz, ex.D, bias, cubic; ndrange=(nx, ny, nz))
+    kernel!(sim.spin, sim.nextspin, sim.shape, sim.delta_E, mesh.ngbs, mesh.n_ngbs, ex.Jx,
+            ex.Jy, ex.Jz, ex.D, bias, cubic; ndrange=(nx, ny, nz))
     KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
@@ -102,8 +102,8 @@ function add_exch_dmi_energy(sim::MonteCarlo, exch::ExchangeDMI)
     mesh = sim.mesh
     ex = exch
     kernel! = add_exch_dmi_energy_kernel!(default_backend[], groupsize[])
-    kernel!(sim.spin, sim.shape, sim.energy, mesh.ngbs, mesh.n_ngbs, ex.Jx, ex.Jy,
-            ex.Jz, ex.D; ndrange=sim.n_total)
+    kernel!(sim.spin, sim.shape, sim.energy, mesh.ngbs, mesh.n_ngbs, ex.Jx, ex.Jy, ex.Jz,
+            ex.D; ndrange=sim.n_total)
     KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
@@ -124,8 +124,8 @@ function run_step_bias(sim::MonteCarlo, bias::Int64)
     cubic = isa(mesh, CubicMesh)
 
     kernel! = run_monte_carlo_kernel!(default_backend[], groupsize[])
-    kernel!(sim.spin, sim.nextspin, sim.rnd, sim.shape, sim.delta_E, sim.T,
-            bias, cubic; ndrange=(nx, ny, nz))
+    kernel!(sim.spin, sim.nextspin, sim.rnd, sim.shape, sim.delta_E, sim.T, bias, cubic;
+            ndrange=(nx, ny, nz))
     KernelAbstractions.synchronize(default_backend[])
 
     return nothing
