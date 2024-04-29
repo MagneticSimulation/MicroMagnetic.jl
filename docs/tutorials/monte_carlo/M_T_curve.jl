@@ -19,7 +19,7 @@ In this example, we will assume $J=300k_B$ which gives $T_c = 431 K$. The full s
 ======================#
 using JuMag
 
-JuMag.set_float(Float32)
+#JuMag.set_float(Float32)
 
 @using_gpu()
 
