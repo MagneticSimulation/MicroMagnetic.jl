@@ -1,9 +1,0 @@
-coverage:
-  ignore:
-    - "src/cuda/kernels.jl"
-    - "src/cuda/demag.jl"
-  status:
-    patch: false
-    project: false
-    changes: false
-comment: false
