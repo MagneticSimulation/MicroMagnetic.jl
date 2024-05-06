@@ -119,12 +119,16 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
     return zeeman
 end
 
-"""
-    add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
+@doc raw"""
+    add_exch(sim::MicroSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
 
-Add exchange energy to the system.
+Add exchange energy to the system. The exchange energy is definded as 
+```math
+  E_\mathrm{ex} = \int_{V} A (\nabla \mathbf{m})^2 \mathrm{d}V
+```
 
 # Examples:
+
 ```julia
     add_exch(sim, 1e-11)
 ```
@@ -134,8 +138,21 @@ or
 ```julia
     add_exch(sim, (2e-12,5e-12,0))
 ```
+
+or
+
+```julia
+    function spatial_A(i,j,k,dx,dy,dz)
+        if i<10
+            return 1e-11
+        else
+            return 2e-11
+        end
+    end
+    add_exch(sim, spatial_A)
+```
 """
-function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
+function add_exch(sim::MicroSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
     n_total = sim.n_total
     T = Float[]
     field = create_zeros(3 * n_total)
@@ -168,22 +185,10 @@ function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exc
 end
 
 @doc raw"""
-    add_dmi(sim::AbstractSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
+    add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
 
-Add DMI to the system. `type` could be "bulk" or "interfacial"
+Add DMI to the system. `type` could be "bulk", "interfacial" or "D2d". 
 
-The energy of interlayer DMI is defined as 
-
-```math
-E_\mathrm{dmi-int} =  \int_\Gamma \mathbf{D} \cdot \left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right) dA
-```
-where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{i}$ and $\mathbf{m}_{j}$. 
-$\mathbf{D}$ is the effective DMI vector. 
-
-The effective field is given
-```math
-\mathbf{H}_i = \frac{1}{\mu_0 M_s \Delta}  \mathbf{D} \times \mathbf{m}_{j} 
-```
 
 Examples:
 
@@ -192,7 +197,7 @@ Examples:
 ```
 or
 ```julia
-   add_dmi(sim, 1e-3, type="bulk")
+   add_dmi(sim, 1e-3, type="D2d")
 ```
 
 ```julia
@@ -232,9 +237,15 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi",
 
         dmi = InterfacialDMI(D_kb, field, energy, name)
         @info "Interfacial DMI has been added."
-
+        
+    elseif type == "D2d"
+        if isa(D, Number)
+            dmi = BulkDMI(T(-D), T(D), T(0), field, energy, name)
+        else
+            error("D2d only support uniform DMI!")
+        end
     else
-        error("Supported DMI type:", "interfacial", "bulk")
+        error("Supported DMI type:", "interfacial", "bulk", "D2d")
     end
 
     push!(sim.interactions, dmi)
@@ -520,3 +531,19 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
     end
     return thermal
 end
+
+
+@doc raw"""
+The energy of interlayer DMI is defined as 
+
+```math
+E_\mathrm{dmi-int} =  \int_\Gamma \mathbf{D} \cdot \left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right) dA
+```
+where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{i}$ and $\mathbf{m}_{j}$. 
+$\mathbf{D}$ is the effective DMI vector. 
+
+The effective field is given
+```math
+\mathbf{H}_i = \frac{1}{\mu_0 M_s \Delta}  \mathbf{D} \times \mathbf{m}_{j} 
+```
+"""

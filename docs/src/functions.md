@@ -1,5 +1,9 @@
 # API
 
+```@meta
+CurrentModule = JuMag
+```
+
 ## Meshes
 ```@docs
 FDMesh

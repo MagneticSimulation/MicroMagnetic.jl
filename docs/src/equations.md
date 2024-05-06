@@ -173,6 +173,48 @@ The typical energy terms are
   \left( m_x^3 \mathbf{e}_x + m_y^3 \mathbf{e}_y + m_z^3 \mathbf{e}_z \right)
 ```
 
+
+### Dzyaloshinskii-Moriya Energy
+In the continuum limit, the DMI energy density $w_\mathrm{dmi}$ is associated with the so-called *Lifshitz invariants*, which are terms in the form
+
+```math
+L^{(k)}_{ij} = m_i \frac{\partial m_j}{\partial x_k} - m_j \frac{\partial m_i}{\partial x_k}.
+```
+
+The form of DMI energy density varies depending on the symmetry class. For bulk DMI, corresponding to symmetry class $T$ or $O$, the expression is given by: 
+```math
+  w_\mathrm{dmi} = D(L^{(z)}_{yx} + L^{(y)}_{xz} + L^{(x)}_{zy}) = D \mathbf{m} \cdot (\nabla \times \mathbf{m}).
+```
+The associated effective field is
+```math
+  \mathbf{H}_\mathrm{dmi}=-\frac{2D}{\mu_0 M_s} (\nabla \times \mathbf{m}).
+```
+For a thin film with interfacial DMI or a crystal with symmetry class $C_{nv}$, the energy density is
+```math
+  w_\mathrm{dmi}=D (L_{x z}^{(x)}+L_{y z}^{(y)} )=D\left(\mathbf{m} \cdot \boldsymbol{\nabla} m_z-m_z \boldsymbol{\nabla} \cdot \mathbf{m}\right),
+```
+and the effective field is 
+```math
+  \mathbf{H}_\mathrm{dmi}=-\frac{2 D}{\mu_0 M_s} (\mathbf{e}_y \times \frac{\partial \mathbf{m}}{\partial x} - \mathbf{e}_x \times \frac{\partial \mathbf{m}}{\partial y}).
+```
+For a crystal with symmetry class $D_{2d}$, the DMI energy density is given by $w_{\mathrm{dmi}}=D (L_{x z}^{(y)}+L_{y z}^{(x)})$, resulting in the effective field
+```math
+  \mathbf{H}_\mathrm{dmi}=-\frac{2 D}{\mu_0 M_s} (\mathbf{e}_y \times \frac{\partial \mathbf{m}}{\partial y} - \mathbf{e}_x \times \frac{\partial \mathbf{m}}{\partial x} ).
+```
+Although the effective fields for different symmetries differ, the numerical implementation can be unified as follows
+```math
+  \mathbf{H}_\mathrm{dmi, i} = -\frac{1}{\mu_0 M_s} \sum_{j \in N_i} D_{ij} \frac{\mathbf{e}_{ij} \times \mathbf{m}_j}{\Delta_{i j}},
+```
+where $D_{ij}$ represents the effective DMI constant and $\mathbf{e}_{ij}$ denotes the DMI vectors.
+For bulk DMI, $\mathbf{e}_{ij} = \hat{\mathbf{r}}_{ij}$ where $\hat{\mathbf{r}}_{ij}$ is the unit vector between cell $i$ and cell $j$.
+For interfacial DMI,  $\mathbf{e}_{ij} = \mathbf{e}_z \times \mathbf{\hat{r}}_{ij}$, i.e., $\mathbf{e}_{ij}=\{-\mathbf{e}_y, \mathbf{e}_y, \mathbf{e}_x, -\mathbf{e}_x, 0, 0\}$ 
+for the 6 neighbors $N_{i}=\{-x,+x,-y,+y,-z, +z\}$. 
+For the symmetry class $D_{2d}$ one has $\mathbf{e}_{ij}=\{\mathbf{e}_x, -\mathbf{e}_x, -\mathbf{e}_y, \mathbf{e}_y, 0, 0\}$.
+If the cell-based DMI is provided, the effective DMI constant can be computed as
+```math
+  D_{i j}=\frac{2 D_i D_j}{D_i+D_j}.
+```
+
 - **Bulk DMI energy** The Bulk DMI energy reads
 
 ```math
