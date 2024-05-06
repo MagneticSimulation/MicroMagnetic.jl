@@ -151,7 +151,7 @@ end
     end
 end
 
-@kernel function vector_exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), Ax::T, Ay::T,
+@kernel function uniform_exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), Ax::T, Ay::T,
                                          Az::T, dx::T, dy::T, dz::T, @Const(ngbs),
                                          volume::T) where {T<:AbstractFloat}
     I = @index(Global)
