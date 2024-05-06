@@ -55,7 +55,7 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArr
     return nothing
 end
 
-function effective_field(exch::Exchange, sim::MicroSim, spin::AbstractArray{T,1},
+function effective_field(exch::SpatialExchange, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     n_total = sim.n_total
     mesh = sim.mesh
@@ -70,7 +70,7 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::AbstractArray{T,1}
     return nothing
 end
 
-function effective_field(exch::VectorExchange, sim::MicroSim, spin::AbstractArray{T,1},
+function effective_field(exch::UniformExchange, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
@@ -78,7 +78,7 @@ function effective_field(exch::VectorExchange, sim::MicroSim, spin::AbstractArra
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
-    vector_exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
+    uniform_exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
                                              exch.Ax, exch.Ay, exch.Az, dx, dy, dz,
                                              mesh.ngbs, volume; ndrange=N)
     KernelAbstractions.synchronize(back)
@@ -161,7 +161,7 @@ function effective_field(stochastic::StochasticField, sim::MicroSim,
 end
 
 #we keep this function for debug and testing purpose, only works on CPU
-function effective_field_debug(exch::Exchange, sim::MicroSim, spin::Array{Float64,1},
+function effective_field_debug(exch::SpatialExchange, sim::MicroSim, spin::Array{Float64,1},
                                t::Float64)
     mesh = sim.mesh
     dx = mesh.dx

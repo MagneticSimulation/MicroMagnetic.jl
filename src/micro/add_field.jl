@@ -143,16 +143,16 @@ function add_exch(sim::AbstractSim, A::NumberOrTupleOrArrayOrFunction; name="exc
 
     exch = nothing
     if isa(A, Number)
-        exch = VectorExchange(T(A), T(A), T(A), field, energy, name)
+        exch = UniformExchange(T(A), T(A), T(A), field, energy, name)
     elseif isa(A, Tuple) && length(A) == 3
-        exch = VectorExchange(T(A[1]), T(A[2]), T(A[3]), field, energy, name)
+        exch = UniformExchange(T(A[1]), T(A[2]), T(A[3]), field, energy, name)
     else
         Spatial_A = zeros(T, sim.n_total)
         init_scalar!(Spatial_A, sim.mesh, A)
 
         A_kb = kernel_array(Spatial_A)
 
-        exch = Exchange(A_kb, field, energy, name)
+        exch = SpatialExchange(A_kb, field, energy, name)
     end
 
     push!(sim.interactions, exch)

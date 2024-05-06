@@ -151,14 +151,14 @@ mutable struct CubicAnisotropy{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
-mutable struct Exchange{T<:AbstractFloat} <: MicroEnergy
+mutable struct SpatialExchange{T<:AbstractFloat} <: MicroEnergy
     A::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
 end
 
-mutable struct VectorExchange{T<:AbstractFloat} <: MicroEnergy
+mutable struct UniformExchange{T<:AbstractFloat} <: MicroEnergy
     Ax::Real
     Ay::Real
     Az::Real
