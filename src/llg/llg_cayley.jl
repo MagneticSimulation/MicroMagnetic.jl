@@ -124,10 +124,9 @@ function llg_stt_cayley_call_back(sim::AbstractSim, dw_dt::AbstractArray{T,1}, t
     omega_to_spin(omega, sim.prespin, sim.spin, sim.n_total)
     effective_field(sim, sim.spin, t)
 
-    #ut = driver.ufun(t)
-
+    ut = T(driver.ufun(t))
     compute_field_stt(driver.h_stt, sim.spin, driver.ux, driver.uy, driver.uz, mesh.ngbs,
-                      T(mesh.dx), T(mesh.dy), T(mesh.dz), sim.n_total)
+                      ut, T(mesh.dx), T(mesh.dy), T(mesh.dz), sim.n_total)
 
     llg_rhs_stt_cayley(dw_dt, sim.spin, driver.field, driver.h_stt, omega, sim.pins,
                        driver.alpha, driver.beta, driver.gamma, sim.n_total)
@@ -215,9 +214,9 @@ function llg_stt_cpp_cayley_call_back(sim::AbstractSim, dw_dt::AbstractArray{T,1
     mesh = sim.mesh
     omega_to_spin(omega, sim.prespin, sim.spin, sim.n_total)
     effective_field(sim, sim.spin, t)
-    #ut = driver.ufun(t)
+    ut = T(driver.ufun(t))
     compute_field_stt(driver.h_stt, sim.spin, driver.ux, driver.uy, driver.uz, mesh.ngbs,
-                      T(mesh.dx), T(mesh.dy), T(mesh.dz), sim.n_total)
+                      ut, T(mesh.dx), T(mesh.dy), T(mesh.dz), sim.n_total)
 
     llg_rhs_stt_cpp_cayley(dw_dt, sim.spin, driver.field, driver.h_stt, omega, driver.aj,
                            sim.pins, driver.p, driver.alpha, driver.beta, driver.bj,

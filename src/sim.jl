@@ -89,7 +89,7 @@ end
 Set the saturation magnetization Ms within the Shape.
 """
 function set_Ms(sim::AbstractSim, shape::Shape, Ms::Number)
-    init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms*mu_0)
+    init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms * mu_0)
     return true
 end
 
@@ -242,6 +242,11 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
     if haskey(args, :uz) && startswith(driver, "LLG_STT")
         set_uz(sim, args[:uz])
         delete!(args, :uz)
+    end
+
+    if haskey(args, :ufun) && startswith(driver, "LLG_STT")
+        sim.driver.ufun = args[:ufun]
+        delete!(args, :ufun)
     end
 end
 
@@ -472,6 +477,7 @@ Create a micromagnetic simulation instance with given arguments.
 - `beta` : the nonadiabatic strength in the LLG equation with spin transfer torques (zhang-li model), should be a number.
 - `gamma` : the gyromagnetic ratio, default value = 2.21e5.
 - `ux`, `uy` or `uz`: the strengths of the spin transfer torque.
+- `ufun` : the time-dependent function for `u`. 
 - `Ms`: the saturation magnetization, should be [`NumberOrArrayOrFunction`](@ref). By default, Ms=8e5
 - `mu_s`: the magnetic moment, should be [`NumberOrArrayOrFunction`](@ref). By default, mu_s=2*mu_B
 - `A` or `J`: the exchange constant, should be [`NumberOrArrayOrFunction`](@ref).
@@ -560,35 +566,8 @@ function create_sim(mesh; args...)
         add_zeeman(sim, args[:H])
     end
 
-    if haskey(args, :alpha) && startswith(driver, "LLG")
-        sim.driver.alpha = args[:alpha]
-        delete!(args, :alpha)
-    end
-
-    if haskey(args, :gamma) && startswith(driver, "LLG")
-        sim.driver.gamma = args[:gamma]
-        delete!(args, :gamma)
-    end
-
-    if haskey(args, :beta) && startswith(driver, "LLG_STT")
-        sim.driver.beta = args[:beta]
-        delete!(args, :beta)
-    end
-
-    if haskey(args, :ux) && startswith(driver, "LLG_STT")
-        set_ux(sim, args[:ux])
-        delete!(args, :ux)
-    end
-
-    if haskey(args, :uy) && startswith(driver, "LLG_STT")
-        set_uy(sim, args[:uy])
-        delete!(args, :uy)
-    end
-
-    if haskey(args, :uz) && startswith(driver, "LLG_STT")
-        set_uz(sim, args[:uz])
-        delete!(args, :uz)
-    end
+    # TODO: shall we call set_driver function here?
+    set_driver(sim; driver=driver, args)
 
     # set m0 anyway
     m0_value = haskey(args, :m0) ? args[:m0] : (0.8, 0.6, 0)
@@ -624,7 +603,7 @@ center and save it to a text file, we can define the following saver
 
 """
 function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1,
-                 saver=nothing)
+                 saver=nothing, call_back=nothing)
     if save_data && saver === nothing
         saver = sim.saver
     end
@@ -646,11 +625,13 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
         m_group = JLD2.Group(file, "m")
     end
 
-    for i in 1:steps
+    for i in 0:steps
         run_until(sim, i * dt; save_data=save_data)
         @info @sprintf("step =%5d  t = %10.6e", i, i * dt)
 
         save_data && write_data(sim, saver)
+
+        call_back !== nothing && call_back(sim, i * dt)
 
         if (save_m_every > 1 && i % save_m_every == 1) || save_m_every == 1
             index = @sprintf("%d", i)
