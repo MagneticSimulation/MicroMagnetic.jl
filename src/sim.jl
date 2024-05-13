@@ -193,26 +193,18 @@ function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
     return true
 end
 
+
 """
-    set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince")
+    set_driver(sim::AbstractSim, args::Dict)
 
-Set the driver of the simulation, can be used to switch the driver.
+Set the driver of the simulation. This function is not intended for users but for developers.
 """
-function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", args...)
-    args = Dict(args)
-
-    if sim.driver_name != driver
-        # if the driver is updated, we create a new saver
-        if sim.save_data
-            sim.saver = create_saver(string(sim.name, "_", lowercase(driver), ".txt"),
-                                     driver)
-        end
-
-        sim.driver = create_driver(driver, integrator, sim.n_total)
-        sim.driver_name = driver
-    end
-
+function set_driver(sim::AbstractSim, args::Dict)
+    
     # FIXME: we have to consider all the situations here
+
+    # driver = string(typeof(sim.driver))
+    driver = sim.driver_name
 
     if haskey(args, :alpha) && startswith(driver, "LLG")
         sim.driver.alpha = args[:alpha]
@@ -464,6 +456,31 @@ function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
 end
 
 """
+    set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", args...)
+
+Set the driver of the simulation, can be used to switch the driver.
+"""
+function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", args...)
+    args = Dict(args)
+
+    @info(@sprintf("The driver %s is used!", driver))
+
+    # FIXME : Does not work if only the integrator changes  
+    if sim.driver_name != driver
+        # if the driver is updated, we create a new saver
+        if sim.save_data
+            sim.saver = create_saver(string(sim.name, "_", lowercase(driver), ".txt"),
+                                     driver)
+        end
+
+        sim.driver = create_driver(driver, integrator, sim.n_total)
+        sim.driver_name = driver
+    end
+
+    set_driver(sim, args)
+end
+
+"""
     create_sim(mesh; args...)
 
 Create a micromagnetic simulation instance with given arguments. 
@@ -488,6 +505,7 @@ Create a micromagnetic simulation instance with given arguments.
 - `demag` : include demagnetization or not, should be a boolean, i.e., true or false. By default,  demag=false.
 - `H`: the external field, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
 - `m0` : the initial magnetization, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
+- `T` : the temperature, should be should be [`NumberOrArrayOrFunction`](@ref).
 - `shape` : the shape defines the geometry of the sample, where parameters are configured.
 """
 function create_sim(mesh; args...)
@@ -566,14 +584,19 @@ function create_sim(mesh; args...)
         add_zeeman(sim, args[:H])
     end
 
-    # TODO: shall we call set_driver function here?
-    set_driver(sim; driver=driver, args)
+    # add the thermal noise
+    if haskey(args, :T)
+        add_thermal_noise(sim, args[:T])
+    end
+
+    # set the driver with args
+    set_driver(sim, args)
 
     # set m0 anyway
     m0_value = haskey(args, :m0) ? args[:m0] : (0.8, 0.6, 0)
     init_m0(sim, m0_value)
 
-    for key in [:driver, :name, :Ku, :H, :m0, :shape]
+    for key in [:driver, :name, :Ku, :H, :m0, :shape, :T]
         haskey(args, key) && delete!(args, key)
     end
 

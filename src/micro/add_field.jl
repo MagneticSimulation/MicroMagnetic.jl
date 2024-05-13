@@ -527,7 +527,7 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
         id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "J",
-                        o::AbstractSim -> o.interactions[id].total_energy))
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return thermal
 end
