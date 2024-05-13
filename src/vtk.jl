@@ -4,6 +4,8 @@ using Printf
 
 export save_vtk, ovf2vtk
 
+#TODO: tidy up save_vtk
+
 """
     save_m(sim::AbstractSim, fname::String; vtk::Bool=false, vtk_folder::String="vtks")
 

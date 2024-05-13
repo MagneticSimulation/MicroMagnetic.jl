@@ -136,7 +136,7 @@ function effective_field(stochastic::StochasticField, sim::MicroSim,
                          spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     volume = sim.mesh.volume
-    integrator = sim.driver.ode
+    integrator = sim.driver.integrator
 
     if integrator.nsteps > stochastic.nsteps
         randn!(stochastic.eta)
