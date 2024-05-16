@@ -12,8 +12,11 @@ function calculate_sampling(nx::Int, step::Int)
 end
 
 function calculate_start_step(nx::Int, n::Int)
-    step = div(nx, n)
+    step = nx > n ? div(nx, n) : 1
     start = (nx - step * (n - 1)) ÷ 2 + 1
+    if start <= 0
+        start = 1
+    end
     return start, step
 end
 
@@ -82,14 +85,14 @@ function JuMag.plot_m(spin; dx=1.0, dy=1.0, k=1, arrows=(-1, -1), figsize=(500, 
 
     lengthscale = 0.3 * sqrt(Dx^2 + Dy^2)
     #FIXME: it seems that align=:center does not work well for some situations?
-    arrows!(ax, xs[I], ys[J], mx[I, J], my[I, J]; linewidth=2.0, color=vec(mz[I, J]),
-            lengthscale=lengthscale, align=:center, colormap=:viridis)
+    arrows!(ax, xs[I], ys[J], mx[I, J], my[I, J]; linewidth=2.0, color=:gray36,
+            lengthscale=lengthscale, align=:center)
 
     return fig
 end
 
 """
-    plot_m(sim; k=1, arrows=(-1, -1), figsize=(500, -1))
+    plot_m(sim; k=1, arrows=(-1, -1), figsize=(600, -1))
 
 Create a plotting for given magnetization. 
   `sim` should be a Sim Object.
@@ -97,7 +100,7 @@ Create a plotting for given magnetization.
   `arrows` is the number of arrows, should be a Tuple of integers. By default, arrows=(-1, -1).
   `figsize` should be a Tuple of integers, for example, figsize=(500, 400) or figsize=(500, -1).
 """
-function JuMag.plot_m(sim::JuMag.AbstractSim; k=1, arrows=(-1, -1), figsize=(500, -1))
+function JuMag.plot_m(sim::JuMag.AbstractSim; k=1, arrows=(-1, -1), figsize=(600, -1))
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     m = Array(sim.spin)

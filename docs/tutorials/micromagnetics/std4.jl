@@ -11,7 +11,7 @@ using JuMag
 using Printf
 using NPZ
 # We use the double float precision in the simulation
-#using CUDA
+# using CUDA
 
 # The geometry of the studied system is a film of thickness t=3 nm, length L=500 nm and width d=125 nm.
 mesh =  FDMesh(nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9)
@@ -57,14 +57,14 @@ function apply_field1(mesh)
 end
 
 
-relax_system(mesh)
+#relax_system(mesh)
 
 # Run the steps 1 and 2.
 if !isfile("std4_m0.npy")
-  relax_system(mesh)
+  #relax_system(mesh)
 end  
 if !isfile("std4_llg.txt")
-  apply_field1(mesh) 
+  #apply_field1(mesh) 
 end
 
 # Finally, we plot the time evolution of the magnetization using the plot_m function

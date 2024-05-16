@@ -320,7 +320,7 @@ For example:
 After running this function, the effective field is calculated and saved in sim.field, 
 and the total energy is saved in sim.energy.
 """
-function effective_field(sim::AbstractSim, spin, t::Float64)
+function effective_field(sim::AbstractSim, spin, t::Float64=0.0)
     fill!(sim.field, 0.0)
     fill!(sim.energy, 0.0)
     for interaction in sim.interactions
@@ -328,7 +328,7 @@ function effective_field(sim::AbstractSim, spin, t::Float64)
         sim.field .+= interaction.field
         sim.energy .+= interaction.energy
     end
-    return 0
+    return nothing
 end
 
 function compute_system_energy(sim::AbstractSim, spin::AbstractArray, t::Float64)
