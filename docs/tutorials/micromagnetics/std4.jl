@@ -30,7 +30,9 @@ function relax_system(mesh)
   init_m0(sim, (1, 0.25, 0.1))
 
   relax(sim, maxsteps=5000, stopping_dmdt=0.01)
-  npzwrite("std4_m0.npy", Array(sim.spin))
+  
+  save_ovf(sim, "std4.ovf")
+  save_vtk(sim, "std4")
 end
 
 # The second step is to apply an external field starting from the obtained 'S' state in previous step. 
@@ -55,6 +57,7 @@ function apply_field1(mesh)
 end
 
 
+relax_system(mesh)
 
 # Run the steps 1 and 2.
 if !isfile("std4_m0.npy")
@@ -94,4 +97,4 @@ function plot_m()
 
 end
 
-plot_m()
+#plot_m()

@@ -109,6 +109,10 @@ macro using_gpu()
     end
 end
 
+function ovf2png() end
+function plot_m() end
+export ovf2png, plot_m
+
 include("const.jl")
 include("micro/mesh.jl")
 include("head.jl")
