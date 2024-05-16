@@ -12,7 +12,7 @@ mutable struct OVF2{T<:AbstractFloat}
 end
 
 
-export save_ovf, read_ovf
+export save_ovf, read_ovf, mag2ovf
 
 """
     save_ovf(sim::AbstractSim, fname::String; type::DataType = Float64)
