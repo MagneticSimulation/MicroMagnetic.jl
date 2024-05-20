@@ -65,6 +65,7 @@ read_ovf
 
 ```@docs
 ovf2vtk
+#plot_m
 #jdl2png
 #jdl2movie
 ```

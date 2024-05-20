@@ -12,7 +12,7 @@ using NPZ
 @using_gpu()
 
 # The system is a rectangular film of magnetic material with dimensions 100 nm × 100 nm × 10 nm.
-mesh = FDMesh(nx=20,ny=20,nz=2,dx=5e-9,dy=5e-9,dz=5e-9)
+mesh = FDMesh(nx=20,ny=20,nz=2,dx=5e-9,dy=5e-9,dz=5e-9);
 
 # Initialize a vortex roughly.
 function init_fun(i,j,k,dx,dy,dz)

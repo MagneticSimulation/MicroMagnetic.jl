@@ -22,7 +22,7 @@ sim = create_sim(mesh, name="std4", driver="SD", Ms=8.0e5, A=1.3e-11, demag=true
 relax(sim, maxsteps=5000, stopping_dmdt=0.01)
 
 # We plot the magnetization distribution using the plot_m function
-plot_m(sim)
+plot_m(sim, component='x')
 
 # The second step is to apply an external field starting from the obtained 'S' state in previous step. 
 set_driver(sim, driver="LLG", alpha=0.02, gamma = 2.211e5)
@@ -30,7 +30,7 @@ add_zeeman(sim, (-24.6mT, 4.3mT, 0))
 run_sim(sim, steps=100, dt=1e-11)
 
 # By default, run_sim will generate a jdl2 file as well, so we can generate a movie based on it.
-jdl2movie("std4.jdl2", output="assets/std4.mp4")
+jdl2movie("std4.jdl2", output="assets/std4.mp4", component='x')
 
 # ![](./assets/std4.mp4)
 

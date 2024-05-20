@@ -12,7 +12,7 @@ using JuMag
 using CairoMakie
 
 # We create a CubicMesh
-mesh =  CubicMesh(nx=120, ny=120, nz=1, pbc="xy")
+mesh =  CubicMesh(nx=120, ny=120, nz=1, pbc="xy");
 
 # To start the simulation, we need to give an initial state.
 # We define a function in which we set the spins around site (60,60) to be negative

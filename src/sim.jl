@@ -255,7 +255,7 @@ To make it comparable for the `LLG` driver, we multiply a factor of `gamma`. How
 with dimensionless unit, this factor should not be used. In this situation, `using_time_factor` should be set to `false`.
 
 `save_data_every` set the step for overall data saving such as energies and average magnetization. A negative `save_data_every` will
-disable the data saving.
+disable the data saving (`save_data_every=-1` will enable the data saving at the end of relaxing).
 
 `save_m_every` set the step for magnetization saving, a negative `save_m_every` will disable the magnetization saving.
 
@@ -326,7 +326,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
 
         if max_dmdt < stopping_dmdt * dmdt_factor
             @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
-            if save_data_every > 0
+            if save_data_every > 0 || save_data_every == -1
                 compute_system_energy(sim, sim.spin, t)
                 write_data(sim)
             end
