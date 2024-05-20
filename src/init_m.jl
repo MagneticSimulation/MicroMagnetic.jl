@@ -119,7 +119,7 @@ c: chirality. "r" (left-handed) or "l"(left-handed)
 type: "B"(Bloch) or "N"(Neel)
 """
 
-function init_m0_skyrmion_lattice(sim::JuMag.AbstractSim, lambda::Float64; p=-1, c="l", type="B")
+function init_m0_skyrmion_lattice(sim::NuMag.AbstractSim, lambda::Float64; p=-1, c="l", type="B")
     mesh = sim.mesh
     nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
     dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
@@ -143,11 +143,11 @@ function init_m0_skyrmion_lattice(sim::JuMag.AbstractSim, lambda::Float64; p=-1,
         mx = sin(phase1)*cos(0) + sin(phase2)*cos(2*pi/3) + sin(phase3)*cos(4*pi/3)
         my = sin(phase1)*sin(0) + sin(phase2)*sin(2*pi/3) + sin(phase3)*sin(4*pi/3)
         if c=="l"
-            mx,my = JuMag.rotation_2d(180., [mx, my])
+            mx,my = NuMag.rotation_2d(180., [mx, my])
         end
 
         if type == "B"
-          mx , my = JuMag.rotation_2d(90., [mx, my])
+          mx , my = NuMag.rotation_2d(90., [mx, my])
           b[1,i,j,:] .= mx
           b[2,i,j,:] .= my
           b[3,i,j,:] .= cos(phase1) + cos(phase2) + cos(phase3)

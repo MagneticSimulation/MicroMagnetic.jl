@@ -1,4 +1,4 @@
-using JuMag
+using NuMag
 using Test
 
 function test_sim()
@@ -23,7 +23,7 @@ function test_sim()
     sim.driver.precession = false
 
     add_exch(sim, 1.3e-11)
-    JuMag.effective_field(sim, sim.spin, 0.0)
+    NuMag.effective_field(sim, sim.spin, 0.0)
 
     @info("test_sim() passed!")
     #println(sim.spin)

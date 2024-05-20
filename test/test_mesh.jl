@@ -1,4 +1,4 @@
-using JuMag
+using NuMag
 using Test
 
 function test_FDMesh()
@@ -7,13 +7,13 @@ function test_FDMesh()
 	nx,ny,nz = mesh.nx, mesh.ny, mesh.nz
 	ngbs = Array(mesh.ngbs)
 	for k = [1, nz], j = [1, ny], i=1:nx
-	  id = JuMag.index(i,j, k, nx, ny, nz)
-	  @test ngbs[1, id] == JuMag._x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
-	  @test ngbs[2, id] == JuMag._x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
-	  @test ngbs[3, id] == JuMag._y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
-	  @test ngbs[4, id] == JuMag._y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
-	  @test ngbs[5, id] == JuMag._z_minus_one(k, id, nx, ny, nz, mesh.zperiodic)
-	  @test ngbs[6, id] == JuMag._z_plus_one(k, id, nx, ny, nz, mesh.zperiodic)
+	  id = NuMag.index(i,j, k, nx, ny, nz)
+	  @test ngbs[1, id] == NuMag._x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
+	  @test ngbs[2, id] == NuMag._x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
+	  @test ngbs[3, id] == NuMag._y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
+	  @test ngbs[4, id] == NuMag._y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
+	  @test ngbs[5, id] == NuMag._z_minus_one(k, id, nx, ny, nz, mesh.zperiodic)
+	  @test ngbs[6, id] == NuMag._z_plus_one(k, id, nx, ny, nz, mesh.zperiodic)
     end
 
 	Nx = 50

@@ -1,4 +1,4 @@
-using JuMag
+using NuMag
 using Test
 
 function test_geo(;gpu=false)
@@ -6,7 +6,7 @@ function test_geo(;gpu=false)
     r = 30e-9
     create_mesh = gpu ? FDMeshGPU : FDMesh
     mesh =  create_mesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=30, ny=30, nz=Nz)
-    geo = JuMag.create_cylinder(mesh, JuMag.ex,r1=r,r2=r)
+    geo = NuMag.create_cylinder(mesh, NuMag.ex,r1=r,r2=r)
 
     @test isapprox(geo.xc,30e-9)
     @test isapprox(geo.yc,30e-9)
@@ -57,8 +57,8 @@ end
     test_functions_in_geometry(;gpu=false)
 end
 
-if JuMag._cuda_available.x
-  JuMag.cuda_using_double()
+if NuMag._cuda_available.x
+  NuMag.cuda_using_double()
   @testset "Geometry" begin
       test_geo(gpu=true)
       test_set_Ms_cylindrical(gpu=true)

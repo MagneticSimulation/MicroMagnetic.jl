@@ -1,13 +1,13 @@
 module CUDAExt
 
-import JuMag
+import NuMag
 using CUDA
 
 CUDA.allowscalar(false)
 
 function set_cuda_backend()
-    JuMag.all_backends[1] = CUDA.CUDABackend()
-    JuMag.set_backend("cuda")
+    NuMag.all_backends[1] = CUDA.CUDABackend()
+    NuMag.set_backend("cuda")
     return nothing
 end
 

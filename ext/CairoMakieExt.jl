@@ -1,7 +1,7 @@
 
 module CairoMakieExt
 
-using JuMag
+using NuMag
 using Printf
 using CairoMakie
 using JLD2
@@ -23,7 +23,7 @@ function calculate_start_step(nx::Int, n::Int)
 end
 
 """
-    JuMag.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1), figsize=(500, -1), fig=nothing, ax=nothing, colorrange=[-1, 1])
+    NuMag.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1), figsize=(500, -1), fig=nothing, ax=nothing, colorrange=[-1, 1])
 
 Create a plot for the given magnetization.
 
@@ -48,12 +48,12 @@ Create a plot for the given magnetization.
 ```julia
 spin = randn(3, 10, 10, 5)  # Example spin data
 # Creates a plot with default settings
-JuMag.plot_m(spin, colorrange=[-1, 1]) 
+NuMag.plot_m(spin, colorrange=[-1, 1]) 
 
 # Creates a plot for the x-component of the second layer with custom settings
-JuMag.plot_m(spin, dx=0.5, dy=0.5, k=2, component='x', arrows=(5, 5), figsize=(600, 400))
+NuMag.plot_m(spin, dx=0.5, dy=0.5, k=2, component='x', arrows=(5, 5), figsize=(600, 400))
 """
-function JuMag.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1), figsize=(500, -1), fig=nothing, ax=nothing, colorrange=nothing)
+function NuMag.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1), figsize=(500, -1), fig=nothing, ax=nothing, colorrange=nothing)
     (_, nx, ny, nz) = size(spin)
     scale_factor = 10^floor(log10(dx))
     dx = dx / scale_factor
@@ -138,29 +138,29 @@ function JuMag.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1),
 end
 
 """
-    JuMag.plot_m(sim::JuMag.AbstractSim; kwargs...)
+    NuMag.plot_m(sim::NuMag.AbstractSim; kwargs...)
 
 Create a plot for the given magnetization in a simulation object.
 
 # Arguments
-- `sim::JuMag.AbstractSim`: A simulation object containing the magnetization data and mesh information.
+- `sim::NuMag.AbstractSim`: A simulation object containing the magnetization data and mesh information.
 
 # Keyword Arguments
-This function forwards all keyword arguments to `JuMag.plot_m`. Refer to `JuMag.plot_m` for detailed descriptions of the keyword arguments.
+This function forwards all keyword arguments to `NuMag.plot_m`. Refer to `NuMag.plot_m` for detailed descriptions of the keyword arguments.
 
 # Returns
 - `fig`: The figure containing the plot.
 
 # Examples
  
-sim = JuMag.create_simulation()  # Example simulation object
-JuMag.plot_m(sim)
+sim = NuMag.create_simulation()  # Example simulation object
+NuMag.plot_m(sim)
 # Creates a plot with default settings
 
-JuMag.plot_m(sim, k=2, component='x', arrows=(5, 5), figsize=(600, 400))
+NuMag.plot_m(sim, k=2, component='x', arrows=(5, 5), figsize=(600, 400))
 # Creates a plot for the x-component of the second layer with custom settings
 """
-function JuMag.plot_m(sim::JuMag.AbstractSim; kwargs...)
+function NuMag.plot_m(sim::NuMag.AbstractSim; kwargs...)
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     m = Array(sim.spin)
@@ -177,13 +177,13 @@ Create a png from the given ovf file.
 `arrows` is the number of arrows, should be a Tuple of integers. By default, arrows=(-1, -1).
 `figsize` should be a Tuple of integers, for example, figsize=(500, 400) or figsize=(500, -1).
 """
-function JuMag.ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1), figsize=(500, -1))
+function NuMag.ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1), figsize=(500, -1))
     if output === nothing
         output = endswith(ovf_name, ".ovf") ? ovf_name[1:(end - 4)] : ovf_name
     end
     ovf = read_ovf(ovf_name)
     spin = reshape(ovf.data, 3, ovf.xnodes, ovf.ynodes, ovf.znodes)
-    fig = JuMag.plot_m(spin; dx=ovf.xstepsize, dy=ovf.ystepsize, k=k, arrows=arrows,
+    fig = NuMag.plot_m(spin; dx=ovf.xstepsize, dy=ovf.ystepsize, k=k, arrows=arrows,
                  figsize=figsize)
     save(output * ".png", fig)
     return fig
@@ -196,7 +196,7 @@ Create a moive from the given jdl2 file.
 
 `output`` is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
 """
-function JuMag.jdl2movie(jdl_file; framerate=12, output=nothing, figsize=(500, -1), kwargs...)
+function NuMag.jdl2movie(jdl_file; framerate=12, output=nothing, figsize=(500, -1), kwargs...)
   if output===nothing
     base_name = jdl_file[1:length(jdl_file)-5]
     output = @sprintf("%s.mp4", base_name)

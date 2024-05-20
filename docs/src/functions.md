@@ -1,7 +1,7 @@
 # API
 
 ```@meta
-CurrentModule = JuMag
+CurrentModule = NuMag
 ```
 
 ## Meshes
@@ -73,15 +73,15 @@ ovf2vtk
 ## DataTypes
 
 ```@docs
-JuMag.NumberOrArrayOrFunction
-JuMag.NumberOrTupleOrArrayOrFunction
-JuMag.NumberOrArray
-JuMag.TupleOrArrayOrFunction
+NuMag.NumberOrArrayOrFunction
+NuMag.NumberOrTupleOrArrayOrFunction
+NuMag.NumberOrArray
+NuMag.TupleOrArrayOrFunction
 ```
 
 ## Others
 
 ```@docs
-JuMag.MicroSim
-JuMag.AtomisticSim
+NuMag.MicroSim
+NuMag.AtomisticSim
 ```

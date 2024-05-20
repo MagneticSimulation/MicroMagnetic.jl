@@ -1,5 +1,5 @@
 #__precompile__()
-module JuMag
+module NuMag
 
 using Printf
 using KernelAbstractions
@@ -7,7 +7,7 @@ using KernelAbstractions
 const Float = Ref(Float64)
 """
     set_float(x=Float64)
-Set the floating-point type for JuMag. 
+Set the floating-point type for NuMag. 
 Defaults to Float64. Use Float32 if single-precision computation is required.
 """
 function set_float(x::Type{<:AbstractFloat}=Float64)
@@ -25,7 +25,7 @@ const all_backends = Backend[CPU(), CPU(), CPU(), CPU()]
 export set_backend
 @doc raw"""
     set_backend(backend="cuda")
-Set the backend of JuMag. Options, hardwares and the corresponding backends are shown as follows: 
+Set the backend of NuMag. Options, hardwares and the corresponding backends are shown as follows: 
 
 | Option                 | Hardware            | Backend                  |
 | :--------------------- | :------------------ | :------------------------ |

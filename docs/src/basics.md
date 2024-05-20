@@ -3,7 +3,7 @@
 ## Meshes
 
 
-JuMag uses finite difference methods to discretize the micromagnetic energies. In JuMag, the discretized grid information 
+NuMag uses finite difference methods to discretize the micromagnetic energies. In NuMag, the discretized grid information 
 is stored in [`FDMesh`](@ref). Therefore, before starting the simulation, we need to create a mesh.
 
 ```julia
@@ -25,7 +25,7 @@ graph LR;
 ```
 
 ## Sim
-In JuMag, we can create different Sim objects based on the computational system or problem type. JuMag defines four types of Sims:
+In NuMag, we can create different Sim objects based on the computational system or problem type. NuMag defines four types of Sims:
 
 ```@raw html
 <div class="mermaid">
@@ -37,7 +37,7 @@ graph LR
 </div>
 ```
 
-For [MicroSim](@ref JuMag.MicroSim) and [AtomisticSim](@ref JuMag.AtomisticSim), we recommend using the [`create_sim`](@ref) function to create them, as the [`create_sim`](@ref) function 
+For [MicroSim](@ref NuMag.MicroSim) and [AtomisticSim](@ref NuMag.AtomisticSim), we recommend using the [`create_sim`](@ref) function to create them, as the [`create_sim`](@ref) function 
 can specify some parameters while creating Sim. Of course, these parameters can also be specified later. 
 
 ```julia
@@ -57,7 +57,7 @@ Note: all simulation data can be obtained through sim, especially, we can obtain
 
 ## Functions
 
-In JuMag, all parameters can be set using functions. For example, we can use the [`set_Ms`](@ref) function to set the saturation magnetization of the system. Of course, Ms should be a scalar for the same material, and we can set it like this:
+In NuMag, all parameters can be set using functions. For example, we can use the [`set_Ms`](@ref) function to set the saturation magnetization of the system. Of course, Ms should be a scalar for the same material, and we can set it like this:
 ```julia
 set_Ms(sim, 8.6e5)
 ```
@@ -72,14 +72,14 @@ end
 set_Ms(sim, circular_Ms)
 ```
 Note that the Mesh we create is actually a regular cuboid, but in reality, the shape of the sample is not necessarily a cuboid. At this time, we define a round disk, 
-where its Ms is 0 outside the disk. In this way, we can define the shape of the simulation system. Please note that in JuMag, almost all setting functions can 
+where its Ms is 0 outside the disk. In this way, we can define the shape of the simulation system. Please note that in NuMag, almost all setting functions can 
 accept a function as input. This cell-based approach maximizes flexibility, allowing for defining shapes, defining multiple materials, etc.
 
 ## Shapes
 
 ### Basic Shapes
 
-In addition to using functions to define shapes, for some regular shapes and their combinations, we can use basic shapes and boolean operations defined in JuMag to achieve this. JuMag supports Plane, Cylinder, Sphere, Box, and Torus, etc., as basic shapes.
+In addition to using functions to define shapes, for some regular shapes and their combinations, we can use basic shapes and boolean operations defined in NuMag to achieve this. NuMag supports Plane, Cylinder, Sphere, Box, and Torus, etc., as basic shapes.
 
 !!! note 
     | **operator** | **Boolean operation** |
@@ -90,7 +90,7 @@ In addition to using functions to define shapes, for some regular shapes and the
 
 Example:
 ```julia
-using JuMag
+using NuMag
 
 mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=100, ny=100, nz=50)
 
@@ -148,7 +148,7 @@ ex = add_exch(sim, A=1.3e-11)
 ```
 are equivalent. The advantage of the latter is that when we need exchange interaction data, we can directly access it through  `ex`.
 
-JuMag implements energy terms 
+NuMag implements energy terms 
 
 ```@raw html
 <div class="mermaid">

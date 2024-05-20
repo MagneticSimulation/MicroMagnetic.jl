@@ -2,12 +2,12 @@
 # title: Magnetic vortex
 # author: Weiwei Wang
 # date: 2022-05-19
-# description: an example to demostrate how to obtain the vortex in JuMag.
+# description: an example to demostrate how to obtain the vortex in NuMag.
 # tag: tutorial
 # ---
 
-# We import JuMag and use double float precision in the simulation
-using JuMag
+# We import NuMag and use double float precision in the simulation
+using NuMag
 using CairoMakie
 
 # In this example, the studied system is a round nanodisk. Since we are using finite different method,

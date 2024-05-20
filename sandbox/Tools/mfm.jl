@@ -1,5 +1,5 @@
 using PyCall
-using JuMag
+using NuMag
 using Printf
 
 function divergence(vector_field::Array{T,1}, mesh::FDMesh) where T<:AbstractFloat

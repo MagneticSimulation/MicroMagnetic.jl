@@ -277,7 +277,7 @@ For the atomistic model,
 ```
 where $S = |\mathbf{S}|$ is the length of local spin.
 
-In JuMag, the the extended LLG equation Zhang-Li extension is implemented in the driver `LLG_STT`.  
+In NuMag, the the extended LLG equation Zhang-Li extension is implemented in the driver `LLG_STT`.  
 Moreover, the driver `LLG_CPP` implements the LLG equation with spin transfer torque
 for the current-perpendicular-to-plane (CPP) case,
 

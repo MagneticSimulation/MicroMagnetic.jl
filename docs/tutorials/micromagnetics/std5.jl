@@ -2,11 +2,11 @@
 # title: Micromagnetic Standard Problem 5
 # author: Boyao Lyu
 # date: 2022-10-02
-# description: an example for the micromagnetic standard problem 5 using JuMag.
+# description: an example for the micromagnetic standard problem 5 using NuMag.
 # link: <https://www.ctcms.nist.gov/~rdm/std5/spec5.xhtml>
 # ---
 
-using JuMag
+using NuMag
 using NPZ
 
 @using_gpu()
@@ -69,20 +69,20 @@ function applied_current(mesh, ux, beta)
     io = open(fname,"w")
 
     #Use formatstring function to convert the contents into fixed-length string.    
-    write(io, JuMag.formatstring("time(s)"))
-    write(io, JuMag.formatstring("X(m)"))
-    write(io, JuMag.formatstring("Y(m)"))
+    write(io, NuMag.formatstring("time(s)"))
+    write(io, NuMag.formatstring("X(m)"))
+    write(io, NuMag.formatstring("Y(m)"))
     write(io, "\n")
     
     for i=0:800
         t = i * 1e-11
         run_until(sim, t)
         #compute the x,y coordinate of vortex center for layer 1.
-        Rx, Ry = JuMag.compute_guiding_center(sim, z=1)
+        Rx, Ry = NuMag.compute_guiding_center(sim, z=1)
 
-        write(io, JuMag.formatstring(t))
-        write(io, JuMag.formatstring(Rx))
-        write(io, JuMag.formatstring(Ry))
+        write(io, NuMag.formatstring(t))
+        write(io, NuMag.formatstring(Rx))
+        write(io, NuMag.formatstring(Ry))
         write(io, "\n")
 
         if i%20 ==0
@@ -157,9 +157,9 @@ function plot_m()
         xlabel = "Time (ns)",
         ylabel = "<M>"
     )
-    lines!(ax, ts, mx, linewidth=3,label="mx JuMag")
-    lines!(ax, ts, my, linewidth=3,label="my JuMag")
-    lines!(ax, ts, mz, linewidth=3,label="mz JuMag")
+    lines!(ax, ts, mx, linewidth=3,label="mx NuMag")
+    lines!(ax, ts, my, linewidth=3,label="my NuMag")
+    lines!(ax, ts, mz, linewidth=3,label="mz NuMag")
 
     data_fidimag = readdlm("assets/std5_fidimag_data.txt", skipstart=2)
     ts, mx, my, mz = data_fidimag[:,1]*1e9, data_fidimag[:,5], data_fidimag[:,6], data_fidimag[:,7]

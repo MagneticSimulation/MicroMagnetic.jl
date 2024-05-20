@@ -1,4 +1,4 @@
-using JuMag
+using NuMag
 using Test
 
 function test_bulk_dmi()
@@ -27,22 +27,22 @@ function test_bulk_dmi()
     dmi = add_dmi(sim, D)
     dmi2 = add_dmi(sim, D_fun; name="dmi2")
 
-    JuMag.effective_field(sim, sim.spin, 0.0)
+    NuMag.effective_field(sim, sim.spin, 0.0)
     f1 = Array(dmi.field)
     f2 = Array(dmi2.field)
 
     @test isapprox(f1, f2, atol=1e-8)
 
     if isa(sim.spin, Array)
-        JuMag.effective_field_debug(dmi, sim, sim.spin, 0.0)
+        NuMag.effective_field_debug(dmi, sim, sim.spin, 0.0)
         @test isapprox(f1, dmi.field, atol=1e-10)
     end
 
     dx = 2e-9
 
-    expected_fx = -1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_x(1, 0, 0, 4, 5, 6)
-    expected_fy = -1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_y(1, 0, 0, 4, 5, 6)
-    expected_fz = -1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_z(1, 0, 0, 4, 5, 6)
+    expected_fx = -1.0 * (D / dx / (NuMag.mu_0 * Ms)) * NuMag.cross_x(1, 0, 0, 4, 5, 6)
+    expected_fy = -1.0 * (D / dx / (NuMag.mu_0 * Ms)) * NuMag.cross_y(1, 0, 0, 4, 5, 6)
+    expected_fz = -1.0 * (D / dx / (NuMag.mu_0 * Ms)) * NuMag.cross_z(1, 0, 0, 4, 5, 6)
 
     @test isapprox(f1[1], expected_fx)
     @test isapprox(f1[2], expected_fy)
@@ -70,14 +70,14 @@ function test_interfacial_dmi()
     init_m0(sim, m0_fun; norm=false)
     dmi = add_dmi(sim, D; type="interfacial")
 
-    JuMag.effective_field(sim, sim.spin, 0.0)
+    NuMag.effective_field(sim, sim.spin, 0.0)
     f1 = Array(dmi.field)
 
     dx = 2e-9
 
-    expected_fx = 1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_x(0, -1, 0, 4, 5, 6)
-    expected_fy = 1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_y(0, -1, 0, 4, 5, 6)
-    expected_fz = 1.0 * (D / dx / (JuMag.mu_0 * Ms)) * JuMag.cross_z(0, -1, 0, 4, 5, 6)
+    expected_fx = 1.0 * (D / dx / (NuMag.mu_0 * Ms)) * NuMag.cross_x(0, -1, 0, 4, 5, 6)
+    expected_fy = 1.0 * (D / dx / (NuMag.mu_0 * Ms)) * NuMag.cross_y(0, -1, 0, 4, 5, 6)
+    expected_fz = 1.0 * (D / dx / (NuMag.mu_0 * Ms)) * NuMag.cross_z(0, -1, 0, 4, 5, 6)
 
     @test isapprox(f1[1], expected_fx)
     @test isapprox(f1[2], expected_fy)

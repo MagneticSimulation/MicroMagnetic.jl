@@ -1,11 +1,11 @@
 module MetalExt
 
-import JuMag
+import NuMag
 using Metal
 
 function set_metal_backend()
-    JuMag.all_backends[4] = Metal.MetalBackend()
-    JuMag.set_backend("apple")
+    NuMag.all_backends[4] = Metal.MetalBackend()
+    NuMag.set_backend("apple")
     return nothing
 end
 

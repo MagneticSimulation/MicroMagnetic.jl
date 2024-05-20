@@ -1,6 +1,6 @@
 using Documenter
 using DemoCards
-using JuMag
+using NuMag
 #using DocumenterTools: Themes
 
 tutorials, tutorials_cb = makedemos("tutorials")
@@ -23,9 +23,9 @@ PAGES = ["Home" =>"index.md",
 if "warnonly=true" in ARGS
     @info("Option warnonly=true is enabled.")
     makedocs(
-        sitename = "JuMag.jl",
+        sitename = "NuMag.jl",
         format = format,
-        modules = [JuMag],
+        modules = [NuMag],
         pages = PAGES,
         highlightsig = true,
         checkdocs = :none,
@@ -33,9 +33,9 @@ if "warnonly=true" in ARGS
     )
 else
     makedocs(
-        sitename = "JuMag.jl",
+        sitename = "NuMag.jl",
         format = format,
-        modules = [JuMag],
+        modules = [NuMag],
         pages = PAGES,
         highlightsig = true,
         checkdocs = :none
@@ -48,6 +48,6 @@ tutorials_cb()
 
 deploydocs(
     #deps = Deps.pip("pygments", "mkdocs", "python-markdown-math"),
-    repo = "github.com/ww1g11/JuMag.jl.git"
+    repo = "github.com/ww1g11/NuMag.jl.git"
 )
 

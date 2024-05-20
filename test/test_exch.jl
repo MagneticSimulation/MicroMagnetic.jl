@@ -1,4 +1,4 @@
-using JuMag
+using NuMag
 using Test
 
 function A_fun(i, j, k, dx, dy, dz)
@@ -22,11 +22,11 @@ function test_exch_scalar(Nx=50)
     init_m0(sim, m0_fun; norm=false)
     exch = add_exch(sim, A_fun)
 
-    JuMag.effective_field(sim, sim.spin, 0.0)
+    NuMag.effective_field(sim, sim.spin, 0.0)
 
     if isa(sim.spin, Array)
         f1 = Array(exch.field)
-        JuMag.effective_field_debug(exch, sim, sim.spin, 0.0)
+        NuMag.effective_field_debug(exch, sim, sim.spin, 0.0)
         @test isapprox(f1, exch.field, atol=1e-10)
     end
 
@@ -51,7 +51,7 @@ function test_exch_scalar(Nx=50)
     return init_m0(sim, (0.6, 0.8, 0))
     #r = add_exch_rkky(sim, sigma)
 
-    #JuMag.effective_field(sim, sim.spin, 0.0)
+    #NuMag.effective_field(sim, sim.spin, 0.0)
     #b = reshape(sim.field, 3, sim.n_total)
 
     #fx = sigma / Delta / (mu0 * Ms) * 0.6
@@ -97,7 +97,7 @@ function test_exch_vector(direction=:x)
     ex1 = add_exch(sim, A_fun; name="ex1")
     ex2 = add_exch(sim, A; name="ex2")
 
-    JuMag.effective_field(sim, sim.spin, 0.0)
+    NuMag.effective_field(sim, sim.spin, 0.0)
 
     f1 = Array(ex1.field)
     f2 = Array(ex2.field)
