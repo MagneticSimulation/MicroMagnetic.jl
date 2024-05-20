@@ -47,7 +47,6 @@ tutorials_cb()
 #examples_cb()
 
 deploydocs(
-    #deps = Deps.pip("pygments", "mkdocs", "python-markdown-math"),
     repo = "github.com/ww1g11/NuMag.jl.git"
 )
 
