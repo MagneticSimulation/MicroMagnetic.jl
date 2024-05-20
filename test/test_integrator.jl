@@ -1,4 +1,4 @@
-using NuMag
+using MicroMag
 using Test
 
 function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
@@ -26,7 +26,7 @@ function test_integrator(; integrator="RungeKutta")
     init_m0(sim, (1.0, 0, 0))
 
     for i in 1:300
-        NuMag.advance_step(sim, sim.driver.integrator)
+        MicroMag.advance_step(sim, sim.driver.integrator)
     end
     t = sim.driver.integrator.t
     #println("Running at time=", t)

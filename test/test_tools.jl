@@ -1,4 +1,4 @@
-using NuMag
+using MicroMag
 using Test
 using Printf
 using PyCall
@@ -40,8 +40,8 @@ end
 function test_projection()
     ovf = read_ovf("test_tools")
     m = reshape(ovf.data, (3,32,64,16))
-    m_padded = NuMag.vector_padding(m, 128,128,128)
-    m = NuMag.vector_field_projection(m_padded, 0.0, "x")
+    m_padded = MicroMag.vector_padding(m, 128,128,128)
+    m = MicroMag.vector_field_projection(m_padded, 0.0, "x")
     mx, my, mz = m[1,:,:], m[2,:,:], m[3,:,:]
     @test abs(mx[48,64] - 0) < 1e-6
     @test abs(mx[49,64] - 16*cos(5/3*pi)) < 1e-6
@@ -55,8 +55,8 @@ end
 function test_projection2()
     m = zeros(3,5,5,5)
     m[3,:,:,:] .= 1
-    m_padded = NuMag.vector_padding(m, 9,9,9)
-    mp = NuMag.vector_field_projection(m_padded, 0.0, "x")
+    m_padded = MicroMag.vector_padding(m, 9,9,9)
+    mp = MicroMag.vector_field_projection(m_padded, 0.0, "x")
     mx, my, mz = mp[1,:,:], mp[2,:,:], mp[3,:,:]
     @test abs(mx[3,3] - 0)< 1e-6
     @test abs(mx[2,2] - 0) < 1e-6
@@ -65,7 +65,7 @@ function test_projection2()
     @test abs(mz[3,3] - (-1*5))< 1e-6
     @test abs(mz[2,2] - 0) < 1e-6
 
-    mp = NuMag.vector_field_projection(m_padded, 90.0, "x")
+    mp = MicroMag.vector_field_projection(m_padded, 90.0, "x")
     mx, my, mz = mp[1,:,:], mp[2,:,:], mp[3,:,:]
     @test abs(mx[3,3] - 0)< 1e-6
     @test abs(mx[2,2] - 0) < 1e-6
@@ -74,7 +74,7 @@ function test_projection2()
     @test abs(mz[3,3] - 0)< 1e-6
     @test abs(mz[2,2] - 0) < 1e-6
 
-    mp = NuMag.vector_field_projection(m_padded, 90.0, "y")
+    mp = MicroMag.vector_field_projection(m_padded, 90.0, "y")
     mx, my, mz = mp[1,:,:], mp[2,:,:], mp[3,:,:]
     @test abs(mx[3,3] - (-1*5))< 1e-6
     @test abs(mx[2,2] - 0) < 1e-6

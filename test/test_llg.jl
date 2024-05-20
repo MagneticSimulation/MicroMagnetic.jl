@@ -1,4 +1,4 @@
-using NuMag
+using MicroMag
 using Test
 
 function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
@@ -56,7 +56,7 @@ function test_llg_rk(integrator="RungeKutta")
     init_m0(sim, (1.0, 0, 0))
 
     for i in 1:300
-        NuMag.run_step(sim, sim.driver)
+        MicroMag.run_step(sim, sim.driver)
     end
 
     #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])

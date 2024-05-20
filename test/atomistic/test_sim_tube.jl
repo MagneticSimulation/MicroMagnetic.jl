@@ -1,7 +1,7 @@
-using NuMag
+using MicroMag
 using Test
 
-NuMag.cuda_using_double(true)
+MicroMag.cuda_using_double(true)
 
 function m0_fun(i, k, nr, nz)
 
@@ -30,7 +30,7 @@ function relax_system()
 
     relax(sim, maxsteps=1000, stopping_dmdt=1e-5, using_time_factor=false)
 
-    NuMag.save_vtu(sim, "skx")
+    MicroMag.save_vtu(sim, "skx")
 
     #Q = compute_skyrmion_number(Array(sim.spin),mesh)
 end

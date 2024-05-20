@@ -2,12 +2,12 @@
 # title: Calculating micromagnetic energies
 # author: Weiwei Wang
 # date: 2024-05-16
-# description: an example to demostrate how to compute micromagnetic energies in NuMag.
+# description: an example to demostrate how to compute micromagnetic energies in MicroMag.
 # tag: tutorial
 # ---
 
-# Import NuMag
-using NuMag
+# Import MicroMag
+using MicroMag
 
 # Create a finite difference mesh
 mesh =  FDMesh(dx=5e-9, dy=5e-9, dz=5e-9, nx=10, ny=10, nz=1);
@@ -23,7 +23,7 @@ demag = add_demag(sim);
 zeeman = add_zeeman(sim, (0,0,1e5));
 
 # Calculate the effective fields and energies
-NuMag.effective_field(sim, sim.spin)
+MicroMag.effective_field(sim, sim.spin)
 
 # Calculate the total energies
 println("Demag Energy: ",sum(demag.energy), " J")

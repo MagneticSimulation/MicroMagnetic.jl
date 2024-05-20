@@ -2,11 +2,11 @@
 
 ### How the magnetization is stored in the array `spin`?
 
-In NuMag, the magnetization is stored in a 1D array with the form ``[m_{1,x}, m_{1, y}, m_{1, z}, ..., m_{n,x}, m_{n, y}, m_{n, z}]``
+In MicroMag, the magnetization is stored in a 1D array with the form ``[m_{1,x}, m_{1, y}, m_{1, z}, ..., m_{n,x}, m_{n, y}, m_{n, z}]``
 
 ### How to get the global index of magnetization at site ``(i,j,k)`` ?
 
-In NuMag, the global index can be obtained using the following function
+In MicroMag, the global index can be obtained using the following function
 
 ```julia
 function index(i::Int64, j::Int64, k::Int64, nx::Int64, ny::Int64, nz::Int64)
@@ -36,15 +36,15 @@ Alternatively, we can use reshape function
   fx,fy,fz = f[:, i,j,k]
 ```
 
-### How to run NuMag in a cluster node with multiple GPUs?
+### How to run MicroMag in a cluster node with multiple GPUs?
 
-In the long run, NuMag will support multiple GPUs. However, here we discuss the common scenario that one needs to change
+In the long run, MicroMag will support multiple GPUs. However, here we discuss the common scenario that one needs to change
 some parameters systematically, such as the geometry size, or cell size, or external field, or charge current as a driving force.
 In these cases, the simulation can be run in parallel since they are independent tasks. Here is a demo that using 4 GPUs to relax
 the system with different sizes. 
 
 ```julia
-@everywhere using NuMag
+@everywhere using MicroMag
 @everywhere using Printf
 @everywhere using CUDAnative
 

@@ -1,11 +1,11 @@
 module oneAPIExt
 
-import NuMag
+import MicroMag
 using oneAPI
 
 function set_oneApi_backend()
-    NuMag.all_backends[3] = oneAPI.oneAPIBackend()
-    NuMag.set_backend("intel")
+    MicroMag.all_backends[3] = oneAPI.oneAPIBackend()
+    MicroMag.set_backend("intel")
     return nothing
 end
 

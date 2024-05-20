@@ -7,7 +7,7 @@
 # ---
 
 #=====================
-In NuMag, the current density is denoted using u
+In MicroMag, the current density is denoted using u
 ```math
 \mathbf{u} = \frac{p a^3}{2 e S} \mathbf{j}.
 ```
@@ -26,7 +26,7 @@ In NuMag, the current density is denoted using u
     | Gyromagnetic ratio    |  $\gamma=2 \mu_B/\hbar$
 =====================#
 
-using NuMag
+using MicroMag
 using Printf
 using NPZ
 using DelimitedFiles

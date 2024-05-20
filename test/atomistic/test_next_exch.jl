@@ -1,4 +1,4 @@
-using NuMag
+using MicroMag
 using Test
 
 function  ini_skx(i,j,k,dx,dy,dz)

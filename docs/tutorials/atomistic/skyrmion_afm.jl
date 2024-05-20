@@ -2,11 +2,11 @@
 # title: Antiferromagnetic skyrmion
 # author: Weiwei Wang
 # date: 2022-10-04
-# description: an example to demostrate how to obtain an AFM skyrmion in NuMag.
+# description: an example to demostrate how to obtain an AFM skyrmion in MicroMag.
 # tag: atomistic; skyrmion
 # ---
 
-using NuMag
+using MicroMag
 using Printf
 
 @using_gpu()

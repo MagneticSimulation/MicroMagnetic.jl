@@ -1,4 +1,4 @@
-using NuMag
+using MicroMag
 using Test
 
 function init_dw(i, j, k, dx, dy, dz)
@@ -25,7 +25,7 @@ function relax_system(; driver="LLG")
 
     init_m0(sim, init_dw)
     relax(sim; maxsteps=2000, stopping_dmdt=0.1)
-    m = NuMag.average_m(sim)
+    m = MicroMag.average_m(sim)
     @test abs(m[1]) < 0.01
     @test abs(m[2]) < 0.04
     @test abs(m[3]) < 0.01

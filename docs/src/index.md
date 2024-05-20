@@ -1,4 +1,4 @@
-# NuMag.jl
+# MicroMag.jl
 
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
@@ -18,20 +18,20 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 
 ## Installation
 
-Install NuMag is straightforward as long as Julia (<http://julialang.org/downloads/>) is installed, and it is equally easy in Windows, Linux and Mac.  
+Install MicroMag is straightforward as long as Julia (<http://julialang.org/downloads/>) is installed, and it is equally easy in Windows, Linux and Mac.  
 
 In [Julia](http://julialang.org), packages can be easily installed with the Julia package manager.
 From the Julia REPL, type ] to enter the Pkg REPL mode and run:
 
 ```julia
-pkg> add https://github.com/ww1g11/NuMag.jl
+pkg> add https://github.com/ww1g11/MicroMag.jl
 ```
 
 Or, equivalently:
 
 ```julia
 julia> using Pkg;
-julia> Pkg.add("https://github.com/ww1g11/NuMag.jl")
+julia> Pkg.add("https://github.com/ww1g11/MicroMag.jl")
 ```
 
 To enable GPU support, one has to install one of the following packages:
@@ -50,10 +50,10 @@ For example, we can install `CUDA` for NVIDIA GPUs:
 pkg> add CUDA
 ```
 
-Now we will see similar messages if we type `using NuMag`
+Now we will see similar messages if we type `using MicroMag`
 
 ```
-julia> using NuMag
+julia> using MicroMag
 julia> using CUDA
 Precompiling CUDAExt
   1 dependency successfully precompiled in 8 seconds. 383 already precompiled.
@@ -65,7 +65,7 @@ Assuming we have a cylindrical FeG sample with a diameter of 100 nm and a height
 We can use the following script: 
 
 ```julia
-using NuMag
+using MicroMag
 @using_gpu() #Import available GPU packages such as CUDA, AMDGPU, oneAPI or Metal
 
 # Create a cylindrical shape with a diameter of 100 nm and a height of 40 nm
@@ -87,12 +87,12 @@ save_vtk(sim, "m_demag", fields=["demag"])
 ```
 The magnetization and the stray field around the cylindrical sample are stored in `m_demag.vts`, which can be opened using Paraview. 
 
-# Structure of NuMag
+# Structure of MicroMag
 ```@raw html
 <div class="mermaid">
 graph LR;
-    NuMag --> Micromagnetic
-    NuMag --> Atomistic
+    MicroMag --> Micromagnetic
+    MicroMag --> Atomistic
     Micromagnetic --> B[Energies: exch, dmi, ...]
     Atomistic --> B[Energies: exch, dmi, ...]
     Micromagnetic --> D[Drivers: SD, LLG, STT, SOT]

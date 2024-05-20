@@ -6,7 +6,7 @@
 # tag: atomistic; skyrmion
 # ---
 
-using NuMag
+using MicroMag
 using NPZ
 
 function m0_fun(i, j, k, dx, dy, dz)
