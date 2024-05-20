@@ -20,7 +20,7 @@ function relax_system(mesh)
 	add_anis(sim, 1e5, axis=(1,0,0))
 
 	init_m0(sim, init_dw)
-	relax(sim, maxsteps=2000, stopping_dmdt=0.1, save_vtk_every = -1)
+	relax(sim, maxsteps=2000, stopping_dmdt=0.1)
 	npzwrite("stt_m0.npy", Array(sim.spin))
 end
 

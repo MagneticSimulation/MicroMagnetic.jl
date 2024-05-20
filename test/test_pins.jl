@@ -32,7 +32,7 @@ function relax_system(;driver="LLG")
     #add_anis(sim, 1e5, axis=(1,0,0))
 
     init_m0(sim, init_mm)
-    relax(sim, maxsteps=10000, stopping_dmdt=0.1, save_vtk_every = -1)
+    relax(sim, maxsteps=10000, stopping_dmdt=0.1)
     save_vtk(sim, "pinning.vts")
     m = Array(sim.spin)
 
