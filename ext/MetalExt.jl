@@ -1,11 +1,11 @@
 module MetalExt
 
-import NuMag
+import MicroMag
 using Metal
 
 function set_metal_backend()
-    NuMag.all_backends[4] = Metal.MetalBackend()
-    NuMag.set_backend("apple")
+    MicroMag.all_backends[4] = Metal.MetalBackend()
+    MicroMag.set_backend("apple")
     return nothing
 end
 

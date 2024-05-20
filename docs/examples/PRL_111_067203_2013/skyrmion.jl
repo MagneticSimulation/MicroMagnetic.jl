@@ -19,7 +19,7 @@
 
 ===============#
 
-using NuMag
+using MicroMag
 using Printf
 using NPZ
 

@@ -1,10 +1,10 @@
-using NuMag
+using MicroMag
 using Test
 
 @testset "Test ovfs cuda" begin
     m = [0.6, 0.8, 0, 0.6, 0.8, 0]
     mesh = FDMesh(nx = 2, ny = 1, nz = 1, dx = 1e-9, dy = 1e-9, dz = 1e-9)
-    NuMag.cuda_using_double(true)
+    MicroMag.cuda_using_double(true)
     mesh = FDMeshGPU(nx = 2, ny = 1, nz = 1, dx = 1e-9, dy = 1e-9, dz = 1e-9)
     sim = Sim(mesh, name = "double_saving")
     set_Ms(sim, 8.0e5)
@@ -13,7 +13,7 @@ using Test
     save_ovf(sim, "double_saved_single", type = Float32)
     save_ovf(sim, "double_saved_string", type = String)
 
-    NuMag.cuda_using_double(false)
+    MicroMag.cuda_using_double(false)
     sim = Sim(mesh, name = "single_saving")
     set_Ms(sim, 8.0e5)
     init_m0(sim, (0.6,0.8,0))
@@ -37,10 +37,10 @@ using Test
         end
     end
 
-    NuMag.cuda_using_double(true)
+    MicroMag.cuda_using_double(true)
     run_test()
 
-    NuMag.cuda_using_double(false)
+    MicroMag.cuda_using_double(false)
     run_test()
 
     for f in testing_files

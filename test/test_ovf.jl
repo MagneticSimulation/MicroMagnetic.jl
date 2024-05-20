@@ -1,4 +1,4 @@
-using NuMag
+using MicroMag
 using Test
 
 function init_saving(mesh, m)

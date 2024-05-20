@@ -12,8 +12,8 @@ using CairoMakie
 using DelimitedFiles
 using CubicSplines
 
-using NuMag
-#NuMag.cuda_using_double(true);
+using MicroMag
+#MicroMag.cuda_using_double(true);
 
 # In this example, we will compute the energy barrier of a skyrmion collapse into the ferromagnetic state using the NEB method. 
 # Firstly, we create a create_sim method to describe the studied system. For example, the system is a thin film (120x120x2 nm^3) 

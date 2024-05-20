@@ -1,4 +1,4 @@
-using NuMag
+using MicroMag
 using Test
 using DelimitedFiles
 
@@ -30,8 +30,8 @@ function test_fields(A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0, 0, 1))
     dmi2 = add_dmi(sim, DI; type="interfacial")
     anis = add_anis(sim, Ku; axis=axis)
 
-    NuMag.effective_field(sim, sim.spin, 0.0)
-    NuMag.effective_field(sim, sim.spin, 0.0)
+    MicroMag.effective_field(sim, sim.spin, 0.0)
+    MicroMag.effective_field(sim, sim.spin, 0.0)
 
     #println("max exch error: ",maximum(abs.(exch.field-fe)))
     #println(maximum(abs.(demag.field-fd)))

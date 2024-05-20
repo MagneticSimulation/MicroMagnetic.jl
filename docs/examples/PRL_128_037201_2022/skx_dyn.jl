@@ -27,7 +27,7 @@ i.e., $J = \hbar = \gamma = S = a = 1$ in the simulation.
 
 =====================#
 
-using NuMag
+using MicroMag
 using Printf
 using NPZ
 using DelimitedFiles

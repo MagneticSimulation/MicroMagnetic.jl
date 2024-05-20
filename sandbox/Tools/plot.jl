@@ -1,5 +1,5 @@
 using PyCall
-using NuMag
+using MicroMag
 
 
 """

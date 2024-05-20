@@ -1,6 +1,6 @@
 using Documenter
 using DemoCards
-using NuMag
+using MicroMag
 #using DocumenterTools: Themes
 
 tutorials, tutorials_cb = makedemos("tutorials")
@@ -23,9 +23,9 @@ PAGES = ["Home" =>"index.md",
 if "warnonly=true" in ARGS
     @info("Option warnonly=true is enabled.")
     makedocs(
-        sitename = "NuMag.jl",
+        sitename = "MicroMag.jl",
         format = format,
-        modules = [NuMag],
+        modules = [MicroMag],
         pages = PAGES,
         highlightsig = true,
         checkdocs = :none,
@@ -33,9 +33,9 @@ if "warnonly=true" in ARGS
     )
 else
     makedocs(
-        sitename = "NuMag.jl",
+        sitename = "MicroMag.jl",
         format = format,
-        modules = [NuMag],
+        modules = [MicroMag],
         pages = PAGES,
         highlightsig = true,
         checkdocs = :none
@@ -47,6 +47,6 @@ tutorials_cb()
 #examples_cb()
 
 deploydocs(
-    repo = "github.com/ww1g11/NuMag.jl.git"
+    repo = "github.com/ww1g11/MicroMag.jl.git"
 )
 

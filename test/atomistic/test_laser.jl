@@ -1,6 +1,6 @@
-using NuMag
+using MicroMag
 using Test
-NuMag.cuda_using_double(true)
+MicroMag.cuda_using_double(true)
 
 function analytical_field_001(mu_s, mx, my, mz, lambda, E, H, omega, delta, t)
   sin_t = sin(omega*t + delta)
@@ -61,17 +61,17 @@ function test_laser()
     t = 9.0
     laser = add_magnetoelectric_laser(sim, lambda, E, B, omega, delta=delta, direction=001)
 
-    NuMag.effective_field(laser, sim, sim.spin, t)
+    MicroMag.effective_field(laser, sim, sim.spin, t)
     af001 = analytical_field_001(mu_s, mx, my, mz, lambda, E, B, omega, delta, t)
     @test abs(maximum(af001 - Array(sim.field))) < 1e-10
     
     laser = add_magnetoelectric_laser(sim, lambda, E, B, omega, delta=delta, direction=110, name="l2")
-    NuMag.effective_field(laser, sim, sim.spin, t)
+    MicroMag.effective_field(laser, sim, sim.spin, t)
     af110 = analytical_field_110(mu_s, mx, my, mz, lambda, E, B, omega, delta, t)
     @test abs(maximum(af110 - Array(sim.field))) < 1e-10
 
     laser = add_magnetoelectric_laser(sim, lambda, E, B, omega, delta=delta, direction=111, name="111")
-    NuMag.effective_field(laser, sim, sim.spin, t)
+    MicroMag.effective_field(laser, sim, sim.spin, t)
     af111 = analytical_field_111(mu_s, mx, my, mz, lambda, E, B, omega, delta, t)
     @test abs(maximum(af111 - Array(sim.field))) < 1e-10
     

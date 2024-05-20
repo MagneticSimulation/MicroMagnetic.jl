@@ -1,4 +1,4 @@
-using NuMag
+using MicroMag
 using Test
 
 include("test_mesh.jl")

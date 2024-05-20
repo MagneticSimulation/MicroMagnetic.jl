@@ -54,7 +54,7 @@ function save_vtk(sim::AbstractSim, fname::String; fields::Array{String,1}=Strin
         fields = Set(fields)
         for i in sim.interactions
             if i.name in fields
-                NuMag.effective_field(i, sim, sim.spin, 0.0)
+                MicroMag.effective_field(i, sim, sim.spin, 0.0)
                 f = isa(i.field, Array) ? i.field : Array(i.field)
                 b = reshape(f, (3, nx, ny, nz))
                 vtk_cell_data(vtk, b, i.name)
@@ -85,7 +85,7 @@ function save_vtk_points(sim::AbstractSim, fname::String; fields::Array{String,1
         fields = Set(fields)
         for i in sim.interactions
             if i.name in fields
-                NuMag.effective_field(i, sim, sim.spin, 0.0)
+                MicroMag.effective_field(i, sim, sim.spin, 0.0)
                 f = isa(i.field, Array) ? i.field : Array(i.field)
                 b = reshape(f, (3, nx, ny, nz))
                 vtk_point_data(vtk, b, i.name)

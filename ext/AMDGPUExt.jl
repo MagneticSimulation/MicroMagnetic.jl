@@ -1,11 +1,11 @@
 module AMDGPUExt
 
-import NuMag
+import MicroMag
 using AMDGPU
 
 function set_amd_backend()
-    NuMag.all_backends[2] = AMDGPU.ROCBackend()
-    NuMag.set_backend("amd")
+    MicroMag.all_backends[2] = AMDGPU.ROCBackend()
+    MicroMag.set_backend("amd")
     return nothing
 end
 

@@ -1,4 +1,4 @@
-using NuMag
+using MicroMag
 using Test
 
 function analytical_llg(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)

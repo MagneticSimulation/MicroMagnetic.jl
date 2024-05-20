@@ -1,7 +1,7 @@
-using NuMag
+using MicroMag
 using Test
 
-NuMag.cuda_using_double(true)
+MicroMag.cuda_using_double(true)
 
 mesh = FDMeshGPU(dx=2e-9, dy=2e-9, dz=2e-9, nx=1, ny=1, nz=3, pbc="xy")
 

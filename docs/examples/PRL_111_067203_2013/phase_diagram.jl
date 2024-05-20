@@ -6,7 +6,7 @@
 # tag: atomistic; skyrmion
 # ---
 
-using NuMag
+using MicroMag
 using Printf
 using NPZ
 
