@@ -11,12 +11,12 @@ Set the floating-point type for JuMag.
 Defaults to Float64. Use Float32 if single-precision computation is required.
 """
 function set_float(x::Type{<:AbstractFloat}=Float64)
-    Float[] = x
+    return Float[] = x
 end
 
 const groupsize = Ref(512)
 function set_groupsize(x=n)
-    groupsize[] = x
+    return groupsize[] = x
 end
 
 const default_backend = Backend[CPU()]
@@ -111,7 +111,9 @@ end
 
 function ovf2png() end
 function plot_m() end
-export ovf2png, plot_m
+function jdl2movie() end
+
+export ovf2png, plot_m, jdl2movie
 
 include("const.jl")
 include("micro/mesh.jl")

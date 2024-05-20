@@ -16,8 +16,11 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 
     field_kb = kernel_array(field)
     energy_kb = create_zeros(n_total)
-
-    zeeman = Zeeman(field_kb, energy_kb, name)
+    if isa(H0, Tuple)
+        zeeman = Zeeman(H0, field_kb, energy_kb, name)
+    else
+        zeeman = Zeeman((0,0,0), field_kb, energy_kb, name)
+    end
     push!(sim.interactions, zeeman)
 
     if sim.save_data
@@ -25,7 +28,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
         if isa(H0, Tuple) && length(H0) == 3
             field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
                                     string(name, "_Hz")), ("A/m", "A/m", "A/m"),
-                                   o::AbstractSim -> H0)
+                                   o::AbstractSim -> o.interactions[id].H0)
             push!(sim.saver.items, field_item)
         end
         push!(sim.saver.items,
@@ -57,6 +60,9 @@ function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeema
     for i in sim.interactions
         if i.name == name
             copyto!(i.field, field)
+            if isa(H0, Tuple)
+                i.H0 = H0
+            end
             return nothing
         end
     end
