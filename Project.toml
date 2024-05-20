@@ -1,4 +1,4 @@
-name = "NuMag"
+name = "MicroMag"
 uuid = "cef16ca0-16a8-11ef-389e-9fbcf1974e83"
 authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>", "Boyao Lv <lvboyao@mail.ustc.edu.cn>"]
 version = "0.3.1"
