@@ -1,9 +1,17 @@
+# ---
+# title: Antiferromagnetic skyrmion
+# author: Weiwei Wang
+# date: 2022-10-04
+# description: an example to demostrate how to obtain an AFM skyrmion in JuMag.
+# tag: atomistic; skyrmion
+# ---
+
 using JuMag
 using Printf
 
-JuMag.cuda_using_double(true)
+@using_gpu()
 
-mesh =  CubicMeshGPU(nx=800, ny=800, nz=1, dx=0.418e-9, dy=0.418e-9, dz=0.418e-9, pbc="xy")
+mesh =  CubicMesh(nx=800, ny=800, nz=1, dx=0.418e-9, dy=0.418e-9, dz=0.418e-9, pbc="xy")
 
 function m0_fun(i, j, k, dx, dy, dz)
   flag = (i+j)%2 == 0 ? 1 : -1 
@@ -23,21 +31,20 @@ function relax_system()
   add_exch(sim, -34.4*meV)
   add_dmi(sim, 1.09*meV)
   add_anis(sim, 0.053*meV, axis=(0,0,1))
-  add_demag(sim)
+  #add_demag(sim)
 
   init_m0(sim, m0_fun)
 
   #using LLG to relax the system for the first 500 steps
-  relax(sim, maxsteps=500, stopping_dmdt=0.1)
+  relax(sim, maxsteps=500, stopping_dmdt=1e-4)
 
   #change driver to SD since SD is much faster than LLG
   set_driver(sim, driver="SD")
   sim.driver.max_tau = 1
-  relax(sim, maxsteps=50000, stopping_dmdt=0.1, save_vtk_every = 1000)
+  relax(sim, maxsteps=50000, stopping_dmdt=1e-4)
 
-  save_ovf(sim, "afm_skx")
-  JuMag.ovf2png("afm_skx")
+  save_vtk(sim, "afm_skx")
 end
 
 
-relax_system()
+# relax_system()
