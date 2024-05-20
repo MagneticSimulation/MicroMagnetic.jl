@@ -120,6 +120,7 @@ mutable struct MicroSim{T<:AbstractFloat} <: AbstractSim
 end
 
 mutable struct Zeeman{T<:AbstractFloat} <: MicroEnergy
+    H0::Tuple
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String

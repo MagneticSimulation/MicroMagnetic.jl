@@ -1,5 +1,5 @@
 
-export compute_skyrmion_number
+export compute_skyrmion_number, compute_guiding_center
 
 function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh,
                       init::Number) where {T<:AbstractFloat}
