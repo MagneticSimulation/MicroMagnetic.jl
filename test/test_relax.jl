@@ -24,7 +24,7 @@ function relax_system(; driver="LLG")
     add_anis(sim, 1e5; axis=(1, 0, 0))
 
     init_m0(sim, init_dw)
-    relax(sim; maxsteps=2000, stopping_dmdt=0.1, save_vtk_every=1000)
+    relax(sim; maxsteps=2000, stopping_dmdt=0.1)
     m = JuMag.average_m(sim)
     @test abs(m[1]) < 0.01
     @test abs(m[2]) < 0.04

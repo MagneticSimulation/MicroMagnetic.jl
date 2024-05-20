@@ -20,7 +20,7 @@ sim = create_sim(mesh, Ms=8.6e5, m0=(1,1,1));
 demag = add_demag(sim);
 
 # Consider the zeeman energy
-zeeman = add_zeeman(sim, (0,0,1e5))
+zeeman = add_zeeman(sim, (0,0,1e5));
 
 # Calculate the effective fields and energies
 JuMag.effective_field(sim, sim.spin)
