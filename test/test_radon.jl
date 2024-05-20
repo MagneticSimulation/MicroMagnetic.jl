@@ -1,8 +1,8 @@
 using Test
-using JuMag
+using NuMag
 
-warp = JuMag.warp
-radon = JuMag.radon
+warp = NuMag.warp
+radon = NuMag.radon
 
 function test_warp()
     a=zeros(4,4)
@@ -50,7 +50,7 @@ function test_radon_3d()
     a[2,3,3] = 1e6
     a[3,3,3] = 1e7
 
-    projection = JuMag.radon_x(a, 0.0)
+    projection = NuMag.radon_x(a, 0.0)
     @test isapprox(
         projection, 
         [   0. 0. 0. 0.;
@@ -60,7 +60,7 @@ function test_radon_3d()
     )
 
 
-    projection = JuMag.radon_x(a, pi/2)
+    projection = NuMag.radon_x(a, pi/2)
     @test isapprox(
         projection, 
         [   0. 0. 0. 0.;
@@ -69,7 +69,7 @@ function test_radon_3d()
             0. 0. 0. 0.]
     )
 
-    projection = JuMag.radon_x(a, -pi/2)
+    projection = NuMag.radon_x(a, -pi/2)
     @test isapprox(
         projection, 
         [   0. 0. 0. 0.;
@@ -78,7 +78,7 @@ function test_radon_3d()
             0. 0. 0. 0.]
     )
 
-    projection = JuMag.radon_y(a, 0.0)
+    projection = NuMag.radon_y(a, 0.0)
     @test isapprox(
         projection, 
         [   0. 0. 0. 0.;
@@ -88,7 +88,7 @@ function test_radon_3d()
     )
 
 
-    projection = JuMag.radon_y(a, pi/2)
+    projection = NuMag.radon_y(a, pi/2)
     @test isapprox(
         projection, 
         [   0. 0. 0. 0.;
@@ -97,7 +97,7 @@ function test_radon_3d()
             0. 0. 0. 0.]
     )
 
-    projection = JuMag.radon_y(a, -pi/2)
+    projection = NuMag.radon_y(a, -pi/2)
     @test isapprox(
         projection, 
         [   0. 0. 0. 0.;
@@ -116,17 +116,17 @@ function test_vector_field_projection()
     end
 
     gamma = pi/3
-    projection = JuMag.radon_x(a, gamma)
-    vy = JuMag.radon_x(a[2,:,:,:], gamma)
-    vz = JuMag.radon_x(a[3,:,:,:], gamma)
+    projection = NuMag.radon_x(a, gamma)
+    vy = NuMag.radon_x(a[2,:,:,:], gamma)
+    vz = NuMag.radon_x(a[3,:,:,:], gamma)
     @test isapprox(
         projection, -1 .* (cos(gamma).*vz + sin(gamma).*vy)
     )
 
     beta = pi/4
-    projection = JuMag.radon_y(a, beta)
-    vx = JuMag.radon_y(a[1,:,:,:], beta)
-    vz = JuMag.radon_y(a[3,:,:,:], beta)
+    projection = NuMag.radon_y(a, beta)
+    vx = NuMag.radon_y(a[1,:,:,:], beta)
+    vz = NuMag.radon_y(a[3,:,:,:], beta)
     @test isapprox(
         projection, -1 .* (cos(beta).*vz - sin(beta).*vx)
     )

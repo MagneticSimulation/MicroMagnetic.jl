@@ -1,5 +1,5 @@
-name = "JuMag"
-uuid = "8b6b6816-cea2-582c-a99f-83810c20db0f"
+name = "NuMag"
+uuid = "cef16ca0-16a8-11ef-389e-9fbcf1974e83"
 authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>", "Boyao Lv <lvboyao@mail.ustc.edu.cn>"]
 version = "0.3.0"
 

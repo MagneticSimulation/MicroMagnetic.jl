@@ -1,11 +1,11 @@
 module oneAPIExt
 
-import JuMag
+import NuMag
 using oneAPI
 
 function set_oneApi_backend()
-    JuMag.all_backends[3] = oneAPI.oneAPIBackend()
-    JuMag.set_backend("intel")
+    NuMag.all_backends[3] = oneAPI.oneAPIBackend()
+    NuMag.set_backend("intel")
     return nothing
 end
 

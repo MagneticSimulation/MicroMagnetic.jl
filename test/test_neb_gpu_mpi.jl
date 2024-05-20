@@ -1,4 +1,4 @@
-using JuMag
+using NuMag
 using Printf
 using Test
 using MPI
@@ -6,9 +6,9 @@ using MPI
 
 MPI.Init()
 
-JuMag.cuda_using_double(true)
+NuMag.cuda_using_double(true)
 
-JuMag.using_multiple_gpus() #comment out this line if you have multiple gpus
+NuMag.using_multiple_gpus() #comment out this line if you have multiple gpus
 
 #julia test_neb_gpu_mpi.jl //for single MPI process
 #mpiexec -np 2 julia test_neb_gpu_mpi.jl //for two MPI processes

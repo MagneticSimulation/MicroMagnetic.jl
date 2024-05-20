@@ -2,14 +2,14 @@
 # title: Magnetization state of a nanobar
 # author: Weiwei Wang
 # date: 2024-05-16
-# description: an example to demostrate how to obtain the magnetization distribution in JuMag.
+# description: an example to demostrate how to obtain the magnetization distribution in NuMag.
 # tag: tutorial
 # ---
 
 
 # In this example, we consider a nanobar with dimensions 60nm x 10nm x 5 nm
-# We first import JuMag and CairoMakie for plotting.
-using JuMag
+# We first import NuMag and CairoMakie for plotting.
+using NuMag
 using CairoMakie
 
 # We create a FDMesh

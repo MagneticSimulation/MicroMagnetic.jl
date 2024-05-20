@@ -1,4 +1,4 @@
-using JuMag
+using NuMag
 using Test
 
 function time_fun(t)
@@ -18,7 +18,7 @@ function test_zeeman()
     z1 = add_zeeman(sim, (1, 2, 2e3))
     z2 = add_zeeman(sim, (1, 2, 2e3), time_fun)
     
-    JuMag.effective_field(sim, sim.spin, 0.0)
+    NuMag.effective_field(sim, sim.spin, 0.0)
     f1 = Array(z1.field)
     f2 = Array(z2.field)
     @test f1[1] == 1.0
@@ -38,7 +38,7 @@ function test_zeeman()
 
     z2 = add_zeeman(sim, (1e3, 1e4, 1e5), time_fun)
 
-    JuMag.effective_field(sim, sim.spin, 1.23e-11)
+    NuMag.effective_field(sim, sim.spin, 1.23e-11)
     f2 = Array(z2.field)
     @test f2[1] == 1e3 * cos(1.23e-11*1e6)
     @test f2[2] == 1e4 * cos(1.23e-2)

@@ -1,4 +1,4 @@
-using JuMag
+using NuMag
 using Test
 
 function init_mm(i,j,k,dx,dy,dz)

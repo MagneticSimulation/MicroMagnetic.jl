@@ -19,7 +19,7 @@
 
 ===============#
 
-using JuMag
+using NuMag
 using Printf
 using NPZ
 

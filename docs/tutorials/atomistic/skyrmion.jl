@@ -2,13 +2,13 @@
 # title: Magnetic skyrmion
 # author: Weiwei Wang
 # date: 2022-10-04
-# description: an example to demostrate how to obtain a skyrmion in JuMag.
+# description: an example to demostrate how to obtain a skyrmion in NuMag.
 # tag: atomistic; skyrmion
 # ---
 
-# In this example, we show how to obtain a magnetic skyrmion using atomistic module in JuMag.
-# We import JuMag and use double float precision in the simulation.
-using JuMag
+# In this example, we show how to obtain a magnetic skyrmion using atomistic module in NuMag.
+# We import NuMag and use double float precision in the simulation.
+using NuMag
 using CairoMakie
 
 # We create a CubicMesh

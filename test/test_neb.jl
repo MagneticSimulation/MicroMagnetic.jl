@@ -1,4 +1,4 @@
-using JuMag
+using NuMag
 using Printf
 using NPZ
 using Test
@@ -6,12 +6,12 @@ using Test
 function test_convert()
     r, theta, psi = 2, pi/3, pi/2
     m0 = [r, theta, psi]
-    cartesian = JuMag.spherical2cartesian(m0, 1)
+    cartesian = NuMag.spherical2cartesian(m0, 1)
     @test isapprox(cartesian[1], r*sin(theta)*cos(psi))
     @test isapprox(cartesian[2], r*sin(theta)*sin(psi))
     @test isapprox(cartesian[3], r*cos(theta))
 
-    spherical = JuMag.cartesian2spherical(cartesian, 1)
+    spherical = NuMag.cartesian2spherical(cartesian, 1)
     @test isapprox(spherical[1], r)
     @test isapprox(spherical[2], theta)
     @test isapprox(spherical[3], psi)
@@ -20,18 +20,18 @@ end
 function test_inner_product()
     x1 = [1, 2., 3.]
     x2 = [4., 5., 6.]
-    z = JuMag.inner_product(x1,x2, 1)
+    z = NuMag.inner_product(x1,x2, 1)
     @test isapprox(z[1], 4+10+18)
 end
 
 function test_slerp()
     t1 = pi/2
-    x1 = JuMag.slerp([1, 0, 0.], [cos(t1), sin(t1), 0.], 1/3, 1)
+    x1 = NuMag.slerp([1, 0, 0.], [cos(t1), sin(t1), 0.], 1/3, 1)
     @test isapprox(x1, [cos(t1/3), sin(t1/3), 0.])
 
     t2 = 5/4 * pi
     t2_c = t2 - 2*pi
-    x2 = JuMag.slerp([1, 0, 0.], [cos(t2), sin(t2), 0.], 2/3, 1)
+    x2 = NuMag.slerp([1, 0, 0.], [cos(t2), sin(t2), 0.], 2/3, 1)
     @test isapprox(x2, [cos(t2_c * 2/3), sin(t2_c* 2/3), 0.])
 end
 
@@ -40,7 +40,7 @@ function test_init_images()
     x1 = [1, 0, 0.]
     x2 = [cos(t1), sin(t1), 0.]
     x3 = [-1, 0., 0.]
-    images = JuMag.init_images((x1,x2, x3), (2,1), 1)
+    images = NuMag.init_images((x1,x2, x3), (2,1), 1)
     @test isapprox(images[:,1], x1)
     @test isapprox(images[:,2], [cos(t1/3), sin(t1/3), 0.])
     @test isapprox(images[:,3], [cos(2*t1/3), sin(2*t1/3), 0.])
@@ -68,7 +68,7 @@ function test_init_neb()
 
     init_m0(sim, (0,1,0.))
     m1 = Array(sim.spin)
-    neb = JuMag.NEB(sim, (m0, m1), (1,); name="test")
+    neb = NuMag.NEB(sim, (m0, m1), (1,); name="test")
     println(neb.images)
 end
 test_init_neb()

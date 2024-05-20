@@ -8,7 +8,7 @@
 
 #==============
 In the work, the authors considered the classical Heisenberg model on the 2D square lattice.
-The local magnetic moment $\mathbf{M}$ is the local spin $\mathbf{S}$ in JuMag. 
+The local magnetic moment $\mathbf{M}$ is the local spin $\mathbf{S}$ in NuMag. 
 
 !!! note "Used parameters in the simulation"
     |Parameter | Value  | 
@@ -23,7 +23,7 @@ The local magnetic moment $\mathbf{M}$ is the local spin $\mathbf{S}$ in JuMag.
 
 ===============#
 
-using JuMag
+using NuMag
 using Printf
 using NPZ
 
