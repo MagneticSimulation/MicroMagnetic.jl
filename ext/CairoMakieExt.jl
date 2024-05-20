@@ -190,7 +190,7 @@ function JuMag.jdl2movie(jdl_file; k = 1, component='z', figsize=(500, -1), fram
     plot_m(m, dx=dx, dy=dy, k=k, fig=fig, ax=ax, colorrange=colorrange=[-1, 1])
   end
 
-  record(update_function, fig, output, 1:save_m_every:steps; framerate = framerate)
+  record(update_function, fig, output, 0:save_m_every:steps; framerate = framerate)
 end
 
 end

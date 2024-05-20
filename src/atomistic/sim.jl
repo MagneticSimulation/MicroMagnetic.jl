@@ -100,18 +100,17 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
     N = sim.n_total
     field = create_zeros(3 * N)
     energy = create_zeros(N)
-    
+
     exch = HeisenbergExchange(Js, Js2, Js3, Js4, field, energy, name)
     push!(sim.interactions, exch)
     if sim.save_data
         id = length(sim.interactions)
         item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> o.interactions[id].total_energy)
+                         o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
     return exch
 end
-
 
 @doc raw"""
     add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
@@ -127,20 +126,20 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
     N = sim.n_total
     mesh = sim.mesh
     T = Float[]
-    field = create_zeros(3*N)
+    field = create_zeros(3 * N)
     energy = create_zeros(N)
 
     Dij = zeros(T, (3, mesh.n_ngbs))
-    
+
     if isa(sim.mesh, TriangularMesh)
-        for i = 1:6
-            theta = (i-1)*2*pi/6
-            Dij[:, i] .= [D*cos(theta), D*sin[theta], 0]
+        for i in 1:6
+            theta = (i - 1) * 2 * pi / 6
+            Dij[:, i] .= [D * cos(theta), D * sin[theta], 0]
         end
 
         if type == "interfacial"
-            for i = 1:6
-                Dij[:, i] .=  cross_product(Dij[:, i], [0,0,1.0])
+            for i in 1:6
+                Dij[:, i] .= cross_product(Dij[:, i], [0, 0, 1.0])
             end
             @info("Interfacial DMI for TriangularMesh has been added!")
         else
@@ -156,10 +155,10 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
         Dij[:, 4] .= [0, D, 0]
         Dij[:, 5] .= [0, 0, -D]
         Dij[:, 6] .= [0, 0, D]
-        
+
         if type == "interfacial"
-            for i = 1:6
-                Dij[:, i] .=  cross_product(Dij[:, i], [0,0,1.0])
+            for i in 1:6
+                Dij[:, i] .= cross_product(Dij[:, i], [0, 0, 1.0])
             end
             @info("Interfacial DMI for CubicMesh has been added!")
         else
@@ -193,7 +192,7 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
     if sim.save_data
         id = length(sim.interactions)
         item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> sum(o.interactions[id]))
+                         o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
     return dmi
@@ -315,7 +314,7 @@ function add_magnetoelectric_laser(sim::AtomisticSim, lambda::Float64, E::Float6
     if sim.save_data
         id = length(sim.interactions)
         item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> o.interactions[id].total_energy)
+                         o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
     return laser
@@ -338,7 +337,7 @@ function add_demag(sim::AtomisticSim; name="demag", Nx=0, Ny=0, Nz=0)
     if sim.save_data
         id = length(sim.interactions)
         item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> o.interactions[id].total_energy)
+                         o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
     return demag

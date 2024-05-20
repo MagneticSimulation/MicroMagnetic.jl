@@ -243,9 +243,9 @@ function set_driver(sim::AbstractSim, args::Dict)
 end
 
 """
-    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_m_every = 10, save_ovf_every=-1, ovf_format = "binary", ovf_folder="ovfs", save_vtk_every=-1, vtk_folder="vtks",fields::Array{String, 1} = String[])
+    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1, save_m_every=-1, using_time_factor=true)
 
-Relax the system using `LLG` or `SD` driver. This function works for both micromagnetic (FD and FE) and atomistic simulations, in both CPU and GPU. 
+Relax the system using `LLG` or `SD` driver. This function works for both micromagnetic and atomistic simulations.
 
 `maxsteps` is the maximum steps allowed to run. 
 
@@ -254,44 +254,46 @@ the typical value of `stopping_dmdt` is in the range of [0.01, 1].  In the `SD` 
 To make it comparable for the `LLG` driver, we multiply a factor of `gamma`. However, for the atomistic model 
 with dimensionless unit, this factor should not be used. In this situation, `using_time_factor` should be set to `false`.
 
-The magnetization (spins) can be stored in ovfs or vtks. ovf format can be chosen in "binary"(float64),"binary8"(float64), "binary4"(float32), "text"
+`save_data_every` set the step for overall data saving such as energies and average magnetization. A negative `save_data_every` will
+disable the data saving.
 
-Fields can be stored in vtks as well
+`save_m_every` set the step for magnetization saving, a negative `save_m_every` will disable the magnetization saving.
+
+Examples:
 
 ```julia
-relax(sim, save_vtk_every = 10, fields = ["demag", "exch", "anis"])
+    relax(sim, maxsteps=10000, stopping_dmdt=0.1)
 ```
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_factor=true,
-               save_m_every=-1, save_ovf_every=-1, save_vtk_every=-1, ovf_format="binary",
-               ovf_folder="ovfs", vtk_folder="vtks", fields::Array{String,1}=String[])
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1, save_m_every=-1, using_time_factor=true)
 
     # to dertermine which driver is used.
     llg_driver = isa(sim.driver, LLG)
 
     time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
+    dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
+
+    file = jldopen(@sprintf("%s.jdl2", sim.name), "w")
+    file["mesh/nx"] = sim.mesh.nx
+    file["mesh/ny"] = sim.mesh.ny
+    file["mesh/nz"] = sim.mesh.nz
+    file["mesh/dx"] = sim.mesh.dx
+    file["mesh/dy"] = sim.mesh.dy
+    file["mesh/dz"] = sim.mesh.dz
+
+    file["steps"] = maxsteps
+    file["save_m_every"] = save_m_every
+
+    if save_m_every > 0
+        m_group = JLD2.Group(file, "m")
+    end
 
     N_spins = sim.n_total
-
     dm = create_zeros(3 * N_spins)
 
-    dmdt_factor = (2 * pi / 360) * 1e9
-    #if _cuda_available.x && isa(sim, AtomicSimGPU)
-    #    dmdt_factor = 1.0
-    #end
-
-    if save_ovf_every > 0
-        isdir(ovf_folder) || mkdir(ovf_folder)
-    end
-
-    if save_vtk_every > 0
-        isdir(vtk_folder) || mkdir(vtk_folder)
-    end
-
-    step = 0
     driver = sim.driver
     @info @sprintf("Running Driver : %s.", typeof(driver))
-    for i in 1:maxsteps
+    for i in 0:maxsteps
         run_step(sim, driver)
 
         step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
@@ -304,61 +306,41 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, using_time_
             @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e", i,
                            step_size, t, max_dmdt / dmdt_factor)
         else
-            @info @sprintf("step =%5d  step_size=%10.6e    max_dmdt=%10.6e", i, step_size,
+            @info @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i, step_size,
                            max_dmdt / dmdt_factor)
         end
 
-        if save_m_every > 0 && i % save_m_every == 0
+        if save_data_every > 0 && i % save_data_every == 0
             compute_system_energy(sim, sim.spin, t)
             write_data(sim)
-        end
-
-        if save_vtk_every > 0 && i % save_vtk_every == 0
-            save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i));
-                            fields=fields)
-        end
-
-        if save_ovf_every > 0 && i % save_ovf_every == 0
-            save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i));
-                     dataformat=ovf_format)
         end
 
         if sim.save_data
             sim.saver.nsteps += 1
         end
 
+        if save_m_every > 0 && i % save_m_every == 0
+            index = @sprintf("%d", i)
+            m_group[index] = Array(sim.spin)
+        end
+
         if max_dmdt < stopping_dmdt * dmdt_factor
             @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
-            if save_m_every > 0
+            if save_data_every > 0
                 compute_system_energy(sim, sim.spin, t)
                 write_data(sim)
             end
 
-            if save_vtk_every > 0
-                save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i));
-                                fields=fields)
+            if save_m_every > 0
+                index = @sprintf("%d", i)
+                m_group[index] = Array(sim.spin)
             end
-
-            if save_ovf_every > 0
-                save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i));
-                         dataformat=ovf_format)
-            end
-            step = i
             break
         end
     end
 
-    if step == maxsteps
-        if save_vtk_every > 0
-            save_vtk_points(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i));
-                            fields=fields)
-        end
+    close(file)
 
-        if save_ovf_every > 0
-            save_ovf(sim, joinpath(ovf_folder, @sprintf("%s_%d", sim.name, i));
-                     dataformat=ovf_format)
-        end
-    end
     return nothing
 end
 
@@ -612,11 +594,11 @@ end
 
 Run the simulation to the time `steps*dt`.
 
-- steps : the total steps of the simulation
-- dt : the time interval of each step, so the total simulation time is `steps*dt`
-- save_data : saving the overall data such as energies and average magnetization of the simulation at each step
-- save_m_every : save magnetization for every `save_m_every` step, a negative save_m_every will disable the magnetization saving.
-- saver : a saver struct, by default it will use sim's saver. But you can use customized saver instead. For example, if we want to compute the guiding
+- `steps` : the total steps of the simulation
+- `dt`` : the time interval of each step, so the total simulation time is `steps*dt`
+- `save_data` : saving the overall data such as energies and average magnetization of the simulation at each step
+- `save_m_every` : save magnetization for every `save_m_every` step, a negative save_m_every will disable the magnetization saving.
+- `saver` : a saver struct, by default it will use sim's saver. But you can use customized saver instead. For example, if we want to compute the guiding
 center and save it to a text file, we can define the following saver
 ```julia
     customized_saver = init_saver("output.txt", "LLG")
@@ -656,7 +638,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
 
         call_back !== nothing && call_back(sim, i * dt)
 
-        if (save_m_every > 1 && i % save_m_every == 1) || save_m_every == 1
+        if save_m_every > 0 && i % save_m_every == 0
             index = @sprintf("%d", i)
             m_group[index] = Array(sim.spin)
         end
