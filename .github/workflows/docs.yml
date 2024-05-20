@@ -19,11 +19,8 @@ jobs:
       - uses: julia-actions/cache@v1
       
       - run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      - run: julia --project=docs/ docs/make.jl warnonly=true
-
-      - name: Deploy to GitHub Pages
+      - run: julia --project=docs/ docs/make.jl warnonly=true --deploy
         env:
             DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-        run: julia --project=docs docs/make.jl --deploy
           
           
