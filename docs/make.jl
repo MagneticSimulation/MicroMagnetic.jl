@@ -15,7 +15,7 @@ format = Documenter.HTML(
 PAGES = ["Home" =>"index.md",
         "basics.md",
         tutorials,
-        "equations.md",
+        #"equations.md",
         #examples,
         "functions.md",
         "developer.md"]
