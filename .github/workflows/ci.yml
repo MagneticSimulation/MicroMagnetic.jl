@@ -36,4 +36,3 @@ jobs:
       - uses: codecov/codecov-action@v4.3.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: ww1g11/JuMag.jl
