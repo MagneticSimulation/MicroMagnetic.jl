@@ -3,7 +3,7 @@ using DemoCards
 using MicroMag
 #using DocumenterTools: Themes
 
-#tutorials, tutorials_cb = makedemos("tutorials")
+tutorials, tutorials_cb = makedemos("tutorials")
 #examples, examples_cb = makedemos("examples")
 
 format = Documenter.HTML(
@@ -14,8 +14,8 @@ format = Documenter.HTML(
 
 PAGES = ["Home" =>"index.md",
         "basics.md",
-        #tutorials,
-        #"equations.md",
+        tutorials,
+        "equations.md",
         #examples,
         "functions.md",
         "developer.md"]
@@ -43,7 +43,7 @@ else
 end
 
 
-#tutorials_cb()
+tutorials_cb()
 #examples_cb()
 
 deploydocs(
