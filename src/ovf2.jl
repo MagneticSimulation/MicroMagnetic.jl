@@ -325,7 +325,7 @@ function mag2ovf(m::Array{T, 1}, nx::Int, ny::Int, nz::Int;
     dx::Float64 = 1e-9, dy::Float64 = 1e-9, dz::Float64 = 1e-9, 
     fname::String = "mag", type::DataType = Float64) where T <: AbstractFloat
 
-    ovf = MicroMag.OVF2{Float64}()
+    ovf = MicroMagnetic.OVF2{Float64}()
     ovf.xnodes = nx
     ovf.ynodes = ny
     ovf.znodes = nz

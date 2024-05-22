@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Test
 
 function  ini_skx(i,j,k,dx,dy,dz)

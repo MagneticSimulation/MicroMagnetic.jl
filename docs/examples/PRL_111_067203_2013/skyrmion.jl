@@ -19,7 +19,7 @@
 
 ===============#
 
-using MicroMag
+using MicroMagnetic
 using Printf
 using NPZ
 

@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Test
 
 function test_demag()
@@ -10,7 +10,7 @@ function test_demag()
     init_m0(sim, (1, 0, 0))
     add_demag(sim)
 
-    MicroMag.effective_field(sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     #println(sim.field)
     @test isapprox(Array(sim.field), [-170551.8913984, 0, 0, -170551.8913984, 0, 0])
 
@@ -21,7 +21,7 @@ function test_demag()
     init_m0(sim, (0.1, 0.2, 1))
     add_demag(sim)
 
-    MicroMag.effective_field(sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     #println(sim.field)
     expected = [-9615.99019074, -39898.78767025, -430282.70478141, -8664.33293854,
                 -51323.59117349, -496012.77748287, -27749.99302205, -48965.78908591,
@@ -38,7 +38,7 @@ function test_demag()
     init_m0(sim, (0.5, 0.6, 0.7))
     add_demag(sim)
 
-    MicroMag.effective_field(sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
 
     expected = [-40715.4448514, -221564.08111452, -258491.42796693, -3885.3038712,
                 -243662.16570271, -284272.52665316, -1420.95983327, -245140.77212539,
@@ -55,12 +55,12 @@ end
 function compute_field_macro_uniform(mesh, Nx, Ny, Nz)
     Ms = 8.6e5
     sim = Sim(mesh)
-    sim.mu0_Ms[:] .= MicroMag.mu_0 * Ms
+    sim.mu0_Ms[:] .= MicroMagnetic.mu_0 * Ms
 
     init_m0(sim, (1, 1, 1); norm=false)
     add_demag(sim; Nx=Nx, Ny=Ny, Nz=Nz)
 
-    MicroMag.effective_field(sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
 
     return Array(sim.field) / Ms
 end
@@ -68,7 +68,7 @@ end
 function compute_field_macro(mesh, Nx, Ny, Nz)
     Ms = 8.6e5
     sim = Sim(mesh)
-    sim.mu0_Ms[:] .= MicroMag.mu_0 * Ms
+    sim.mu0_Ms[:] .= MicroMagnetic.mu_0 * Ms
 
     function rand_m(i, j, k, dx, dy, dz)
         I = i % 3
@@ -79,7 +79,7 @@ function compute_field_macro(mesh, Nx, Ny, Nz)
     init_m0(sim, rand_m)
     add_demag(sim; Nx=Nx, Ny=Ny, Nz=Nz)
 
-    MicroMag.effective_field(sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
 
     return Array(sim.field) / Ms
 end

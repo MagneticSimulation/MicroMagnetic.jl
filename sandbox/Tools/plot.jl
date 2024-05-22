@@ -1,5 +1,5 @@
 using PyCall
-using MicroMag
+using MicroMagnetic
 
 
 """

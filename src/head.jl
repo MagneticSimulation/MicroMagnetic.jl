@@ -33,7 +33,7 @@ NumberOrArrayOrFunction = Union{Number,Array,Function}
 
 In micromagnetics, there are also cases where the input parameters can be either scalars or vectors and vary with space. For example,
 the parameters for the DMI could be a const for bulk DMI or interfacial DMI. In some materials, the DMI const may differ in different 
-directions and thus a tuple with three numbers is required. In MicroMag, the union `NumberOrTupleOrArrayOrFunction` is designed to deal 
+directions and thus a tuple with three numbers is required. In MicroMagnetic, the union `NumberOrTupleOrArrayOrFunction` is designed to deal 
 with such situations. Similar to `NumberOrArrayOrFunction`, `NumberOrTupleOrArrayOrFunction` means that the input parameter could be 
 a number, a tuple, an array or a function:
   - Number: should be Real.

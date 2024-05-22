@@ -6,7 +6,7 @@
 # tag: atomistic; skyrmion
 # ---
 
-using MicroMag
+using MicroMagnetic
 using NPZ
 
 function m0_fun(i, j, k, dx, dy, dz)

@@ -27,7 +27,7 @@ Julia is a dynamically-typed language, so the input script will be compiled when
 
 ```
 using PackageCompiler
-compile_incremental(:MicroMag)
+compile_incremental(:MicroMagnetic)
 ```
 
 After finishing the compilation, a `dyn.so` file will be generated. If we start julia using `julia -J /path/to/dyn.so` the stratup time will be ignorable.

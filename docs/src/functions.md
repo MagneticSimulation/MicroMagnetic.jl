@@ -1,7 +1,7 @@
 # API
 
 ```@meta
-CurrentModule = MicroMag
+CurrentModule = MicroMagnetic
 ```
 
 ## Meshes
@@ -73,15 +73,15 @@ ovf2vtk
 ## DataTypes
 
 ```@docs
-MicroMag.NumberOrArrayOrFunction
-MicroMag.NumberOrTupleOrArrayOrFunction
-MicroMag.NumberOrArray
-MicroMag.TupleOrArrayOrFunction
+MicroMagnetic.NumberOrArrayOrFunction
+MicroMagnetic.NumberOrTupleOrArrayOrFunction
+MicroMagnetic.NumberOrArray
+MicroMagnetic.TupleOrArrayOrFunction
 ```
 
 ## Others
 
 ```@docs
-MicroMag.MicroSim
-MicroMag.AtomisticSim
+MicroMagnetic.MicroSim
+MicroMagnetic.AtomisticSim
 ```

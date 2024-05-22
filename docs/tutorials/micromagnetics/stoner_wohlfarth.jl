@@ -2,7 +2,7 @@
 # title: Stoner–Wohlfarth model
 # author: Boyao Lyu; Weiwei Wang
 # date: 2022-10-03
-# description: an example to demostrate the Stoner–Wohlfarth model using MicroMag
+# description: an example to demostrate the Stoner–Wohlfarth model using MicroMagnetic
 # link: <https://en.wikipedia.org/wiki/Stoner%E2%80%93Wohlfarth_model>
 # ---
 
@@ -34,14 +34,14 @@ The obtained switching field is
 ```math
 h_s=\frac{\left(1-t^2+t^4\right)^{1 / 2}}{1+t^2}
 ```
-where $t=\tan ^{1 / 3} \theta$. Specifically, $h_s=1/2$ if $\theta=\pi/4$. In this example, we use MicroMag to demostrate
+where $t=\tan ^{1 / 3} \theta$. Specifically, $h_s=1/2$ if $\theta=\pi/4$. In this example, we use MicroMagnetic to demostrate
 this result.
 
 We chose the system to be a cubic sample, so the demagnetization tensor is $N_x=N_y=N_z=1/3$. 
 That is, the demagnetization itself does not contribute to the effective anisotropy. So in this simulation,
-we have ignored the demagnetization field. The MicroMag script is shown below:
+we have ignored the demagnetization field. The MicroMagnetic script is shown below:
 ======================#
-using MicroMag
+using MicroMagnetic
 
 #We create a mesh for a cubic geometry 4nm x 4nm x 4nm
 mesh = FDMesh(nx=4, ny=4, nz=4, dx=1e-9, dy=1e-9, dz=1e-9);

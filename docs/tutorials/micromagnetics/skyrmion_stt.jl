@@ -2,7 +2,7 @@
 # title: Skyrmion dynamics under spin transfer torques
 # author: Weiwei Wang
 # date: 2023-03-01
-# description: an example to demostrate how to use MicroMag for skyrmion dynamics
+# description: an example to demostrate how to use MicroMagnetic for skyrmion dynamics
 # tag: micromagnetics; skyrmion; spin transfer torque
 # ---
 
@@ -10,7 +10,7 @@
 # positions to a text file and and generate a movie at the end of simulation. 
 
 # We import the necessary modules
-using MicroMag
+using MicroMagnetic
 using Printf
 
 @using_gpu()
@@ -30,7 +30,7 @@ init_m0_skyrmion(sim, (200e-9, 80e-9), 2e-8)
 relax(sim, maxsteps=20000, stopping_dmdt=0.01)
 
 # We save the magnetization to vtk, which can be opened using Paraview for 3D visualization. 
-MicroMag.save_vtk(sim, "skx")
+MicroMagnetic.save_vtk(sim, "skx")
 
 # After obataining the skyrmion profile, we then move the skyrmion using spin transfer torques.
 # So we use change the driver to "LLG_STT" using the `set_driver` function. Meanwhile,

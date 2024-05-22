@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Test
 
 function test_CylindricalTubeMesh(mesh)
@@ -6,11 +6,11 @@ function test_CylindricalTubeMesh(mesh)
     nr, nz = mesh.nr, mesh.nz
     ngbs = Array(mesh.ngbs)
     for k in 1:nz, i in 1:(mesh.nr)
-        id = MicroMag.index(i, 1, k, mesh.nr, 1, nz)
-        @test ngbs[1, id] == MicroMag._x_minus_one(i, id, mesh.nr, 1, nz, true)
-        @test ngbs[2, id] == MicroMag._x_plus_one(i, id, mesh.nr, 1, nz, true)
-        @test ngbs[3, id] == MicroMag._z_minus_one(k, id, mesh.nr, 1, nz, mesh.zperiodic)
-        @test ngbs[4, id] == MicroMag._z_plus_one(k, id, mesh.nr, 1, nz, mesh.zperiodic)
+        id = MicroMagnetic.index(i, 1, k, mesh.nr, 1, nz)
+        @test ngbs[1, id] == MicroMagnetic._x_minus_one(i, id, mesh.nr, 1, nz, true)
+        @test ngbs[2, id] == MicroMagnetic._x_plus_one(i, id, mesh.nr, 1, nz, true)
+        @test ngbs[3, id] == MicroMagnetic._z_minus_one(k, id, mesh.nr, 1, nz, mesh.zperiodic)
+        @test ngbs[4, id] == MicroMagnetic._z_plus_one(k, id, mesh.nr, 1, nz, mesh.zperiodic)
     end
 end
 
@@ -32,13 +32,13 @@ function test_CubicMesh()
     @test mesh.n_ngbs3 == 8
     @test mesh.n_ngbs4 == 6
 
-    MicroMag.compute_2nd_ngbs(mesh)
+    MicroMagnetic.compute_2nd_ngbs(mesh)
     @test size(mesh.ngbs2) == (12, mesh.n_total)
 
-    MicroMag.compute_3rd_ngbs(mesh)
+    MicroMagnetic.compute_3rd_ngbs(mesh)
     @test size(mesh.ngbs3) == (8, mesh.n_total)
 
-    MicroMag.compute_4th_ngbs(mesh)
+    MicroMagnetic.compute_4th_ngbs(mesh)
     @test size(mesh.ngbs4) == (6, mesh.n_total)
 end
 

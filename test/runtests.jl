@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Test
 
 include("test_mesh.jl")
