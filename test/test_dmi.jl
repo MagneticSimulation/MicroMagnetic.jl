@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Test
 
 function test_bulk_dmi()
@@ -27,22 +27,22 @@ function test_bulk_dmi()
     dmi = add_dmi(sim, D)
     dmi2 = add_dmi(sim, D_fun; name="dmi2")
 
-    MicroMag.effective_field(sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     f1 = Array(dmi.field)
     f2 = Array(dmi2.field)
 
     @test isapprox(f1, f2, atol=1e-8)
 
     if isa(sim.spin, Array)
-        MicroMag.effective_field_debug(dmi, sim, sim.spin, 0.0)
+        MicroMagnetic.effective_field_debug(dmi, sim, sim.spin, 0.0)
         @test isapprox(f1, dmi.field, atol=1e-10)
     end
 
     dx = 2e-9
 
-    expected_fx = -1.0 * (D / dx / (MicroMag.mu_0 * Ms)) * MicroMag.cross_x(1, 0, 0, 4, 5, 6)
-    expected_fy = -1.0 * (D / dx / (MicroMag.mu_0 * Ms)) * MicroMag.cross_y(1, 0, 0, 4, 5, 6)
-    expected_fz = -1.0 * (D / dx / (MicroMag.mu_0 * Ms)) * MicroMag.cross_z(1, 0, 0, 4, 5, 6)
+    expected_fx = -1.0 * (D / dx / (MicroMagnetic.mu_0 * Ms)) * MicroMagnetic.cross_x(1, 0, 0, 4, 5, 6)
+    expected_fy = -1.0 * (D / dx / (MicroMagnetic.mu_0 * Ms)) * MicroMagnetic.cross_y(1, 0, 0, 4, 5, 6)
+    expected_fz = -1.0 * (D / dx / (MicroMagnetic.mu_0 * Ms)) * MicroMagnetic.cross_z(1, 0, 0, 4, 5, 6)
 
     @test isapprox(f1[1], expected_fx)
     @test isapprox(f1[2], expected_fy)
@@ -70,14 +70,14 @@ function test_interfacial_dmi()
     init_m0(sim, m0_fun; norm=false)
     dmi = add_dmi(sim, D; type="interfacial")
 
-    MicroMag.effective_field(sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     f1 = Array(dmi.field)
 
     dx = 2e-9
 
-    expected_fx = 1.0 * (D / dx / (MicroMag.mu_0 * Ms)) * MicroMag.cross_x(0, -1, 0, 4, 5, 6)
-    expected_fy = 1.0 * (D / dx / (MicroMag.mu_0 * Ms)) * MicroMag.cross_y(0, -1, 0, 4, 5, 6)
-    expected_fz = 1.0 * (D / dx / (MicroMag.mu_0 * Ms)) * MicroMag.cross_z(0, -1, 0, 4, 5, 6)
+    expected_fx = 1.0 * (D / dx / (MicroMagnetic.mu_0 * Ms)) * MicroMagnetic.cross_x(0, -1, 0, 4, 5, 6)
+    expected_fy = 1.0 * (D / dx / (MicroMagnetic.mu_0 * Ms)) * MicroMagnetic.cross_y(0, -1, 0, 4, 5, 6)
+    expected_fz = 1.0 * (D / dx / (MicroMagnetic.mu_0 * Ms)) * MicroMagnetic.cross_z(0, -1, 0, 4, 5, 6)
 
     @test isapprox(f1[1], expected_fx)
     @test isapprox(f1[2], expected_fy)

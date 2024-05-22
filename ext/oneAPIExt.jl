@@ -1,11 +1,11 @@
 module oneAPIExt
 
-import MicroMag
+import MicroMagnetic
 using oneAPI
 
 function set_oneApi_backend()
-    MicroMag.all_backends[3] = oneAPI.oneAPIBackend()
-    MicroMag.set_backend("intel")
+    MicroMagnetic.all_backends[3] = oneAPI.oneAPIBackend()
+    MicroMagnetic.set_backend("intel")
     return nothing
 end
 

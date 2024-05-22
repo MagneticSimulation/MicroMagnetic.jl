@@ -7,7 +7,7 @@
 # ---
 
 #======================
-In MicroMag, we can use Monte Carlo to compute the M-T curve. 
+In MicroMagnetic, we can use Monte Carlo to compute the M-T curve. 
 For the atomistic model with $z$ nearest neighbors, the relation between exchange constant and $T_c$ reads [1]
 
 ```math
@@ -17,9 +17,9 @@ J = \frac{3 k_B T_c}{ \epsilon z }
 where $\epsilon$ is a correction factor. For 3D classical Heisenberg model $\epsilon \approx 0.719$. 
 In this example, we will assume $J=300k_B$ which gives $T_c = 431 K$. The full script is shown below.
 ======================#
-using MicroMag
+using MicroMagnetic
 
-#MicroMag.set_float(Float32)
+#MicroMagnetic.set_float(Float32)
 
 @using_gpu()
 
@@ -42,7 +42,7 @@ function relax_system_single(T)
   sim.T = T
   for i = 1:1000
       run_sim(sim, maxsteps=100, save_vtk_every=-1, save_m_every=-1)
-      t = MicroMag.average_m(sim)
+      t = MicroMagnetic.average_m(sim)
       ms[i] = sqrt(t[1]^2+t[2]^2+t[3]^2)
   end
   return sum(ms)/length(ms)

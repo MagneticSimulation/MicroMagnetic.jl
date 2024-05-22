@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Printf
 using Test
 using MPI
@@ -6,9 +6,9 @@ using MPI
 
 MPI.Init()
 
-MicroMag.cuda_using_double(true)
+MicroMagnetic.cuda_using_double(true)
 
-MicroMag.using_multiple_gpus() #comment out this line if you have multiple gpus
+MicroMagnetic.using_multiple_gpus() #comment out this line if you have multiple gpus
 
 #julia test_neb_gpu_mpi.jl //for single MPI process
 #mpiexec -np 2 julia test_neb_gpu_mpi.jl //for two MPI processes

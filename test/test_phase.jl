@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Printf
 using Test
 
@@ -50,7 +50,7 @@ function phase_fft()
     my_m .= my
 
     Ms = 1e5
-    phi = MicroMag.compute_magnetic_phase_fft(mx_m, my_m, dx, dy, Lz, Ms, Nx=Nx, Ny=Ny)
+    phi = MicroMagnetic.compute_magnetic_phase_fft(mx_m, my_m, dx, dy, Lz, Ms, Nx=Nx, Ny=Ny)
     return phi
 end
 
@@ -71,7 +71,7 @@ function phase_direct()
     Ms = 1e5
     phi = zeros(Nx, Nx)
     for i = 1:Nx, j=1:Ny
-        phi[i, j] = MicroMag.compute_magnetic_phase_direct(mx_m, my_m, dx, dy, Lz, Ms, i-80+16, j-80+32)
+        phi[i, j] = MicroMagnetic.compute_magnetic_phase_direct(mx_m, my_m, dx, dy, Lz, Ms, i-80+16, j-80+32)
     end
     return phi
 end

@@ -1,11 +1,11 @@
 module AMDGPUExt
 
-import MicroMag
+import MicroMagnetic
 using AMDGPU
 
 function set_amd_backend()
-    MicroMag.all_backends[2] = AMDGPU.ROCBackend()
-    MicroMag.set_backend("amd")
+    MicroMagnetic.all_backends[2] = AMDGPU.ROCBackend()
+    MicroMagnetic.set_backend("amd")
     return nothing
 end
 

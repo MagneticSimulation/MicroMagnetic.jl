@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Test
 
 function init_dw(i, j, k, dx, dy, dz)

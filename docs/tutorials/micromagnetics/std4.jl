@@ -2,12 +2,12 @@
 # title: Micromagnetic Standard Problem 4
 # author: Weiwei Wang
 # date: 2024-05-19
-# description: an example for the micromagnetic standard problem 4 using MicroMag.
+# description: an example for the micromagnetic standard problem 4 using MicroMagnetic.
 # link: <https://www.ctcms.nist.gov/~rdm/mumag.org.html/>
 # ---
 
 # We import the necessary modules
-using MicroMag
+using MicroMagnetic
 using CairoMakie
 using DelimitedFiles
 
@@ -50,7 +50,7 @@ function plot_m_ts()
     lines!(ax, oommf[:,1]*1e9, oommf[:,3])
     lines!(ax, oommf[:,1]*1e9, oommf[:,4])
 
-    scatter!(ax, data[:,2]*1e9, data[:,4], markersize = 6, label="MicroMag")
+    scatter!(ax, data[:,2]*1e9, data[:,4], markersize = 6, label="MicroMagnetic")
     scatter!(ax, data[:,2]*1e9, data[:,5], markersize = 6)
     scatter!(ax, data[:,2]*1e9, data[:,6], markersize = 6)
 

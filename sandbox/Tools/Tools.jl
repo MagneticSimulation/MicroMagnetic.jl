@@ -1,7 +1,7 @@
 module Tools
 
-    using MicroMag
-    path = dirname(pathof(MicroMag))*"/Tools/"
+    using MicroMagnetic
+    path = dirname(pathof(MicroMagnetic))*"/Tools/"
     include(path*"plot.jl")
     include(path*"load_image.jl")
     include(path*"mfm.jl")

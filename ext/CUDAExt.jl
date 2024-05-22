@@ -1,13 +1,13 @@
 module CUDAExt
 
-import MicroMag
+import MicroMagnetic
 using CUDA
 
 CUDA.allowscalar(false)
 
 function set_cuda_backend()
-    MicroMag.all_backends[1] = CUDA.CUDABackend()
-    MicroMag.set_backend("cuda")
+    MicroMagnetic.all_backends[1] = CUDA.CUDABackend()
+    MicroMagnetic.set_backend("cuda")
     return nothing
 end
 

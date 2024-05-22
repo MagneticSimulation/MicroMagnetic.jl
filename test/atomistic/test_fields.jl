@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Test
 using DelimitedFiles
 
@@ -32,7 +32,7 @@ function test_atomistic_fields(A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0, 0, 
     dmi = add_dmi(sim, 0.09 * J)
     anis = add_anis(sim, 5e-3 * J; axis=(0, 0, 1))
 
-    MicroMag.effective_field(sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
 
     @test isapprox(Array(exch.field), fe, atol=1e-8)
     @test isapprox(Array(demag.field), fd, atol=1e-8)

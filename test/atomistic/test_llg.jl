@@ -1,4 +1,4 @@
-using MicroMag
+using MicroMagnetic
 using Test
 
 function analytical_llg(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
