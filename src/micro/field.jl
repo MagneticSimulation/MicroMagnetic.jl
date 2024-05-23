@@ -324,7 +324,7 @@ function effective_field(sim::AbstractSim, spin, t::Float64=0.0)
     fill!(sim.field, 0.0)
     fill!(sim.energy, 0.0)
     for interaction in sim.interactions
-        effective_field(interaction, sim, spin, t::Float64)
+        @timeit timer interaction.name effective_field(interaction, sim, spin, t::Float64)
         sim.field .+= interaction.field
         sim.energy .+= interaction.energy
     end
@@ -333,10 +333,12 @@ end
 
 function compute_system_energy(sim::AbstractSim, spin::AbstractArray, t::Float64)
     #sim.total_energy = 0
-    fill!(sim.energy, 0.0)
-    for interaction in sim.interactions
-        effective_field(interaction, sim, spin, t)
-        sim.energy .+= interaction.energy
+    @timeit timer "compute_system_energy" begin
+        fill!(sim.energy, 0.0)
+        for interaction in sim.interactions
+            effective_field(interaction, sim, spin, t)
+            sim.energy .+= interaction.energy
+        end
     end
     return 0
 end

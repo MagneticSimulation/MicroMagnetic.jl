@@ -294,7 +294,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
     driver = sim.driver
     @info @sprintf("Running Driver : %s.", typeof(driver))
     for i in 0:maxsteps
-        run_step(sim, driver)
+        @timeit timer "run_step" run_step(sim, driver)
 
         step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
 
@@ -431,10 +431,12 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator,
         compute_system_energy(sim, sim.spin, t_end)
         write_data(sim)
     end
+    return nothing
 end
 
 function run_until(sim::AbstractSim, t_end::Float64; save_data=true)
-    return run_until(sim, t_end, sim.driver.integrator, save_data)
+    @timeit timer "run_until" run_until(sim, t_end, sim.driver.integrator, save_data)
+    return nothing
 end
 
 """

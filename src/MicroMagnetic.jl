@@ -4,6 +4,14 @@ module MicroMagnetic
 using Printf
 using KernelAbstractions
 
+using TimerOutputs
+const timer = TimerOutput()
+
+function reset_timer()
+       reset_timer!(timer)
+end
+export reset_timer
+
 const Float = Ref(Float64)
 """
     set_float(x=Float64)
@@ -15,9 +23,10 @@ function set_float(x::Type{<:AbstractFloat}=Float64)
 end
 
 const groupsize = Ref(512)
-function set_groupsize(x=n)
+function set_groupsize(x)
     return groupsize[] = x
 end
+export set_groupsize
 
 const default_backend = Backend[CPU()]
 const all_backends = Backend[CPU(), CPU(), CPU(), CPU()]
