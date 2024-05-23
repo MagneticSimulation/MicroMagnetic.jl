@@ -2,7 +2,6 @@
 
 ## Meshes
 
-
 MicroMagnetic uses finite difference methods to discretize the micromagnetic energies. In MicroMagnetic, the discretized grid information 
 is stored in [`FDMesh`](@ref). Therefore, before starting the simulation, we need to create a mesh.
 
@@ -181,3 +180,33 @@ graph LR;
 
 
 ## Periodic Boundary conditions
+
+
+## Timings 
+
+In MicroMagnetic.jl, we make use of TimerOutputs.jl to measure execution time in various tasks. After running the simulation, 
+the measured times are stored in `MicroMagnetic.timer`, so we can simply use 
+```julia
+println(MicroMagnetic.timer)
+```
+to display the timing information. A typical output is shown below:
+
+```bash
+ ────────────────────────────────────────────────────────────────────────────────────
+                                            Time                    Allocations
+                                   ───────────────────────   ────────────────────────
+         Tot / % measured:              16.1s /  82.8%            705MiB /  92.4%
+
+ Section                   ncalls     time    %tot     avg     alloc    %tot      avg
+ ────────────────────────────────────────────────────────────────────────────────────
+ run_until                    101    12.8s   95.8%   127ms    632MiB   97.1%  6.26MiB
+   demag                    25.1k    8.83s   66.2%   351μs    341MiB   52.4%  13.9KiB
+   exch                     25.1k    780ms    5.8%  31.0μs   72.5MiB   11.1%  2.95KiB
+   zeeman                   25.1k    523ms    3.9%  20.8μs   46.0MiB    7.1%  1.87KiB
+   compute_system_energy      101   42.3ms    0.3%   419μs   1.93MiB    0.3%  19.5KiB
+ run_step                     366    322ms    2.4%   880μs   12.7MiB    2.0%  35.6KiB
+   demag                      366    191ms    1.4%   521μs   5.60MiB    0.9%  15.7KiB
+   exch                       366   20.2ms    0.2%  55.3μs   1.12MiB    0.2%  3.14KiB
+ compute_system_energy        367    232ms    1.7%   632μs   6.41MiB    1.0%  17.9KiB
+ ────────────────────────────────────────────────────────────────────────────────────
+```
