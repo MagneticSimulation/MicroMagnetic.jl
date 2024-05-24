@@ -1,5 +1,5 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_exch, add_dmi,
-       add_demag
+       add_demag, add_dmi_int, add_exch_int
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -19,7 +19,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
     if isa(H0, Tuple)
         zeeman = Zeeman(H0, field_kb, energy_kb, name)
     else
-        zeeman = Zeeman((0,0,0), field_kb, energy_kb, name)
+        zeeman = Zeeman((0, 0, 0), field_kb, energy_kb, name)
     end
     push!(sim.interactions, zeeman)
 
@@ -211,8 +211,7 @@ or
 ```
 
 """
-function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi",
-                 type="bulk")
+function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
     n_total = sim.n_total
     T = Float[]
     field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
@@ -243,7 +242,7 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi",
 
         dmi = InterfacialDMI(D_kb, field, energy, name)
         @info "Interfacial DMI has been added."
-        
+
     elseif type == "D2d"
         if isa(D, Number)
             dmi = BulkDMI(T(-D), T(D), T(0), field, energy, name)
@@ -287,39 +286,6 @@ function add_exch(sim::MicroSim, geo::Shape, A::Number; name="exch")
     else
         exch = HeisenbergExchange(A, field, energy, name)
     end
-    push!(sim.interactions, exch)
-
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.ite,
-              SaverItem(string("E_", name), "J",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
-    end
-    return exch
-end
-
-@doc raw"""
-    add_exch_rkky(sim::AbstractSim, J::Float64; name="rkky")
-
-Add an RKKY-type exchange to the system. The energy of RKKY-type exchange is defined as 
-
-```math
-E_\mathrm{rkky} =  - \int_\Gamma J_\mathrm{rkky} \mathbf{m}_{i} \cdot \mathbf{m}_{j} dA
-```
-where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{i}$ and $\mathbf{m}_{j}$,
-$J_\mathrm{rkky}$ is the coupling constant which is related to the spacer layer thickness. 
-
-The effective field is given then as
-```math
-\mathbf{H}_i = \frac{1}{\mu_0 M_s}  \frac{J_\mathrm{rkky}}{\Delta} \mathbf{m}_{j} 
-```
-"""
-function add_exch_rkky(sim::MicroSim, J::Float64; name="rkky")
-    n_total = sim.n_total
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
-    exch = ExchangeRKKY(J, field, energy, name)
-
     push!(sim.interactions, exch)
 
     if sim.save_data
@@ -538,9 +504,47 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
     return thermal
 end
 
+@doc raw"""
+    add_exch_int(sim::AbstractSim, J::Float64; k1=1, k2=-1, name="rkky")
+
+Add an RKKY-type exchange for interlayers. The energy of RKKY-type exchange is defined as 
+
+```math
+E_\mathrm{rkky} =  - \int_\Gamma J_\mathrm{rkky} \mathbf{m}_{i} \cdot \mathbf{m}_{j} dA
+```
+where $\Gamma$ is the interface between two layers with magnetizations $\mathbf{m}_{i}$ and $\mathbf{m}_{j}$,
+$J_\mathrm{rkky}$ is the coupling constant which is related to the spacer layer thickness. 
+
+The effective field is given then as
+```math
+\mathbf{H}_i = \frac{1}{\mu_0 M_s}  \frac{J_\mathrm{rkky}}{\Delta_z} \mathbf{m}_{j} 
+```
+"""
+function add_exch_int(sim::MicroSim, J::Float64; k1=1, k2=-1, name="exch_int")
+    n_total = sim.n_total
+    field = create_zeros(3 * n_total)
+    energy = create_zeros(n_total)
+
+    if k2 == -1
+        k2 = sim.mesh.nz
+    end
+    exch = InterlayerExchange(J, Int32(k1), Int32(k2), field, energy, name)
+
+    push!(sim.interactions, exch)
+
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
+    end
+    return exch
+end
 
 @doc raw"""
-The energy of interlayer DMI is defined as 
+    add_dmi_int(sim::MicroSimGPU, D::Tuple{Real, Real, Real}; k1=1, k2=-1, name="dmi_int")
+
+Add an interlayer DMI to the system. The energy of interlayer DMI is defined as 
 
 ```math
 E_\mathrm{dmi-int} =  \int_\Gamma \mathbf{D} \cdot \left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right) dA
@@ -550,6 +554,30 @@ $\mathbf{D}$ is the effective DMI vector.
 
 The effective field is given
 ```math
-\mathbf{H}_i = \frac{1}{\mu_0 M_s \Delta}  \mathbf{D} \times \mathbf{m}_{j} 
+\mathbf{H}_i = \frac{1}{\mu_0 M_s \Delta_z}  \mathbf{D} \times \mathbf{m}_{j} 
 ```
 """
+function add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1,
+                            name="dmi_int")
+    n_total = sim.n_total
+    field = create_zeros(3 * n_total)
+    energy = create_zeros(n_total)
+
+    if k2 == -1
+        k2 = sim.mesh.nz
+    end
+
+    T = Float[]
+    dmi = InterlayerDMI(T(D[1]), T(D[2]), T(D[3]), Int32(k1), Int32(k2), field, energy,
+                        name)
+
+    push!(sim.interactions, dmi)
+
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
+    end
+    return dmi
+end

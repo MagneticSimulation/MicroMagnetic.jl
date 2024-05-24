@@ -38,13 +38,14 @@ add_cubic_anis
 add_dmi
 add_demag
 add_zeeman
-#add_exch_vector
+add_exch_int
+add_dmi_int
 #add_exch_kagome
 #add_anis_kagome
 #add_magnetoelectric_laser
 #add_exch_anis
 #add_exch_rkky
-#add_dmi_interlayer
+#
 update_zeeman
 update_anis
 relax

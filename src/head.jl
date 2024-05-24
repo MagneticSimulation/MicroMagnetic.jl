@@ -168,12 +168,25 @@ mutable struct UniformExchange{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
-mutable struct ExchangeRKKY <: MicroEnergy
+mutable struct InterlayerExchange{T<:AbstractFloat} <: MicroEnergy
     J::Float64
-    field::Array{Float64,1}
-    energy::Array{Float64,1}
+    k1::Int32
+    k2::Int32
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
 end
+
+mutable struct InterlayerDMI{T<:AbstractFloat} <: MicroEnergy
+    Dx::T
+    Dy::T
+    Dz::T
+    k1::Int32
+    k2::Int32
+    field::AbstractArray{T, 1}
+    energy::AbstractArray{T, 1}
+    name::String
+ end
 
 mutable struct BulkDMI{T<:AbstractFloat} <: MicroEnergy
     Dx::Real
