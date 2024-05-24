@@ -1,39 +1,63 @@
 using MicroMagnetic
 using Test
 
-MicroMagnetic.cuda_using_double(true)
 
-mesh = FDMeshGPU(dx=2e-9, dy=2e-9, dz=2e-9, nx=1, ny=1, nz=3, pbc="xy")
 
-function m0_anti(i,j,k, dx, dy, dz)
-  if k == 1
-    return (0,0,1)
-  end
-  if k == 3
-    return (0,0,-1)
-  end
-  return (1,1,1)
+function m0_fun(i, j, k, dx, dy, dz)
+    if k == 1
+        return (1, 2, 3)
+    end
+    if k == 3
+        return (4, 5, 6)
+    end
+    return (1, 1, 1)
 end
 
-function spatial_Ms(i,j,k, dx, dy, dz)
-  if k == 1 || k== 3
-    return 8e5
-  end
-  return 0
+function spatial_Ms(i, j, k, dx, dy, dz)
+    if k == 1 || k == 3
+        return 8e5
+    end
+    return 0
 end
 
-sim = Sim(mesh)
-set_Ms(sim, spatial_Ms)
-init_m0(sim, m0_anti)
-add_exch(sim, 1.3e-11)
-#add_anis(sim, 5e4, axis=(0,0,1))
-#add_exch_rkky(sim, -1e-4)
-add_dmi_interlayer(sim, (0.0, 1e-4, 0))
+function test_interlayer()
+    J = 1e-5
+    Ms = 8e5
+    dz = 2e-9
+    Dx, Dy, Dz = 2e-3, 1e-4, 3e-5
 
-relax(sim, stopping_dmdt=0.01)
+    mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=1, ny=1, nz=4, pbc="xy")
+    sim = Sim(mesh)
+    set_Ms(sim, spatial_Ms)
+    init_m0(sim, m0_fun; norm=false)
+    exch = add_exch_int(sim, J; k1=1, k2=3)
+    dmi = add_dmi_int(sim, (Dx, Dy, Dz); k1=1, k2=3)
 
-expected = [-sqrt(2)/2, 0, sqrt(2)/2, 0,0,0, -sqrt(2)/2, 0, -sqrt(2)/2]
-println(maximum(Array(sim.spin) .- expected))
-@test maximum(Array(sim.spin) .- expected) < 2e-5
+    MicroMagnetic.effective_field(sim, sim.spin)
 
+    expected_exch = [4, 5, 6, 0, 0, 0, 1, 2, 3, 0, 0, 0] .* J / (mu_0 * Ms * dz)
 
+    fx1 = 1 / (mu_0 * Ms * dz) * MicroMagnetic.cross_x(Dx, Dy, Dz, 4.0, 5.0, 6.0)
+    fy1 = 1 / (mu_0 * Ms * dz) * MicroMagnetic.cross_y(Dx, Dy, Dz, 4.0, 5.0, 6.0)
+    fz1 = 1 / (mu_0 * Ms * dz) * MicroMagnetic.cross_z(Dx, Dy, Dz, 4.0, 5.0, 6.0)
+    fx2 = 1 / (mu_0 * Ms * dz) * MicroMagnetic.cross_x(1.0, 2.0, 3.0, Dx, Dy, Dz)
+    fy2 = 1 / (mu_0 * Ms * dz) * MicroMagnetic.cross_y(1.0, 2.0, 3.0, Dx, Dy, Dz)
+    fz2 = 1 / (mu_0 * Ms * dz) * MicroMagnetic.cross_z(1.0, 2.0, 3.0, Dx, Dy, Dz)
+
+    expected_dmi = [fx1, fy1, fz1, 0, 0, 0, fx2, fy2, fz2, 0, 0, 0]
+
+    @test isapprox(expected_exch, Array(exch.field))
+    @test isapprox(expected_dmi, Array(dmi.field))
+end
+
+@testset "Test Interlayer CPU" begin
+    set_backend("cpu")
+    test_interlayer()
+end
+
+@testset "Test Interlayer CUDA" begin
+    if Base.find_package("CUDA") !== nothing
+        using CUDA
+        test_interlayer()
+    end
+end

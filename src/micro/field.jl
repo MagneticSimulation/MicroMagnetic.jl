@@ -5,7 +5,7 @@ function effective_field(zee::Zeeman, sim::MicroSim, spin::AbstractArray{T,1},
 
     back = default_backend[]
     zeeman_kernel!(back, groupsize[])(spin, zee.field, zee.energy, sim.mu0_Ms, T(factor);
-                                    ndrange=N)
+                                      ndrange=N)
     KernelAbstractions.synchronize(back)
     return nothing
 end
@@ -17,8 +17,8 @@ function effective_field(zee::TimeZeeman, sim::MicroSim, spin::AbstractArray{T,1
     tx, ty, tz = zee.time_fun(t)
     back = default_backend[]
     time_zeeman_kernel!(back, groupsize[])(spin, zee.field, zee.init_field, zee.energy,
-                                         sim.mu0_Ms, T(factor), T(tx), T(ty), T(tz);
-                                         ndrange=N)
+                                           sim.mu0_Ms, T(factor), T(tx), T(ty), T(tz);
+                                           ndrange=N)
     KernelAbstractions.synchronize(back)
     return nothing
 end
@@ -31,7 +31,7 @@ function effective_field(anis::Anisotropy, sim::MicroSim, spin::AbstractArray{T,
 
     back = default_backend[]
     anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku, axis[1],
-                                        axis[2], axis[3], sim.mu0_Ms, volume; ndrange=N)
+                                          axis[2], axis[3], sim.mu0_Ms, volume; ndrange=N)
 
     KernelAbstractions.synchronize(back)
     return nothing
@@ -47,9 +47,9 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArr
     a3x, a3y, a3z = anis.axis3
     back = default_backend[]
     cubic_anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Kc,
-                                              T(a1x), T(a1y), T(a1z), T(a2x), T(a2y),
-                                              T(a2z), T(a3x), T(a3y), T(a3z), sim.mu0_Ms,
-                                              volume; ndrange=N)
+                                                T(a1x), T(a1y), T(a1z), T(a2x), T(a2y),
+                                                T(a2z), T(a3x), T(a3y), T(a3z), sim.mu0_Ms,
+                                                volume; ndrange=N)
 
     KernelAbstractions.synchronize(back)
     return nothing
@@ -63,8 +63,8 @@ function effective_field(exch::SpatialExchange, sim::MicroSim, spin::AbstractArr
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
-    exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms, exch.A, dx,
-                                      dy, dz, mesh.ngbs, volume; ndrange=n_total)
+    exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms, exch.A,
+                                        dx, dy, dz, mesh.ngbs, volume; ndrange=n_total)
     KernelAbstractions.synchronize(back)
 
     return nothing
@@ -79,8 +79,8 @@ function effective_field(exch::UniformExchange, sim::MicroSim, spin::AbstractArr
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
     uniform_exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
-                                             exch.Ax, exch.Ay, exch.Az, dx, dy, dz,
-                                             mesh.ngbs, volume; ndrange=N)
+                                                exch.Ax, exch.Ay, exch.Az, dx, dy, dz,
+                                                mesh.ngbs, volume; ndrange=N)
     KernelAbstractions.synchronize(back)
 
     return nothing
@@ -95,8 +95,8 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
     bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms, dmi.Dx,
-                                     dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs, volume;
-                                     ndrange=N)
+                                       dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs, volume;
+                                       ndrange=N)
 
     KernelAbstractions.synchronize(back)
     return nothing
@@ -110,8 +110,9 @@ function effective_field(dmi::SpatialBulkDMI, sim::MicroSim, spin::AbstractArray
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
-    spatial_bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms, dmi.D,
-                                             dx, dy, dz, mesh.ngbs, volume; ndrange=N)
+    spatial_bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                                               dmi.D, dx, dy, dz, mesh.ngbs, volume;
+                                               ndrange=N)
 
     KernelAbstractions.synchronize(back)
     return nothing
@@ -125,8 +126,44 @@ function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::AbstractArray
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
-    interfacial_dmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms, dmi.D,
-                                             dx, dy, dz, mesh.ngbs, volume; ndrange=N)
+    interfacial_dmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                                               dmi.D, dx, dy, dz, mesh.ngbs, volume;
+                                               ndrange=N)
+
+    KernelAbstractions.synchronize(back)
+    return nothing
+end
+
+function effective_field(dmi::InterlayerDMI, sim::MicroSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    mesh = sim.mesh
+    volume = mesh.volume
+    nx, ny = mesh.nx, mesh.ny
+    dz = T(mesh.dz)
+
+    back = default_backend[]
+    interlayer_dmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                                              dmi.Dx, dmi.Dy, dmi.Dz, dmi.k1, dmi.k2,
+                                              Int32(nx), Int32(ny), dz, volume;
+                                              ndrange=(nx, ny))
+
+    KernelAbstractions.synchronize(back)
+    return nothing
+end
+
+function effective_field(exch::InterlayerExchange, sim::MicroSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    mesh = sim.mesh
+    volume = mesh.volume
+    nx, ny = mesh.nx, mesh.ny
+    dz = T(mesh.dz)
+
+    back = default_backend[]
+    interlayer_exch_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
+                                               exch.J, exch.k1, exch.k2, Int32(nx),
+                                               Int32(ny), dz, volume; ndrange=(nx, ny))
 
     KernelAbstractions.synchronize(back)
     return nothing
@@ -151,9 +188,9 @@ function effective_field(stochastic::StochasticField, sim::MicroSim,
 
     back = default_backend[]
     stochastic_field_kernel!(back, groupsize[])(spin, stochastic.field, stochastic.energy,
-                                              sim.mu0_Ms, stochastic.eta,
-                                              stochastic.temperature, factor, volume;
-                                              ndrange=N)
+                                                sim.mu0_Ms, stochastic.eta,
+                                                stochastic.temperature, factor, volume;
+                                                ndrange=N)
 
     KernelAbstractions.synchronize(back)
 
@@ -204,44 +241,6 @@ function effective_field_debug(exch::SpatialExchange, sim::MicroSim, spin::Array
         field[i] = fx * Ms_inv
         field[i + 1] = fy * Ms_inv
         field[i + 2] = fz * Ms_inv
-    end
-end
-
-function effective_field(exch::ExchangeRKKY, sim::MicroSim, spin::Array{Float64,1},
-                         t::Float64)
-    mu0 = 4.0 * pi * 1e-7
-    mesh = sim.mesh
-    field = exch.field
-    energy = exch.energy
-    Ms = sim.mu0_Ms
-    sigma = exch.J / mesh.dz
-    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
-    for i in 1:nx, j in 1:ny
-        id1 = (j - 1) * nx + i
-        id2 = (nz - 1) * nx * ny + (j - 1) * nx + i
-        k1 = 3 * id1 - 2
-        k2 = 3 * id2 - 2
-        mbx = spin[k1]
-        mby = spin[k1 + 1]
-        mbz = spin[k1 + 2]
-
-        mtx = spin[k2]
-        mty = spin[k2 + 1]
-        mtz = spin[k2 + 2]
-
-        if Ms[id1] > 0 && Ms[id2] > 0
-            Ms_inv = 1.0 / (Ms[id1] * mu0)
-            field[k1] = sigma * Ms_inv * mtx
-            field[k1 + 1] = sigma * Ms_inv * mty
-            field[k1 + 2] = sigma * Ms_inv * mtz
-            energy[id1] = 0.5 * sigma * (1 - mtx * mbx - mty * mby - mtz * mbz)
-
-            Ms_inv = 1.0 / (Ms[id2] * mu0)
-            field[k2] = sigma * Ms_inv * mbx
-            field[k2 + 1] = sigma * Ms_inv * mby
-            field[k2 + 2] = sigma * Ms_inv * mbz
-            energy[id2] = energy[id1]
-        end
     end
 end
 

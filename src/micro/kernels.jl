@@ -341,3 +341,81 @@ end
         @inbounds h[j + 3] = 0
     end
 end
+
+@kernel function interlayer_exch_kernel!(@Const(m), h, energy, @Const(mu0_Ms), J::T,
+                                         k1::Int32, k2::Int32, nx::Int32, ny::Int32, dz::T,
+                                         volume::T) where {T<:AbstractFloat}
+    i, j = @index(Global, NTuple)
+
+    id1 = (k1 - 1) * nx * ny + (j - 1) * nx + i
+    id2 = (k2 - 1) * nx * ny + (j - 1) * nx + i
+
+    k1 = 3 * id1 - 2
+    k2 = 3 * id2 - 2
+    @inbounds mbx = m[k1]
+    @inbounds mby = m[k1 + 1]
+    @inbounds mbz = m[k1 + 2]
+
+    @inbounds mtx = m[k2]
+    @inbounds mty = m[k2 + 1]
+    @inbounds mtz = m[k2 + 2]
+
+    @inbounds Ms1 = mu0_Ms[id1]
+    @inbounds Ms2 = mu0_Ms[id2]
+    if Ms1 > 0 && Ms2 > 0
+        Ms_inv = J / (Ms1 * dz)
+        @inbounds h[k1] = Ms_inv * mtx
+        @inbounds h[k1 + 1] = Ms_inv * mty
+        @inbounds h[k1 + 2] = Ms_inv * mtz
+        @inbounds energy[id1] = -0.5 *
+                                (h[k1] * mbx + h[k1 + 1] * mby + h[k1 + 2] * mbz) *
+                                volume
+
+        Ms_inv = J / (Ms2 * dz)
+        @inbounds h[k2] = Ms_inv * mbx
+        @inbounds h[k2 + 1] = Ms_inv * mby
+        @inbounds h[k2 + 2] = Ms_inv * mbz
+        @inbounds energy[id2] = -0.5 *
+                                (h[k2] * mtx + h[k2 + 1] * mty + h[k2 + 2] * mtz) *
+                                volume
+    end
+end
+
+@kernel function interlayer_dmi_kernel!(@Const(m), h, energy, @Const(mu0_Ms), Dx::T, Dy::T,
+                                        Dz::T, k1::Int32, k2::Int32, nx::Int32, ny::Int32,
+                                        dz::T, volume::T) where {T<:AbstractFloat}
+    i, j = @index(Global, NTuple)
+
+    id1 = (k1 - 1) * nx * ny + (j - 1) * nx + i
+    id2 = (k2 - 1) * nx * ny + (j - 1) * nx + i
+
+    k1 = 3 * id1 - 2
+    k2 = 3 * id2 - 2
+    @inbounds mbx = m[k1]
+    @inbounds mby = m[k1 + 1]
+    @inbounds mbz = m[k1 + 2]
+
+    @inbounds mtx = m[k2]
+    @inbounds mty = m[k2 + 1]
+    @inbounds mtz = m[k2 + 2]
+
+    @inbounds Ms1 = mu0_Ms[id1]
+    @inbounds Ms2 = mu0_Ms[id2]
+    if Ms1 > 0 && Ms2 > 0
+        Ms_inv = 1.0 / (Ms1 * dz)
+        @inbounds h[k1] = Ms_inv * cross_x(Dx, Dy, Dz, mtx, mty, mtz)
+        @inbounds h[k1 + 1] = Ms_inv * cross_y(Dx, Dy, Dz, mtx, mty, mtz)
+        @inbounds h[k1 + 2] = Ms_inv * cross_z(Dx, Dy, Dz, mtx, mty, mtz)
+        @inbounds energy[id1] = -0.5 *
+                                (h[k1] * mbx + h[k1 + 1] * mby + h[k1 + 2] * mbz) *
+                                volume
+
+        Ms_inv = -1.0 / (Ms2 * dz)
+        @inbounds h[k2] = Ms_inv * cross_x(Dx, Dy, Dz, mbx, mby, mbz)
+        @inbounds h[k2 + 1] = Ms_inv * cross_y(Dx, Dy, Dz, mbx, mby, mbz)
+        @inbounds h[k2 + 2] = Ms_inv * cross_z(Dx, Dy, Dz, mbx, mby, mbz)
+        @inbounds energy[id2] = -0.5 *
+                                (h[k2] * mtx + h[k2 + 1] * mty + h[k2 + 2] * mtz) *
+                                volume
+    end
+end
