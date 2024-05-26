@@ -1,6 +1,8 @@
 using MicroMagnetic
 using Test
 
+include("test_utils.jl")
+
 function test_FDMesh()
 	mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=3, ny=4, nz=2, pbc="xz")
 	@test mesh.volume == mesh.dx*mesh.dy*mesh.dz
@@ -33,15 +35,6 @@ function test_FDMesh()
     @test isapprox(mesh.volume * 1.0, 1.1e-27, rtol=1e-7)
 end
 
+@using_gpu()
+test_functions("Mesh", test_FDMesh)
 
-@testset "Test Mesh CPU" begin
-    set_backend("cpu")
-    test_FDMesh()
-end
-
-@testset "Test Mesh CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_FDMesh()
-    end
-end

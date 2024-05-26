@@ -2,6 +2,8 @@ using MicroMagnetic
 using Test
 using DelimitedFiles
 
+include("../test_utils.jl")
+
 function load_field_data()
     filename = joinpath(@__DIR__, "test_fields_atomistic.txt")
     data = readdlm(filename, ' ', Float64; comments=true)
@@ -46,14 +48,6 @@ function test_atomistic_fields(A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0, 0, 
     @test (abs((sum(anis.energy) - delta_anis - energy[4]) / energy[4])) < 1e-14
 end
 
-@testset "Test Atomistic Fields CPU" begin
-    set_backend("cpu")
-    test_atomistic_fields()
-end
 
-@testset "Test Atomistic Fields CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_atomistic_fields()
-    end
-end
+@using_gpu()
+test_functions("Atomistic Fields", test_atomistic_fields, precisions=[Float64])

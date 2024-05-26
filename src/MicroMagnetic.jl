@@ -38,19 +38,29 @@ function set_groupsize(x)
 end
 export set_groupsize
 
+macro set_backend(platform)
+    esc(quote
+        if Base.find_package($(QuoteNode(platform))) !== nothing
+            using $(Symbol(platform))
+        end
+    end)
+end
+
 const default_backend = Backend[CPU()]
 const all_backends = Backend[CPU(), CPU(), CPU(), CPU()]
 
 export set_backend
 @doc raw"""
     set_backend(backend="cuda")
-Set the backend of MicroMagnetic. Options, hardwares and the corresponding backends are shown as follows: 
+
+Set the backend of MicroMagnetic. This function allows you to specify the backend for MicroMagnetic simulations. 
+The available options and their corresponding hardware and backends are shown below:
 
 | Option                 | Hardware            | Backend                  |
 | :--------------------- | :------------------ | :------------------------ |
 | "cpu"                  | CPU                 | `KernelAbstractions.CPU()` |
 | "cuda" or "nvidia"     | NVIDIA GPU          | `CUDA.CUDABackend()`     |
-| "amd"  or "roc"        | AMD GPU             | `AMDGPU.ROCBackend()`    |
+| "amd" or "roc"         | AMD GPU             | `AMDGPU.ROCBackend()`    |
 | "oneAPI" or "intel"    | Intel GPU           | `oneAPI.oneAPIBackend()` |
 | "metal"  or "apple"    | Apple GPU           | `Metal.MetalBackend()`   |
 
@@ -58,11 +68,12 @@ Set the backend of MicroMagnetic. Options, hardwares and the corresponding backe
 function set_backend(x="cuda")
     backend_names = ["CUDA", "AMDGPU", "oneAPI", "Metal"]
     card_id = 0
+    x = lowercase(x)
     if x == "cuda" || x == "nvidia"
         card_id = 1
-    elseif x == "amd" || x == "roc"
+    elseif x == "amd" || x == "roc" || x == "amdgpu"
         card_id = 2
-    elseif x == "oneAPI" || x == "intel"
+    elseif x == "oneapi" || x == "intel"
         card_id = 3
     elseif x == "metal" || x == "apple"
         card_id = 4
@@ -73,19 +84,21 @@ function set_backend(x="cuda")
         backend_name = backend_names[card_id]
         if Base.find_package(backend_name) === nothing
             @info(@sprintf("Please install %s.jl!", backend_name))
-            return
+            return false
         end
 
         if default_backend[] == CPU()
             @info(@sprintf("Please import %s!", backend_name))
-            return
+            return false
         end
     else
         default_backend[] = CPU()
     end
 
     @info(@sprintf("Switch the backend to %s", default_backend[]))
+    return true
 end
+
 
 function kernel_array(a::Array)
     A = KernelAbstractions.zeros(default_backend[], eltype(a), size(a))

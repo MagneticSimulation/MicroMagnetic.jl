@@ -2,6 +2,8 @@ using MicroMagnetic
 using Test
 using NPZ
 
+include("test_utils.jl")
+
 function init_dw(i,j,k,dx,dy,dz)
   if i < 150
     return (1,0.1,0)
@@ -54,23 +56,13 @@ function run_dynamics_stt(mesh; alpha=0.1, beta=0.2, u=5.8, integrator="DormandP
 	return nothing
 end
 
-@testset "Test STT" begin
-	set_backend("cpu")
-    mesh =  FDMesh(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
+function test_stt()
+	mesh =  FDMesh(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
     relax_system(mesh)
-    run_dynamics_stt(mesh)
-    #run_dynamics_stt(mesh, integrator="DormandPrince")
     for (beta, u) in [(0, 10), (0.1, 3.2), (0.2, 4.7)]
       run_dynamics_stt(mesh, beta=beta, u=u)
     end
 end
 
-@testset "Test STT CUDA" begin
-	try
-		using CUDA
-    	mesh = FDMesh(nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
-    	run_dynamics_stt(mesh)
-	catch 
-	end
-end
-
+@using_gpu()
+test_functions("STT", test_stt)

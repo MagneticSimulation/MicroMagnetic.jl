@@ -1,6 +1,8 @@
 using MicroMagnetic
 using Test
 
+include("test_utils.jl")
+
 function test_sim()
     #Test mesh
     mesh = FDMesh(; dx=1.1e-9, nx=10, ny=2)
@@ -29,14 +31,5 @@ function test_sim()
     #println(sim.spin)
 end
 
-@testset "Test Exchange CPU" begin
-    set_backend("cpu")
-    test_sim()
-end
-
-@testset "Test Exchange CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_sim()
-    end
-end
+@using_gpu()
+test_functions("Sim", test_sim)

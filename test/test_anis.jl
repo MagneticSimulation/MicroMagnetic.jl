@@ -2,6 +2,8 @@ using MicroMagnetic
 using Test
 using LinearAlgebra
 
+include("test_utils.jl")
+
 function test_anis()
     mesh = FDMesh(; nx=10, ny=1, nz=1)
 
@@ -49,16 +51,5 @@ function test_cubic_anis()
     @test isapprox(energy[1], -Kc * (0.6^4 + 0.8^4) * 1e-27)
 end
 
-@testset "Test Anisotropy CPU" begin
-    set_backend("cpu")
-    test_anis()
-    test_cubic_anis()
-end
-
-@testset "Test Anisotropy CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_anis()
-        test_cubic_anis()
-    end
-end
+@using_gpu()
+test_functions("Anisotropy", test_anis, test_cubic_anis)

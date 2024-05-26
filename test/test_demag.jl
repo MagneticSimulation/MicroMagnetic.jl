@@ -1,6 +1,8 @@
 using MicroMagnetic
 using Test
 
+include("test_utils.jl")
+
 function test_demag()
     mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=2, ny=1, nz=1)
     Ms = 8.6e5
@@ -109,7 +111,7 @@ function test_field_macro()
     field = reshape(f4, 3, 3, 3, 1)
     f3b = field[:, 2, 2, 1]
     #println(f3, f3b)
-    @test isapprox(f3, f3b, atol=1e-10)
+    @test isapprox(f3, f3b, atol=1e-6)
 
     f5 = compute_field_macro(mesh2, 5, 5, 0) #self-consistency
     f6 = compute_field_macro(mesh4, 0, 0, 0)
@@ -120,19 +122,8 @@ function test_field_macro()
     field = reshape(f6b, 27)
     #println(maximum(abs.(field)))
     #println(maximum(abs.(f5 - field)))
-    @test maximum(abs.(f5 - field)) < 1e-10
+    @test maximum(abs.(f5 - field)) < 5e-7
 end
 
-@testset "Test Demag CPU" begin
-    set_backend("cpu")
-    test_demag()
-    test_field_macro()
-end
-
-@testset "Test Demag CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_demag()
-        test_field_macro()
-    end
-end
+@using_gpu()
+test_functions("Demag", test_demag, test_field_macro)

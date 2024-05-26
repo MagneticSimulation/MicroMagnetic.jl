@@ -1,6 +1,9 @@
 using MicroMagnetic
 using Test
 
+
+include("../test_utils.jl")
+
 function analytical_llg(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     precession = gamma / (1 + alpha*alpha)
     beta = precession * H0 * ts
@@ -50,14 +53,5 @@ function test_llg()
 end
 
 
-@testset "Test LLG CPU" begin
-  set_backend("cpu")
-  test_llg()
-end
-
-@testset "Test LLG CUDA" begin
-  if Base.find_package("CUDA") !== nothing
-      using CUDA
-      test_llg()
-  end
-end
+@using_gpu()
+test_functions("LLG", test_llg)

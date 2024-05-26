@@ -338,7 +338,7 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
 
     lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
-    naxis = (axis[1] / lt, axis[2] / lt, axis[3] / lt)
+    naxis = (T(axis[1] / lt), T(axis[2] / lt), T(axis[3] / lt))
 
     copyto!(Kus_kb, Kus)
     anis = Anisotropy(Kus_kb, naxis, field, energy, name)
@@ -557,8 +557,7 @@ The effective field is given
 \mathbf{H}_i = \frac{1}{\mu_0 M_s \Delta_z}  \mathbf{D} \times \mathbf{m}_{j} 
 ```
 """
-function add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1,
-                            name="dmi_int")
+function add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1, name="dmi_int")
     n_total = sim.n_total
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)

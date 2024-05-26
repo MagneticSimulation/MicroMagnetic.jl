@@ -1,6 +1,8 @@
 using MicroMagnetic
 using Test
 
+include("test_utils.jl")
+
 function init_mm(i,j,k,dx,dy,dz)
     if i == 1
         return (0,0,1)
@@ -18,7 +20,7 @@ function pinning_boundary(i,j,k,dx,dy,dz)
     return false
 end
 
-function relax_system(;driver="LLG")
+function relax_system(;driver="SD")
     mesh =  FDMesh(nx=100, ny=1, nz=1, dx=2e-9, dy=2e-9, dz=1e-9)
 	sim = Sim(mesh, name="test_pinning", driver=driver)
     if driver == "LLG"
@@ -40,20 +42,7 @@ function relax_system(;driver="LLG")
     @test abs(m[2])<1e-15
     @test abs(m[3]-1)<1e-15
 
-    #@test abs(m[2])<0.04
-    #@test abs(m[3])<0.01
 end
 
-
-@testset "Test Pinning CPU" begin
-    #relax_system(driver="LLG")
-    relax_system(driver="SD")
-end
-
-@testset "Test Pinning CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        #relax_system(driver="LLG")
-        relax_system(driver="SD")
-    end
-end
+@using_gpu()
+test_functions("Pinning", relax_system)

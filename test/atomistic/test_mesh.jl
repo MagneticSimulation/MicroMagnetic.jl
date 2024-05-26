@@ -1,6 +1,8 @@
 using MicroMagnetic
 using Test
 
+include("../test_utils.jl")
+
 function test_CylindricalTubeMesh(mesh)
     @test mesh.n_total == mesh.nr * mesh.nz
     nr, nz = mesh.nr, mesh.nz
@@ -54,15 +56,5 @@ function test_all_meshes()
     test_CubicMesh()
 end
 
-
-@testset "Test AtomisticMeshes CPU" begin
-    set_backend("cpu")
-    test_all_meshes()
-end
-
-@testset "Test CylindricalMesh CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_all_meshes()
-    end
-end
+@using_gpu()
+test_functions("AtomisticMeshes", test_all_meshes)
