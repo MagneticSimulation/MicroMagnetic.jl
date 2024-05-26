@@ -1,6 +1,8 @@
 using MicroMagnetic
 using Test
 
+include("test_utils.jl")
+
 function init_saving(mesh, m)
     sim = Sim(mesh, name = "saving")
     set_Ms(sim, 8.0e5)
@@ -20,8 +22,7 @@ function test_sim_reading(fname, mesh, m)
     sim = Sim(mesh, name = "reading")
     set_Ms(sim, 8.0e5)
     read_ovf(sim, fname)
-    println("spin:",sim.spin)
-    @test maximum(abs.(sim.spin-m)) < 1e-6
+    @test isapprox(Array(sim.spin), m, atol=1e-6)
 end
 
 function test_copying(fname, mesh, m)
@@ -51,7 +52,7 @@ function test_mag2ovf(m::Array, nx::Int, ny::Int, nz::Int)
     rm("test.ovf")
 end
 
-@testset "Test ovfs" begin
+function test_ovf()
     m = [0.6, 0.8, 0, 0.6, 0.8, 0]
     mesh = FDMesh(nx = 2, ny = 1, nz = 1, dx = 1e-9, dy = 1e-9, dz = 1e-9)
     init_saving(mesh, m)
@@ -63,3 +64,6 @@ end
 
     test_mag2ovf(m, 2, 1, 1)
 end
+
+@using_gpu()
+test_functions("OVF", test_ovf)

@@ -38,7 +38,7 @@ end
 """
 llg_cayley_call_back function that will be called by the integrator.
 """
-function llg_cayley_call_back(sim::AbstractSim, dw_dt::AbstractArray{T,1}, t::T,
+function llg_cayley_call_back(sim::AbstractSim, dw_dt::AbstractArray{T,1}, t::Float64,
                               omega::AbstractArray{T,1}) where {T<:AbstractFloat}
     driver = sim.driver
     N = sim.n_total

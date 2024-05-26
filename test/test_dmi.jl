@@ -1,5 +1,6 @@
 using MicroMagnetic
 using Test
+include("test_utils.jl")
 
 function test_bulk_dmi()
     function m0_fun(i, j, k, dx, dy, dz)
@@ -31,9 +32,10 @@ function test_bulk_dmi()
     f1 = Array(dmi.field)
     f2 = Array(dmi2.field)
 
-    @test isapprox(f1, f2, atol=1e-8)
+    rtol =  MicroMagnetic.Float[] == Float64 ? 1e-8 : 1e-6 
+    @test isapprox(f1, f2, rtol=rtol)
 
-    if isa(sim.spin, Array)
+    if isa(sim.spin, Array{Float64})
         MicroMagnetic.effective_field_debug(dmi, sim, sim.spin, 0.0)
         @test isapprox(f1, dmi.field, atol=1e-10)
     end
@@ -84,16 +86,5 @@ function test_interfacial_dmi()
     @test isapprox(f1[3], expected_fz)
 end
 
-@testset "Test DMI CPU" begin
-    set_backend("cpu")
-    test_bulk_dmi()
-    test_interfacial_dmi()
-end
-
-@testset "Test DMI CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_bulk_dmi()
-        test_interfacial_dmi()
-    end
-end
+@using_gpu()
+test_functions("DMI", test_bulk_dmi, test_interfacial_dmi)

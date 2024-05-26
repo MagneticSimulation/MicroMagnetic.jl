@@ -1,6 +1,8 @@
 using MicroMagnetic
 using Test
 
+include("test_utils.jl")
+
 function A_fun(i, j, k, dx, dy, dz)
     return 1.3e-11
 end
@@ -24,7 +26,7 @@ function test_exch_scalar(Nx=50)
 
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
 
-    if isa(sim.spin, Array)
+    if isa(sim.spin, Array{Float64})
         f1 = Array(exch.field)
         MicroMagnetic.effective_field_debug(exch, sim, sim.spin, 0.0)
         @test isapprox(f1, exch.field, atol=1e-10)
@@ -49,16 +51,6 @@ function test_exch_scalar(Nx=50)
 
     sigma = 1e-5
     return init_m0(sim, (0.6, 0.8, 0))
-    #r = add_exch_rkky(sim, sigma)
-
-    #MicroMagnetic.effective_field(sim, sim.spin, 0.0)
-    #b = reshape(sim.field, 3, sim.n_total)
-
-    #fx = sigma / Delta / (mu0 * Ms) * 0.6
-    #fy = sigma / Delta / (mu0 * Ms) * 0.8
-    #println(fx - b[1, 1])
-    #@test fx - b[1, 1] == 0.0
-
 end
 
 function Ms_x(i, j, k, dx, dy, dz)
@@ -112,16 +104,5 @@ function test_exch_vectors()
     return test_exch_vector(:z)
 end
 
-@testset "Test Exchange CPU" begin
-    set_backend("cpu")
-    test_exch_scalar()
-    test_exch_vectors()
-end
-
-@testset "Test Exchange CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_exch_scalar()
-        test_exch_vectors()
-    end
-end
+@using_gpu()
+test_functions("Exchange", test_exch_scalar, test_exch_vectors)

@@ -1,6 +1,9 @@
 using MicroMagnetic
 using Test
 
+
+include("test_utils.jl")
+
 function init_dw(i, j, k, dx, dy, dz)
     if i < 240
         return (1, 0.1, 0)
@@ -31,16 +34,11 @@ function relax_system(; driver="LLG")
     @test abs(m[3]) < 0.01
 end
 
-@testset "Test Relax CPU" begin
-    set_backend("cpu")
+function test_relax()
     relax_system(; driver="LLG")
     relax_system(; driver="SD")
 end
 
-@testset "Test Relax CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        relax_system(; driver="LLG")
-        relax_system(; driver="SD")
-    end
-end
+@using_gpu()
+test_functions("Relax", test_relax)
+

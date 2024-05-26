@@ -1,6 +1,8 @@
 using MicroMagnetic
 using Test
 
+include("test_utils.jl")
+
 function test_shapes()
 
     p1 = Plane(point=(10,0,0), normal=(1, 0, 0))
@@ -34,7 +36,6 @@ function test_shapes()
     
 end
 
-@testset "Geometry" begin
-    test_shapes()
-end
+@using_gpu()
+test_functions("Geometry", test_shapes)
 

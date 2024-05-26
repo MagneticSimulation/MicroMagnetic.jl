@@ -1,7 +1,7 @@
 using MicroMagnetic
 using Test
 
-
+include("test_utils.jl")
 
 function m0_fun(i, j, k, dx, dy, dz)
     if k == 1
@@ -50,14 +50,5 @@ function test_interlayer()
     @test isapprox(expected_dmi, Array(dmi.field))
 end
 
-@testset "Test Interlayer CPU" begin
-    set_backend("cpu")
-    test_interlayer()
-end
-
-@testset "Test Interlayer CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_interlayer()
-    end
-end
+@using_gpu()
+test_functions("Interlayer", test_interlayer)

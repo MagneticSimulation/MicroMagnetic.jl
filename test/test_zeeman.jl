@@ -1,6 +1,8 @@
 using MicroMagnetic
 using Test
 
+include("test_utils.jl")
+
 function time_fun(t)
     return (cos(1e6 * t), cos(1e9 * t), 1)
 end
@@ -17,13 +19,15 @@ function test_zeeman()
 
     z1 = add_zeeman(sim, (1, 2, 2e3))
     z2 = add_zeeman(sim, (1, 2, 2e3), time_fun)
+
+    T = MicroMagnetic.Float[]
     
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     f1 = Array(z1.field)
     f2 = Array(z2.field)
-    @test f1[1] == 1.0
-    @test f1[2] == 2.0
-    @test f1[3] == 2e3
+    @test f1[1] == T(1.0)
+    @test f1[2] == T(2.0)
+    @test f1[3] == T(2e3)
     @test isapprox(f1, f2)
 
     @test abs(sum(Array(z1.energy))) > 0
@@ -32,28 +36,20 @@ function test_zeeman()
 
     update_zeeman(sim, (3, 4.9, -10.01))
     f1 = Array(z1.field)
-    @test f1[1] == 3.0
-    @test f1[2] == 4.9
-    @test f1[3] == -10.01
+    @test f1[1] == T(3.0)
+    @test f1[2] == T(4.9)
+    @test f1[3] == T(-10.01)
 
     z2 = add_zeeman(sim, (1e3, 1e4, 1e5), time_fun)
 
     MicroMagnetic.effective_field(sim, sim.spin, 1.23e-11)
     f2 = Array(z2.field)
-    @test f2[1] == 1e3 * cos(1.23e-11*1e6)
-    @test f2[2] == 1e4 * cos(1.23e-2)
-    @test f2[3] == 1e5
+    @test f2[1] == T(1e3 * cos(1.23e-11*1e6))
+    @test f2[2] == T(1e4 * cos(1.23e-2))
+    @test f2[3] == T(1e5)
     return nothing
 end
 
-@testset "Test Zeeman CPU" begin
-    set_backend("cpu")
-    test_zeeman()
-end
+@using_gpu()
+test_functions("Zeeman", test_zeeman)
 
-@testset "Test Zeeman CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        test_zeeman()
-    end
-end

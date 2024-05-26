@@ -27,7 +27,7 @@ function effective_field(anis::Anisotropy, sim::MicroSim, spin::AbstractArray{T,
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     axis = anis.axis
-    volume = sim.mesh.volume
+    volume = T(sim.mesh.volume)
 
     back = default_backend[]
     anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku, axis[1],
@@ -40,7 +40,7 @@ end
 function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
-    volume = sim.mesh.volume
+    volume = T(sim.mesh.volume)
 
     a1x, a1y, a1z = anis.axis1
     a2x, a2y, a2z = anis.axis2
@@ -59,7 +59,7 @@ function effective_field(exch::SpatialExchange, sim::MicroSim, spin::AbstractArr
                          t::Float64) where {T<:AbstractFloat}
     n_total = sim.n_total
     mesh = sim.mesh
-    volume = mesh.volume
+    volume = T(mesh.volume)
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
@@ -74,7 +74,7 @@ function effective_field(exch::UniformExchange, sim::MicroSim, spin::AbstractArr
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
-    volume = mesh.volume
+    volume = T(mesh.volume)
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
@@ -90,7 +90,7 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
-    volume = mesh.volume
+    volume = T(mesh.volume)
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
@@ -106,7 +106,7 @@ function effective_field(dmi::SpatialBulkDMI, sim::MicroSim, spin::AbstractArray
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
-    volume = mesh.volume
+    volume = T(mesh.volume)
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
@@ -122,7 +122,7 @@ function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::AbstractArray
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
-    volume = mesh.volume
+    volume = T(mesh.volume)
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
@@ -138,7 +138,7 @@ function effective_field(dmi::InterlayerDMI, sim::MicroSim, spin::AbstractArray{
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
-    volume = mesh.volume
+    volume = T(mesh.volume)
     nx, ny = mesh.nx, mesh.ny
     dz = T(mesh.dz)
 
@@ -156,13 +156,13 @@ function effective_field(exch::InterlayerExchange, sim::MicroSim, spin::Abstract
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
-    volume = mesh.volume
+    volume = T(mesh.volume)
     nx, ny = mesh.nx, mesh.ny
     dz = T(mesh.dz)
 
     back = default_backend[]
     interlayer_exch_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
-                                               exch.J, exch.k1, exch.k2, Int32(nx),
+                                               T(exch.J), exch.k1, exch.k2, Int32(nx),
                                                Int32(ny), dz, volume; ndrange=(nx, ny))
 
     KernelAbstractions.synchronize(back)
@@ -189,7 +189,7 @@ function effective_field(stochastic::StochasticField, sim::MicroSim,
     back = default_backend[]
     stochastic_field_kernel!(back, groupsize[])(spin, stochastic.field, stochastic.energy,
                                                 sim.mu0_Ms, stochastic.eta,
-                                                stochastic.temperature, factor, volume;
+                                                stochastic.temperature, factor, T(volume);
                                                 ndrange=N)
 
     KernelAbstractions.synchronize(back)
