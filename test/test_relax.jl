@@ -1,8 +1,9 @@
 using MicroMagnetic
 using Test
 
-
-include("test_utils.jl")
+if !isdefined(Main, :test_functions)
+    include("test_utils.jl")
+end
 
 function init_dw(i, j, k, dx, dy, dz)
     if i < 240

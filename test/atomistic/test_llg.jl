@@ -1,8 +1,9 @@
 using MicroMagnetic
 using Test
 
-
-include("../test_utils.jl")
+if !isdefined(Main, :test_functions)
+  include("../test_utils.jl")
+end
 
 function analytical_llg(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     precession = gamma / (1 + alpha*alpha)

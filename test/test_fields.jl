@@ -2,7 +2,9 @@ using MicroMagnetic
 using Test
 using DelimitedFiles
 
-include("test_utils.jl")
+if !isdefined(Main, :test_functions)
+    include("test_utils.jl")
+end
 
 function load_field_data()
     filename = joinpath(@__DIR__, "test_fields.txt")

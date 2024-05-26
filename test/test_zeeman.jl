@@ -1,7 +1,9 @@
 using MicroMagnetic
 using Test
 
-include("test_utils.jl")
+if !isdefined(Main, :test_functions)
+    include("test_utils.jl")
+end
 
 function time_fun(t)
     return (cos(1e6 * t), cos(1e9 * t), 1)
