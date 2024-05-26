@@ -14,13 +14,23 @@ export reset_timer
 
 const Float = Ref(Float64)
 """
-    set_float(x=Float64)
-Set the floating-point type for MicroMagnetic. 
-Defaults to Float64. Use Float32 if single-precision computation is required.
+    set_precision(x::Type{<:AbstractFloat}=Float64)
+
+Set the precision for MicroMagnetic simulations.
+
+This function allows you to specify the precision of floating-point numbers to be used in MicroMagnetic simulations. 
+By default, it sets the precision to `Float64`. If single-precision computation is required, you can specify `Float32`.
+
+# Example
+```julia
+set_precision(Float32)
 """
-function set_float(x::Type{<:AbstractFloat}=Float64)
+function set_precision(x::Type{<:AbstractFloat}=Float64)
     return Float[] = x
 end
+export set_precision
+
+Base.@deprecate set_float(x::Type{<:AbstractFloat}=Float64) set_precision(x)
 
 const groupsize = Ref(512)
 function set_groupsize(x)

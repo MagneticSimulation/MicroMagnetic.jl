@@ -23,9 +23,10 @@ Torus
 
 ```@docs
 set_backend
+set_precision
+Sim
 create_sim
 run_sim
-Sim
 set_Ms
 set_driver
 set_mu_s
@@ -45,7 +46,6 @@ add_dmi_int
 #add_magnetoelectric_laser
 #add_exch_anis
 #add_exch_rkky
-#
 update_zeeman
 update_anis
 relax
