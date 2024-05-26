@@ -1,7 +1,9 @@
 using MicroMagnetic
 using Test
 
-include("../test_utils.jl")
+if !isdefined(Main, :test_functions)
+    include("../test_utils.jl")
+end
 
 function test_CylindricalTubeMesh(mesh)
     @test mesh.n_total == mesh.nr * mesh.nz

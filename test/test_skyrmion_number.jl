@@ -1,9 +1,9 @@
 using MicroMagnetic
-using Printf
-using NPZ
 using Test
 
-mesh =  FDMesh(nx=100, ny=100, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
+if !isdefined(Main, :test_functions)
+  include("test_utils.jl")
+end
 
 function m0_fun(i,j,k,dx,dy,dz)
   r2 = (i-50)^2 + (j-50)^2
@@ -14,9 +14,8 @@ function m0_fun(i,j,k,dx,dy,dz)
 end
 
 function relax_system()
-  sim = Sim(mesh, driver="LLG", name="sim")
-  sim.driver.precession = false
-  sim.driver.alpha = 0.5
+  mesh =  FDMesh(nx=100, ny=100, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
+  sim = Sim(mesh, driver="SD", name="sim")
   set_Ms(sim, 8e5)
 
   add_exch(sim, 1.3e-11, name="exch")
@@ -24,18 +23,20 @@ function relax_system()
   add_dmi(sim, 4e-3, name="dmi")
 
   init_m0(sim, m0_fun)
-  relax(sim, maxsteps=2000, stopping_dmdt=0.1, save_vtk_every = 100, save_m_every=-1)
-  #println(sim.spin)
-  v = zeros(Float64, sim.n_total)
-  compute_skyrmion_number(v, sim.spin, mesh)
-  Rxs, Rys = compute_guiding_centre(sim.spin, mesh)
+  relax(sim, maxsteps=2000, stopping_dmdt=0.1, save_m_every=-1)
+
+  m = Array(sim.spin)
+  v = zeros(eltype(m), sim.n_total)
+  compute_skyrmion_number(v, m, mesh)
+  Rxs, Rys = compute_guiding_center(m, mesh)
   println(sum(v)," ", Rxs, " ", Rxs)
-  return sum(v), Rxs[1], Rys[1]
-  #npzwrite("m0.npy", sim.spin)
-  #save_vtk(sim, "skx", fields=["exch", "dmi"])
+  Q = sum(v)
+  @test abs(Q+1) < 1e-15
+  @test abs(Rxs[1]-100e-9)<1e-9
+  @test abs(Rys[1]-100e-9)<1e-9
+
 end
 
-Q, Rx, Ry = relax_system()
-@test abs(Q+1) < 1e-15
-@test abs(Rx-100e-9)<1e-9
-@test abs(Ry-100e-9)<1e-9
+@using_gpu()
+test_functions("skx_number", relax_system)
+

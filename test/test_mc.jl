@@ -2,7 +2,9 @@
 using MicroMagnetic
 using Test
 
-#@using_gpu()
+if !isdefined(Main, :test_functions)
+    include("test_utils.jl")
+end
 
 function test_monte_carlo(T=300)
     mesh = CubicMesh(; nx=1, ny=1, nz=1, pbc="x")
@@ -31,15 +33,6 @@ function test_monte_carlo(T=300)
     return t
 end
 
-@testset "Test MC CPU" begin
-    set_backend("cpu")
-    test_monte_carlo()
-end
 
-@testset "Test MC CUDA" begin
-    if Base.find_package("CUDA") !== nothing
-        using CUDA
-        set_backend("cuda")
-        test_monte_carlo()
-    end
-end
+@using_gpu()
+test_functions("MC", test_monte_carlo)

@@ -1,6 +1,9 @@
 using MicroMagnetic
 using Test
-include("test_utils.jl")
+
+if !isdefined(Main, :test_functions)
+    include("test_utils.jl")
+end
 
 function test_bulk_dmi()
     function m0_fun(i, j, k, dx, dy, dz)

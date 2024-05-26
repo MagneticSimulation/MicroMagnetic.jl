@@ -2,7 +2,9 @@ using MicroMagnetic
 using Test
 using LinearAlgebra
 
-include("test_utils.jl")
+if !isdefined(Main, :test_functions)
+    include("test_utils.jl")
+end
 
 function test_anis()
     mesh = FDMesh(; nx=10, ny=1, nz=1)

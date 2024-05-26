@@ -24,6 +24,7 @@ By default, it sets the precision to `Float64`. If single-precision computation 
 # Example
 ```julia
 set_precision(Float32)
+```
 """
 function set_precision(x::Type{<:AbstractFloat}=Float64)
     return Float[] = x

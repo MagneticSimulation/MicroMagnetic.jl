@@ -1,7 +1,9 @@
 using MicroMagnetic
 using Test
 
-include("test_utils.jl")
+if !isdefined(Main, :test_functions)
+    include("test_utils.jl")
+end
 
 function test_FDMesh()
 	mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=3, ny=4, nz=2, pbc="xz")
