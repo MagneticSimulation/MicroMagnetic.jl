@@ -87,12 +87,13 @@ save_vtk(sim, "m_demag", fields=["demag"])
 ```
 The magnetization and the stray field around the cylindrical sample are stored in `m_demag.vts`, which can be opened using Paraview. 
 
-# Structure of MicroMagnetic
+# Structure of MicroMagnetic.jl
 ```@raw html
 <div class="mermaid">
 graph LR;
-    MicroMagnetic --> Micromagnetic
-    MicroMagnetic --> Atomistic
+    MicroMagnetic.jl --> Micromagnetic
+    MicroMagnetic.jl --> Atomistic
+    MicroMagnetic.jl --> Tools[Additional tools]
     Micromagnetic --> B[Energies: exch, dmi, ...]
     Atomistic --> B[Energies: exch, dmi, ...]
     Micromagnetic --> D[Drivers: SD, LLG, STT, SOT]
