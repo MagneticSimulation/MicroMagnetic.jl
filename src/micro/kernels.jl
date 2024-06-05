@@ -343,12 +343,12 @@ end
 end
 
 @kernel function interlayer_exch_kernel!(@Const(m), h, energy, @Const(mu0_Ms), J::T,
-                                         k1::Int32, k2::Int32, nx::Int32, ny::Int32, dz::T,
+                                         K1::Int32, K2::Int32, nx::Int32, ny::Int32, dz::T,
                                          volume::T) where {T<:AbstractFloat}
     i, j = @index(Global, NTuple)
 
-    id1 = (k1 - 1) * nx * ny + (j - 1) * nx + i
-    id2 = (k2 - 1) * nx * ny + (j - 1) * nx + i
+    id1 = (K1 - 1) * nx * ny + (j - 1) * nx + i
+    id2 = (K2 - 1) * nx * ny + (j - 1) * nx + i
 
     k1 = 3 * id1 - 2
     k2 = 3 * id2 - 2
@@ -382,12 +382,12 @@ end
 end
 
 @kernel function interlayer_dmi_kernel!(@Const(m), h, energy, @Const(mu0_Ms), Dx::T, Dy::T,
-                                        Dz::T, k1::Int32, k2::Int32, nx::Int32, ny::Int32,
+                                        Dz::T, K1::Int32, K2::Int32, nx::Int32, ny::Int32,
                                         dz::T, volume::T) where {T<:AbstractFloat}
     i, j = @index(Global, NTuple)
 
-    id1 = (k1 - 1) * nx * ny + (j - 1) * nx + i
-    id2 = (k2 - 1) * nx * ny + (j - 1) * nx + i
+    id1 = (K1 - 1) * nx * ny + (j - 1) * nx + i
+    id2 = (K2 - 1) * nx * ny + (j - 1) * nx + i
 
     k1 = 3 * id1 - 2
     k2 = 3 * id2 - 2

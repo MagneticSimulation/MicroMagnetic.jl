@@ -28,7 +28,7 @@ function test_interlayer()
     dz = 2e-9
     Dx, Dy, Dz = 2e-3, 1e-4, 3e-5
 
-    mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=1, ny=1, nz=4, pbc="xy")
+    mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=3, ny=5, nz=4, pbc="xy")
     sim = Sim(mesh)
     set_Ms(sim, spatial_Ms)
     init_m0(sim, m0_fun; norm=false)
@@ -38,6 +38,7 @@ function test_interlayer()
     MicroMagnetic.effective_field(sim, sim.spin)
 
     expected_exch = [4, 5, 6, 0, 0, 0, 1, 2, 3, 0, 0, 0] .* J / (mu_0 * Ms * dz)
+    expected_exch = vcat([repeat(expected_exch[i:i+2], 15) for i in 1:3:length(expected_exch)]...)
 
     fx1 = 1 / (mu_0 * Ms * dz) * MicroMagnetic.cross_x(Dx, Dy, Dz, 4.0, 5.0, 6.0)
     fy1 = 1 / (mu_0 * Ms * dz) * MicroMagnetic.cross_y(Dx, Dy, Dz, 4.0, 5.0, 6.0)
@@ -47,6 +48,7 @@ function test_interlayer()
     fz2 = 1 / (mu_0 * Ms * dz) * MicroMagnetic.cross_z(1.0, 2.0, 3.0, Dx, Dy, Dz)
 
     expected_dmi = [fx1, fy1, fz1, 0, 0, 0, fx2, fy2, fz2, 0, 0, 0]
+    expected_dmi = vcat([repeat(expected_dmi[i:i+2], 15) for i in 1:3:length(expected_dmi)]...)
 
     @test isapprox(expected_exch, Array(exch.field))
     @test isapprox(expected_dmi, Array(dmi.field))
