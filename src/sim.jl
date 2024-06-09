@@ -615,20 +615,20 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
         saver = sim.saver
     end
 
-    file = jldopen(@sprintf("%s.jdl2", sim.name), "w")
-
-    file["mesh/nx"] = sim.mesh.nx
-    file["mesh/ny"] = sim.mesh.ny
-    file["mesh/nz"] = sim.mesh.nz
-    file["mesh/dx"] = sim.mesh.dx
-    file["mesh/dy"] = sim.mesh.dy
-    file["mesh/dz"] = sim.mesh.dz
-
-    file["steps"] = steps
-    file["dt"] = dt
-    file["save_m_every"] = save_m_every
-
     if save_m_every > 0
+        file = jldopen(@sprintf("%s.jdl2", sim.name), "w")
+
+        file["mesh/nx"] = sim.mesh.nx
+        file["mesh/ny"] = sim.mesh.ny
+        file["mesh/nz"] = sim.mesh.nz
+        file["mesh/dx"] = sim.mesh.dx
+        file["mesh/dy"] = sim.mesh.dy
+        file["mesh/dz"] = sim.mesh.dz
+    
+        file["steps"] = steps
+        file["dt"] = dt
+        file["save_m_every"] = save_m_every
+
         m_group = JLD2.Group(file, "m")
     end
 
@@ -645,5 +645,9 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
             m_group[index] = Array(sim.spin)
         end
     end
-    return close(file)
+
+    if save_m_every > 0
+        close(file)
+    end
+    return nothing
 end
