@@ -12,7 +12,7 @@ function init_demag(sim::AtomisticSim, Nx::Int, Ny::Int, Nz::Int)
     ny = mesh.ny
     nz = mesh.nz
 
-    cn = 10
+    cn = 3
     nx_fft = mesh.nx > cn ? 2 * mesh.nx : 2 * mesh.nx - 1
     ny_fft = mesh.ny > cn ? 2 * mesh.ny : 2 * mesh.ny - 1
     nz_fft = mesh.nz > cn ? 2 * mesh.nz : 2 * mesh.nz - 1
@@ -92,12 +92,9 @@ function effective_field(demag::Demag, sim::AtomisticSim, spin::AbstractArray{T,
     mul!(demag.My, demag.m_plan, demag.my)
     mul!(demag.Mz, demag.m_plan, demag.mz)
 
-    demag.Hx .= demag.tensor_xx .* demag.Mx .+ demag.tensor_xy .* demag.My .+
-                demag.tensor_xz .* demag.Mz
-    demag.Hy .= demag.tensor_xy .* demag.Mx .+ demag.tensor_yy .* demag.My .+
-                demag.tensor_yz .* demag.Mz
-    demag.Hz .= demag.tensor_xz .* demag.Mx .+ demag.tensor_yz .* demag.My .+
-                demag.tensor_zz .* demag.Mz
+    add_tensor_M(demag.Hx, demag.Hy, demag.Hz, demag.tensor_xx, demag.tensor_yy,
+                 demag.tensor_zz, demag.tensor_xy, demag.tensor_xz, demag.tensor_yz,
+                 demag.Mx, demag.My, demag.Mz)
     #synchronize()
 
     mul!(demag.mx, demag.h_plan, demag.Hx)

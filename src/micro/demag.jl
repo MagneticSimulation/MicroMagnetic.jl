@@ -38,7 +38,7 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     ny = mesh.ny
     nz = mesh.nz
 
-    cn = 10
+    cn = 3
     nx_fft = mesh.nx > cn ? 2 * mesh.nx : 2 * mesh.nx - 1
     ny_fft = mesh.ny > cn ? 2 * mesh.ny : 2 * mesh.ny - 1
     nz_fft = mesh.nz > cn ? 2 * mesh.nz : 2 * mesh.nz - 1
@@ -118,13 +118,9 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1},
     mul!(demag.My, demag.m_plan, demag.my)
     mul!(demag.Mz, demag.m_plan, demag.mz)
 
-    demag.Hx .= demag.tensor_xx .* demag.Mx .+ demag.tensor_xy .* demag.My .+
-                demag.tensor_xz .* demag.Mz
-    demag.Hy .= demag.tensor_xy .* demag.Mx .+ demag.tensor_yy .* demag.My .+
-                demag.tensor_yz .* demag.Mz
-    demag.Hz .= demag.tensor_xz .* demag.Mx .+ demag.tensor_yz .* demag.My .+
-                demag.tensor_zz .* demag.Mz
-    #synchronize()
+    add_tensor_M(demag.Hx, demag.Hy, demag.Hz, demag.tensor_xx, demag.tensor_yy,
+                 demag.tensor_zz, demag.tensor_xy, demag.tensor_xz, demag.tensor_yz,
+                 demag.Mx, demag.My, demag.Mz)
 
     mul!(demag.mx, demag.h_plan, demag.Hx)
     mul!(demag.my, demag.h_plan, demag.Hy)
@@ -451,6 +447,30 @@ function collect_h_energy(h, energy, m, hx, hy, hz, Ms, volume::T, nx::Int64, ny
                           nz::Int64) where {T<:AbstractFloat}
     kernel! = collect_h_kernel!(default_backend[], groupsize[])
     kernel!(h, energy, m, hx, hy, hz, Ms, volume; ndrange=(nx, ny, nz))
+    KernelAbstractions.synchronize(default_backend[])
+    return nothing
+end
+
+# H, M and all tensors are 3D array, but we still can use 1d index here.
+# Hx .= tensor_xx.*Mx .+ tensor_xy.*My .+  tensor_xz.*Mz
+# Hy .= tensor_xy.*Mx .+ tensor_yy.*My .+  tensor_yz.*Mz
+# Hz .= tensor_xz.*Mx .+ tensor_yz.*My .+  tensor_zz.*Mz
+@kernel function add_tensor_M_kernel!(Hx, Hy, Hz, @Const(tensor_xx), @Const(tensor_yy),
+                                      @Const(tensor_zz), @Const(tensor_xy),
+                                      @Const(tensor_xz), @Const(tensor_yz), @Const(Mx),
+                                      @Const(My), @Const(Mz))
+    i = @index(Global)
+    @inbounds Hx[i] = tensor_xx[i] * Mx[i] + tensor_xy[i] * My[i] + tensor_xz[i] * Mz[i]
+    @inbounds Hy[i] = tensor_xy[i] * Mx[i] + tensor_yy[i] * My[i] + tensor_yz[i] * Mz[i]
+    @inbounds Hz[i] = tensor_xz[i] * Mx[i] + tensor_yz[i] * My[i] + tensor_zz[i] * Mz[i]
+end
+
+function add_tensor_M(Hx, Hy, Hz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz,
+                      tensor_yz, Mx, My, Mz)
+    kernel! = add_tensor_M_kernel!(default_backend[], groupsize[])
+    N = length(Hx)
+    kernel!(Hx, Hy, Hz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz,
+            Mx, My, Mz; ndrange=N)
     KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
