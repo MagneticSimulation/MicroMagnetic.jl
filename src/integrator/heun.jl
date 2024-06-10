@@ -34,11 +34,11 @@ function advance_step(sim::AbstractSim, integrator::ModifiedEuler)
     integrator.rhs_fun(sim, k1, sim.spin, integrator.t)
 
     #compute k2
-    sim.prespin .= sim.spin .+  h.*k1
+    vector_add2(sim.prespin, sim.spin, k1, h)
     integrator.rhs_fun(sim, k2, sim.prespin, integrator.t+h)
 
     sim.prespin .= sim.spin
-    sim.spin .+= (1/2*h) .* (k1 .+ k2)
+    vector_add3(sim.spin, sim.prespin, k1, k2, 0.5*h, 0.5*h)
 
     normalise(sim.spin, sim.n_total)
     integrator.nsteps += 1

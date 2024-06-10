@@ -8,7 +8,7 @@ where gamma_L = gamma/(1+alpha^2).
     I = @index(Global)
     j = 3 * I - 2
 
-    if pins[I]
+    @inbounds if pins[I]
         @inbounds dm_dt[j] = 0
         @inbounds dm_dt[j + 1] = 0
         @inbounds dm_dt[j + 2] = 0
@@ -47,10 +47,12 @@ function llg_call_back(sim::AbstractSim, dm_dt::AbstractArray{T,1},
 
     effective_field(sim, spin, t)
 
-    kernel! = llg_rhs_kernel!(default_backend[], groupsize[])
-    kernel!(dm_dt, spin, sim.field, sim.pins, T(driver.alpha), T(driver.gamma),
-            driver.precession; ndrange=N)
-    KernelAbstractions.synchronize(default_backend[])
+    @timeit MicroMagnetic.timer "llg" begin
+        kernel! = llg_rhs_kernel!(default_backend[], groupsize[])
+        kernel!(dm_dt, spin, sim.field, sim.pins, T(driver.alpha), T(driver.gamma),
+                driver.precession; ndrange=N)
+        KernelAbstractions.synchronize(default_backend[])
+    end
 
     return nothing
 end

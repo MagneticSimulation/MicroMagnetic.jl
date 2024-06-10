@@ -11,7 +11,6 @@ mutable struct DormandPrinceCayley{T<:AbstractFloat} <: IntegratorCayley
     nfevals::Int64
     omega::AbstractArray{T,1}
     omega_t::AbstractArray{T,1}
-    dw_dt::AbstractArray{T,1}
     k1::AbstractArray{T,1}
     k2::AbstractArray{T,1}
     k3::AbstractArray{T,1}
@@ -25,7 +24,6 @@ end
 
 function DormandPrinceCayley(n_total::Int64, rhs_fun, tol::Float64)
     omega = create_zeros(3 * n_total)
-    omega_t = create_zeros(3 * n_total)
     dw_dt = create_zeros(3 * n_total)
     k1 = create_zeros(3 * n_total)
     k2 = create_zeros(3 * n_total)
@@ -38,7 +36,7 @@ function DormandPrinceCayley(n_total::Int64, rhs_fun, tol::Float64)
     facmin = 0.2
     safety = 0.824
     return DormandPrinceCayley(tol, 0.0, 0.0, 0.0, facmax, facmin, safety, 0, 0, omega,
-                               omega_t, dw_dt, k1, k2, k3, k4, k5, k6, k7, rhs_fun, false)
+                               dw_dt, k1, k2, k3, k4, k5, k6, k7, rhs_fun, false)
 end
 
 #https://en.wikipedia.org/wiki/List_of_Runge%E2%80%93Kutta_methods#Dormand%E2%80%93Prince
@@ -51,40 +49,42 @@ function dopri5_step(sim::AbstractSim, step::Float64, t::Float64)
     w = (71 / 57600, 0, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40)
     ode = sim.driver.integrator
     rhs = ode.rhs_fun
+    y_current = ode.omega_t # we borrow omega_t as zeros
     y_next = ode.omega
     k1, k2, k3, k4, k5, k6, k7 = ode.k1, ode.k2, ode.k3, ode.k4, ode.k5, ode.k6, ode.k7
 
-    fill!(y_next, 0) # we always have y=0
-    ode.rhs_fun(sim, k1, t, y_next) #compute k1
+    fill!(y_current, 0) # we always have y=0
+    ode.rhs_fun(sim, k1, t, y_current) #compute k1
 
-    y_next .= b[1] .* k1 .* step
+    vector_add2(y_next, y_current, k1, b[1]*step)
     ode.rhs_fun(sim, k2, t + a[1] * step, y_next) #k2
 
-    y_next .= (b[2] .* k1 .+ b[3] .* k2) .* step
+    vector_add3(y_next, y_current, k1, k2, b[2]*step, b[3]*step)
     ode.rhs_fun(sim, k3, t + a[2] * step, y_next) #k3
 
-    y_next .= (b[4] .* k1 .+ b[5] .* k2 .+ b[6] .* k3) .* step
+    vector_add4(y_next, y_current, k1, k2, k3, b[4]*step, b[5]*step, b[6]*step)
     ode.rhs_fun(sim, k4, t + a[3] * step, y_next) #k4
 
-    y_next .= (c[1] .* k1 .+ c[2] .* k2 + c[3] .* k3 .+ c[4] .* k4) .* step
+    vector_add5(y_next, y_current, k1, k2, k3, k4, c[1]*step, c[2]*step, c[3]*step, c[4]*step)
     ode.rhs_fun(sim, k5, t + a[4] * step, y_next) #k5
 
-    y_next .= (d[1] .* k1 .+ d[2] .* k2 .+ d[3] .* k3 .+ d[4] .* k4 + d[5] .* k5) .* step
+    vector_add6(y_next, y_current, k1, k2, k3, k4, k5, d[1]*step, d[2]*step, d[3]*step, d[4]*step, d[5]*step)
     ode.rhs_fun(sim, k6, t + a[5] * step, y_next) #k6
 
-    y_next .= (v[1] .* k1 .+ v[2] .* k2 .+ v[3] .* k3 .+ v[4] .* k4 .+ v[5] .* k5 .+
-               v[6] .* k6) .* step
+    # compute k7. note v[2] = 0, so we still use vector_add6
+    vector_add6(y_next, y_current, k1, k3, k4, k5, k6, v[1]*step, v[3]*step, v[4]*step, v[5]*step, v[6]*step)
     ode.rhs_fun(sim, k7, t + a[6] * step, y_next) #k7
 
     ode.nfevals += 7
-    error = ode.omega_t #we make use of omega_t to store the error temporary
-    error .= (w[1] .* k1 + w[2] .* k2 .+ w[3] .* k3 .+ w[4] .* k4 .+ w[5] .* k5 +
-              w[6] .* k6 +
-              w[7] .* k7) .* step
+    # compute the error, we use k2 to store the error since w[2] = 0
+    vector_add6b(k2, k1, k3, k4, k5, k6, k7, w[1], w[3], w[4], w[5], w[6], w[7])
 
-    max_error = maximum(abs.(error)) + eps()
+    max_error = maximum(abs.(k2))*step + eps()
+    #max_error = sqrt(sum(k2.^2))/length(k2) *step + eps()
 
-    return max_error
+    #TODO: finding a better way to estimate the error
+    #Right now, this method doesn't scale with tolerance well.
+    return max_error / (ode.tol)
 end
 
 function compute_init_step(sim::AbstractSim, dt::Float64)
@@ -93,8 +93,8 @@ function compute_init_step(sim::AbstractSim, dt::Float64)
     integrator = sim.driver.integrator
     fill!(integrator.omega, 0)
     integrator.step = 1e-15
-    integrator.rhs_fun(sim, integrator.dw_dt, integrator.t, integrator.omega)
-    r_step = maximum(abs.(integrator.dw_dt) / (integrator.safety * integrator.tol^0.2))
+    integrator.rhs_fun(sim, integrator.k2, integrator.t, integrator.omega)
+    r_step = maximum(abs.(integrator.k2) / (integrator.safety * integrator.tol^0.2))
     integrator.nfevals += 1
     #FIXME: how to obtain a reasonable init step?
     if abs_step * r_step > 0.001
@@ -121,7 +121,7 @@ function advance_step(sim::AbstractSim, integrator::IntegratorCayley)
     integrator.step = integrator.step_next
 
     while true
-        max_error = dopri5_step(sim, integrator.step, t) / integrator.tol
+        max_error = dopri5_step(sim, integrator.step, t)
 
         integrator.succeed = (max_error <= 1)
 
