@@ -24,7 +24,8 @@ function test_zeeman()
 
     T = MicroMagnetic.Float[]
     
-    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(z1, sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(z2, sim, sim.spin, 0.0)
     f1 = Array(z1.field)
     f2 = Array(z2.field)
     @test f1[1] == T(1.0)
@@ -44,7 +45,9 @@ function test_zeeman()
 
     z2 = add_zeeman(sim, (1e3, 1e4, 1e5), time_fun)
 
-    MicroMagnetic.effective_field(sim, sim.spin, 1.23e-11)
+    MicroMagnetic.effective_field(z1, sim, sim.spin, 1.23e-11)
+    MicroMagnetic.effective_field(z2, sim, sim.spin, 1.23e-11)
+
     f2 = Array(z2.field)
     @test f2[1] == T(1e3 * cos(1.23e-11*1e6))
     @test f2[2] == T(1e4 * cos(1.23e-2))
