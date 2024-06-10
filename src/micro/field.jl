@@ -316,14 +316,17 @@ For example:
     effective_field(sim, sim.spin, 0.0)
   ```
 
-After running this function, the effective field is calculated and saved in sim.field, 
-and the total energy is saved in sim.energy.
+After running this function, the effective field is calculated and saved in sim.field.
 """
 function effective_field(sim::AbstractSim, spin, t::Float64=0.0)
     fill!(sim.field, 0.0)
     for interaction in sim.interactions
-        @timeit timer interaction.name effective_field(interaction, sim, spin, t::Float64)
-        sim.field .+= interaction.field
+        if isa(interaction, Zeeman)
+            @timeit timer interaction.name sim.field .+= interaction.field
+        else
+            @timeit timer interaction.name effective_field(interaction, sim, spin, t)
+            sim.field .+= interaction.field
+        end
     end
     return nothing
 end
