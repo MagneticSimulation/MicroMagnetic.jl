@@ -83,6 +83,13 @@ an array or a function:
 """
 TupleOrArrayOrFunction = Union{Tuple,Array,Function}
 
+"""
+    TupleOrArray
+
+The Union `TupleOrArray` is designed to deal with cases that a Tuple or an array is needed.
+"""
+TupleOrArray = Union{Tuple,Array}
+
 mutable struct DataSaver
     name::String
     header_saved::Bool
@@ -136,7 +143,7 @@ end
 
 mutable struct Anisotropy{T<:AbstractFloat} <: MicroEnergy
     Ku::AbstractArray{T,1}
-    axis::Tuple{T, T, T}
+    axis::Tuple{T,T,T}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
@@ -183,10 +190,10 @@ mutable struct InterlayerDMI{T<:AbstractFloat} <: MicroEnergy
     Dz::T
     k1::Int32
     k2::Int32
-    field::AbstractArray{T, 1}
-    energy::AbstractArray{T, 1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     name::String
- end
+end
 
 mutable struct BulkDMI{T<:AbstractFloat} <: MicroEnergy
     Dx::Real
@@ -212,11 +219,11 @@ mutable struct InterfacialDMI{T<:AbstractFloat} <: MicroEnergy
 end
 
 mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy
-    temperature::AbstractArray{T, 1}
-    eta::AbstractArray{T, 1}
+    temperature::AbstractArray{T,1}
+    eta::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     nsteps::Int64
     name::String
     k_B::Float64
- end
+end

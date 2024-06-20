@@ -1,261 +1,332 @@
 using LinearAlgebra
 using Printf
-abstract type NEBDriver end
 
-mutable struct NEB <: AbstractSim
-    num_images::Int64  #number of images
-    n_total::Int64 # n_total = neb.sim.n_total*num_images
-    sim::AbstractSim
-    driver::NEBDriver
-    images  #size(images) = (3*n_total, N)
-    pre_images
-    spin #A pointer to images
-    prespin #A pointer to pre_images
-    field
-    energy
-    distance
-    total_distance
-    tangents
+export NEB
+
+mutable struct NEB{T<:AbstractFloat} <: AbstractSim
+    sim::AbstractSim # we need the sim instance to compute the effect fields and related functions
+    driver::Driver # SD driver or LLG driver
+    n_images::Int64 # number of free images
+    n_total::Int64 # n_total = neb.sim.n_total * n_images
+    dof::Int64 # dof = 3*sim.n_total
+    clib_image::Int64
+    nsteps::Int64 # number of steps
+    image_l::AbstractArray{T,1} # left image
+    image_r::AbstractArray{T,1} # right image
+    spin::AbstractArray{T,1}
+    prespin::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    tangent::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    energy_cpu::Array{T,1}
+    distance::Array{T,1}
     name::String
     saver_energy::DataSaver
     saver_distance::DataSaver
     spring_constant::Float64
-    NEB() = new()
+    pins::AbstractArray{Bool,1}
+    NEB{T}() where {T<:AbstractFloat} = new()
 end
 
 """
-    NEB(sim::AbstractSim, init_images::Tuple, frames_between_images::Tuple; 
+    NEB(sim::AbstractSim, init_images::TupleOrArray, frames_between_images::TupleOrArray; 
 name="NEB", spring_constant=1.0e5, driver="LLG")
 
 Create a NEB instance.
 args:
     sim: Sim instance that include the interactions.
-    init_images::Tuple:
+    init_images::TupleOrArray:
 
 """
-function NEB(sim::AbstractSim, given_images::Tuple, frames_between_images::Tuple; 
-    name="NEB", spring_constant=1.0e5, driver="LLG")
+function NEB(sim::AbstractSim, given_images::TupleOrArray,
+             frames_between_images::TupleOrArray; name="NEB", spring_constant=1.0e5,
+             driver="LLG", clib_image=-1)
+    n_total = sim.mesh.nx * sim.mesh.ny * sim.mesh.nz
+    n_images = sum(frames_between_images) + length(given_images) - 2
 
-    n_total = sim.mesh.nx*sim.mesh.ny*sim.mesh.nz
-    num_images = sum(frames_between_images)+length(given_images)
+    if n_images <= 0
+        error("The number of free images should larger than 1 (typically 10~20).")
+    end
 
-    neb = NEB()
-    neb.num_images = num_images
-    neb.n_total = n_total * num_images
+    F = Float[]
+    neb = NEB{F}()
+    neb.n_images = n_images
+    neb.n_total = n_total * n_images
+    neb.dof = 3 * sim.n_total
     neb.sim = sim
     neb.name = name
-    neb.pre_images = create_zeros(3*sim.n_total, num_images)
-    neb.field = create_zeros(3*sim.n_total, num_images)
-    neb.distance = create_zeros(sim.n_total, num_images-1)
-    neb.total_distance = create_zeros(num_images-1)
-    neb.energy = create_zeros(num_images)
+    neb.image_l = create_zeros(3 * sim.n_total)
+    neb.image_r = create_zeros(3 * sim.n_total)
+    neb.spin = create_zeros(3 * neb.n_total)
+    neb.prespin = create_zeros(3 * neb.n_total)
+    neb.field = create_zeros(3 * neb.n_total)
+    neb.tangent = create_zeros(3 * neb.n_total)
+    neb.energy = create_zeros(neb.n_images + 2)
+    neb.energy_cpu = zeros(F, neb.n_images + 2)
+    neb.distance = zeros(F, neb.n_images + 1)
+
     neb.spring_constant = spring_constant
-    neb.tangents = create_zeros(3*sim.n_total, num_images)
+    neb.clib_image = clib_image
+    neb.nsteps = 0
 
-    neb.images = init_images(given_images, frames_between_images, sim.n_total)
+    neb.pins = repeat(sim.pins, n_images)
+    given_images_aligned = []
+    for i in 1:length(given_images)
+        init_m0(sim, given_images[i])
+        push!(given_images_aligned, Array(sim.spin))
+    end
 
-    neb.spin = reshape(neb.images, 3*sim.n_total*num_images)
-    neb.prespin = reshape(neb.pre_images, 3*sim.n_total*num_images)
+    images = init_images(given_images_aligned, frames_between_images, sim.n_total)
+    if size(images)[2] != n_images + 2
+        msg = @sprintf("The number of init_images is not correct: Expected: %d images but got %d.",
+                       n_images, size(images)[2])
+        error(msg)
+    end
 
-    effective_field_NEB!(neb)
-    #init_saver(neb)
-    #neb.driver = create_neb_driver(driver, n_total, num_images)
+    copyto!(neb.image_l, images[:, 1])
+    copyto!(neb.image_r, images[:, end])
+    copyto!(neb.spin, images[:, 2:neb.n_images+1])
+    copyto!(neb.prespin, neb.spin)
+
+    compute_system_energy(sim, neb.image_l, 0.0)
+    neb.energy_cpu[1] = sum(sim.energy)
+    compute_system_energy(sim, neb.image_r, 0.0)
+    neb.energy_cpu[end] = sum(sim.energy)
+
+    effective_field_energy(neb, neb.spin)
+
+    init_saver(neb)
+    neb.driver = create_driver(driver, "DormandPrince", neb.n_total)
+    if driver == "LLG"
+        neb.driver.tol = 1e-5
+        neb.driver.precession = false
+        neb.driver.alpha = 0.2
+    end
+
     return neb
 end
 
-function init_images(given_images::Tuple, frames_between_images::Tuple, n_total)
-    num_images = length(given_images) + sum(frames_between_images)
-    images = create_zeros(3*n_total, num_images)
+function init_images(given_images::TupleOrArray, frames_between_images::TupleOrArray,
+                     n_total)
+    n_images = length(given_images) + sum(frames_between_images)
+    images = zeros(3 * n_total, n_images)
     images[:, 1] .= given_images[1]
     image_count = 2
-    for i = 1:(length(given_images)-1)
+    for i in 1:(length(given_images) - 1)
         if frames_between_images[i] > 0
-            for j = 1:frames_between_images[i]
-                images[:, image_count] .= slerp(given_images[i], given_images[i+1], j/(frames_between_images[i]+1), n_total)
+            for j in 1:frames_between_images[i]
+                images[:, image_count] .= slerp(given_images[i], given_images[i + 1],
+                                                j / (frames_between_images[i] + 1), n_total)
                 image_count += 1
             end
-            images[:, image_count] .= given_images[i+1]
+            images[:, image_count] .= given_images[i + 1]
             image_count += 1
         end
     end
     return images
 end
 
-function create_neb_driver(driver::String, n_total::Int64, N::Int64) #TODO: FIX ME
-  if driver=="SD"
-      gk = zeros(Float64,3*n_total,N)
-      return NEB_SD(gk, 0.0, 1e-5, 1e-14, 0)
-  elseif driver == "LLG"
-      tol = 1e-5
-      dopri5 = DormandPrince(n_total*N, neb_llg_call_back, tol)
-      return NEB_LLG_Driver(0, dopri5)
-  else
-    error("Only Driver 'SD' or 'LLG' is supported!")
-  end
-end
-
 function init_saver(neb::NEB)
-    step_item = SaverItem("step", "", o::NEB -> o.driver.nsteps)
-    neb.saver_energy = DataSaver(string(neb.name, ".txt"), false, 0.0, 0, [step_item])
-    neb.saver_distance = DataSaver(string(@sprintf("%s_distance",neb.name), ".txt"), false, 0.0, 0, [step_item])
-    N = neb.N
-    for n = 1:N
-        name = @sprintf("E_total_%g",n)
-        item = SaverItem(name, "J", o::NEB -> o.energy[n])
+    step_item = SaverItem("step", "", o::NEB -> o.nsteps)
+    neb.saver_energy = DataSaver(@sprintf("%s_energy.txt", neb.name), false, 0.0, 0,
+                                 [step_item])
+    neb.saver_distance = DataSaver(@sprintf("%s_distance.txt", neb.name), false, 0.0, 0,
+                                   [step_item])
+    N = neb.n_images
+    for n in 1:(N + 2)
+        name = @sprintf("E_total_%g", n)
+        item = SaverItem(name, "J", o::NEB -> o.energy_cpu[n])
         push!(neb.saver_energy.items, item)
     end
-    
-    for n = 1:N-1  #TODO: using a single function?
-        name =  @sprintf("distance_%d",n)
+
+    for n in 1:(N + 1)  #TODO: using a single function?
+        name = @sprintf("distance_%d", n)
         item = SaverItem(name, "", o::NEB -> o.distance[n])
         push!(neb.saver_distance.items, item)
     end
 end
 
-function effective_field_NEB!(neb::NEB)
-    sim = neb.sim
-    for n = 2:neb.num_images-1
-        effective_field(sim, neb.images[:,n], 0.0)
-        neb.field[:,n] .= sim.field
-        neb.energy[n] = sum(sim.energy)
-    end
-    compute_tangents!(neb.images, neb.energy,neb.tangents, neb.num_images)
-    compute_distance!(neb.images, neb.distance, neb.total_distance, neb.num_images, sim.n_total)
+function effective_field(neb::NEB, spin::AbstractArray, t::Float64)
+    dof = neb.dof
 
-    dev = default_backend[]
-    for i = 2:neb.num_images-1
-        reduce_tangent_kernel!(dev, groupsize[])(neb.field[:,i], neb.tangents[:,i], ndrange=sim.n_total)
+    effective_field_energy(neb, spin)
+    compute_tangents(neb, spin)
+    compute_distance(neb, spin)
+
+    for n in 1:(neb.n_images)
+        f = view(neb.field, ((n - 1) * dof + 1):(n * dof))
+        t = view(neb.tangent, ((n - 1) * dof + 1):(n * dof))
+
+        if n == neb.clib_image
+            ft = -2 * LinearAlgebra.dot(f, t)
+        else
+            ft = neb.spring_constant * (neb.distance[n + 1] - neb.distance[n]) -
+                 LinearAlgebra.dot(f, t)
+        end
+        f .+= ft .* t
     end
-    KernelAbstractions.synchronize(dev)
-    for i = 2:neb.num_images-1
-        neb.field[:,i] .+= neb.spring_constant*(neb.total_distance[i]-neb.total_distance[i-1])*neb.tangents[:,i]
-    end
+    return nothing
 end
 
-function compute_tangents!(images, energy, tangents, num_images)
-    Threads.@threads for i=2:num_images-1
-        if energy[i+1] > energy[i] > energy[i-1]
-            tangents[:, i] .= images[:, i+1] - images[:, i]
-        elseif energy[i+1] <= energy[i] <= energy[i-1]
-            tangents[:, i] .= images[:, i] - images[:, i-1]
-        elseif (energy[i+1] > energy[i]) && (energy[i-1] > energy[i])
-                v1 = images[:, i+1] - images[:, i]
-                v2 = images[:, i] - images[:, i-1]
-                w1 = max(abs(E[i+1]-E[i]), abs(E[i-1]-E[i]))
-                w2 = min(abs(E[i+1]-E[i]), abs(E[i-1]-E[i]))
-            if energy[i+1] > energy[i-1]
-                tangents[:, i] .= w1*v1+w2*v2
-            else
-                tangents[:, i] .= w1*v2+w2*v1
+# compute the micromagnetic effective field and energy
+function effective_field_energy(neb::NEB, spin::AbstractArray)
+    sim = neb.sim
+    dof = neb.dof
+
+    for n in 1:(neb.n_images)
+        f = view(neb.field, ((n - 1) * dof + 1):(n * dof))
+        m = view(neb.spin, ((n - 1) * dof + 1):(n * dof))
+        effective_field_energy(sim, m, 0.0) # will compute the effective field and energy
+        f .= sim.field
+        neb.energy_cpu[n + 1] = sum(sim.energy)
+    end
+    return copyto!(neb.energy, neb.energy_cpu)
+end
+
+function compute_distance(neb::NEB, spin::AbstractArray)
+    n_total = neb.sim.n_total
+    N = neb.n_images
+    dof = neb.dof
+    ds = neb.sim.energy #we borrow the sim.energy
+
+    kernel! = compute_distance_kernel!(default_backend[], groupsize[])
+
+    for n in 0:N
+        m1 = n == 0 ? neb.image_l : view(neb.spin, ((n - 1) * dof + 1):(n * dof))
+        m2 = n == N ? neb.image_r : view(neb.spin, (n * dof + 1):((n + 1) * dof))
+
+        kernel!(m1, m2, ds; ndrange=n_total)
+        KernelAbstractions.synchronize(default_backend[])
+        neb.distance[n + 1] = LinearAlgebra.norm(ds)
+    end
+
+    return nothing
+end
+
+function compute_tangents(neb::NEB, spin::AbstractArray)
+    N = neb.n_images
+
+    kernel! = compute_tangents_kernel!(default_backend[], groupsize[])
+    kernel!(neb.tangent, spin, neb.image_l, neb.image_r, neb.energy, N, neb.dof;
+            ndrange=neb.dof)
+    KernelAbstractions.synchronize(default_backend[])
+
+    kernel! = reduce_tangent_kernel!(default_backend[], groupsize[])
+    kernel!(neb.tangent, spin; ndrange=neb.n_total)
+    KernelAbstractions.synchronize(default_backend[])
+
+    dof = neb.dof
+    for n in 1:N
+        t = view(neb.tangent, (dof * (n - 1) + 1):(dof * n))
+        norm_t = LinearAlgebra.norm(t)
+        t .= t / norm_t
+    end
+
+    return nothing
+end
+
+function relax(sim::NEB; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1,
+               save_vtk_every=-1, using_time_factor=true, vtk_folder="vtks")
+
+    # to dertermine which driver is used.
+    llg_driver = isa(sim.driver, LLG)
+
+    time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
+    dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
+
+    if save_vtk_every > 0 && !isdir(vtk_folder)
+        mkdir(vtk_folder)
+    end
+
+    if save_vtk_every > 0
+        save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, 0)))
+    end
+
+    N_spins = sim.n_total
+    dm = create_zeros(3 * N_spins)
+
+    driver = sim.driver
+    @info @sprintf("Running Driver : %s.", typeof(driver))
+    for i in 0:maxsteps
+        @timeit timer "run_step" run_step(sim, driver)
+
+        sim.nsteps += 1
+
+        step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
+
+        compute_dm!(dm, sim.prespin, sim.spin, N_spins)
+        max_dmdt = maximum(dm) / step_size
+
+        t = llg_driver ? sim.driver.integrator.t : 0.0
+        if llg_driver
+            @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e", i,
+                           step_size, t, max_dmdt / dmdt_factor)
+        else
+            @info @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i, step_size,
+                           max_dmdt / dmdt_factor)
+        end
+
+        if save_data_every > 0 && i % save_data_every == 0
+            effective_field_energy(sim, sim.spin)
+            write_data(sim, sim.saver_energy)
+            write_data(sim, sim.saver_distance)
+        end
+
+        if save_vtk_every > 0 && i % save_vtk_every == 0
+            save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+        end
+
+        if max_dmdt < stopping_dmdt * dmdt_factor
+            @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
+            if save_data_every > 0 || save_data_every == -1
+                effective_field_energy(sim, sim.spin)
+                write_data(sim, sim.saver_energy)
+                write_data(sim, sim.saver_distance)
             end
+
+            if save_vtk_every > 0
+                save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, i)))
+            end
+
+            break
         end
     end
+
+    return nothing
 end
 
-function compute_distance!(images, distance, total_distance, num_images::Int, n_total::Int)
-    dev = default_backend[]
-    kernel! = compute_distance_kernel!(dev, groupsize[])
-    for i=1:num_images-1
-        kernel!(images[:, i], images[:, i+1], distance[:, i], ndrange=n_total)
+#TODO: merge save_ovf and save_vtk???
+function save_ovf(neb::NEB, fname::String; type::DataType=Float64)
+    sim = neb.sim
+    dof = neb.dof
+
+    id_start = 0
+    sim.spin .= neb.image_l
+    save_ovf(sim, @sprintf("%s_0", fname); type=type)
+
+    N = neb.n_images
+    for n in 1:N
+        b = view(neb.spin, ((n - 1) * dof + 1):(n * dof))
+        sim.spin .= b
+        save_ovf(sim, @sprintf("%s_%d", fname, n); type=type)
     end
-    KernelAbstractions.synchronize(dev)
-    Threads.@threads for i=1:num_images-1
-        total_distance[i] = LinearAlgebra.norm(distance[:, i])
+
+    sim.spin .= neb.image_r
+    return save_ovf(sim, @sprintf("%s_%d", fname, N + 1); type=type)
+end
+
+function save_vtk(neb::NEB, fname::String)
+    sim = neb.sim
+    dof = neb.dof
+    N = neb.n_images
+
+    sim.spin .= neb.image_l
+    save_vtk(sim, @sprintf("%s_0", fname))
+    for n in 1:N
+        b = view(neb.spin, ((n - 1) * dof + 1):(n * dof))
+        sim.spin .= b
+        save_vtk(sim, @sprintf("%s_%d", fname, n))
     end
-    KernelAbstractions.synchronize(dev)
+    sim.spin .= neb.image_r
+    return save_vtk(sim, @sprintf("%s_%d", fname, N + 1))
 end
-
-function relax(neb::NEB; maxsteps=10000, stopping_dmdt=0.01, stopping_torque=0.1, 
-  save_m_every = 10, save_vtk_every=-1, vtk_folder="vtks", save_ovf_every=-1, ovf_folder="ovfs", type=Float64)
-
-  is_relax_NEB = false
-  if isa(neb.driver, NEB_SD)
-      is_relax_NEB = true
-  end
-
-  if save_vtk_every>0 && !isdir(vtk_folder)
-      mkdir(vtk_folder)
-  end
-  if save_ovf_every>0 && !isdir(ovf_folder)
-    mkdir(ovf_folder)
-  end
-
-  if is_relax_NEB
-      relax_NEB(neb, maxsteps, Float64(stopping_torque), save_m_every, save_vtk_every, vtk_folder,save_ovf_every, ovf_folder,type)
-  else
-      relax_NEB_LLG(neb, maxsteps, Float64(stopping_dmdt), save_m_every, save_vtk_every, vtk_folder,save_ovf_every, ovf_folder,type)
-  end
-  return nothing
-end
-
-function save_vtk(neb::NEB, name::String, fields::Array{String, 1} = String[])
-  sim = neb.sim
-  for n=1:neb.N
-    sim.spin[:]=neb.images[:,n]
-    fname=@sprintf("%s_n_%d",name,n)
-    save_vtk(sim, fname, fields=fields)
-  end
-end
-
-function save_ovf(neb::NEB, name::String; type::DataType=Float64)
-  sim = neb.sim
-  for n=1:neb.N
-    sim.spin[:]=neb.images[:,n]
-    fname=  @sprintf("%s_n_%d",name,n)
-    save_ovf(sim, fname, type=type)
-  end
-end
-
-# function compute_system_energy(neb::NEB)
-#   sim = neb.sim
-#   images = neb.images
-#   #sim.total_energy = 0
-#   fill!(neb.energy, 0.0)
-
-#   for n = 1:neb.N
-#       effective_field(sim, images[:,n], 0.0)
-#       neb.energy[n] = sum(sim.energy)
-#   end
-
-#   return 0
-# end
-
-
-# function compute_tangents(t::Array{Float64, 2},images::Array{Float64, 2},energy::Array{Float64, 1},N::Int,n_total::Int)
-#     Threads.@threads  for n = 1:N
-#       if (n==1)||(n==N)
-#         continue
-#       end
-#       E1 = energy[n-1]
-#       E2 = energy[n]
-#       E3 = energy[n+1]
-#       dEmax = max(abs(E3-E2),abs(E2-E1))
-#       dEmin = min(abs(E3-E2),abs(E2-E1))
-#       tip = images[:,n+1]-images[:,n]
-#       tim = images[:,n]-images[:,n-1]
-  
-#       if (E1>E2)&&(E2>E3)
-#         t[:,n] = tim
-#       elseif (E3>E2)&&(E2>E1)
-#         t[:,n] = tip
-#       elseif E3>E1
-#         t[:,n] = dEmax*tip+dEmin*tim
-#       elseif E3<E1
-#         t[:,n] = dEmin*tip+dEmax*tim
-#       else
-#         t[:,n] = tim + tip
-#       end
-  
-#       for i = 1:n_total
-#         j = 3*i - 2
-#         fx,fy,fz = cross_product(images[j,n],images[j+1,n],images[j+2,n], t[j,n],t[j+1,n],t[j+2,n])
-#         t[j,n],t[j+1,n],t[j+2,n] = cross_product(fx,fy,fz, images[j,n],images[j+1,n],images[j+2,n])
-#       end
-  
-#       norm_t = LinearAlgebra.norm(t[:,n])
-#       t[:,n] = t[:,n]/norm_t
-  
-#     end
-  
-#      return nothing
-#   end

@@ -23,3 +23,4 @@ include("atomistic/test_llg.jl")
 include("atomistic/test_fields.jl")
 
 include("test_mc.jl")
+include("test_neb.jl")
