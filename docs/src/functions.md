@@ -26,6 +26,7 @@ set_backend
 set_precision
 Sim
 create_sim
+NEB
 run_sim
 set_Ms
 set_driver

@@ -24,14 +24,14 @@ In [Julia](http://julialang.org), packages can be easily installed with the Juli
 From the Julia REPL, type ] to enter the Pkg REPL mode and run:
 
 ```julia
-pkg> add https://github.com/ww1g11/MicroMagnetic.jl
+pkg> add MicroMagnetic
 ```
 
 Or, equivalently:
 
 ```julia
 julia> using Pkg;
-julia> Pkg.add("https://github.com/ww1g11/MicroMagnetic.jl")
+julia> Pkg.add("MicroMagnetic.jl")
 ```
 
 To enable GPU support, one has to install one of the following packages:

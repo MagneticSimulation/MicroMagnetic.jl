@@ -2,7 +2,7 @@ using WriteVTK
 using ReadVTK
 using Printf
 
-export save_vtk, ovf2vtk
+export save_vtk, ovf2vtk, read_vtk
 
 #TODO: tidy up save_vtk
 
