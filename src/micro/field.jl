@@ -341,3 +341,14 @@ function compute_system_energy(sim::AbstractSim, spin::AbstractArray, t::Float64
     end
     return 0
 end
+
+function effective_field_energy(sim::AbstractSim, spin, t::Float64=0.0)
+    fill!(sim.field, 0.0)
+    fill!(sim.energy, 0.0)
+    for interaction in sim.interactions
+        effective_field(interaction, sim, spin, t)
+        sim.field .+= interaction.field
+        sim.energy .+= interaction.energy
+    end
+    return nothing
+end
