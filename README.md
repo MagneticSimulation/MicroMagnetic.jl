@@ -3,6 +3,7 @@
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ww1g11/MicroMagnetic.jl/HEAD)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ww1g11/MicroMagnetic.jl/gh-pages)
 [![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/dev/)
 [![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/stable/)
 [![Actions Status](https://github.com/ww1g11/MicroMagnetic.jl/workflows/CI/badge.svg)](https://github.com/ww1g11/MicroMagnetic.jl/actions)
