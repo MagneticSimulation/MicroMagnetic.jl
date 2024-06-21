@@ -2,7 +2,7 @@
 
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ww1g11/MicroMagnetic.jl/HEAD)
+
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ww1g11/MicroMagnetic.jl/gh-pages)
 [![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/dev/)
 [![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/stable/)
@@ -23,6 +23,13 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 - Supports periodic boundary conditions.
 - Easily extensible to add new features.
 
+# Run MicroMagnetic.jl in the cloud
+
+You don't have to install anything and you can run MicroMagnetic.jl in the cloud via Binder:
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ww1g11/MicroMagnetic.jl/gh-pages)
+
+All the julia scripts and Jupyter Notebooks (in tutorials folder) hosted in the repository can be executed and modified.
 
 ## Installation
 
@@ -92,3 +99,5 @@ relax(sim, maxsteps=5000, stopping_dmdt=0.1) #Relax the system
 save_vtk(sim, "m", fields=["demag"]) # Save the magnetization and the stray field into vtk.
 ```
 The magnetization and the stray field around the cylindrical sample are stored in `m.vts`, which can be opened using Paraview. 
+
+

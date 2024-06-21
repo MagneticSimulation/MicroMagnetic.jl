@@ -31,7 +31,12 @@ Or, equivalently:
 
 ```julia
 julia> using Pkg;
-julia> Pkg.add("MicroMagnetic.jl")
+julia> Pkg.add("MicroMagnetic")
+```
+
+To install the latest development version:
+```julia
+pkg> add MicroMagnetic#master
 ```
 
 To enable GPU support, one has to install one of the following packages:
