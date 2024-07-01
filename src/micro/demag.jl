@@ -27,6 +27,8 @@ mutable struct Demag{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
+# FIXME: reduce the memory of the demag tensors
+# FIXME: add dipolar approximation in the long distance case.
 function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     mesh = sim.mesh
     max_size = max(mesh.dx, mesh.dy, mesh.dz)

@@ -6,7 +6,7 @@ where factor = cell_size for the micromagnetic model and factor = 1 for atomisti
                                 factor::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
-    @inbounds mh::T = m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3]
+    @inbounds mh = m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3]
     @inbounds energy[id] = -factor * mu0_Ms[id] * mh
 end
 

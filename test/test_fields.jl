@@ -30,6 +30,7 @@ function test_fields(A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0, 0, 1))
     init_m0(sim, m0; norm=false)
     exch = add_exch(sim, A)
     demag = add_demag(sim)
+    demag2 = add_demag(sim, fft=false)
     dmi = add_dmi(sim, D)
     dmi2 = add_dmi(sim, DI; type="interfacial")
     anis = add_anis(sim, Ku; axis=axis)
@@ -44,11 +45,13 @@ function test_fields(A=1.3e-11, D=4e-3, DI=2e-3, Ku=-3e4, axis=(0, 0, 1))
     #println(maximum(abs.(anis.field-fan)))
     @test isapprox(Array(exch.field), fe, atol=1e-5)
     @test isapprox(Array(demag.field), fd, atol=1e-5)
+    @test isapprox(Array(demag2.field), fd, atol=1e-5)
     @test isapprox(Array(dmi.field), fdmi, atol=1e-5)
     @test isapprox(Array(dmi2.field), fdmi2, atol=1e-5)
     @test isapprox(Array(anis.field), fan, atol=1e-5)
 
     @test (abs((sum(demag.energy) - energy[1]) / energy[1])) < 1e-11
+    @test (abs((sum(demag2.energy) - energy[1]) / energy[1])) < 1e-11
     @test (abs((sum(exch.energy) - energy[2]) / energy[2])) < 1e-15
     @test (abs((sum(dmi.energy) - energy[3]) / energy[3])) < 1e-15
     @test (abs((sum(dmi2.energy) - energy[4]) / energy[4])) < 1e-15
