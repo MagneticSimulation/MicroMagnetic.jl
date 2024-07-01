@@ -8,7 +8,7 @@ using TimerOutputs
 const timer = TimerOutput()
 
 function reset_timer()
-       reset_timer!(timer)
+    return reset_timer!(timer)
 end
 export reset_timer
 
@@ -40,11 +40,11 @@ end
 export set_groupsize
 
 macro set_backend(platform)
-    esc(quote
-        if Base.find_package($(QuoteNode(platform))) !== nothing
-            using $(Symbol(platform))
-        end
-    end)
+    return esc(quote
+                   if Base.find_package($(QuoteNode(platform))) !== nothing
+                       using $(Symbol(platform))
+                   end
+               end)
 end
 
 const default_backend = Backend[CPU()]
@@ -99,7 +99,6 @@ function set_backend(x="cuda")
     @info(@sprintf("Switch the backend to %s", default_backend[]))
     return true
 end
-
 
 function kernel_array(a::Array)
     A = KernelAbstractions.zeros(default_backend[], eltype(a), size(a))
@@ -188,6 +187,8 @@ include("mc/mc.jl")
 include("neb/neb.jl")
 include("neb/math.jl")
 include("neb/neb_kernels.jl")
+
+include("tools/ltem.jl")
 
 function __init__() end
 
