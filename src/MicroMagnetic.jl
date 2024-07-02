@@ -188,6 +188,9 @@ include("neb/neb.jl")
 include("neb/math.jl")
 include("neb/neb_kernels.jl")
 
+include("eigen/util.jl")
+include("eigen/eigen.jl")
+
 include("tools/ltem.jl")
 
 function __init__() end
