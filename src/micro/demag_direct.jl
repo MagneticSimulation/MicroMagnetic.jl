@@ -81,15 +81,21 @@ end
 function effective_field(demag::DirectDemag, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
 
-    #only works in cpu for AbstractFloat
-    if Float[] == AbstractFloat
+    try
+        mul!(demag.field, demag.tensor, spin)
+    catch e #only works in cpu for AbstractFloat
         fill!(demag.field, 0)
         M, N = size(demag.tensor)
-        for i in 1:M, j in 1:N
-            demag.field[i] += demag.tensor[i, j] * spin[j]
+        for i in 1:M
+            f = demag.field[i]
+            for j in 1:N
+                t = demag.tensor[i, j]
+                if abs(t) > eps()
+                    f = f +  t * spin[j]
+                end
+            end
+            demag.field[i] = f
         end
-    else
-        mul!(demag.field, demag.tensor, spin)
     end
 
     N = sim.n_total
