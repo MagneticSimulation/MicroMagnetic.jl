@@ -190,19 +190,19 @@ function MicroMagnetic.ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1), f
 end
 
 """
-  jdl2movie(jdl_file; framerate=12, output=nothing, kwargs...)
+  jld2movie(jld_file; framerate=12, output=nothing, kwargs...)
 
-Create a moive from the given jdl2 file.
+Create a moive from the given jld2 file.
 
 `output`` is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
 """
-function MicroMagnetic.jdl2movie(jdl_file; framerate=12, output=nothing, figsize=(500, -1), kwargs...)
+function MicroMagnetic.jld2movie(jld_file; framerate=12, output=nothing, figsize=(500, -1), kwargs...)
   if output===nothing
-    base_name = jdl_file[1:length(jdl_file)-5]
+    base_name = jld_file[1:length(jld_file)-5]
     output = @sprintf("%s.mp4", base_name)
   end
 
-  data = JLD2.load(jdl_file)
+  data = JLD2.load(jld_file)
   steps = data["steps"]
   save_m_every = data["save_m_every"]
   nx, ny, nz = data["mesh/nx"], data["mesh/ny"], data["mesh/nz"]

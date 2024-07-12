@@ -68,8 +68,8 @@ read_ovf
 ```@docs
 ovf2vtk
 #plot_m
-#jdl2png
-#jdl2movie
+#jld2png
+#jld2movie
 ```
 
 ## DataTypes

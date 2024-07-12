@@ -29,8 +29,8 @@ set_driver(sim, driver="LLG", alpha=0.02, gamma = 2.211e5)
 add_zeeman(sim, (-24.6mT, 4.3mT, 0))
 run_sim(sim, steps=100, dt=1e-11)
 
-# By default, run_sim will generate a jdl2 file as well, so we can generate a movie based on it.
-jdl2movie("std4.jdl2", output="assets/std4.mp4", component='x')
+# By default, run_sim will generate a jld2 file as well, so we can generate a movie based on it.
+jld2movie("std4.jld2", output="assets/std4.mp4", component='x')
 
 # ![](./assets/std4.mp4)
 
