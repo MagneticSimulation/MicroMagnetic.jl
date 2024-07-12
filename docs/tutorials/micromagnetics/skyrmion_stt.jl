@@ -48,10 +48,10 @@ function call_back_fun(sim, t)
 end
 
 # We use the `run_sim` function to run the simulation.
-# after that, a jdl2 file will be created and we can export it to a movie (.mp4) using the `jdl2movie`.
+# after that, a jld2 file will be created and we can export it to a movie (.mp4) using the `jld2movie`.
 if !isfile("assets/skx.mp4")
     run_sim(sim, steps=100, dt=1e-10, save_m_every = 1, call_back=call_back_fun)
-    jdl2movie("skx.jdl2", output="assets/skx.mp4")
+    jld2movie("skx.jld2", output="assets/skx.mp4")
 end
 
 # ![](./assets/skx.mp4)
