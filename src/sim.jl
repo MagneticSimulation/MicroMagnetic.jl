@@ -273,7 +273,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
     time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
 
-    file = jldopen(@sprintf("%s.jdl2", sim.name), "w")
+    file = jldopen(@sprintf("%s.jld2", sim.name), "w")
     file["mesh/nx"] = sim.mesh.nx
     file["mesh/ny"] = sim.mesh.ny
     file["mesh/nz"] = sim.mesh.nz
@@ -616,7 +616,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
     end
 
     if save_m_every > 0
-        file = jldopen(@sprintf("%s.jdl2", sim.name), "w")
+        file = jldopen(@sprintf("%s.jld2", sim.name), "w")
 
         file["mesh/nx"] = sim.mesh.nx
         file["mesh/ny"] = sim.mesh.ny
