@@ -143,9 +143,9 @@ end
 
 function ovf2png() end
 function plot_m() end
-function jdl2movie() end
+function jld2movie() end
 
-export ovf2png, plot_m, jdl2movie
+export ovf2png, plot_m, jld2movie
 
 include("const.jl")
 include("micro/mesh.jl")

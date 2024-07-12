@@ -149,23 +149,36 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
         Dij = kernel_array(Dij)
         dmi = HeisenbergDMI(Dij, field, energy, name)
     elseif isa(sim.mesh, CubicMesh)
-        Dij[:, 1] .= [-D, 0, 0]
-        Dij[:, 2] .= [D, 0, 0]
-        Dij[:, 3] .= [0, -D, 0]
-        Dij[:, 4] .= [0, D, 0]
-        Dij[:, 5] .= [0, 0, -D]
-        Dij[:, 6] .= [0, 0, D]
-
-        if type == "interfacial"
-            for i in 1:6
-                Dij[:, i] .= cross_product(Dij[:, i], [0, 0, 1.0])
-            end
-            @info("Interfacial DMI for CubicMesh has been added!")
+        if type == "canted"
+            Dij[:, 1] .= [D, 0, 0]
+            Dij[:, 2] .= [D, 0, 0]
+            Dij[:, 3] .= [D, 0, 0]
+            Dij[:, 4] .= [D, 0, 0]
+            Dij[:, 5] .= [D, 0, 0]
+            Dij[:, 6] .= [D, 0, 0]        
+            Dij = kernel_array(Dij)
+            dmi = HeisenbergCantedDMI(Dij, field, energy, name)
+            @info("Canted DMI for CubicMesh has been added!")
         else
-            @info("Bulk DMI for CubicMesh has been added!")
+            Dij[:, 1] .= [-D, 0, 0]
+            Dij[:, 2] .= [D, 0, 0]
+            Dij[:, 3] .= [0, -D, 0]
+            Dij[:, 4] .= [0, D, 0]
+            Dij[:, 5] .= [0, 0, -D]
+            Dij[:, 6] .= [0, 0, D]
+
+            if type == "interfacial"
+                for i in 1:6
+                    Dij[:, i] .= cross_product(Dij[:, i], [0, 0, 1.0])
+                end
+                @info("Interfacial DMI for CubicMesh has been added!")
+
+            else
+                @info("Bulk DMI for CubicMesh has been added!")
+            end
+            Dij = kernel_array(Dij)
+            dmi = HeisenbergDMI(Dij, field, energy, name)
         end
-        Dij = kernel_array(Dij)
-        dmi = HeisenbergDMI(Dij, field, energy, name)
     elseif isa(sim.mesh, CylindricalTubeMesh)
         nr = sim.mesh.nr
         coords = sim.mesh.coordinates
