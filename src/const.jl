@@ -10,7 +10,11 @@ const h_bar = 1.05457172647e-34
 const gamma = g_e * mu_B / h_bar
 const mu_s_1 = g_e * mu_B * 1.0  # for S=1, 1.856952823077189e-23
 const h_bar_gamma = h_bar * gamma
-const mT = 0.001 / (4*pi*1e-7)
-const Gauss = 1/79.5775
+const mT = 0.001 / mu_0
+const Gauss = 0.1 * mT
+const Oe = 0.1 * mT
+const nm = 1e-9
+const ns = 1e-9
 
-export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT, Gauss
+export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT,
+       Gauss, Oe, nm, ns
