@@ -100,6 +100,28 @@ function set_backend(x="cuda")
     return true
 end
 
+using Logging
+
+# Function to set verbose logging (More info)
+function set_verbose_logging()
+    global_logger(ConsoleLogger(stderr, Logging.LogLevel(-1)))
+end
+
+# Function to set compact logging (minimal info)
+function set_compact_logging()
+    global_logger(ConsoleLogger(stderr, Logging.Info))
+end
+
+# Custom macro for verbose-only info
+macro verboseinfo(message)
+    return esc(quote
+        if Logging.min_enabled_level(global_logger()) < Logging.Info
+            @info $message
+        end
+    end)
+end
+export set_verbose_logging, set_compact_logging
+
 function kernel_array(a::Array)
     A = KernelAbstractions.zeros(default_backend[], eltype(a), size(a))
     copyto!(A, a)
