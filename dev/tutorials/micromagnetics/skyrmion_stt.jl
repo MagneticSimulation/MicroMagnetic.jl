@@ -3,6 +3,8 @@ using Printf
 
 @using_gpu()
 
+set_verbose_logging()
+
 mesh =  FDMesh(nx=400, ny=150, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy");
 
 sim = create_sim(mesh,  Ms=3.87e5, A=5.2e-12, D=1e-3, H=(0,0,160*mT), name="skx");
