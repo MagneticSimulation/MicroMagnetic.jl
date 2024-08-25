@@ -193,14 +193,13 @@ function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
     return true
 end
 
-
 """
     set_driver(sim::AbstractSim, args::Dict)
 
 Set the driver of the simulation. This function is not intended for users but for developers.
 """
 function set_driver(sim::AbstractSim, args::Dict)
-    
+
     # FIXME: we have to consider all the situations here
 
     # driver = string(typeof(sim.driver))
@@ -245,47 +244,42 @@ end
 """
     relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1, save_m_every=-1, using_time_factor=true)
 
-Relax the system using `LLG` or `SD` driver. This function works for both micromagnetic and atomistic simulations.
+Relaxes the system using either the `LLG` or `SD` driver. This function is compatible with both micromagnetic and atomistic simulations.
 
-`maxsteps` is the maximum steps allowed to run. 
+# Arguments
 
-`stopping_dmdt` is the main stop condition, both for both for `LLG` and `SD` drivers. For standard micromagnetic simulaition, 
-the typical value of `stopping_dmdt` is in the range of [0.01, 1].  In the `SD` driver, the time is not strictly defined. 
-To make it comparable for the `LLG` driver, we multiply a factor of `gamma`. However, for the atomistic model 
-with dimensionless unit, this factor should not be used. In this situation, `using_time_factor` should be set to `false`.
+- `maxsteps`: Maximum number of steps to run the simulation. Default is 10000.
+- `stopping_dmdt`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from 0.01 to 1. In `SD` driver mode, time is not strictly defined, so a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
+- `save_data_every`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving (e.g., `save_data_every=-1` only saves data at the end of the relaxation).
+- `save_m_every`: Interval for saving magnetization data. A negative value disables magnetization saving.
+- `using_time_factor`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
 
-`save_data_every` set the step for overall data saving such as energies and average magnetization. A negative `save_data_every` will
-disable the data saving (`save_data_every=-1` will enable the data saving at the end of relaxing).
-
-`save_m_every` set the step for magnetization saving, a negative `save_m_every` will disable the magnetization saving.
-
-Examples:
+# Examples
 
 ```julia
     relax(sim, maxsteps=10000, stopping_dmdt=0.1)
 ```
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1, save_m_every=-1, using_time_factor=true)
+function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1,
+               save_m_every=-1, using_time_factor=true, save_vtk=true)
 
     # to dertermine which driver is used.
     llg_driver = isa(sim.driver, LLG)
 
     time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
-
-    file = jldopen(@sprintf("%s.jld2", sim.name), "w")
-    file["mesh/nx"] = sim.mesh.nx
-    file["mesh/ny"] = sim.mesh.ny
-    file["mesh/nz"] = sim.mesh.nz
-    file["mesh/dx"] = sim.mesh.dx
-    file["mesh/dy"] = sim.mesh.dy
-    file["mesh/dz"] = sim.mesh.dz
-
-    file["steps"] = maxsteps
-    file["save_m_every"] = save_m_every
-
     if save_m_every > 0
-        m_group = JLD2.Group(file, "m")
+        jldopen(@sprintf("%s.jld2", sim.name), "w") do file
+            file["mesh/nx"] = sim.mesh.nx
+            file["mesh/ny"] = sim.mesh.ny
+            file["mesh/nz"] = sim.mesh.nz
+            file["mesh/dx"] = sim.mesh.dx
+            file["mesh/dy"] = sim.mesh.dy
+            file["mesh/dz"] = sim.mesh.dz
+
+            file["steps"] = maxsteps
+            return file["save_m_every"] = save_m_every
+        end
     end
 
     N_spins = sim.n_total
@@ -319,9 +313,12 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
             sim.saver.nsteps += 1
         end
 
-        if save_m_every > 0 && i % save_m_every == 0
-            index = @sprintf("%d", i)
-            m_group[index] = Array(sim.spin)
+        if save_m_every > 0
+            jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
+                m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
+                index = @sprintf("%d", i)
+                return m_group[index] = Array(sim.spin)
+            end
         end
 
         if max_dmdt < stopping_dmdt * dmdt_factor
@@ -332,14 +329,16 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
             end
 
             if save_m_every > 0
-                index = @sprintf("%d", i)
-                m_group[index] = Array(sim.spin)
+                jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
+                    m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
+                    index = @sprintf("%d", i)
+                    return m_group[index] = Array(sim.spin)
+                end
             end
+
             break
         end
     end
-
-    close(file)
 
     return nothing
 end
@@ -616,20 +615,18 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
     end
 
     if save_m_every > 0
-        file = jldopen(@sprintf("%s.jld2", sim.name), "w")
+        jldopen(@sprintf("%s.jld2", sim.name), "w") do file
+            file["mesh/nx"] = sim.mesh.nx
+            file["mesh/ny"] = sim.mesh.ny
+            file["mesh/nz"] = sim.mesh.nz
+            file["mesh/dx"] = sim.mesh.dx
+            file["mesh/dy"] = sim.mesh.dy
+            file["mesh/dz"] = sim.mesh.dz
 
-        file["mesh/nx"] = sim.mesh.nx
-        file["mesh/ny"] = sim.mesh.ny
-        file["mesh/nz"] = sim.mesh.nz
-        file["mesh/dx"] = sim.mesh.dx
-        file["mesh/dy"] = sim.mesh.dy
-        file["mesh/dz"] = sim.mesh.dz
-    
-        file["steps"] = steps
-        file["dt"] = dt
-        file["save_m_every"] = save_m_every
-
-        m_group = JLD2.Group(file, "m")
+            file["steps"] = steps
+            file["dt"] = dt
+            return file["save_m_every"] = save_m_every
+        end
     end
 
     for i in 0:steps
@@ -641,13 +638,13 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
         call_back !== nothing && call_back(sim, i * dt)
 
         if save_m_every > 0 && i % save_m_every == 0
-            index = @sprintf("%d", i)
-            m_group[index] = Array(sim.spin)
+            jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
+                m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
+                index = @sprintf("%d", i)
+                return m_group[index] = Array(sim.spin)
+            end
         end
     end
 
-    if save_m_every > 0
-        close(file)
-    end
     return nothing
 end
