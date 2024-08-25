@@ -241,27 +241,29 @@ function set_driver(sim::AbstractSim, args::Dict)
     end
 end
 
+
 """
-    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1, save_m_every=-1, using_time_factor=true)
+    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1, 
+           save_m_every=-1, using_time_factor=true)
 
-Relaxes the system using either the `LLG` or `SD` driver. This function is compatible with both micromagnetic and atomistic simulations.
+Relaxes the system using either the `LLG` or `SD` driver. This function is compatible with both [Micromagnetic model](@ref) and [Atomistic spin model](@ref).
 
-# Arguments
+**Arguments:**
 
-- `maxsteps`: Maximum number of steps to run the simulation. Default is 10000.
-- `stopping_dmdt`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from 0.01 to 1. In `SD` driver mode, time is not strictly defined, so a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
-- `save_data_every`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving (e.g., `save_data_every=-1` only saves data at the end of the relaxation).
-- `save_m_every`: Interval for saving magnetization data. A negative value disables magnetization saving.
-- `using_time_factor`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
+- `maxsteps::Int`: Maximum number of steps to run the simulation. Default is `10000`.
+- `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
+- `save_data_every::Int`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving (e.g., `save_data_every=-1` saves data only at the end of the relaxation).
+- `save_m_every::Int`: Interval for saving magnetization data. A negative value disables magnetization saving.
+- `using_time_factor::Bool`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
 
-# Examples
+**Examples:**
 
 ```julia
     relax(sim, maxsteps=10000, stopping_dmdt=0.1)
-```
+
 """
 function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1,
-               save_m_every=-1, using_time_factor=true, save_vtk=true)
+               save_m_every=-1, using_time_factor=true)
 
     # to dertermine which driver is used.
     llg_driver = isa(sim.driver, LLG)
@@ -297,12 +299,13 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
 
         t = llg_driver ? sim.driver.integrator.t : 0.0
         if llg_driver
-            @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e", i,
+            @verboseinfo @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e", i,
                            step_size, t, max_dmdt / dmdt_factor)
         else
-            @info @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i, step_size,
+            @verboseinfo @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i, step_size,
                            max_dmdt / dmdt_factor)
         end
+    
 
         if save_data_every > 0 && i % save_data_every == 0
             compute_system_energy(sim, sim.spin, t)
@@ -322,7 +325,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
         end
 
         if max_dmdt < stopping_dmdt * dmdt_factor
-            @info @sprintf("max_dmdt is less than stopping_dmdt=%g, Done!", stopping_dmdt)
+            @info @sprintf("max_dmdt is less than stopping_dmdt=%g @steps=%g Done!", stopping_dmdt, i)
             if save_data_every > 0 || save_data_every == -1
                 compute_system_energy(sim, sim.spin, t)
                 write_data(sim)
