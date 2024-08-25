@@ -6,10 +6,10 @@ CurrentModule = MicroMagnetic
 
 ## Meshes
 ```@docs
-FDMesh
-CubicMesh
-TriangularMesh
-CylindricalTubeMesh
+FDMesh()
+CubicMesh()
+TriangularMesh()
+CylindricalTubeMesh()
 ```
 
 ## Shapes
