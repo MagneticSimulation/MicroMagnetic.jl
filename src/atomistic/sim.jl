@@ -155,7 +155,7 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
             Dij[:, 3] .= [D, 0, 0]
             Dij[:, 4] .= [D, 0, 0]
             Dij[:, 5] .= [D, 0, 0]
-            Dij[:, 6] .= [D, 0, 0]        
+            Dij[:, 6] .= [D, 0, 0]
             Dij = kernel_array(Dij)
             dmi = HeisenbergCantedDMI(Dij, field, energy, name)
             @info("Canted DMI for CubicMesh has been added!")

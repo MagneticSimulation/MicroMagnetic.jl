@@ -85,7 +85,6 @@ function collect_terms(expr::AbstractFloat)
     return terms
 end
 
-
 function simplify(expr::AbstractFloat)
     terms = collect_terms(expr)
 
@@ -117,16 +116,16 @@ and
 """
 function rotation_matrix(mx, my, mz)
     norm = sqrt(mx^2 + my^2 + mz^2)
-    A = zeros(3,3)
+    A = zeros(3, 3)
     if norm < eps()
-        A[1,1] = 1
-        A[2,2] = 1
-        A[3,3] = 1
+        A[1, 1] = 1
+        A[2, 2] = 1
+        A[3, 3] = 1
     else
         theta = acos(mz / norm)
         phi = atan(my, mx)
-        A[1, 1]  = cos(phi) * cos(theta)
-        A[1, 2] = -sin(phi) 
+        A[1, 1] = cos(phi) * cos(theta)
+        A[1, 2] = -sin(phi)
         A[1, 3] = sin(theta) * cos(phi)
         A[2, 1] = sin(phi) * cos(theta)
         A[2, 2] = cos(phi)
@@ -148,15 +147,14 @@ function rotation_matrix_inverse(mx, my, mz)
     return transpose(A)
 end
 
-
 @inline function cross_x(x1, x2, x3, y1, y2, y3)
-    return -x3*y2 + x2*y3
+    return -x3 * y2 + x2 * y3
 end
 
 @inline function cross_y(x1, x2, x3, y1, y2, y3)
-    return x3*y1 - x1*y3
+    return x3 * y1 - x1 * y3
 end
 
 @inline function cross_z(x1, x2, x3, y1, y2, y3)
-    return -x2*y1 + x1*y2
+    return -x2 * y1 + x1 * y2
 end

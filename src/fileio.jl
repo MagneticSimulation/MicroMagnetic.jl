@@ -1,17 +1,17 @@
 function formatstring(s::String)
-  return @sprintf("%18s ", s)
+    return @sprintf("%18s ", s)
 end
 
 function formatstring(x::Int)
-  return @sprintf("%18d ", x)
+    return @sprintf("%18d ", x)
 end
 
 function formatstring(x::Float64)
-  return @sprintf("%18.12e ", x)
+    return @sprintf("%18.12e ", x)
 end
 
 function formatstring(x::Float32)
-  return @sprintf("%18.12e ", x)
+    return @sprintf("%18.12e ", x)
 end
 
 function formatstring(data::Tuple)
@@ -65,35 +65,35 @@ function create_saver(name::String, driver::String)
 end
 
 function write_data(sim::AbstractSim)
-  write_data(sim, sim.saver)
+    return write_data(sim, sim.saver)
 end
 
 function save_sim_data(sim::AbstractSim)
-  write_data(sim, sim.saver)
+    return write_data(sim, sim.saver)
 end
 
 function write_data(sim::AbstractSim, saver::DataSaver)
     if !saver.header_saved
-        io = open(saver.name, "w");
+        io = open(saver.name, "w")
         write(io, "#")
         for item in saver.items
-            write(io, formatstring(item.name));
+            write(io, formatstring(item.name))
         end
-        write(io, "\n#");
+        write(io, "\n#")
 
         for item in saver.items
-            write(io, formatstring(item.unit));
+            write(io, formatstring(item.unit))
         end
         write(io, "\n")
         saver.header_saved = true
     else
-        io = open(saver.name, "a");
+        io = open(saver.name, "a")
     end
 
     for item in saver.items
-        write(io, formatstring(item.result(sim)));
+        write(io, formatstring(item.result(sim)))
     end
 
     write(io, "\n")
-    close(io);
+    return close(io)
 end

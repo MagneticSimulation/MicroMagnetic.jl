@@ -28,7 +28,7 @@ function relax_system(; driver="LLG")
     add_anis(sim, 1e5; axis=(1, 0, 0))
 
     init_m0(sim, init_dw)
-    relax(sim; maxsteps=2000, stopping_dmdt=0.1)
+    relax(sim; max_steps=2000, stopping_dmdt=0.1)
     m = MicroMagnetic.average_m(sim)
     @test abs(m[1]) < 0.01
     @test abs(m[2]) < 0.04
@@ -37,9 +37,8 @@ end
 
 function test_relax()
     relax_system(; driver="LLG")
-    relax_system(; driver="SD")
+    return relax_system(; driver="SD")
 end
 
 @using_gpu()
 test_functions("Relax", test_relax)
-

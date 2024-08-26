@@ -32,15 +32,14 @@ function MonteCarlo(mesh::Mesh; name="mc", mc_2d=false)
 
     saver = init_saver(string(name, ".txt"), "MC")
     push!(saver.items, SaverItem("E_total", "<J>", o::AbstractSim -> sum(o.energy)))
-    push!(saver.items,
-          SaverItem(("m_x", "m_y", "m_z"), ("<>", "<>", "<>"), average_m))
+    push!(saver.items, SaverItem(("m_x", "m_y", "m_z"), ("<>", "<>", "<>"), average_m))
 
     sim.saver = saver
 
     return sim
 end
 
-function add_exch(sim::MonteCarlo; J=0) 
+function add_exch(sim::MonteCarlo; J=0)
     if isa(J, Tuple)
         sim.exch.Jx = J[1] / k_B
         sim.exch.Jy = J[2] / k_B
@@ -139,7 +138,6 @@ function add_anis_kagome(sim::MonteCarlo; Ku=0)
     return nothing
 end
 
-
 function add_anis_kagome_6fold(sim::MonteCarlo; K1=0, K2=0)
     T = Float[]
 
@@ -230,11 +228,9 @@ function average_m(sim::MonteCarlo)
     return Tuple(sum(b; dims=2) ./ sum(shape))
 end
 
-
-function run_sim(sim::MonteCarlo; maxsteps=10000, save_m_every=10, save_vtk_every=-1,
+function run_sim(sim::MonteCarlo; max_steps=10000, save_m_every=10, save_vtk_every=-1,
                  save_ovf_every=-1, ovf_format="binary8")
-
-    for i in 1:maxsteps
+    for i in 1:max_steps
         if save_m_every > 0
             if sim.steps % save_m_every == 0
                 energy = compute_system_energy(sim)

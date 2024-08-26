@@ -38,41 +38,39 @@ function m0_fun(i, j, k, dx, dy, dz)
     if ((i - 80)^2 + (j - 100)^2 < r^2)
         return (0.05, 0.01, -1)
     end
-    return (0,0,1)
+    return (0, 0, 1)
 end
 
 # We create a function to describe the basic setup of the problem
-function basic_setup(;driver="SD", m0=(0,0,1))
+function basic_setup(; driver="SD", m0=(0, 0, 1))
+    mesh = CubicMesh(; nx=500, ny=200, nz=1, dx=0.5e-9, dy=0.5e-9, pbc="xy")
 
-    mesh = CubicMesh(nx=500, ny=200, nz=1, dx=0.5e-9, dy=0.5e-9, pbc="xy")
-
-    sim = Sim(mesh, driver=driver, name="skx")
+    sim = Sim(mesh; driver=driver, name="skx")
     set_mu_s(sim, mu_s_1)
 
     init_m0(sim, m0)
-    
-    J = 1*meV
-    add_exch(sim, J, name="exch")
 
-    D = 0.18*J
-    add_dmi(sim, D, name="dmi")
-    
-    Hz= 1.5e-2*J / mu_s_1
-    add_zeeman(sim, (0,0,Hz))
+    J = 1 * meV
+    add_exch(sim, J; name="exch")
+
+    D = 0.18 * J
+    add_dmi(sim, D; name="dmi")
+
+    Hz = 1.5e-2 * J / mu_s_1
+    add_zeeman(sim, (0, 0, Hz))
 
     return sim
-
-end 
+end
 
 # We define a function to relax the system to get a skyrmion
 function relax_system()
-    sim = basic_setup(m0=m0_fun)
-    
-    relax(sim, maxsteps=5000, stopping_dmdt=0.001, using_time_factor=false)
+    sim = basic_setup(; m0=m0_fun)
+
+    relax(sim; max_steps=5000, stopping_dmdt=0.001, using_time_factor=false)
 
     npzwrite("skx.npy", Array(sim.spin))
 
-    save_vtk(sim, "skx")
+    return save_vtk(sim, "skx")
 end
 
 # We relax the system to see whether the skyrmion is created.
@@ -80,65 +78,60 @@ if !isfile("skx.npy")
     relax_system()
 end
 
-
 # We define a function to move the skyrmion using stt
-function drive_skyrmion(;u=2, alpha=0.1, beta=0.2, dt=1e-10, steps=10)
-
-    sim = basic_setup(m0=npzread("skx.npy"), driver="LLG_STT")
+function drive_skyrmion(; u=2, alpha=0.1, beta=0.2, dt=1e-10, steps=10)
+    sim = basic_setup(; m0=npzread("skx.npy"), driver="LLG_STT")
     sim.driver.alpha = alpha
     sim.driver.beta = beta
-    sim.driver.gamma = 2*mu_B/h_bar
+    sim.driver.gamma = 2 * mu_B / h_bar
 
     set_ux(sim, -u)
-    
+
     isdir("assets") || mkdir("assets")
     f = open(@sprintf("assets/pos_u_%g_alpha_%g_beta_%g.txt", u, alpha, beta), "w")
-    for i = 0:steps
-        t = dt*i
+    for i in 0:steps
+        t = dt * i
         println("running at $t")
-        run_until(sim, t, save_data=false)
+        run_until(sim, t; save_data=false)
         Rx, Ry = compute_guiding_center(sim)
         write(f, "$t $Rx $Ry\n")
     end
-    close(f)
+    return close(f)
 
     #save_vtk(sim, @sprintf("skx_u_%g", u))
 end
 
 function plot_XY(filename)
-
     data = readdlm(filename)
-    ts, X, Y = data[:,1]*1e9, data[:,2]*1e9,  data[:,3]*1e9
-    
-    fig = Figure(resolution = (800, 480), fontsize=28)
-    ax = Axis(fig[1, 1],
-        xlabel = "Time (ns)",
-        ylabel = "Displacement (nm)"
-    )
+    ts, X, Y = data[:, 1] * 1e9, data[:, 2] * 1e9, data[:, 3] * 1e9
 
-    lines!(ax, ts, X.-X[1], label="X")
-    lines!(ax, ts, Y.-Y[1], label="Y")
+    fig = Figure(; resolution=(800, 480), fontsize=28)
+    ax = Axis(fig[1, 1]; xlabel="Time (ns)", ylabel="Displacement (nm)")
+
+    lines!(ax, ts, X .- X[1]; label="X")
+    lines!(ax, ts, Y .- Y[1]; label="Y")
     axislegend()
 
-    save("assets/xy.png",fig)
+    save("assets/xy.png", fig)
     return fig
-
 end
 
 # We run the simulation to see how the skyrmion moves, and 
 # we find that its trajectory is a straight line
-u=2; alpha=0.1; beta=0.2
+u = 2;
+alpha = 0.1;
+beta = 0.2;
 name = @sprintf("assets/pos_u_%g_alpha_%g_beta_%g.txt", u, alpha, beta)
 if !isfile(name)
-    drive_skyrmion(u=u, alpha=alpha, beta=beta)
+    drive_skyrmion(; u=u, alpha=alpha, beta=beta)
 end
 plot_XY(name)
 
 # run a series of u
-us = [i for i = 1:6]
+us = [i for i in 1:6]
 for u in us
     local name = @sprintf("assets/pos_u_%g_alpha_%g_beta_%g.txt", u, alpha, beta)
-    isfile(name) || drive_skyrmion(u=u, alpha=alpha, beta=beta)
+    isfile(name) || drive_skyrmion(; u=u, alpha=alpha, beta=beta)
 end
 
 # Finally, we define a function to plot the skyrmion velocity
@@ -149,27 +142,21 @@ function plot_velocity(us)
         #for each u, we compute the velocity
         filename = @sprintf("assets/pos_u_%g_alpha_%g_beta_%g.txt", u, alpha, beta)
         data = readdlm(filename)
-        ts, X, Y = data[:,1], data[:,2],  data[:,3]
-        v = (last(X) - first(X))/(last(ts)-first(ts))
+        ts, X, Y = data[:, 1], data[:, 2], data[:, 3]
+        v = (last(X) - first(X)) / (last(ts) - first(ts))
         push!(vs, v)
-        push!(js, u*1.282)
+        push!(js, u * 1.282)
     end
     print(vs, js)
-    
-    fig = Figure(resolution = (800, 480), fontsize=28)
-    ax = Axis(fig[1, 1],
-        xlabel = "j (10^10 A/m^2)",
-        ylabel = "Velocity (m/s)"
-    )
+
+    fig = Figure(; resolution=(800, 480), fontsize=28)
+    ax = Axis(fig[1, 1]; xlabel="j (10^10 A/m^2)", ylabel="Velocity (m/s)")
 
     #scatterlines!(ax, js, vs, label="X")
-    scatterlines!(ax, js, vs, markersize = 8)
+    scatterlines!(ax, js, vs; markersize=8)
     #axislegend()
-    save("assets/velocity.png",fig)
+    save("assets/velocity.png", fig)
     return fig
-
 end
 
 plot_velocity(us)
-
-

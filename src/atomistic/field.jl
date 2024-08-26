@@ -91,14 +91,14 @@ function effective_field(dmi::HeisenbergDMI, sim::AtomisticSim, spin::AbstractAr
     return nothing
 end
 
-function effective_field(dmi::HeisenbergCantedDMI, sim::AtomisticSim, spin::AbstractArray{T,1},
-    t::Float64) where {T<:AbstractFloat}
+function effective_field(dmi::HeisenbergCantedDMI, sim::AtomisticSim,
+                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
 
     kernal = atomistic_canted_dmi_kernel!(default_backend[], groupsize[])
     kernal(dmi.field, dmi.energy, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
-        ndrange=(mesh.nx,mesh.ny,mesh.nz))
+           ndrange=(mesh.nx, mesh.ny, mesh.nz))
 
     KernelAbstractions.synchronize(default_backend[])
 
@@ -137,10 +137,10 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
 
     volume = 1.0 / mu0 # we need this factor to make the energy density correctly
     stochastic_field_kernel!(default_backend[], groupsize[])(spin, stochastic.field,
-                                                           stochastic.energy, sim.mu_s,
-                                                           stochastic.eta,
-                                                           stochastic.temperature, factor,
-                                                           volume; ndrange=N)
+                                                             stochastic.energy, sim.mu_s,
+                                                             stochastic.eta,
+                                                             stochastic.temperature, factor,
+                                                             volume; ndrange=N)
 
     KernelAbstractions.synchronize(default_backend[])
     return nothing

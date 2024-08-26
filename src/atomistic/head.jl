@@ -35,7 +35,7 @@ end
 # HeisenbergDMI denotes the DM interaction that can be used in 
 # cubic and triangular meshes. 
 mutable struct HeisenbergDMI{T<:AbstractFloat} <: Interaction
-    Dij::AbstractArray{T,2} 
+    Dij::AbstractArray{T,2}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
