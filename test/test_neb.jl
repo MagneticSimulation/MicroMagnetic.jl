@@ -75,7 +75,6 @@ function test_init_neb()
     @test isapprox(neb.spin, [0.7071067811865475, 0.7071067811865475, 0.0])
 end
 
-
 function test_neb_macrospin()
     function creat_sim()
         mesh = FDMesh(; nx=1, ny=1, nz=1, dx=5e-9, dy=5e-9, dz=5e-9)
@@ -100,7 +99,7 @@ function test_neb_macrospin()
     @test(length(neb.spin) == 3 * (5 + 5 + 1))
 
     init_energy_diff = maximum(neb.energy_cpu) - neb.energy_cpu[1]
-    relax(neb; maxsteps=500, stopping_dmdt=0.001)
+    relax(neb; max_steps=500, stopping_dmdt=0.001)
     final_energy_diff = maximum(neb.energy_cpu) - neb.energy_cpu[1]
     expected_energy_diff = 5e4 * 5e-9^3
     println("init_diff=$init_energy_diff, expected_diff=$expected_energy_diff, final_diff=$final_energy_diff")
@@ -118,5 +117,5 @@ function test_neb()
 end
 
 @using_gpu()
-test_functions("NEB", test_neb, platforms=["CPU"])
+test_functions("NEB", test_neb; platforms=["CPU"])
 test_functions("NEB MacroSpin", test_neb_macrospin)

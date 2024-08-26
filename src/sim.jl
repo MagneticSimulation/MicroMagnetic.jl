@@ -241,16 +241,15 @@ function set_driver(sim::AbstractSim, args::Dict)
     end
 end
 
-
 """
-    relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1, 
+    relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=1, 
            save_m_every=-1, using_time_factor=true)
 
 Relaxes the system using either the `LLG` or `SD` driver. This function is compatible with both [Micromagnetic model](@ref) and [Atomistic spin model](@ref).
 
 **Arguments:**
 
-- `maxsteps::Int`: Maximum number of steps to run the simulation. Default is `10000`.
+- `max_steps::Int`: Maximum number of steps to run the simulation. Default is `10000`.
 - `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
 - `save_data_every::Int`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving (e.g., `save_data_every=-1` saves data only at the end of the relaxation).
 - `save_m_every::Int`: Interval for saving magnetization data. A negative value disables magnetization saving.
@@ -259,10 +258,10 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
 **Examples:**
 
 ```julia
-    relax(sim, maxsteps=10000, stopping_dmdt=0.1)
+    relax(sim, max_steps=10000, stopping_dmdt=0.1)
 
 """
-function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1,
+function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
                save_m_every=-1, using_time_factor=true)
 
     # to dertermine which driver is used.
@@ -279,7 +278,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
             file["mesh/dy"] = sim.mesh.dy
             file["mesh/dz"] = sim.mesh.dz
 
-            file["steps"] = maxsteps
+            file["steps"] = max_steps
             return file["save_m_every"] = save_m_every
         end
     end
@@ -289,7 +288,7 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
 
     driver = sim.driver
     @info @sprintf("Running Driver : %s.", typeof(driver))
-    for i in 0:maxsteps
+    for i in 0:max_steps
         @timeit timer "run_step" run_step(sim, driver)
 
         step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
@@ -299,13 +298,12 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
 
         t = llg_driver ? sim.driver.integrator.t : 0.0
         if llg_driver
-            @verboseinfo @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e", i,
-                           step_size, t, max_dmdt / dmdt_factor)
+            @verboseinfo @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
+                                  i, step_size, t, max_dmdt / dmdt_factor)
         else
-            @verboseinfo @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i, step_size,
-                           max_dmdt / dmdt_factor)
+            @verboseinfo @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i,
+                                  step_size, max_dmdt / dmdt_factor)
         end
-    
 
         if save_data_every > 0 && i % save_data_every == 0
             compute_system_energy(sim, sim.spin, t)
@@ -325,7 +323,8 @@ function relax(sim::AbstractSim; maxsteps=10000, stopping_dmdt=0.01, save_data_e
         end
 
         if max_dmdt < stopping_dmdt * dmdt_factor
-            @info @sprintf("max_dmdt is less than stopping_dmdt=%g @steps=%g Done!", stopping_dmdt, i)
+            @info @sprintf("max_dmdt is less than stopping_dmdt=%g @steps=%g Done!",
+                           stopping_dmdt, i)
             if save_data_every > 0 || save_data_every == -1
                 compute_system_energy(sim, sim.spin, t)
                 write_data(sim)
@@ -463,7 +462,7 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
         sim.driver_name = driver
     end
 
-    set_driver(sim, args)
+    return set_driver(sim, args)
 end
 
 """

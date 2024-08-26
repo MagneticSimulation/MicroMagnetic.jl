@@ -15,13 +15,8 @@ using MicroMagnetic
 # Firstly, we use create_sim method to describe the studied system. For example, the system is a thin film (120x120x2 nm^3) 
 # with periodic boundary conditions, and three energies are considered.
 
-mesh = FDMesh(nx=60, ny=60, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
-params = Dict(
-    :Ms => 3.84e5,
-    :A => 3.25e-12,
-    :D => 5.83e-4,
-    :H => (0, 0, 120 * mT)
-)
+mesh = FDMesh(; nx=60, ny=60, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
+params = Dict(:Ms => 3.84e5, :A => 3.25e-12, :D => 5.83e-4, :H => (0, 0, 120 * mT))
 
 # Using NEB can be divided into two stages. The first stage is to prepare the initial state and the final state. We assume that 
 # the initial state is a magnetic skyrmion and the final state is ferromagnetic state.
@@ -37,7 +32,7 @@ function relax_skx()
     end
 
     sim = create_sim(mesh; m0=m0_fun_skx, params...)
-    relax(sim; maxsteps=2000, stopping_dmdt=0.01)
+    relax(sim; max_steps=2000, stopping_dmdt=0.01)
     save_vtk(sim, "skx")
 
     return plot_m(sim)
@@ -66,8 +61,7 @@ neb = NEB(sim, init_images, interpolation; name="skx_fm", driver="SD");
 # neb.spring_constant = 1e7
 
 # Relax the whole system
-relax(neb; stopping_dmdt=0.1, save_vtk_every=1000, maxsteps=5000)
-
+relax(neb; stopping_dmdt=0.1, save_vtk_every=1000, max_steps=5000)
 
 # After running the simulation, the energy text file ('skx_fm_energy.txt') and the corresponding 
 # distance text file ('skx_fm_distance.txt') are generated.

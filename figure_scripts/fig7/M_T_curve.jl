@@ -14,43 +14,42 @@ using MicroMagnetic
 @using_gpu()
 
 function relax_system_single(T)
-  mesh =  CubicMesh(nx=30, ny=30, nz=30, pbc="xyz")
-  sim = MonteCarlo(mesh, name="mc")
-  init_m0(sim, (0,0,1))
+    mesh = CubicMesh(; nx=30, ny=30, nz=30, pbc="xyz")
+    sim = MonteCarlo(mesh; name="mc")
+    init_m0(sim, (0, 0, 1))
 
-  add_exch(sim, J=300*k_B)
-  add_dmi(sim, D=0)
-  add_zeeman(sim, Hx=0, Hy=0, Hz=0)
-  add_anis(sim, Ku=0, Kc=0)
+    add_exch(sim; J=300 * k_B)
+    add_dmi(sim; D=0)
+    add_zeeman(sim; Hx=0, Hy=0, Hz=0)
+    add_anis(sim; Ku=0, Kc=0)
 
-  sim.T = 100000
-  run_sim(sim, maxsteps=10000, save_vtk_every=-1, save_m_every=-1)
-  sim.T = T
-  run_sim(sim, maxsteps=50000, save_vtk_every=-1, save_m_every=-1)
+    sim.T = 100000
+    run_sim(sim; max_steps=10000, save_vtk_every=-1, save_m_every=-1)
+    sim.T = T
+    run_sim(sim; max_steps=50000, save_vtk_every=-1, save_m_every=-1)
 
-  ms = zeros(1000)
-  sim.T = T
-  for i = 1:1000
-      run_sim(sim, maxsteps=100, save_vtk_every=-1, save_m_every=-1)
-      t = MicroMagnetic.average_m(sim)
-      ms[i] = sqrt(t[1]^2+t[2]^2+t[3]^2)
-  end
-  return sum(ms)/length(ms)
+    ms = zeros(1000)
+    sim.T = T
+    for i in 1:1000
+        run_sim(sim; max_steps=100, save_vtk_every=-1, save_m_every=-1)
+        t = MicroMagnetic.average_m(sim)
+        ms[i] = sqrt(t[1]^2 + t[2]^2 + t[3]^2)
+    end
+    return sum(ms) / length(ms)
 end
 
 function relax_system()
-  f = open("assets/M_H.txt", "w")
-  write(f, "#T(K)     m \n")
-  for T = 10:20:20
-      println("Running for $T ...")
-      m = relax_system_single(T)
-      write(f, "$T    $m \n")
-  end
-  close(f)
+    f = open("assets/M_H.txt", "w")
+    write(f, "#T(K)     m \n")
+    for T in 10:20:20
+        println("Running for $T ...")
+        m = relax_system_single(T)
+        write(f, "$T    $m \n")
+    end
+    return close(f)
 end
 
 # Run the relax_system function.
 if filesize("assets/M_H.txt") == 0
-  relax_system()
+    relax_system()
 end
-

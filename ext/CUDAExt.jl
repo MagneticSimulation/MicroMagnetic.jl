@@ -1,6 +1,6 @@
 module CUDAExt
 
-import MicroMagnetic
+using MicroMagnetic: MicroMagnetic
 using CUDA
 
 CUDA.allowscalar(false)
@@ -12,7 +12,7 @@ function set_cuda_backend()
 end
 
 function __init__()
-    set_cuda_backend()
+    return set_cuda_backend()
 end
 
 end

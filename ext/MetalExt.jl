@@ -1,6 +1,6 @@
 module MetalExt
 
-import MicroMagnetic
+using MicroMagnetic: MicroMagnetic
 using Metal
 
 function set_metal_backend()
@@ -10,7 +10,7 @@ function set_metal_backend()
 end
 
 function __init__()
-    set_metal_backend()
+    return set_metal_backend()
 end
 
 end

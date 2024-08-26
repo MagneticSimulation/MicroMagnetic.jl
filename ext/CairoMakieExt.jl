@@ -53,7 +53,9 @@ MicroMagnetic.plot_m(spin, colorrange=[-1, 1])
 # Creates a plot for the x-component of the second layer with custom settings
 MicroMagnetic.plot_m(spin, dx=0.5, dy=0.5, k=2, component='x', arrows=(5, 5), figsize=(600, 400))
 """
-function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1), figsize=(500, -1), fig=nothing, ax=nothing, colorrange=nothing)
+function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1),
+                              figsize=(500, -1), fig=nothing, ax=nothing,
+                              colorrange=nothing)
     (_, nx, ny, nz) = size(spin)
     scale_factor = 10^floor(log10(dx))
     dx = dx / scale_factor
@@ -64,7 +66,7 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
     mx = spin[1, :, :, k]
     my = spin[2, :, :, k]
     mz = spin[3, :, :, k]
-    lml = sqrt.(mx.^ 2 .+ my.^ 2 .+ mz.^2)
+    lml = sqrt.(mx .^ 2 .+ my .^ 2 .+ mz .^ 2)
     mx[lml .< 0.1] .= NaN
     my[lml .< 0.1] .= NaN
     mz[lml .< 0.1] .= NaN
@@ -92,10 +94,10 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
         start_x, step_x, arrow_nx = calculate_sampling(nx, step_size)
         start_y, step_y, arrow_ny = calculate_sampling(ny, step_size)
     else
-      start_y, step_y = calculate_start_step(ny, arrow_ny)
-      start_y, step_y, arrow_ny = calculate_sampling(ny, step_y)
-      start_x, step_x = calculate_start_step(nx, arrow_nx)
-      start_x, step_x, arrow_nx = calculate_sampling(nx, step_x)
+        start_y, step_y = calculate_start_step(ny, arrow_ny)
+        start_y, step_y, arrow_ny = calculate_sampling(ny, step_y)
+        start_x, step_x = calculate_start_step(nx, arrow_nx)
+        start_x, step_x, arrow_nx = calculate_sampling(nx, step_x)
     end
 
     I = start_x .+ (0:(arrow_nx - 1)) .* step_x
@@ -112,20 +114,20 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
         ax = Axis(fig[1, 1]; width=size_x, height=size_y)
     end
     hidedecorations!(ax)
-    
+
     if component == 'x'
-      mm = mx
+        mm = mx
     elseif component == 'y'
-      mm = my
+        mm = my
     else
-      mm = mz
+        mm = mz
     end
 
     #TODO: how to set automatic to colorrange???
     if colorrange == nothing
-      heatmap!(ax, xs, ys, mm; alpha=0.5)
+        heatmap!(ax, xs, ys, mm; alpha=0.5)
     else
-      heatmap!(ax, xs, ys, mm; alpha=0.5, colorrange=colorrange)
+        heatmap!(ax, xs, ys, mm; alpha=0.5, colorrange=colorrange)
     end
     #scatter!(ax, [(x, y) for x in xs for y in ys], color=:white, strokecolor=:black, strokewidth=0.5)
 
@@ -177,14 +179,15 @@ Create a png from the given ovf file.
 `arrows` is the number of arrows, should be a Tuple of integers. By default, arrows=(-1, -1).
 `figsize` should be a Tuple of integers, for example, figsize=(500, 400) or figsize=(500, -1).
 """
-function MicroMagnetic.ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1), figsize=(500, -1))
+function MicroMagnetic.ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1),
+                               figsize=(500, -1))
     if output === nothing
         output = endswith(ovf_name, ".ovf") ? ovf_name[1:(end - 4)] : ovf_name
     end
     ovf = read_ovf(ovf_name)
     spin = reshape(ovf.data, 3, ovf.xnodes, ovf.ynodes, ovf.znodes)
     fig = MicroMagnetic.plot_m(spin; dx=ovf.xstepsize, dy=ovf.ystepsize, k=k, arrows=arrows,
-                 figsize=figsize)
+                               figsize=figsize)
     save(output * ".png", fig)
     return fig
 end
@@ -196,42 +199,43 @@ Create a moive from the given jld2 file.
 
 `output`` is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
 """
-function MicroMagnetic.jld2movie(jld_file; framerate=12, output=nothing, figsize=(500, -1), kwargs...)
-  if output===nothing
-    base_name = jld_file[1:length(jld_file)-5]
-    output = @sprintf("%s.mp4", base_name)
-  end
+function MicroMagnetic.jld2movie(jld_file; framerate=12, output=nothing, figsize=(500, -1),
+                                 kwargs...)
+    if output === nothing
+        base_name = jld_file[1:(length(jld_file) - 5)]
+        output = @sprintf("%s.mp4", base_name)
+    end
 
-  data = JLD2.load(jld_file)
-  steps = data["steps"]
-  save_m_every = data["save_m_every"]
-  nx, ny, nz = data["mesh/nx"], data["mesh/ny"], data["mesh/nz"]
-  if save_m_every < 0
-    @info @sprintf("save_m_every is %d, which is negative, exiting~", save_m_every)
-    return
-  end
+    data = JLD2.load(jld_file)
+    steps = data["steps"]
+    save_m_every = data["save_m_every"]
+    nx, ny, nz = data["mesh/nx"], data["mesh/ny"], data["mesh/nz"]
+    if save_m_every < 0
+        @info @sprintf("save_m_every is %d, which is negative, exiting~", save_m_every)
+        return
+    end
 
-  dx, dy, dz = data["mesh/dx"], data["mesh/dy"], data["mesh/dz"]
+    dx, dy, dz = data["mesh/dx"], data["mesh/dy"], data["mesh/dz"]
 
-  size_x = figsize[1]
-  size_y = figsize[2]
-  if (size_y < 0)
-      aspect_ratio = ny * dy / (nx * dx)
-      size_y = Int(ceil(size_x * aspect_ratio))
-  end
+    size_x = figsize[1]
+    size_y = figsize[2]
+    if (size_y < 0)
+        aspect_ratio = ny * dy / (nx * dx)
+        size_y = Int(ceil(size_x * aspect_ratio))
+    end
 
-  fig = Figure(; size=(size_x, size_y), backgroundcolor=:white)
+    fig = Figure(; size=(size_x, size_y), backgroundcolor=:white)
 
-  ax = Axis(fig[1, 1]; width=size_x, height=size_y)
-  hidedecorations!(ax)
+    ax = Axis(fig[1, 1]; width=size_x, height=size_y)
+    hidedecorations!(ax)
 
-  function update_function(i)
-    index = @sprintf("m/%d", i)
-    m = reshape(data[index], 3, nx, ny, nz)
-    plot_m(m; dx=dx, dy=dy, fig=fig, ax=ax, kwargs...)
-  end
+    function update_function(i)
+        index = @sprintf("m/%d", i)
+        m = reshape(data[index], 3, nx, ny, nz)
+        return plot_m(m; dx=dx, dy=dy, fig=fig, ax=ax, kwargs...)
+    end
 
-  record(update_function, fig, output, 0:save_m_every:steps; framerate = framerate)
+    return record(update_function, fig, output, 0:save_m_every:steps; framerate=framerate)
 end
 
 end

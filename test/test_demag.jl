@@ -5,14 +5,14 @@ if !isdefined(Main, :test_functions)
     include("test_utils.jl")
 end
 
-function test_demag(;fft=true)
+function test_demag(; fft=true)
     mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=2, ny=1, nz=1)
     Ms = 8.6e5
     sim = Sim(mesh)
     set_Ms(sim, Ms)
 
     init_m0(sim, (1, 0, 0))
-    add_demag(sim, fft=fft)
+    add_demag(sim; fft=fft)
 
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     #println(sim.field)
@@ -23,7 +23,7 @@ function test_demag(;fft=true)
     sim = Sim(mesh)
     set_Ms(sim, Ms)
     init_m0(sim, (0.1, 0.2, 1))
-    add_demag(sim, fft=fft)
+    add_demag(sim; fft=fft)
 
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     #println(sim.field)
@@ -40,7 +40,7 @@ function test_demag(;fft=true)
     set_Ms(sim, Ms)
 
     init_m0(sim, (0.5, 0.6, 0.7))
-    add_demag(sim, fft=fft)
+    add_demag(sim; fft=fft)
 
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
 
@@ -57,7 +57,7 @@ function test_demag(;fft=true)
 end
 
 function test_demag_direct()
-    test_demag(fft=false)
+    return test_demag(; fft=false)
 end
 
 function compute_field_macro_uniform(mesh, Nx, Ny, Nz)

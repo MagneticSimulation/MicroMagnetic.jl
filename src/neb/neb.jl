@@ -79,7 +79,7 @@ neb = NEB(sim, init_images, interpolation; name="skx_fm", driver="SD")
 # neb.spring_constant = 1e7
 
 # Relax the entire system.
-relax(neb; stopping_dmdt=0.1, save_vtk_every=1000, maxsteps=5000)
+relax(neb; stopping_dmdt=0.1, save_vtk_every=1000, max_steps=5000)
 ```
 """
 function NEB(sim::AbstractSim, given_images::TupleOrArray,
@@ -129,7 +129,7 @@ function NEB(sim::AbstractSim, given_images::TupleOrArray,
 
     copyto!(neb.image_l, images[:, 1])
     copyto!(neb.image_r, images[:, end])
-    copyto!(neb.spin, images[:, 2:neb.n_images+1])
+    copyto!(neb.spin, images[:, 2:(neb.n_images + 1)])
     copyto!(neb.prespin, neb.spin)
 
     compute_system_energy(sim, neb.image_l, 0.0)
@@ -269,7 +269,7 @@ function compute_tangents(neb::NEB, spin::AbstractArray)
     return nothing
 end
 
-function relax(sim::NEB; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1,
+function relax(sim::NEB; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
                save_vtk_every=-1, using_time_factor=true, vtk_folder="vtks")
 
     # to dertermine which driver is used.
@@ -291,7 +291,7 @@ function relax(sim::NEB; maxsteps=10000, stopping_dmdt=0.01, save_data_every=1,
 
     driver = sim.driver
     @info @sprintf("Running Driver : %s.", typeof(driver))
-    for i in 0:maxsteps
+    for i in 0:max_steps
         @timeit timer "run_step" run_step(sim, driver)
 
         sim.nsteps += 1

@@ -1,6 +1,6 @@
 module AMDGPUExt
 
-import MicroMagnetic
+using MicroMagnetic: MicroMagnetic
 using AMDGPU
 
 function set_amd_backend()
@@ -10,7 +10,7 @@ function set_amd_backend()
 end
 
 function __init__()
-    set_amd_backend()
+    return set_amd_backend()
 end
 
 end

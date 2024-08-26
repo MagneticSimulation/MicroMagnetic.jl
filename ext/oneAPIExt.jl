@@ -1,6 +1,6 @@
 module oneAPIExt
 
-import MicroMagnetic
+using MicroMagnetic: MicroMagnetic
 using oneAPI
 
 function set_oneApi_backend()
@@ -10,7 +10,7 @@ function set_oneApi_backend()
 end
 
 function __init__()
-    set_oneApi_backend()
+    return set_oneApi_backend()
 end
 
 end
