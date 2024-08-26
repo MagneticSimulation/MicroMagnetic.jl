@@ -262,8 +262,11 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
 
 """
 function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
-               save_m_every=-1, using_time_factor=true)
-
+               save_m_every=-1, using_time_factor=true, maxsteps=nothing)
+    if !isnothing(maxsteps)
+                @warn "The parameter 'maxsteps' is deprecated. Please use 'max_steps' in relax function."
+                max_steps = maxsteps
+    end
     # to dertermine which driver is used.
     llg_driver = isa(sim.driver, LLG)
 
