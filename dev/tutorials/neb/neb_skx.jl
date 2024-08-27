@@ -3,13 +3,8 @@ using DelimitedFiles
 using CubicSplines
 using MicroMagnetic
 
-mesh = FDMesh(nx=60, ny=60, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
-params = Dict(
-    :Ms => 3.84e5,
-    :A => 3.25e-12,
-    :D => 5.83e-4,
-    :H => (0, 0, 120 * mT)
-)
+mesh = FDMesh(; nx=60, ny=60, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
+params = Dict(:Ms => 3.84e5, :A => 3.25e-12, :D => 5.83e-4, :H => (0, 0, 120 * mT))
 
 function relax_skx()
     function m0_fun_skx(i, j, k, dx, dy, dz)
@@ -21,7 +16,7 @@ function relax_skx()
     end
 
     sim = create_sim(mesh; m0=m0_fun_skx, params...)
-    relax(sim; maxsteps=2000, stopping_dmdt=0.01)
+    relax(sim; max_steps=2000, stopping_dmdt=0.01)
     save_vtk(sim, "skx")
 
     return plot_m(sim)
@@ -37,7 +32,7 @@ sim = create_sim(mesh; params...);
 
 neb = NEB(sim, init_images, interpolation; name="skx_fm", driver="SD");
 
-relax(neb; stopping_dmdt=0.1, save_vtk_every=1000, maxsteps=5000)
+relax(neb; stopping_dmdt=0.1, save_vtk_every=1000, max_steps=5000)
 
 function extract_data(; id=1)
     energy = readdlm("assets/skx_fm_energy.txt"; skipstart=2)
