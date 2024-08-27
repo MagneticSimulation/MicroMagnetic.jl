@@ -1,7 +1,7 @@
 using JLD2
 
 export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
-       set_driver, set_pinning, set_ux, set_uy, set_uz
+       set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with
 
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
@@ -194,11 +194,11 @@ function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
 end
 
 """
-    set_driver(sim::AbstractSim, args::Dict)
+    set_driver_arguments(sim::AbstractSim, args::Dict)
 
-Set the driver of the simulation. This function is not intended for users but for developers.
+Set the parameters of the driver. 
 """
-function set_driver(sim::AbstractSim, args::Dict)
+function set_driver_arguments(sim::AbstractSim, args::Dict)
 
     # FIXME: we have to consider all the situations here
 
@@ -213,6 +213,12 @@ function set_driver(sim::AbstractSim, args::Dict)
     if haskey(args, :gamma) && startswith(driver, "LLG")
         sim.driver.gamma = args[:gamma]
         delete!(args, :gamma)
+    end
+
+    #FIXME: check the type of sim.driver.integrator
+    if haskey(args, :tol) && startswith(driver, "LLG")
+        sim.driver.integrator.tol = args[:tol]
+        delete!(args, :tol)
     end
 
     if haskey(args, :beta) && startswith(driver, "LLG_STT")
@@ -242,7 +248,7 @@ function set_driver(sim::AbstractSim, args::Dict)
 end
 
 """
-    relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=1, 
+    relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=100, 
            save_m_every=-1, using_time_factor=true)
 
 Relaxes the system using either the `LLG` or `SD` driver. This function is compatible with both [Micromagnetic model](@ref) and [Atomistic spin model](@ref).
@@ -261,11 +267,11 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
     relax(sim, max_steps=10000, stopping_dmdt=0.1)
 
 """
-function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
+function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=100,
                save_m_every=-1, using_time_factor=true, maxsteps=nothing)
     if !isnothing(maxsteps)
-                @warn "The parameter 'maxsteps' is deprecated. Please use 'max_steps' in relax function."
-                max_steps = maxsteps
+        @warn "The parameter 'maxsteps' is deprecated. Please use 'max_steps' in relax function."
+        max_steps = maxsteps
     end
     # to dertermine which driver is used.
     llg_driver = isa(sim.driver, LLG)
@@ -326,7 +332,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         end
 
         if max_dmdt < stopping_dmdt * dmdt_factor
-            @info @sprintf("max_dmdt is less than stopping_dmdt=%g @steps=%g Done!",
+            @info @sprintf("max_dmdt is less than stopping_dmdt=%g @steps=%g, Done!",
                            stopping_dmdt, i)
             if save_data_every > 0 || save_data_every == -1
                 compute_system_energy(sim, sim.spin, t)
@@ -465,7 +471,7 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
         sim.driver_name = driver
     end
 
-    return set_driver(sim, args)
+    return set_driver_arguments(sim, args)
 end
 
 """
@@ -497,8 +503,10 @@ Create a micromagnetic simulation instance with given arguments.
 - `shape` : the shape defines the geometry of the sample, where parameters are configured.
 """
 function create_sim(mesh; args...)
-    #convert args to a dict
-    args = Dict(args)
+    return create_sim(mesh, Dict(args))
+end
+
+function create_sim(mesh, args::Dict)
     #Ms=8e5, A=1.3e-11, D=0, Ku=0, axis=(0,0,1), H=(0,0,0), m0=(0,0,1), demag=false, driver="SD", name="relax"
     driver = haskey(args, :driver) ? args[:driver] : "SD"
     name = haskey(args, :name) ? args[:name] : "unnamed"
@@ -578,7 +586,7 @@ function create_sim(mesh; args...)
     end
 
     # set the driver with args
-    set_driver(sim, args)
+    set_driver_arguments(sim, args)
 
     # set m0 anyway
     m0_value = haskey(args, :m0) ? args[:m0] : (0.8, 0.6, 0)
@@ -589,7 +597,7 @@ function create_sim(mesh; args...)
     end
 
     for key in args
-        @warn @sprintf("Key '%s' is not used.", key)
+        #@warn @sprintf("Key '%s' is not used.", key)
     end
 
     return sim
@@ -652,4 +660,186 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
     end
 
     return nothing
+end
+
+"""
+    sim_with(args)
+
+[High-Level Interface](@ref) for starting a typical micromagnetic simulation. All parameters are set using `args`, which can be either a `NamedTuple` or a `Dict`.
+
+# Keywords
+
+- `mesh`: A mesh must be provided to start the simulation. The mesh could be [`FDMesh`](@ref), [`CubicMesh`](@ref), or [`TriangularMesh`](@ref).
+- `name`: The name of the simulation, provided as a string.
+- `task`: The type of simulation task, which can be `"Relax"` or `"Dynamics"`. The default is "Relax".
+- `driver`: The name of the driver, which should be "SD", "LLG", or "LLG_STT". The default is "SD".
+- `alpha`: The Gilbert damping parameter in the LLG equation, provided as a number.
+- `beta`: The nonadiabatic strength in the LLG equation with spin-transfer torques (Zhang-Li model), provided as a number.
+- `gamma`: The gyromagnetic ratio, with a default value of 2.21e5.
+- `ux`, `uy`, `uz`: The components of the spin-transfer torque strength.
+- `ufun`: A time-dependent function for `u`.
+- `Ms`: The saturation magnetization, which should be a [`NumberOrArrayOrFunction`](@ref). The default is `Ms=8e5`.
+- `mu_s`: The magnetic moment, which should be a [`NumberOrArrayOrFunction`](@ref). The default is `mu_s=2*mu_B`.
+- `A` or `J`: The exchange constant, which should be a [`NumberOrArrayOrFunction`](@ref).
+- `D`: The Dzyaloshinskii-Moriya interaction (DMI) constant, which should be a [`NumberOrArrayOrFunction`](@ref).
+- `dmi_type`: The type of DMI, either "bulk" or "interfacial".
+- `Ku`: The anisotropy constant, which should be a [`NumberOrArrayOrFunction`](@ref).
+- `axis`: The anisotropy axis, provided as a tuple, e.g., `(0, 0, 1)`.
+- `demag`: Whether to include demagnetization. This should be a boolean (`true` or `false`). The default is `demag=false`.
+- `H`: The external magnetic field, which should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref).
+- `m0`: The initial magnetization, which should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref).
+- `T`: The temperature, which should be a [`NumberOrArrayOrFunction`](@ref).
+- `shape`: The shape defines the geometry of the sample, where parameters are configured.
+- `steps`: The total number of simulation steps for the `Dynamics` task.
+- `dt`: The time interval of each step, so the total simulation time is `steps * dt` for the `Dynamics` task.
+- `max_steps::Int`: Maximum number of steps to run the simulation for the `Relax` task. Default is `10000`.
+- `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
+- `relax_data_interval::Int`: Interval for saving overall data such as energies and average magnetization during a `Relax` task. A negative value disables data saving (e.g., `relax_data_interval = -1` saves data only at the end of the relaxation).
+- `dynamic_data_save::Bool`: Boolean flag to enable or disable saving overall data such as energies and average magnetization during the `Dynamics` task. Set to `true` to enable, or `false` to disable.
+- `relax_m_interval::Int`: Interval for saving magnetization data during a `Relax` task. A negative value disables magnetization saving.
+- `dynamic_m_interval::Int`: Interval for saving magnetization data during a `Dynamics` task. A negative value disables magnetization saving.
+- `using_time_factor::Bool`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
+
+#### Example
+
+See examples at [High-Level Interface](@ref)
+
+#### Notes
+
+- The `task` argument can be a single task (e.g., `"relax"`) or an array of tasks (e.g., `["relax", "dynamics"]`).
+- If you use `_range` suffixes for parameters like `H`, `Ms`, `Ku`, `A`, or `D`, ensure that the corresponding array lengths are consistent. If `task` is an array, its length must also match the length of these ranged parameters.
+- The `driver` parameter allows you to specify the type of simulation you want to perform. Options include `"SD"` for the steepest-descent driver, `"LLG"` for the Landau-Lifshitz-Gilbert equation, and `"LLG_STT"` for spin-transfer torque simulations. The `driver` could be a single driver or an array.
+- The `stopping_dmdt` parameter provides a stopping criterion based on the rate of change of the magnetization, which is particularly useful in relaxation simulations to determine when a stable state is reached.
+- The `relax_m_interval` and `dynamic_m_interval` parameters control the frequency of magnetization saving during the `Relax` and `Dynamics` tasks, respectively. Use negative values to disable magnetization saving.
+
+"""
+function sim_with(args)
+    #convert args to a dict
+    if !isa(args, Dict)
+        args = Dict(key => value for (key, value) in pairs(args))
+    end
+
+    task = get(args, :task, "Relax")
+    driver = get(args, :driver, "SD")
+    stopping_dmdt = get(args, :stopping_dmdt, 0.1)
+    max_steps = get(args, :max_steps, 10000)
+    relax_data_interval = get(args, :relax_data_interval, -1)
+    relax_m_interval = get(args, :relax_m_interval, -1)
+    using_time_factor = get(args, :using_time_factor, true)
+    steps = get(args, :steps, 100)
+    dt = get(args, :dt, 1e-11)
+    dynamic_data_save = get(args, :dynamic_data_save, true)
+    dynamic_m_interval = get(args, :dynamic_m_interval, -1)
+    call_back = get(args, :call_back, nothing)
+
+    if !haskey(args, :mesh)
+        error("A mesh must be provided to start the simulation.")
+    end
+
+    mesh = args[:mesh]
+    delete!(args, :mesh)
+
+    N = check_range_lengths(args)
+    # common single task without range
+    if N == 0
+        sim = create_sim(mesh, args)
+
+        haskey(args, :task) && delete!(args, :task)
+
+        if startswith(lowercase(task), "rel") # task == relax 
+            for key in [:stopping_dmdt, :max_steps, :relax_data_interval, :relax_m_interval,
+                        :using_time_factor]
+                haskey(args, key) && delete!(args, key)
+            end
+
+            relax(sim; max_steps=max_steps, stopping_dmdt=stopping_dmdt,
+                  save_data_every=relax_data_interval, save_m_every=relax_m_interval,
+                  using_time_factor=using_time_factor)
+
+        elseif startswith(lowercase(task), "dyn") # task == "dynamics"
+            if driver == "SD"
+                set_driver(sim; driver="LLG", integrator="DormandPrince")
+                set_driver_arguments(sim, args)
+            end
+
+            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back]
+                haskey(args, key) && delete!(args, key)
+            end
+
+            run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
+                    save_m_every=dynamic_m_interval, call_back=call_back)
+        end
+
+        for key in args
+            @warn @sprintf("Key '%s' is not used.", key)
+        end
+
+        return sim
+    end
+
+    # Now we need to deal with the case that N > 0
+    dict = get_vars_with_suffix(args, "_range")
+    for (k, v) in dict
+        args[k] = v[1]
+    end
+
+    shape = get(args, :shape, nothing)
+    sim = create_sim(mesh, args)
+
+    haskey(args, :task) && delete!(args, :task)
+
+    for n in 1:N
+        task_ = isa(task, AbstractArray) ? task[n] : task
+        driver_ = isa(driver, AbstractArray) ? driver[n] : driver
+
+        # this means that Ms_range exist
+        Ms = get(dict, :Ms, nothing)
+        if Ms != nothing
+            if shape == nothing
+                set_Ms(sim, Ms[n])
+            else
+                set_Ms(sim, shape, Ms[n])
+            end
+        end
+
+        # this means that H_range exist
+        H = get(dict, :H, nothing)
+        if H != nothing
+            update_zeeman(sim, H[n])
+        end
+
+        # TODO: we can add more ...
+
+        if startswith(lowercase(task_), "rel")
+            for key in [:stopping_dmdt, :max_steps, :relax_data_interval, :relax_m_interval,
+                        :using_time_factor]
+                haskey(args, key) && delete!(args, key)
+            end
+            relax(sim; max_steps=max_steps, stopping_dmdt=stopping_dmdt,
+                  save_data_every=relax_data_interval, save_m_every=relax_m_interval,
+                  using_time_factor=using_time_factor)
+
+        elseif startswith(lowercase(task_), "dyn")
+            if driver_ == "SD"
+                set_driver(sim; driver="LLG", integrator="DormandPrince")
+                set_driver_arguments(sim, args)
+            end
+
+            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back]
+                haskey(args, key) && delete!(args, key)
+            end
+
+            run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
+                    save_m_every=dynamic_m_interval, call_back=call_back)
+
+        else
+            error("Only support two types of task: 'Relax' and 'Dynamics'.")
+        end
+    end
+
+    for key in args
+        @warn @sprintf("Key '%s' is not used.", key)
+    end
+
+    return sim
 end

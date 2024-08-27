@@ -20,14 +20,12 @@ Torus
 ```
 
 ## Interfaces
-
 ```@docs
+sim_with
 set_backend
 set_precision
 Sim
-create_sim
 NEB
-run_sim
 set_Ms
 set_driver
 set_mu_s
@@ -49,7 +47,9 @@ add_dmi_int
 #add_exch_rkky
 update_zeeman
 update_anis
+create_sim
 relax
+run_sim
 #compute_guiding_center
 ```
 

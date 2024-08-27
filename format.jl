@@ -23,7 +23,7 @@ function find_newest_modified_files(folder_path::String, n::Int)
 end
 
 folder_path = "."
-files = find_newest_modified_files(folder_path, 10)
+files = find_newest_modified_files(folder_path, 5)
 for f in files
     format_file(f, YASStyle(); join_lines_based_on_source=false)
     println(f, " formated!")
