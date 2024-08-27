@@ -182,6 +182,69 @@ graph LR;
 ## Periodic Boundary conditions
 
 
+
+
+
+
+## High-Level Interface
+
+In MicroMagnetic.jl, we offer a high-level interface called [sim_with](@ref).
+
+This function allows you to bundle all micromagnetic parameters into a `Dict` or `NamedTuple` and pass them directly to [sim_with](@ref). 
+For example, we can compute hysteresis loops using the following script:
+
+```julia
+using MicroMagnetic
+
+args = (
+    task = "Relax",
+    mesh = FDMesh(nx=50, ny=10, nz=1, dx=2.5e-9, dy=2.5e-9, dz=2.5e-9),
+    Ms = 8e5, 
+    A = 1.3e-11,
+    demag = true,
+    m0 = (-1, 0, 0),
+    stopping_dmdt = 0.01,
+    H_range = [(i*50mT, i*50mT, 0) for i=-20:20]
+)
+
+sim_with(args)
+```
+In this exmaple, the external field `H` is varied using the `_range` suffix. Using the `_range` syntax, we can not only vary the external field `H`, but also explore the effects of changing other parameters such as `Ms` (saturation magnetization), `Ku` (anisotropy constant), `A` (exchange constant), and `D` (Dzyaloshinskii-Moriya interaction),
+enabling us to explore various micromagnetic scenarios, such as computing hysteresis loops or studying the effects of parameter changes.
+
+In MicroMagnetic.jl, two common tasks are supported: `Relax` and `Dynamics`.
+
+#### Relax: 
+Given an initial magnetization distribution, this task finds the stable magnetization configuration.
+
+#### Dynamics:
+This task computes the time evolution of a given magnetization distribution under specified excitations.
+
+In the above example, the task is defined as `Relax`. Actually, the `task` and `driver` could be an array. For instance, standard problem 4 can be defined as follows:
+```julia
+args = (
+    name = "std4", 
+    task = ["relax", "dynamics"],
+    mesh = FDMesh(nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9),
+    Ms = 8e5,                 # Saturation magnetization
+    A = 1.3e-11,              # Exchange constant
+    demag = true,             # Enable demagnetization
+    m0 = (1, 0.25, 0.1),      # Initial magnetization
+    alpha = 0.02,             # Gilbert damping
+    steps = 100,              # Number of steps for dynamics
+    dt = 0.1ns,               # Step size
+    stopping_dmdt = 0.01,     # Stopping criterion for relaxation
+    H_range = [(0,0,0), (-24.6mT, 4.3mT, 0)] # Static field
+)
+
+sim_with(args)
+```
+The example above combines both `Relax` and `Dynamics` tasks: first, it finds a stable magnetization distribution from an initial state, and then computes the time evolution after 
+changing external field `H` to `(-24.6mT, 4.3mT, 0)` using the `_range` suffix. 
+
+This flexibility of `sim_with` allows us to explore a variety of micromagnetic scenarios with ease.
+
+
 ## Timings 
 
 In MicroMagnetic.jl, we make use of TimerOutputs.jl to measure execution time in various tasks. After running the simulation, 
