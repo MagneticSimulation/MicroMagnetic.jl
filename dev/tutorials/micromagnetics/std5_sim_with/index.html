@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Standard Problem 5 (sim_with) · MicroMagnetic.jl</title><meta name="title" content="Standard Problem 5 (sim_with) · MicroMagnetic.jl"/><meta property="og:title" content="Standard Problem 5 (sim_with) · MicroMagnetic.jl"/><meta property="twitter:title" content="Standard Problem 5 (sim_with) · MicroMagnetic.jl"/><meta name="description" content="Documentation for MicroMagnetic.jl."/><meta property="og:description" content="Documentation for MicroMagnetic.jl."/><meta property="twitter:description" content="Documentation for MicroMagnetic.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><script src="../../../assets/init.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">MicroMagnetic.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../basics/">Basics</a></li><li><span class="tocitem">Tutorials</span><ul><li><input class="collapse-toggle" id="menuitem-3-1" type="checkbox" checked/><label class="tocitem" for="menuitem-3-1"><span class="docs-label">Micromagnetics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../compute_energy/">Calculating micromagnetic energies</a></li><li><a class="tocitem" href="../nanobar/">Magnetization state of a nanobar</a></li><li><a class="tocitem" href="../vortex/">Magnetic vortex</a></li><li><a class="tocitem" href="../std4_sim_with/">Standard Problem 4 (sim_with)</a></li><li><a class="tocitem" href="../std4/">Standard Problem 4</a></li><li class="is-active"><a class="tocitem" href>Standard Problem 5 (sim_with)</a></li><li><a class="tocitem" href="../std5/">Standard Problem 5</a></li><li><a class="tocitem" href="../skyrmion_stt/">Skyrmion dynamics under spin transfer torques</a></li><li><a class="tocitem" href="../stoner_wohlfarth/">Stoner–Wohlfarth model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-2" type="checkbox"/><label class="tocitem" for="menuitem-3-2"><span class="docs-label">Atomistic</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../atomistic/skyrmion/">Magnetic skyrmion</a></li><li><a class="tocitem" href="../../atomistic/skyrmion_afm/">Antiferromagnetic skyrmion</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-3" type="checkbox"/><label class="tocitem" for="menuitem-3-3"><span class="docs-label">Monte carlo</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../monte_carlo/M_T_curve/">M-T curve using Monte Carlo</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-4" type="checkbox"/><label class="tocitem" for="menuitem-3-4"><span class="docs-label">Neb</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../neb/neb_skx/">Skyrmion collapse using NEB</a></li></ul></li></ul></li><li><a class="tocitem" href="../../../equations/">Equations</a></li><li><a class="tocitem" href="../../../functions/">API</a></li><li><a class="tocitem" href="../../../developer/">Developers</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li><a class="is-disabled">Micromagnetics</a></li><li class="is-active"><a href>Standard Problem 5 (sim_with)</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Standard Problem 5 (sim_with)</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/ww1g11/MicroMagnetic.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/ww1g11/MicroMagnetic.jl/blob/master/docs/tutorials/micromagnetics/std5_sim_with.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Standard-Problem-5-(sim_with)"><a class="docs-heading-anchor" href="#Standard-Problem-5-(sim_with)">Standard Problem 5 (sim_with)</a><a id="Standard-Problem-5-(sim_with)-1"></a><a class="docs-heading-anchor-permalink" href="#Standard-Problem-5-(sim_with)" title="Permalink"></a></h1><p><a href="../std5_sim_with.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <a href="https://nbviewer.jupyter.org/github/ww1g11/MicroMagnetic.jl/blob/gh-pages/dev/tutorials/micromagnetics/std5_sim_with.ipynb"><img src="https://img.shields.io/badge/show-nbviewer-579ACA.svg" alt="notebook"/></a> <img src="https://img.shields.io/badge/Author-Weiwei%20Wang-blue" alt="Author"/></p><p>Micromagnetic Standard Problem 5 involves simulating the dynamics of a magnetic vortex in a thin rectangular film under the influence of a spin-polarized current. The problem is designed to test the accuracy of micromagnetic simulations in capturing the complex behavior of vortex structures, including their motion and deformation. The rectangular film in this example has dimensions of 100 nm × 100 nm × 10 nm, and the simulation tracks the position of the vortex core as it evolves over time due to the combined effects of exchange interactions, demagnetization, and spin-transfer torques.</p><pre><code class="language-julia hljs">using MicroMagnetic
+using Printf
+using CairoMakie
+
+@using_gpu()</code></pre><p>Define a function to initialize a vortex roughly.</p><pre><code class="language-julia hljs">function init_fun(i, j, k, dx, dy, dz)
+    x = i - 10
+    y = j - 10
+    r = sqrt(x^2 + y^2)
+    if r &lt; 2
+        return (0, 0, 1)
+    end
+    return (y / r, -x / r, 0)
+end</code></pre><pre><code class="nohighlight hljs">init_fun (generic function with 1 method)</code></pre><p>Define a callback function to record vortex center coordinates.</p><pre><code class="language-julia hljs">function call_back_fun(sim, t)
+    Rx, Ry = compute_guiding_center(sim; z=1)
+    open(&quot;std5_center.txt&quot;, &quot;a&quot;) do f
+        write(f, @sprintf(&quot;%g  %g  %g\n&quot;, t, Rx, Ry))
+    end
+end</code></pre><pre><code class="nohighlight hljs">call_back_fun (generic function with 1 method)</code></pre><p>Define simulation parameters.</p><pre><code class="language-julia hljs">args = (
+    name = &quot;std5&quot;,
+    task_s = [&quot;relax&quot;, &quot;dynamics&quot;],          # List of tasks to perform
+    driver_s = [&quot;SD&quot;, &quot;LLG_STT&quot;],            # List of drivers to use
+    mesh = FDMesh(; nx=20, ny=20, nz=2, dx=5e-9, dy=5e-9, dz=5e-9), # Mesh configuration
+    Ms = 8e5,                               # Saturation magnetization
+    A = 1.3e-11,                            # Exchange constant
+    demag = true,                           # Enable demagnetization
+    m0 = init_fun,                          # Initial magnetization function
+    alpha = 0.1,                            # Gilbert damping parameter
+    ux = -72.438,                           # Effective current density
+    beta = 0.05,                            # Nonadiabatic STT parameter
+    steps = 160,                            # Number of steps for dynamics
+    dt = 0.05ns,                            # Time step size
+    stopping_dmdt = 0.01,                   # Stopping criterion for relaxation
+    call_back = call_back_fun,              # Callback function for vortex center tracking
+    dynamic_m_interval = 1                  # Save magnetization at every step
+);</code></pre><p>Run the simulation using <code>sim_with</code> function.</p><pre><code class="language-julia hljs">sim_with(args);</code></pre><pre><code class="nohighlight hljs">[ Info: MicroSim has been created.
+[ Info: Exchange has been added.
+[ Info: Running Driver : MicroMagnetic.EnergyMinimization{Float64}.
+[ Info: max_dmdt is less than stopping_dmdt=0.01 @steps=173, Done!
+[ Info: The driver LLG_STT is used!
+[ Info: step =    0  t = 0.000000e+00
+[ Info: step =    1  t = 5.000000e-11
+[ Info: step =    2  t = 1.000000e-10
+[ Info: step =    3  t = 1.500000e-10
+[ Info: step =    4  t = 2.000000e-10
+[ Info: step =    5  t = 2.500000e-10
+[ Info: step =    6  t = 3.000000e-10
+[ Info: step =    7  t = 3.500000e-10
+[ Info: step =    8  t = 4.000000e-10
+[ Info: step =    9  t = 4.500000e-10
+[ Info: step =   10  t = 5.000000e-10
+[ Info: step =   11  t = 5.500000e-10
+[ Info: step =   12  t = 6.000000e-10
+[ Info: step =   13  t = 6.500000e-10
+[ Info: step =   14  t = 7.000000e-10
+[ Info: step =   15  t = 7.500000e-10
+[ Info: step =   16  t = 8.000000e-10
+[ Info: step =   17  t = 8.500000e-10
+[ Info: step =   18  t = 9.000000e-10
+[ Info: step =   19  t = 9.500000e-10
+[ Info: step =   20  t = 1.000000e-09
+[ Info: step =   21  t = 1.050000e-09
+[ Info: step =   22  t = 1.100000e-09
+[ Info: step =   23  t = 1.150000e-09
+[ Info: step =   24  t = 1.200000e-09
+[ Info: step =   25  t = 1.250000e-09
+[ Info: step =   26  t = 1.300000e-09
+[ Info: step =   27  t = 1.350000e-09
+[ Info: step =   28  t = 1.400000e-09
+[ Info: step =   29  t = 1.450000e-09
+[ Info: step =   30  t = 1.500000e-09
+[ Info: step =   31  t = 1.550000e-09
+[ Info: step =   32  t = 1.600000e-09
+[ Info: step =   33  t = 1.650000e-09
+[ Info: step =   34  t = 1.700000e-09
+[ Info: step =   35  t = 1.750000e-09
+[ Info: step =   36  t = 1.800000e-09
+[ Info: step =   37  t = 1.850000e-09
+[ Info: step =   38  t = 1.900000e-09
+[ Info: step =   39  t = 1.950000e-09
+[ Info: step =   40  t = 2.000000e-09
+[ Info: step =   41  t = 2.050000e-09
+[ Info: step =   42  t = 2.100000e-09
+[ Info: step =   43  t = 2.150000e-09
+[ Info: step =   44  t = 2.200000e-09
+[ Info: step =   45  t = 2.250000e-09
+[ Info: step =   46  t = 2.300000e-09
+[ Info: step =   47  t = 2.350000e-09
+[ Info: step =   48  t = 2.400000e-09
+[ Info: step =   49  t = 2.450000e-09
+[ Info: step =   50  t = 2.500000e-09
+[ Info: step =   51  t = 2.550000e-09
+[ Info: step =   52  t = 2.600000e-09
+[ Info: step =   53  t = 2.650000e-09
+[ Info: step =   54  t = 2.700000e-09
+[ Info: step =   55  t = 2.750000e-09
+[ Info: step =   56  t = 2.800000e-09
+[ Info: step =   57  t = 2.850000e-09
+[ Info: step =   58  t = 2.900000e-09
+[ Info: step =   59  t = 2.950000e-09
+[ Info: step =   60  t = 3.000000e-09
+[ Info: step =   61  t = 3.050000e-09
+[ Info: step =   62  t = 3.100000e-09
+[ Info: step =   63  t = 3.150000e-09
+[ Info: step =   64  t = 3.200000e-09
+[ Info: step =   65  t = 3.250000e-09
+[ Info: step =   66  t = 3.300000e-09
+[ Info: step =   67  t = 3.350000e-09
+[ Info: step =   68  t = 3.400000e-09
+[ Info: step =   69  t = 3.450000e-09
+[ Info: step =   70  t = 3.500000e-09
+[ Info: step =   71  t = 3.550000e-09
+[ Info: step =   72  t = 3.600000e-09
+[ Info: step =   73  t = 3.650000e-09
+[ Info: step =   74  t = 3.700000e-09
+[ Info: step =   75  t = 3.750000e-09
+[ Info: step =   76  t = 3.800000e-09
+[ Info: step =   77  t = 3.850000e-09
+[ Info: step =   78  t = 3.900000e-09
+[ Info: step =   79  t = 3.950000e-09
+[ Info: step =   80  t = 4.000000e-09
+[ Info: step =   81  t = 4.050000e-09
+[ Info: step =   82  t = 4.100000e-09
+[ Info: step =   83  t = 4.150000e-09
+[ Info: step =   84  t = 4.200000e-09
+[ Info: step =   85  t = 4.250000e-09
+[ Info: step =   86  t = 4.300000e-09
+[ Info: step =   87  t = 4.350000e-09
+[ Info: step =   88  t = 4.400000e-09
+[ Info: step =   89  t = 4.450000e-09
+[ Info: step =   90  t = 4.500000e-09
+[ Info: step =   91  t = 4.550000e-09
+[ Info: step =   92  t = 4.600000e-09
+[ Info: step =   93  t = 4.650000e-09
+[ Info: step =   94  t = 4.700000e-09
+[ Info: step =   95  t = 4.750000e-09
+[ Info: step =   96  t = 4.800000e-09
+[ Info: step =   97  t = 4.850000e-09
+[ Info: step =   98  t = 4.900000e-09
+[ Info: step =   99  t = 4.950000e-09
+[ Info: step =  100  t = 5.000000e-09
+[ Info: step =  101  t = 5.050000e-09
+[ Info: step =  102  t = 5.100000e-09
+[ Info: step =  103  t = 5.150000e-09
+[ Info: step =  104  t = 5.200000e-09
+[ Info: step =  105  t = 5.250000e-09
+[ Info: step =  106  t = 5.300000e-09
+[ Info: step =  107  t = 5.350000e-09
+[ Info: step =  108  t = 5.400000e-09
+[ Info: step =  109  t = 5.450000e-09
+[ Info: step =  110  t = 5.500000e-09
+[ Info: step =  111  t = 5.550000e-09
+[ Info: step =  112  t = 5.600000e-09
+[ Info: step =  113  t = 5.650000e-09
+[ Info: step =  114  t = 5.700000e-09
+[ Info: step =  115  t = 5.750000e-09
+[ Info: step =  116  t = 5.800000e-09
+[ Info: step =  117  t = 5.850000e-09
+[ Info: step =  118  t = 5.900000e-09
+[ Info: step =  119  t = 5.950000e-09
+[ Info: step =  120  t = 6.000000e-09
+[ Info: step =  121  t = 6.050000e-09
+[ Info: step =  122  t = 6.100000e-09
+[ Info: step =  123  t = 6.150000e-09
+[ Info: step =  124  t = 6.200000e-09
+[ Info: step =  125  t = 6.250000e-09
+[ Info: step =  126  t = 6.300000e-09
+[ Info: step =  127  t = 6.350000e-09
+[ Info: step =  128  t = 6.400000e-09
+[ Info: step =  129  t = 6.450000e-09
+[ Info: step =  130  t = 6.500000e-09
+[ Info: step =  131  t = 6.550000e-09
+[ Info: step =  132  t = 6.600000e-09
+[ Info: step =  133  t = 6.650000e-09
+[ Info: step =  134  t = 6.700000e-09
+[ Info: step =  135  t = 6.750000e-09
+[ Info: step =  136  t = 6.800000e-09
+[ Info: step =  137  t = 6.850000e-09
+[ Info: step =  138  t = 6.900000e-09
+[ Info: step =  139  t = 6.950000e-09
+[ Info: step =  140  t = 7.000000e-09
+[ Info: step =  141  t = 7.050000e-09
+[ Info: step =  142  t = 7.100000e-09
+[ Info: step =  143  t = 7.150000e-09
+[ Info: step =  144  t = 7.200000e-09
+[ Info: step =  145  t = 7.250000e-09
+[ Info: step =  146  t = 7.300000e-09
+[ Info: step =  147  t = 7.350000e-09
+[ Info: step =  148  t = 7.400000e-09
+[ Info: step =  149  t = 7.450000e-09
+[ Info: step =  150  t = 7.500000e-09
+[ Info: step =  151  t = 7.550000e-09
+[ Info: step =  152  t = 7.600000e-09
+[ Info: step =  153  t = 7.650000e-09
+[ Info: step =  154  t = 7.700000e-09
+[ Info: step =  155  t = 7.750000e-09
+[ Info: step =  156  t = 7.800000e-09
+[ Info: step =  157  t = 7.850000e-09
+[ Info: step =  158  t = 7.900000e-09
+[ Info: step =  159  t = 7.950000e-09
+[ Info: step =  160  t = 8.000000e-09
+</code></pre><p>Generate a movie for the vortex dynamics.</p><pre><code class="language-julia hljs">jld2movie(&quot;std5.jld2&quot;; output=&quot;assets/std5.mp4&quot;, component=&#39;z&#39;, figsize=(400,400))</code></pre><pre><code class="nohighlight hljs">&quot;assets/std5.mp4&quot;</code></pre><p><video src="../assets/std5.mp4" controls="true" title><a href="../assets/std5.mp4"></a></video></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../std4/">« Standard Problem 4</a><a class="docs-footer-nextpage" href="../std5/">Standard Problem 5 »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.6.0 on <span class="colophon-date" title="Thursday 29 August 2024 12:04">Thursday 29 August 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
