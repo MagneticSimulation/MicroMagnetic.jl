@@ -3,7 +3,9 @@
     "compute_energy.jl",
     "nanobar.jl",
     "vortex.jl",
+    "std4_sim_with.jl",
     "std4.jl",
+    "std5_sim_with.jl",
     "std5.jl",
     "skyrmion_stt.jl",
     "stoner_wohlfarth.jl"

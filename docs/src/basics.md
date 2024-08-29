@@ -184,18 +184,18 @@ graph LR;
 
 
 
-
-
 ## High-Level Interface
 
-In MicroMagnetic.jl, we offer a high-level interface called [sim_with](@ref).
+In **MicroMagnetic.jl**, a high-level interface called `sim_with` simplifies the setup and execution of micromagnetic simulations. This function allows you to package all relevant micromagnetic parameters into either a `NamedTuple` or a `Dict`, which can then be passed directly to `sim_with`. This approach streamlines the simulation setup process, making it more intuitive and flexible.
 
-This function allows you to bundle all micromagnetic parameters into a `Dict` or `NamedTuple` and pass them directly to [sim_with](@ref). 
-For example, we can compute hysteresis loops using the following script:
+### Example: Hysteresis Loop Computation
+
+Below is an example of how to use `sim_with` to compute a hysteresis loop. You can use either a `NamedTuple` or a `Dict` to define the parameters.
 
 ```julia
 using MicroMagnetic
 
+# Using NamedTuple
 args = (
     task = "Relax",
     mesh = FDMesh(nx=50, ny=10, nz=1, dx=2.5e-9, dy=2.5e-9, dz=2.5e-9),
@@ -204,46 +204,53 @@ args = (
     demag = true,
     m0 = (-1, 0, 0),
     stopping_dmdt = 0.01,
-    H_range = [(i*50mT, i*50mT, 0) for i=-20:20]
+    H_s = [(i*50mT, i*50mT, 0) for i=-20:20]
+)
+
+sim_with(args)
+
+# Using Dict
+args = Dict(
+    :task => "Relax",
+    :mesh => FDMesh(nx=50, ny=10, nz=1, dx=2.5e-9, dy=2.5e-9, dz=2.5e-9),
+    :Ms => 8e5, 
+    :A => 1.3e-11,
+    :demag => true,
+    :m0 => (-1, 0, 0),
+    :stopping_dmdt => 0.01,
+    :H_s => [(i*50mT, i*50mT, 0) for i=-20:20]
 )
 
 sim_with(args)
 ```
-In this exmaple, the external field `H` is varied using the `_range` suffix. Using the `_range` syntax, we can not only vary the external field `H`, but also explore the effects of changing other parameters such as `Ms` (saturation magnetization), `Ku` (anisotropy constant), `A` (exchange constant), and `D` (Dzyaloshinskii-Moriya interaction),
-enabling us to explore various micromagnetic scenarios, such as computing hysteresis loops or studying the effects of parameter changes.
 
-In MicroMagnetic.jl, two common tasks are supported: `Relax` and `Dynamics`.
+In these examples, the external field `H` is varied using the `_s` suffix (or `_sweep` if preferred). This suffix can be applied to other parameters as well, including `Ms` (saturation magnetization), `Ku` (anisotropy constant), `A` (exchange constant), `D` (Dzyaloshinskii-Moriya interaction), `task` (e.g., "Relax" or "Dynamics"), and `driver` (e.g., "SD", "LLG", "LLG_STT"). This flexibility allows you to explore a wide range of micromagnetic scenarios, such as computing hysteresis loops or studying the effects of parameter variations.
 
-#### Relax: 
-Given an initial magnetization distribution, this task finds the stable magnetization configuration.
+### Example: Standard Problem 4
 
-#### Dynamics:
-This task computes the time evolution of a given magnetization distribution under specified excitations.
+**MicroMagnetic.jl** supports common micromagnetic tasks such as **Relax** (finding a stable magnetization configuration) and **Dynamics** (simulating the time evolution of magnetization). The following example demonstrates how to perform both tasks in sequence.
 
-In the above example, the task is defined as `Relax`. Actually, the `task` and `driver` could be an array. For instance, standard problem 4 can be defined as follows:
 ```julia
 args = (
-    name = "std4", 
-    task = ["relax", "dynamics"],
+    name = "std4",
+    task_s = ["relax", "dynamics"],       # List of tasks
     mesh = FDMesh(nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9),
-    Ms = 8e5,                 # Saturation magnetization
-    A = 1.3e-11,              # Exchange constant
-    demag = true,             # Enable demagnetization
-    m0 = (1, 0.25, 0.1),      # Initial magnetization
-    alpha = 0.02,             # Gilbert damping
-    steps = 100,              # Number of steps for dynamics
-    dt = 0.1ns,               # Step size
-    stopping_dmdt = 0.01,     # Stopping criterion for relaxation
-    H_range = [(0,0,0), (-24.6mT, 4.3mT, 0)] # Static field
+    Ms = 8e5,                                 # Saturation magnetization
+    A = 1.3e-11,                              # Exchange constant
+    demag = true,                             # Enable demagnetization
+    m0 = (1, 0.25, 0.1),                      # Initial magnetization
+    alpha = 0.02,                             # Gilbert damping
+    steps = 100,                              # Number of steps for dynamics
+    dt = 0.01ns,                              # Step size
+    stopping_dmdt = 0.01,                     # Stopping criterion for relaxation
+    dynamic_m_interval = 1,                   # Save the magnetization each step
+    H_s = [(0,0,0), (-24.6mT, 4.3mT, 0)]      # Static field sweep
 )
 
 sim_with(args)
 ```
-The example above combines both `Relax` and `Dynamics` tasks: first, it finds a stable magnetization distribution from an initial state, and then computes the time evolution after 
-changing external field `H` to `(-24.6mT, 4.3mT, 0)` using the `_range` suffix. 
 
-This flexibility of `sim_with` allows us to explore a variety of micromagnetic scenarios with ease.
-
+In this example, the system first relaxes to a stable configuration, and then the dynamics of the magnetization are simulated after applying an external field. By passing parameters as either a `NamedTuple` or `Dict`, you can easily explore various micromagnetic scenarios with just a few lines of code, making the `sim_with` function a powerful tool for research and development in micromagnetics.
 
 ## Timings 
 

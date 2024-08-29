@@ -664,6 +664,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
     return nothing
 end
 
+
 """
     sim_with(args)
 
@@ -704,14 +705,15 @@ end
 
 #### Example
 
-See examples at [High-Level Interface](@ref)
+See examples at [High-Level Interface](@ref).
 
 #### Notes
-- The `_sweep` suffix represents the 
-- If you use `_s` suffixes for parameters like `H`, `Ms`, `Ku`, `A`, or `D`, ensure that the corresponding array lengths are consistent. If `task` is an array, its length must also match the length of these ranged parameters.
-- The `driver` parameter allows you to specify the type of simulation you want to perform. Options include `"SD"` for the steepest-descent driver, `"LLG"` for the Landau-Lifshitz-Gilbert equation, and `"LLG_STT"` for spin-transfer torque simulations.
-- The `stopping_dmdt` parameter provides a stopping criterion based on the rate of change of the magnetization, which is particularly useful in relaxation simulations to determine when a stable state is reached.
-- The `relax_m_interval` and `dynamic_m_interval` parameters control the frequency of magnetization saving during the `Relax` and `Dynamics` tasks, respectively. Use negative values to disable magnetization saving.
+
+- **Suffix Usage**: Parameters like `H`, `Ms`, `Ku`, `A`, `D`, `task`, and `driver` can be defined as arrays using the `_s` or `_sweep` suffix. When using these suffixes, ensure that the corresponding array lengths match. This allows the simulation to iterate over different values for these parameters.
+- **Argument Types**: The `args` parameter can be either a `NamedTuple` or a `Dict`, providing flexibility in how you organize and pass the simulation parameters.
+- **Driver Selection**: The `driver` parameter (or `driver_s` for multiple drivers) specifies the simulation type. Options include `"SD"` for the steepest-descent method, `"LLG"` for the Landau-Lifshitz-Gilbert equation, and `"LLG_STT"` for simulations involving spin-transfer torques.
+- **Stopping Criterion**: The `stopping_dmdt` parameter is critical for determining when to stop a simulation, particularly in relaxation tasks. It measures the rate of change in magnetization, with typical values ranging from `0.01` to `1`. For atomistic models, the `using_time_factor` flag can be set to `false` to disable time scaling.
+- **Data Saving**: The `relax_m_interval` and `dynamic_m_interval` parameters control how frequently magnetization data is saved during `Relax` and `Dynamics` tasks, respectively. Use negative values to disable data saving for these tasks.
 
 """
 function sim_with(args)
