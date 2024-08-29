@@ -43,20 +43,25 @@ we have ignored the demagnetization field. The MicroMagnetic script is shown bel
 ======================#
 using MicroMagnetic
 
-#We create a mesh for a cubic geometry 4nm x 4nm x 4nm
+# We create a mesh for a cubic geometry 4nm x 4nm x 4nm
 mesh = FDMesh(; nx=4, ny=4, nz=4, dx=1e-9, dy=1e-9, dz=1e-9);
 
-# We create a simulation with exch, anisotropy, and
-sim = create_sim(mesh; name="sw", driver="SD", Ms=1.0e6, A=1.3e-11, m0=(-1, 1, 0), Ku=5e4,
-                 axis=(1, 1, 0), H=(0, 0, 0))
+# Define simulation parameters. See [High-Level Interface](@ref).
+args = (
+    name = "sw",
+    task = "Relax",
+    mesh = mesh,
+    Ms=1.0e6, 
+    A=1.3e-11, 
+    m0=(-1, 1, 0), 
+    Ku=5e4,
+    axis=(1, 1, 0),
+    stopping_dmdt = 0.05,
+    H_s = [(i*1mT, 0, 0) for i=-100:5:100]
+);
 
-#For each field, we relax the system to obtain its equilibrium state. 
-for i in -100:5:100
-    Hx = i * mT # A/m
-    update_zeeman(sim, (Hx, 0, 0))
-    #Relax the system with stopping_dmdt=0.05, the write_data function will be called if save_m_every is positive
-    relax(sim; max_steps=10000, stopping_dmdt=0.05, save_data_every=-1)
-end
+sim_with(args);
+
 
 # For the used anisotropy $K_u=5e4$ A/m$^3$, the expected switch field is $H_c = (1/2) H_K = 39788.7$ A/m. 
 # We plot the hysteresis loops using the following function
