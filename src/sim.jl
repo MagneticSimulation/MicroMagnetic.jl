@@ -135,10 +135,12 @@ function set_aj(sim::AbstractSim, init_aj)
     return init_scalar!(sim.driver.aj, sim.mesh, init_aj)
 end
 
-"""
+@doc raw"""
 Compute the average magnetization defined as
 
-TODO: add the equations
+```math
+  \langle \mathbf{m} \rangle  = \frac{1}{V} \int_{V} \mathbf{m} \mathrm{d}V
+```
 """
 function average_m(sim::AbstractSim)
     b = reshape(sim.spin, 3, sim.n_total)
@@ -705,10 +707,9 @@ end
 See examples at [High-Level Interface](@ref)
 
 #### Notes
-
-- The `task` argument can be a single task (e.g., `"relax"`) or an array of tasks (e.g., `["relax", "dynamics"]`).
-- If you use `_range` suffixes for parameters like `H`, `Ms`, `Ku`, `A`, or `D`, ensure that the corresponding array lengths are consistent. If `task` is an array, its length must also match the length of these ranged parameters.
-- The `driver` parameter allows you to specify the type of simulation you want to perform. Options include `"SD"` for the steepest-descent driver, `"LLG"` for the Landau-Lifshitz-Gilbert equation, and `"LLG_STT"` for spin-transfer torque simulations. The `driver` could be a single driver or an array.
+- The `_sweep` suffix represents the 
+- If you use `_s` suffixes for parameters like `H`, `Ms`, `Ku`, `A`, or `D`, ensure that the corresponding array lengths are consistent. If `task` is an array, its length must also match the length of these ranged parameters.
+- The `driver` parameter allows you to specify the type of simulation you want to perform. Options include `"SD"` for the steepest-descent driver, `"LLG"` for the Landau-Lifshitz-Gilbert equation, and `"LLG_STT"` for spin-transfer torque simulations.
 - The `stopping_dmdt` parameter provides a stopping criterion based on the rate of change of the magnetization, which is particularly useful in relaxation simulations to determine when a stable state is reached.
 - The `relax_m_interval` and `dynamic_m_interval` parameters control the frequency of magnetization saving during the `Relax` and `Dynamics` tasks, respectively. Use negative values to disable magnetization saving.
 
@@ -738,8 +739,10 @@ function sim_with(args)
 
     mesh = args[:mesh]
     delete!(args, :mesh)
+    
 
-    N = check_range_lengths(args)
+    N = check_sweep_lengths(args)
+
     # common single task without range
     if N == 0
         sim = create_sim(mesh, args)
@@ -778,34 +781,32 @@ function sim_with(args)
     end
 
     # Now we need to deal with the case that N > 0
-    dict = get_vars_with_suffix(args, "_range")
+    dict = extract_sweep_keys(args)
     for (k, v) in dict
         args[k] = v[1]
     end
 
     shape = get(args, :shape, nothing)
-    sim = create_sim(mesh, args)
 
+    sim = create_sim(mesh, args)
     haskey(args, :task) && delete!(args, :task)
 
     for n in 1:N
-        task_ = isa(task, AbstractArray) ? task[n] : task
-        driver_ = isa(driver, AbstractArray) ? driver[n] : driver
-
-        # this means that Ms_range exist
-        Ms = get(dict, :Ms, nothing)
-        if Ms != nothing
+        task_ = haskey(dict, :task) ? dict[:task][n] : task 
+        driver_ = haskey(dict, :driver) ? dict[:driver][n] : driver
+        
+        if haskey(dict, :Ms)
+            Ms_ = dict[:Ms][n]
             if shape == nothing
-                set_Ms(sim, Ms[n])
+                set_Ms(sim, Ms_)
             else
-                set_Ms(sim, shape, Ms[n])
+                set_Ms(sim, shape, Ms_)
             end
+
         end
 
-        # this means that H_range exist
-        H = get(dict, :H, nothing)
-        if H != nothing
-            update_zeeman(sim, H[n])
+        if haskey(dict, :H)
+            update_zeeman(sim, dict[:H][n])
         end
 
         # TODO: we can add more ...
@@ -822,8 +823,10 @@ function sim_with(args)
         elseif startswith(lowercase(task_), "dyn")
             if driver_ == "SD"
                 set_driver(sim; driver="LLG", integrator="DormandPrince")
-                set_driver_arguments(sim, args)
+            else
+                set_driver(sim; driver=driver_, integrator="DormandPrince")
             end
+            set_driver_arguments(sim, args)
 
             for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back]
                 haskey(args, key) && delete!(args, key)

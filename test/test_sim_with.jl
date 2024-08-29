@@ -33,9 +33,9 @@ function test_sim_with()
     m = Array(sim.spin)
     @test isapprox(m[1:3], analytical)
 
-    args = (task=["relax", "dynamics"], mesh=mesh, m0=(1, 2, 3), Ms=8e5, A=1e-11, steps=10,
+    args = (task_s=["relax", "dynamics"], mesh=mesh, m0=(1, 2, 3), Ms=8e5, A=1e-11, steps=10,
             alpha=0.05, tol=1e-8, dt=3e-11, stopping_dmdt=0.001,
-            H_range=[(1e5, 0, 0), (0, 0, 1e5)])
+            H_s=[(1e5, 0, 0), (0, 0, 1e5)])
 
     sim = sim_with(args)
     m = Array(sim.spin)
@@ -43,7 +43,7 @@ function test_sim_with()
     @test isapprox(m[1:3], analytical)
 
     args = (task="relax", mesh=mesh, m0=(1, 2, 3), Ms=8e5, A=1e-11, stopping_dmdt=0.01,
-            H_range=[(1e5, 0, 0), (0, 0, -1e5)])
+            H_s=[(1e5, 0, 0), (0, 0, -1e5)])
 
     sim = sim_with(args)
     m = Array(sim.spin)

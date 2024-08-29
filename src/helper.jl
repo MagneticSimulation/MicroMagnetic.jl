@@ -627,12 +627,18 @@ function compute_cpp_force(m::Array{T,1}, mesh::Mesh; p=(0, 1, 0)) where {T<:Abs
     return fx, fy
 end
 
-function get_vars_with_suffix(dict::Dict, suffix::String)
+function extract_sweep_keys(dict::Dict)
     result = Dict{Symbol,Any}()
 
     for (key, value) in dict
-        if endswith(String(key), suffix)
-            new_key = Symbol(replace(String(key), suffix => ""))
+        if endswith(String(key), "_sweep")
+            new_key = Symbol(replace(String(key), "_sweep" => ""))
+            result[new_key] = value
+            delete!(dict, key)
+        end
+
+        if endswith(String(key), "_s") && String(key) != "mu_s"
+            new_key = Symbol(replace(String(key), "_s" => ""))
             result[new_key] = value
             delete!(dict, key)
         end
@@ -641,33 +647,16 @@ function get_vars_with_suffix(dict::Dict, suffix::String)
     return result
 end
 
-function check_range_lengths(dict::Dict)
-    range_keys = filter(key -> endswith(String(key), "_range"), keys(dict))
+function check_sweep_lengths(dict::Dict)
+    range_keys = filter(key -> endswith(String(key), "_sweep") || (endswith(String(key), "_s") && String(key)!="mu_s") , keys(dict))
     lengths = [length(dict[key]) for key in range_keys]
-
-    if length(lengths) == 0
-        return 0
-    end
 
     if length(lengths) > 1 && length(unique(lengths)) > 1
         throw(ErrorException("Error: Not all _range arrays have the same length."))
     end
 
-    if haskey(dict, :task) && isa(dict[:task], AbstractArray)
-        task_length = length(dict[:task])
-        if !isempty(lengths) && task_length != lengths[1]
-            throw(ErrorException("Error: The length of task array is not consistent with _range arrays."))
-        end
-        push!(lengths, task_length)
+    if length(lengths) == 0
+        return 0
     end
-
-    if haskey(dict, :driver) && isa(dict[:driver], AbstractArray)
-        driver_length = length(dict[:driver])
-        if !isempty(lengths) && driver_length != lengths[1]
-            throw(ErrorException("Error: The length of driver array is not consistent with _range arrays."))
-        end
-        push!(lengths, driver_length)
-    end
-
     return lengths[1]
 end
