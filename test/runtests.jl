@@ -2,6 +2,7 @@ using MicroMagnetic
 using Test
 
 include("test_mesh.jl")
+include("test_init_m0.jl")
 include("test_shapes.jl")
 include("test_zeeman.jl")
 include("test_anis.jl")

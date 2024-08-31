@@ -61,7 +61,7 @@ In MicroMagnetic, all parameters can be set using functions. For example, we can
 set_Ms(sim, 8.6e5)
 ```
 Additionally, we can set it with a function, like this:
-```
+```julia
 function circular_Ms(i,j,k,dx,dy,dz)
     if (i-50.5)^2 + (j-50.5)^2 <= 50^2
         return 8.6e5
@@ -70,6 +70,18 @@ function circular_Ms(i,j,k,dx,dy,dz)
 end
 set_Ms(sim, circular_Ms)
 ```
+Alternatively, the circular_Ms function can take three parameters 
+
+```julia
+function circular_Ms(x, y, z)
+    if x^2 + y^2 <= (50nm)^2
+        return 8.6e5
+    end
+    return 0.0
+end
+set_Ms(sim, circular_Ms)
+```
+
 Note that the Mesh we create is actually a regular cuboid, but in reality, the shape of the sample is not necessarily a cuboid. At this time, we define a round disk, 
 where its Ms is 0 outside the disk. In this way, we can define the shape of the simulation system. Please note that in MicroMagnetic, almost all setting functions can 
 accept a function as input. This cell-based approach maximizes flexibility, allowing for defining shapes, defining multiple materials, etc.

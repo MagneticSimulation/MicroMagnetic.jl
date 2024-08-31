@@ -1,5 +1,6 @@
-# MicroMagnetic.jl
+# MicroMagnetic.jl 
 
+### **Previous name: JuMag.jl**
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
 
@@ -23,13 +24,20 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 - Supports periodic boundary conditions.
 - Easily extensible to add new features.
 
-# Run MicroMagnetic.jl in the cloud
+## Run MicroMagnetic.jl in the cloud
 
 You don't have to install anything and you can run MicroMagnetic.jl in the cloud via Binder:
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ww1g11/MicroMagnetic.jl/gh-pages)
 
 All the julia scripts and Jupyter Notebooks (in tutorials folder) hosted in the repository can be executed and modified.
+
+## Documentation
+
+The documentation is available:
+
+[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/dev/)
+[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/stable/)
 
 ## Installation
 
@@ -82,22 +90,31 @@ Precompiling CUDAExt
 
 
 # Quick start
-Assuming we have a cylindrical FeG sample with a diameter of 100 nm and a height of 40 nm, we want to know 
+Assuming we have a cylindrical FeGe sample with a diameter of 100 nm and a height of 40 nm, we want to know 
 its magnetization distribution and the stray field around it. We can use the following script: 
 
 ```julia
 using MicroMagnetic
-@using_gpu() #Import available GPU packages such as CUDA, AMDGPU, oneAPI or Metal
+@using_gpu() # Import available GPU packages such as CUDA, AMDGPU, oneAPI, or Metal
 
-geo = Cylinder(radius=50e-9, height=40e-9) #Create the desired cylindrical shape
-mesh = FDMesh(nx=80, ny=80, nz=30, dx=2e-9, dy=2e-9, dz=2e-9) #Create a finite difference mesh
+# Define simulation parameters
+args = (
+    task = "Relax", # Specify the type of simulation task
+    mesh = FDMesh(nx=80, ny=80, nz=30, dx=2e-9, dy=2e-9, dz=2e-9), # Define the mesh grid
+    shape = Cylinder(radius=50e-9, height=40e-9), # Define the shape 
+    Ms = 3.87e5, # Set the saturation magnetization (A/m)
+    A = 8.78e-12, # Set the exchange stiffness constant (J/m)
+    D = 1.58e-3, # Set the Dzyaloshinskii-Moriya interaction constant (J/m^2)
+    demag = true, # Enable demagnetization effects in the simulation
+    m0 = (1,1,1), # Set the initial magnetization direction
+    stopping_dmdt = 0.1 # Set the stopping criterion 
+);
 
-sim = create_sim(mesh, shape=geo, Ms=3.87e5, A=8.78e-12, D=1.58e-3, demag=true) #Create a Sim
-init_m0_random(sim) #Initialize a random state
+# Run the simulation with the specified parameters
+sim = sim_with(args); 
 
-relax(sim, maxsteps=5000, stopping_dmdt=0.1) #Relax the system
-save_vtk(sim, "m", fields=["demag"]) # Save the magnetization and the stray field into vtk.
+# Save the magnetization and the stray field into vtk.
+save_vtk(sim, "m_demag", fields=["demag"]) 
 ```
 The magnetization and the stray field around the cylindrical sample are stored in `m.vts`, which can be opened using Paraview. 
-
 
