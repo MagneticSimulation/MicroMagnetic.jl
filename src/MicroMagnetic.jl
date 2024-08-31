@@ -100,27 +100,28 @@ function set_backend(x="cuda")
     return true
 end
 
-using Logging
 
-# Function to set verbose logging (More info)
-function set_verbose_logging()
-    return global_logger(ConsoleLogger(stderr, Logging.LogLevel(-1)))
-end
+# A global reference to control verbose logging
+# Verbose is a Ref that holds a Boolean value indicating whether verbose logging is enabled
+const Verbose = Ref(false)
 
-# Function to set compact logging (minimal info)
-function set_compact_logging()
-    return global_logger(ConsoleLogger(stderr, Logging.Info))
-end
+"""
+    set_verbose(verbose::Bool=false)
 
-# Custom macro for verbose-only info
-macro verboseinfo(message)
-    return esc(quote
-                   if Logging.min_enabled_level(global_logger()) < Logging.Info
-                       @info $message
-                   end
-               end)
+Sets the global verbosity level for logging.
+
+# Arguments
+- `verbose::Bool`: If true, enables verbose logging; if false, disables it. Default is false.
+
+# Example
+```julia
+set_verbose(true)  # Enables verbose logging
+set_verbose(false) # Disables verbose logging
+"""
+function set_verbose(verbose::Bool=true) 
+    Verbose[] = verbose 
 end
-export set_verbose_logging, set_compact_logging
+export set_verbose
 
 function kernel_array(a::Array)
     A = KernelAbstractions.zeros(default_backend[], eltype(a), size(a))

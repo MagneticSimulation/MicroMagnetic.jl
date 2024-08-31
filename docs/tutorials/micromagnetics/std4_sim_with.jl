@@ -14,6 +14,8 @@ using MicroMagnetic
 # Enable GPU acceleration
 @using_gpu()
 
+
+
 # Define the system geometry: a film with thickness t = 3 nm, length L = 500 nm, and width d = 125 nm.
 # Gather all the parameters related to standard problem 4:
 args = (

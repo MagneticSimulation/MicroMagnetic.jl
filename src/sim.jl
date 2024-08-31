@@ -309,10 +309,10 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
 
         t = llg_driver ? sim.driver.integrator.t : 0.0
         if llg_driver
-            @verboseinfo @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
+            Verbose[] && @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
                                   i, step_size, t, max_dmdt / dmdt_factor)
         else
-            @verboseinfo @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i,
+            Verbose[] && @info @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i,
                                   step_size, max_dmdt / dmdt_factor)
         end
 
@@ -646,7 +646,9 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
 
     for i in 0:steps
         run_until(sim, i * dt; save_data=save_data)
-        @info @sprintf("step =%5d  t = %10.6e", i, i * dt)
+
+        !Verbose[] && (steps == i ? println() : print("."))
+        (Verbose[] || steps == i) && @info @sprintf("step =%5d  t = %10.6e", i, i * dt)
 
         save_data && write_data(sim, saver)
 
@@ -660,6 +662,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
             end
         end
     end
+    
 
     return nothing
 end
