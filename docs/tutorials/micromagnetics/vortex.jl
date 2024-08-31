@@ -21,11 +21,9 @@ geo = Cylinder(; radius=100e-9);
 
 # To start the simulation, we need to give an initial state.
 # Here we use a function to give the initial state. The function should take six parameters `(i,j,k,dx,dy,dz)`.
-function init_fun(i, j, k, dx, dy, dz)
-    x = i - 50.5
-    y = j - 50.5
-    r = (x^2 + y^2)^0.5
-    if r < 20
+function init_fun(x, y, z)
+    r = sqrt(x^2 + y^2)
+    if r < 20e-9
         return (0, 0, 1)
     end
     return (y / r, -x / r, 0)

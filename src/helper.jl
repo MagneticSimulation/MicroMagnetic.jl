@@ -47,23 +47,39 @@ function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::Shape,
 end
 
 function init_vector!(v::Array{T,1}, mesh::Mesh, init::Function) where {T<:AbstractFloat}
-    n_total = mesh.nx * mesh.ny * mesh.nz
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    n_total = nx * ny * nz
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
     b = reshape(v, 3, n_total)
-    for i in 1:(mesh.nx)
-        for j in 1:(mesh.ny)
-            for k in 1:(mesh.nz)
-                id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
 
-                vec_value = init(i, j, k, dx, dy, dz)
-
-                # ignore the values for specfic positions that the user do not want to provide or change.
-                if vec_value !== nothing
-                    b[:, id] .= vec_value[:]
-                end
+    nargs = methods(init)[1].nargs - 1
+    if nargs == 6
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            vec_value = init(i, j, k, dx, dy, dz)
+            # ignore the values for specfic positions that the user do not want to provide or change.
+            if vec_value !== nothing
+                b[:, id] .= vec_value[:]
             end
         end
+
+    elseif nargs == 3
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            x = (i - 0.5 - nx / 2) * dx
+            y = (j - 0.5 - ny / 2) * dy
+            z = (k - 0.5 - nz / 2) * dz
+
+            vec_value = init(x, y, z)
+            # ignore the values for specfic positions that the user do not want to provide or change.
+            if vec_value !== nothing
+                b[:, id] .= vec_value[:]
+            end
+        end
+    else
+        error("The input function should have either 6 or 3 arguments.")
     end
+    
     if NaN in v
         error("NaN is given by the input function.")
     end
@@ -648,7 +664,9 @@ function extract_sweep_keys(dict::Dict)
 end
 
 function check_sweep_lengths(dict::Dict)
-    range_keys = filter(key -> endswith(String(key), "_sweep") || (endswith(String(key), "_s") && String(key)!="mu_s") , keys(dict))
+    range_keys = filter(key -> endswith(String(key), "_sweep") ||
+                            (endswith(String(key), "_s") && String(key) != "mu_s"),
+                        keys(dict))
     lengths = [length(dict[key]) for key in range_keys]
 
     if length(lengths) > 1 && length(unique(lengths)) > 1

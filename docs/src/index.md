@@ -71,21 +71,23 @@ We can use the following script:
 
 ```julia
 using MicroMagnetic
-@using_gpu() #Import available GPU packages such as CUDA, AMDGPU, oneAPI or Metal
+@using_gpu() # Import available GPU packages such as CUDA, AMDGPU, oneAPI, or Metal
 
-# Create a cylindrical shape with a diameter of 100 nm and a height of 40 nm
-geo = Cylinder(radius=50e-9, height=40e-9) 
+# Define simulation parameters
+args = (
+    task = "Relax", # Specify the type of simulation task (e.g., relaxation)
+    mesh = FDMesh(nx=80, ny=80, nz=30, dx=2e-9, dy=2e-9, dz=2e-9), # Define the mesh grid for the simulation with 80x80x30 cells and 2 nm cell size
+    shape = Cylinder(radius=50e-9, height=40e-9), # Define the shape of the magnetic structure as a cylinder with 50 nm radius and 40 nm height
+    Ms = 3.87e5, # Set the saturation magnetization (A/m)
+    A = 8.78e-12, # Set the exchange stiffness constant (J/m)
+    D = 1.58e-3, # Set the Dzyaloshinskii-Moriya interaction constant (J/m^2)
+    demag = true, # Enable demagnetization effects in the simulation
+    m0 = (1,1,1), # Set the initial magnetization direction
+    stopping_dmdt = 0.1 # Set the stopping criterion for the simulation based on the rate of change of magnetization dynamics
+);
 
-# Create a finite difference mesh to trigger the simulation
-mesh = FDMesh(nx=80, ny=80, nz=30, dx=2e-9, dy=2e-9, dz=2e-9) 
-
-# Create a Sim instance with Fe parameters
-sim = create_sim(mesh, shape=geo, Ms=3.87e5, A = 8.78e-12, D = 1.58e-3, demag=true) 
-
-init_m0_random(sim) #Initialize a random state
-
-#Relax the system to obtain a stable magnetization distribution
-relax(sim, maxsteps=5000, stopping_dmdt=0.1) 
+# Run the simulation with the specified parameters
+sim = sim_with(args); 
 
 # Save the magnetization and the stray field into vtk.
 save_vtk(sim, "m_demag", fields=["demag"]) 
