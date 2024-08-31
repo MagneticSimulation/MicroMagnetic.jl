@@ -24,6 +24,7 @@ Torus
 sim_with
 set_backend
 set_precision
+set_verbose
 Sim
 NEB
 set_Ms
@@ -67,7 +68,7 @@ read_ovf
 
 ```@docs
 ovf2vtk
-#plot_m
+plot_m
 #jld2png
 #jld2movie
 ```

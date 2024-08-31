@@ -15,7 +15,7 @@ using Printf
 
 @using_gpu()
 
-# set_verbose_logging()
+# set_verbose()
 
 # The studied system is a 800nm x 300nm x 2nm film with periodic boundary conditions.
 mesh = FDMesh(; nx=400, ny=150, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy");
