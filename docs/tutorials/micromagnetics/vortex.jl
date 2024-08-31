@@ -10,6 +10,8 @@
 using MicroMagnetic
 using CairoMakie
 
+
+
 # In this example, the studied system is a round nanodisk. Since we are using finite different method,
 # we create a FDMesh with dimensions 200nm x 200nm x 20 nm. 
 mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=5e-9, nx=100, ny=100, nz=4);
@@ -29,10 +31,23 @@ function init_fun(i, j, k, dx, dy, dz)
     return (y / r, -x / r, 0)
 end
 
-# Create a Sim instance and then relax the system
-sim = create_sim(mesh; shape=geo, Ms=8e5, A=1.3e-11, demag=true, m0=init_fun);
-relax(sim; max_steps=5000, stopping_dmdt=0.1)
-save_vtk(sim, "vortex")
+
+# We define the 
+args = (
+    task = "Relax",
+    mesh = mesh,
+    shape = geo,
+    Ms = 8e5, 
+    A = 1.3e-11,
+    demag = true,
+    m0 = init_fun,
+    stopping_dmdt = 0.01
+);
+
+sim = sim_with(args);
 
 # We plot the magnetization distribution using the plot_m function
 plot_m(sim; figsize=(400, 400), arrows=(30, 30))
+
+# we save the vtk as well
+save_vtk(sim, "vortex")
