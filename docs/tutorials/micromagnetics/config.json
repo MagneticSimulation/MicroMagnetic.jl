@@ -1,6 +1,5 @@
 {
   "order": [
-    "compute_energy.jl",
     "nanobar.jl",
     "vortex.jl",
     "std4_sim_with.jl",
