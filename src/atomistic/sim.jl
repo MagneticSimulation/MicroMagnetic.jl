@@ -105,7 +105,7 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
     push!(sim.interactions, exch)
     if sim.save_data
         id = length(sim.interactions)
-        item = SaverItem(string("E_", name), "J",
+        item = SaverItem(string("E_", name), "<J>",
                          o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
@@ -249,7 +249,7 @@ function add_anis_kagome(sim::AtomisticSim, Ku::Float64; ax1=(-0.5, -sqrt(3) / 2
 
     if sim.save_data
         id = length(sim.interactions)
-        item = SaverItem(string("E_", name), "J",
+        item = SaverItem(string("E_", name), "<J>",
                          o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
@@ -285,7 +285,7 @@ function add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
 
     if sim.save_data
         id = length(sim.interactions)
-        item = SaverItem(string("E_", name), "J",
+        item = SaverItem(string("E_", name), "<J>",
                          o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
@@ -326,7 +326,7 @@ function add_magnetoelectric_laser(sim::AtomisticSim, lambda::Float64, E::Float6
 
     if sim.save_data
         id = length(sim.interactions)
-        item = SaverItem(string("E_", name), "J",
+        item = SaverItem(string("E_", name), "<J>",
                          o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
@@ -349,7 +349,7 @@ function add_demag(sim::AtomisticSim; name="demag", Nx=0, Ny=0, Nz=0)
 
     if sim.save_data
         id = length(sim.interactions)
-        item = SaverItem(string("E_", name), "J",
+        item = SaverItem(string("E_", name), "<J>",
                          o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
