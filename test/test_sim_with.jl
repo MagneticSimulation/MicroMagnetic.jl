@@ -42,7 +42,7 @@ function test_sim_with()
     println(m[1:3])
     @test isapprox(m[1:3], analytical)
 
-    args = (task="relax", mesh=mesh, m0=(1, 2, 3), Ms=8e5, A=1e-11, stopping_dmdt=0.01,
+    args = (name="test_read", task="relax", mesh=mesh, m0=(1, 2, 3), Ms=8e5, A=1e-11, stopping_dmdt=0.01,
             H_s=[(1e5, 0, 0), (0, 0, -1e5)])
 
     sim = sim_with(args)
@@ -51,5 +51,14 @@ function test_sim_with()
     return nothing
 end
 
+function test_read_table()
+        data, units = read_table("test_read_sd.txt")
+        @test data["m_x"][end] < 1e-15
+        @test data["m_y"][end] < 1e-15
+        @test data["m_z"][end]+1 < 1e-15
+end
+
+
 #@using_gpu()
 test_functions("sim_with", test_sim_with)
+test_functions("read_table", test_read_table)
