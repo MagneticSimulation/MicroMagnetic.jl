@@ -408,7 +408,8 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayle
         compute_system_energy(sim, sim.spin, t_end)
         write_data(sim)
     end
-    
+    sim.saver.nsteps += 1
+
     return nothing
 end
 
@@ -619,27 +620,42 @@ function create_sim(mesh, args::Dict)
 end
 
 """
-    run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver=nothing)
+    run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1, saver_item=nothing, call_back=nothing)
 
-Run the simulation to the time `steps*dt`.
+Run the simulation for a total duration of `steps * dt` seconds.
 
-- `steps` : the total steps of the simulation
-- `dt`` : the time interval of each step, so the total simulation time is `steps*dt`
-- `save_data` : saving the overall data such as energies and average magnetization of the simulation at each step
-- `save_m_every` : save magnetization for every `save_m_every` step, a negative save_m_every will disable the magnetization saving.
-- `saver` : a saver struct, by default it will use sim's saver. But you can use customized saver instead. For example, if we want to compute the guiding
-center and save it to a text file, we can define the following saver
+- `steps`: The total number of simulation steps. The total simulation time will be `steps * dt`.
+- `dt`: The time step for each simulation step (in seconds). It controls the time interval between successive steps.
+- `save_data`: A boolean flag to control whether the overall simulation data (such as total energy, exchange energy, and average magnetization) is saved at each step. The default is `true`.
+- `save_m_every`: Specifies how often to save the magnetization configuration. For example, if `save_m_every = 1`, the magnetization is saved at every step. A negative value will disable magnetization saving entirely.
+- `saver_item`: A `SaverItem` instance or a list of `SaverItem` instances. These are custom data-saving utilities that can be used to store additional quantities during the simulation (e.g., guiding centers or other derived values). If `nothing`, no additional data is saved beyond the default.
+- `call_back`: A user-defined function or `nothing`. If provided, this function will be called at every step, allowing for real-time inspection or manipulation of the simulation state.
+
+#### Example Usage
+
+To compute a custom quantity, such as the guiding center of the magnetization, and save it in the output table, you can define a `SaverItem` as shown below:
+
 ```julia
-    customized_saver = init_saver("output.txt", "LLG")
-    push!(custom_saver.items, SaverItem("center", "m", compute_guiding_center))
-    run_sim(sim, saver=customized_saver)
+run_sim(sim, saver_item=SaverItem(("Rx", "Ry"), ("<m>", "<m>"), compute_guiding_center))
 ```
 
+In this example:
+- `("Rx", "Ry")` are the labels for the data in the output.
+- `("<m>", "<m>")` are the units of guiding center.
+- `compute_guiding_center` is the function that computes the guiding center at each step.
+
+This setup will save the computed guiding center to the simulation output, in addition to the default data like energies and average magnetization.
 """
 function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1,
-                 saver=nothing, call_back=nothing)
-    if save_data && saver === nothing
-        saver = sim.saver
+                 saver_item=nothing, call_back=nothing)
+    if isa(saver_item, SaverItem)
+        push!(sim.saver.items, saver_item)
+    end
+
+    if isa(saver_item, AbstractArray)
+        for item in saver_item
+            push!(sim.saver.items, item)
+        end
     end
 
     if save_m_every > 0
@@ -664,8 +680,6 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
         (Verbose[] || steps == i) && @info @sprintf("step =%5d  t = %10.6e", i, i * dt)
 
         call_back !== nothing && call_back(sim, i * dt)
-
-        #save_data && write_data(sim, saver)
 
         if save_m_every > 0 && i % save_m_every == 0
             jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
@@ -710,6 +724,8 @@ end
 - `steps`: The total number of simulation steps for the `Dynamics` task.
 - `dt`: The time interval of each step, so the total simulation time is `steps * dt` for the `Dynamics` task.
 - `max_steps::Int`: Maximum number of steps to run the simulation for the `Relax` task. Default is `10000`.
+- `saver_item`: A `SaverItem` instance or a list of `SaverItem` instances. These are custom data-saving utilities that can be used to store additional quantities during the simulation (e.g., guiding centers or other derived values). If `nothing`, no additional data is saved beyond the default.
+- `call_back`: A user-defined function or `nothing`. If provided, this function will be called at every step, allowing for real-time inspection or manipulation of the simulation state.
 - `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
 - `relax_data_interval::Int`: Interval for saving overall data such as energies and average magnetization during a `Relax` task. A negative value disables data saving (e.g., `relax_data_interval = -1` saves data only at the end of the relaxation).
 - `dynamic_data_save::Bool`: Boolean flag to enable or disable saving overall data such as energies and average magnetization during the `Dynamics` task. Set to `true` to enable, or `false` to disable.
@@ -748,6 +764,7 @@ function sim_with(args)
     dynamic_data_save = get(args, :dynamic_data_save, true)
     dynamic_m_interval = get(args, :dynamic_m_interval, -1)
     call_back = get(args, :call_back, nothing)
+    saver_item = get(args, :saver_item, nothing)
 
     if !haskey(args, :mesh)
         error("A mesh must be provided to start the simulation.")
@@ -780,12 +797,14 @@ function sim_with(args)
                 set_driver_arguments(sim, args)
             end
 
-            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back]
+            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back,
+                        saver_item]
                 haskey(args, key) && delete!(args, key)
             end
 
             run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
-                    save_m_every=dynamic_m_interval, call_back=call_back)
+                    save_m_every=dynamic_m_interval, call_back=call_back,
+                    saver_item=saver_item)
         end
 
         for key in args
@@ -842,12 +861,14 @@ function sim_with(args)
             end
             set_driver_arguments(sim, args)
 
-            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back]
+            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back,
+                        :saver_item]
                 haskey(args, key) && delete!(args, key)
             end
 
             run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
-                    save_m_every=dynamic_m_interval, call_back=call_back)
+                    save_m_every=dynamic_m_interval, call_back=call_back,
+                    saver_item=saver_item)
 
         else
             error("Only support two types of task: 'Relax' and 'Dynamics'.")

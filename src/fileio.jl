@@ -1,3 +1,5 @@
+export SaverItem
+
 function formatstring(s::String)
     return @sprintf("%19s ", s)
 end
@@ -53,7 +55,8 @@ function create_saver(name::String, driver::String)
     total_energy = SaverItem("E_total", "<J>", o::AbstractSim -> sum(o.energy))
     push!(saver.items, total_energy)
 
-    m_all = SaverItem(("m_x", "m_y", "m_z"), ("<unitless>", "<unitless>", "<unitless>"), average_m)
+    m_all = SaverItem(("m_x", "m_y", "m_z"), ("<unitless>", "<unitless>", "<unitless>"),
+                      average_m)
     push!(saver.items, m_all)
 
     return saver
@@ -93,7 +96,6 @@ function write_data(sim::AbstractSim, saver::DataSaver)
     return close(io)
 end
 
-
 """
     read_table(filename::String)
 
@@ -113,13 +115,12 @@ includes the physical quantity names and the second comment line includes the un
 data, units = read_table("data.txt")
 """
 function read_table(filename::String)
- 
     data_lines = open(filename) do file
-        readlines(file)
+        return readlines(file)
     end
 
     start_idx = findfirst(line -> !startswith(line, "#"), data_lines)
-    
+
     headers = split(strip(replace(data_lines[start_idx - 2], r"[#]" => "")), r"\s+")
     units = split(strip(replace(data_lines[start_idx - 1], r"[#<>]" => "")), r"\s+")
 
@@ -129,8 +130,8 @@ function read_table(filename::String)
         end
     end
 
-    data_dict = Dict{String, Vector{Float64}}()
-    units_dict = Dict{String, String}()
+    data_dict = Dict{String,Vector{Float64}}()
+    units_dict = Dict{String,String}()
 
     for line in data_lines[start_idx:end]
         values = split(strip(line), r"\s+")

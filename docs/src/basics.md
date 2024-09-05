@@ -313,6 +313,23 @@ function plot_m_ts()
 end
 ```
 
+## Custom Table
+
+If you want to save additional quantities during the simulation, you can create a `SaverItem` and append it to the default saver. For example, to calculate and save the guiding center of the magnetization, you can use the following:
+
+```julia
+item = SaverItem(("Rx", "Ry"), ("<m>", "<m>"), compute_guiding_center)
+push!(sim.saver.items, item)
+```
+
+Alternatively, if you're using `sim_with` or `run_sim`, you can pass the `SaverItem` directly as a parameter:
+
+```julia
+run_sim(sim, saver_item=item)
+```
+
+This allows you to extend the default output with custom quantities of interest, such as the guiding center, alongside the standard simulation data.
+
 ## Timings 
 
 In MicroMagnetic.jl, we make use of TimerOutputs.jl to measure execution time in various tasks. After running the simulation, 
