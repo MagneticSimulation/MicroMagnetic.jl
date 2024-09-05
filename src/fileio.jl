@@ -1,21 +1,16 @@
 function formatstring(s::String)
-    return @sprintf("%18s ", s)
+    return @sprintf("%19s ", s)
 end
 
 function formatstring(x::Int)
     return @sprintf("%18d ", x)
 end
 
-function formatstring(x::Float64)
-    return @sprintf("%18.12e ", x)
-end
-
-function formatstring(x::Float32)
-    return @sprintf("%18.12e ", x)
+function formatstring(x::AbstractFloat)
+    return @sprintf("%+18.12e ", x)
 end
 
 function formatstring(data::Tuple)
-    # TODO: ("A","B","C") -> ("<A>", "<B>", "<C>")
     s = ""
     for x in data
         s = string(s, formatstring(x))
