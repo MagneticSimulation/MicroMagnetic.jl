@@ -56,7 +56,7 @@ using DelimitedFiles
 
 function plot_m_ts()
     #Load data
-    data = readdlm("std4_llg.txt"; skipstart=2)
+    data, unit = read_table("std4_llg.txt")
     oommf = readdlm("assets/std4_oommf.txt")
 
     #Create a figure for the plot
@@ -69,9 +69,9 @@ function plot_m_ts()
     lines!(ax, oommf[:, 1] * 1e9, oommf[:, 4])
 
     #Plot MicroMagnetic results
-    scatter!(ax, data[:, 2] * 1e9, data[:, 4], markersize=6, label="MicroMagnetic.jl")
-    scatter!(ax, data[:, 2] * 1e9, data[:, 5], markersize=6)
-    scatter!(ax, data[:, 2] * 1e9, data[:, 6], markersize=6)
+    scatter!(ax, data["time"] * 1e9, data["m_x"], markersize=6, label="MicroMagnetic.jl")
+    scatter!(ax, data["time"] * 1e9, data["m_y"], markersize=6)
+    scatter!(ax, data["time"] * 1e9, data["m_z"], markersize=6)
 
     #Add legend to the plot
     axislegend()

@@ -264,6 +264,55 @@ sim_with(args)
 
 In this example, the system first relaxes to a stable configuration, and then the dynamics of the magnetization are simulated after applying an external field. By passing parameters as either a `NamedTuple` or `Dict`, you can easily explore various micromagnetic scenarios with just a few lines of code, making the `sim_with` function a powerful tool for research and development in micromagnetics.
 
+## Date Tables
+The default output is a table containing the time and other information such as the average magnetization and the total micromagnetic energy. For example, a typical output file, std4_llg.txt, for the standard problem 4 looks like this:
+```bash
+#               step                time             E_total                 m_x                 m_y                 m_z              E_exch             E_demag           zeeman_Hx           zeeman_Hy           zeeman_Hz            E_zeeman 
+#         <unitless>                 <s>                 <J>          <unitless>          <unitless>          <unitless>                 <J>                 <J>               <A/m>               <A/m>               <A/m>                 <J> 
+                 0 +0.000000000000e+00 +4.115051854628e-18 +9.667212580262e-01 +1.257338112913e-01 -7.385005331088e-14 +9.037089803430e-20 +5.385778227602e-19 -1.957605800030e+04 +3.421831276476e+03                  0 +3.486103133834e-18 
+                 1 +1.000000000000e-11 +4.114333464830e-18 +9.639179728939e-01 +1.351913897494e-01 -1.250730661783e-02 +9.462544896467e-20 +5.500491422752e-19 -1.957605800030e+04 +3.421831276476e+03                  0 +3.469658873590e-18 
+                 2 +2.000000000000e-11 +4.111801776628e-18 +9.551564239768e-01 +1.622306459477e-01 -2.438419245932e-02 +1.068628783479e-19 +5.850504604422e-19 -1.957605800030e+04 +3.421831276476e+03                  0 +3.419888437838e-18 
+                 3 +3.000000000000e-11 +4.105969312986e-18 +9.390555926959e-01 +2.048856549742e-01 -3.536001067826e-02 +1.257008993481e-19 +6.473045240481e-19 -1.957605800030e+04 +3.421831276476e+03                  0 +3.332963889590e-18 
+                 4 +4.000000000000e-11 +4.095848754295e-18 +9.138819844184e-01 +2.603015538941e-01 -4.514306950195e-02 +1.488766054551e-19 +7.426421285983e-19 -1.957605800030e+04 +3.421831276476e+03                  0 +3.204330020242e-18 
+                 5 +5.000000000000e-11 +4.081051470750e-18 +8.781758247793e-01 +3.249452438428e-01 -5.352916374499e-02 +1.740004133747e-19 +8.761719462188e-19 -1.957605800030e+04 +3.421831276476e+03                  0 +3.030879111157e-18 
+                 6 +6.000000000000e-11 +4.061691865398e-18 +8.310929541279e-01 +3.950519627725e-01 -6.053913609321e-02 +1.994187817227e-19 +1.050348598931e-18 -1.957605800030e+04 +3.421831276476e+03                  0 +2.811924484744e-18 
+                 7 +7.000000000000e-11 +4.038094515872e-18 +7.723089438169e-01 +4.670888629588e-01 -6.648801333991e-02 +2.251205085123e-19 +1.264426321284e-18 -1.957605800030e+04 +3.421831276476e+03                  0 +2.548547686076e-18 
+                 8 +8.000000000000e-11 +4.010448851303e-18 +7.016388084672e-01 +5.379604799389e-01 -7.195373892384e-02 +2.514962280097e-19 +1.516889929610e-18 -1.957605800030e+04 +3.421831276476e+03                  0 +2.242062693683e-18 
+                 9 +9.000000000000e-11 +3.978492775965e-18 +6.185749984028e-01 +6.048546363741e-01 -7.770725658904e-02 +2.792453923841e-19 +1.806836879936e-18 -1.957605800030e+04 +3.421831276476e+03                  0 +1.892410503645e-18 
+                10 +1.000000000000e-10 +3.941195510354e-18 +5.219398286586e-01 +6.647281597038e-01 -8.465287207565e-02 +3.110925716068e-19 +2.132894634005e-18 -1.957605800030e+04 +3.421831276476e+03                  0 +1.497208304741e-18 
+    
+```
+
+We provide the `read_table` function to read the table from `std4_llg.txt`:
+```julia
+data, units = read_table("std4_llg.txt")
+```
+Both data and units are Dict objects, allowing easy access to the data. For example, you can access the time and magnetization components with data["time"] and data["m_x"]. This makes it easy to plot the results, as shown in the following example:
+```julia
+using MicroMagnetic
+using CairoMakie
+function plot_m_ts()
+    #Load data
+    data, unit = read_table("std4_llg.txt")
+
+    #Create a figure for the plot
+    fig = Figure(size=(800, 480))
+    ax = Axis(fig[1, 1], xlabel="Time (ns)", ylabel="m")
+
+    #Plot MicroMagnetic results
+    scatter!(ax, data["time"] * 1e9, data["m_x"], markersize=6, label="m_x")
+    scatter!(ax, data["time"] * 1e9, data["m_y"], markersize=6, label="m_y")
+    scatter!(ax, data["time"] * 1e9, data["m_z"], markersize=6, label="m_z")
+
+    #Add legend to the plot
+    axislegend()
+
+    save("mxyz.pdf", fig)
+
+    return fig
+end
+```
+
 ## Timings 
 
 In MicroMagnetic.jl, we make use of TimerOutputs.jl to measure execution time in various tasks. After running the simulation, 

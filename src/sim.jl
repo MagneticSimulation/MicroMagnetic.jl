@@ -404,11 +404,11 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayle
     interpolation_dopri5(integrator, t_end)
     omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
     sim.saver.t = t_end
-    sim.saver.nsteps += 1
     if save_data
         compute_system_energy(sim, sim.spin, t_end)
         write_data(sim)
     end
+    
     return nothing
 end
 
@@ -419,11 +419,11 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator,
         return
     elseif t_end == integrator.t
         sim.saver.t = t_end
-        sim.saver.nsteps += 1
         if save_data
             compute_system_energy(sim, sim.spin, t_end)
             write_data(sim)
         end
+        sim.saver.nsteps += 1
         return
     end
 
@@ -440,11 +440,11 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator,
     end
 
     sim.saver.t = t_end
-    sim.saver.nsteps += 1
     if save_data
         compute_system_energy(sim, sim.spin, t_end)
         write_data(sim)
     end
+    sim.saver.nsteps += 1
     return nothing
 end
 
@@ -465,14 +465,25 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
 
     # FIXME : Does not work if only the integrator changes  
     if sim.driver_name != driver
-        # if the driver is updated, we create a new saver
-        if sim.save_data
-            sim.saver = create_saver(string(sim.name, "_", lowercase(driver), ".txt"),
-                                     driver)
-        end
-
         sim.driver = create_driver(driver, integrator, sim.n_total)
         sim.driver_name = driver
+
+        saver = sim.saver
+        saver.name = @sprintf("%s_%s.txt", sim.name, lowercase(driver))
+        saver.t = 0
+        saver.nsteps = 0
+        saver.header_saved = false
+        contains_time = false
+        for item in saver.items
+            if item.name == "time"
+                contains_time = true
+            end
+        end
+        if driver in ("LLG", "LLG_STT", "LLG_STT_CPP") && !contains_time
+            time = SaverItem("time", "<s>", o::AbstractSim -> o.saver.t)
+            insert!(saver.items, 2, time)
+            #push!(saver.items, time)
+        end
     end
 
     return set_driver_arguments(sim, args)
@@ -652,9 +663,9 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
         !Verbose[] && (steps == i ? println() : print("."))
         (Verbose[] || steps == i) && @info @sprintf("step =%5d  t = %10.6e", i, i * dt)
 
-        save_data && write_data(sim, saver)
-
         call_back !== nothing && call_back(sim, i * dt)
+
+        #save_data && write_data(sim, saver)
 
         if save_m_every > 0 && i % save_m_every == 0
             jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
