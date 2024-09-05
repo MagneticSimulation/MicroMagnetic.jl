@@ -11,33 +11,25 @@ using CairoMakie
         return (0, 0, 1)
     end
     return (y / r, -x / r, 0)
-end</code></pre><pre><code class="nohighlight hljs">init_fun (generic function with 1 method)</code></pre><p>Define a callback function to record vortex center coordinates.</p><pre><code class="language-julia hljs">function call_back_fun(sim, t)
-    Rx, Ry = compute_guiding_center(sim; z=1)
-    open(&quot;std5_center.txt&quot;, &quot;a&quot;) do f
-        write(f, @sprintf(&quot;%g  %g  %g\n&quot;, t, Rx, Ry))
-    end
-end</code></pre><pre><code class="nohighlight hljs">call_back_fun (generic function with 1 method)</code></pre><p>Define simulation parameters.</p><pre><code class="language-julia hljs">args = (
-    name = &quot;std5&quot;,
-    task_s = [&quot;relax&quot;, &quot;dynamics&quot;],          # List of tasks to perform
-    driver_s = [&quot;SD&quot;, &quot;LLG_STT&quot;],            # List of drivers to use
-    mesh = FDMesh(; nx=20, ny=20, nz=2, dx=5e-9, dy=5e-9, dz=5e-9), # Mesh configuration
-    Ms = 8e5,                               # Saturation magnetization
-    A = 1.3e-11,                            # Exchange constant
-    demag = true,                           # Enable demagnetization
-    m0 = init_fun,                          # Initial magnetization function
-    alpha = 0.1,                            # Gilbert damping parameter
-    ux = -72.438,                           # Effective current density
-    beta = 0.05,                            # Nonadiabatic STT parameter
-    steps = 160,                            # Number of steps for dynamics
-    dt = 0.05ns,                            # Time step size
-    stopping_dmdt = 0.01,                   # Stopping criterion for relaxation
-    call_back = call_back_fun,              # Callback function for vortex center tracking
-    dynamic_m_interval = 1                  # Save magnetization at every step
-);</code></pre><p>Run the simulation using <code>sim_with</code> function.</p><pre><code class="language-julia hljs">sim_with(args);</code></pre><pre><code class="nohighlight hljs">[ Info: MicroSim has been created.
+end</code></pre><pre><code class="nohighlight hljs">init_fun (generic function with 1 method)</code></pre><p>Define simulation parameters.</p><pre><code class="language-julia hljs">args = (name=&quot;std5&quot;, task_s=[&quot;relax&quot;, &quot;dynamics&quot;],          # List of tasks to perform
+        driver_s=[&quot;SD&quot;, &quot;LLG_STT&quot;],            # List of drivers to use
+        mesh=FDMesh(; nx=20, ny=20, nz=2, dx=5e-9, dy=5e-9, dz=5e-9), # Mesh configuration
+        Ms=8e5,                               # Saturation magnetization
+        A=1.3e-11,                            # Exchange constant
+        demag=true,                           # Enable demagnetization
+        m0=init_fun,                          # Initial magnetization function
+        alpha=0.1,                            # Gilbert damping parameter
+        ux=-72.438,                           # Effective current density
+        beta=0.05,                            # Nonadiabatic STT parameter
+        steps=160,                            # Number of steps for dynamics
+        dt=0.05ns,                            # Time step size
+        stopping_dmdt=0.01,                   # Stopping criterion for relaxation
+        saver_item=SaverItem((&quot;Rx&quot;, &quot;Ry&quot;), (&quot;&lt;m&gt;&quot;, &quot;&lt;m&gt;&quot;), compute_guiding_center),    #vortex center tracking
+        dynamic_m_interval=1);</code></pre><p>Run the simulation using <code>sim_with</code> function.</p><pre><code class="language-julia hljs">sim_with(args);</code></pre><pre><code class="nohighlight hljs">[ Info: MicroSim has been created.
 [ Info: Exchange has been added.
 [ Info: Running Driver : MicroMagnetic.EnergyMinimization{Float64}.
 [ Info: max_dmdt is less than stopping_dmdt=0.01 @steps=173, Done!
 [ Info: The driver LLG_STT is used!
 ................................................................................................................................................................
 [ Info: step =  160  t = 8.000000e-09
-</code></pre><p>Generate a movie for the vortex dynamics.</p><pre><code class="language-julia hljs">jld2movie(&quot;std5.jld2&quot;; output=&quot;assets/std5.mp4&quot;, component=&#39;z&#39;, figsize=(400,400))</code></pre><pre><code class="nohighlight hljs">&quot;assets/std5.mp4&quot;</code></pre><p><video src="../assets/std5.mp4" controls="true" title><a href="../assets/std5.mp4"></a></video></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../std4/">« Standard Problem 4</a><a class="docs-footer-nextpage" href="../std5/">Standard Problem 5 »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Thursday 5 September 2024 04:17">Thursday 5 September 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p>Generate a movie for the vortex dynamics.</p><pre><code class="language-julia hljs">jld2movie(&quot;std5.jld2&quot;; output=&quot;assets/std5.mp4&quot;, component=&#39;z&#39;, figsize=(400, 400))</code></pre><pre><code class="nohighlight hljs">&quot;assets/std5.mp4&quot;</code></pre><p><video src="../assets/std5.mp4" controls="true" title><a href="../assets/std5.mp4"></a></video></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../std4/">« Standard Problem 4</a><a class="docs-footer-nextpage" href="../std5/">Standard Problem 5 »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Thursday 5 September 2024 05:02">Thursday 5 September 2024</span>. Using Julia version 1.10.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
