@@ -24,11 +24,12 @@ mutable struct Demag{T<:AbstractFloat} <: MicroEnergy
     h_plan::Any
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
+    
     name::String
 end
 
 # FIXME: reduce the memory of the demag tensors
-# FIXME: add dipolar approximation in the long distance case.
+# FIXME: add the real pbc (current imeplenation is macro pbc)
 function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     mesh = sim.mesh
     max_size = max(mesh.dx, mesh.dy, mesh.dz)
@@ -199,6 +200,11 @@ end
 
 function demag_tensor_xx(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Float64,
                          dz::Float64)
+    R = sqrt(x * x + y * y + z * z) / max(dx, dy, dz)
+    if R > 60 #use the dipolar approximation
+        return dipolar_tensor_xx(x, y, z) * dx * dy * dz / (4 * pi)
+    end
+
     tensor = 8.0 * newell_f(x, y, z)
 
     tensor -= 4.0 * newell_f(x + dx, y, z)
@@ -245,6 +251,11 @@ end
 
 function demag_tensor_xy(x::Float64, y::Float64, z::Float64, dx::Float64, dy::Float64,
                          dz::Float64)
+    R = sqrt(x * x + y * y + z * z) / max(dx, dy, dz)
+    if R > 60 #use the dipolar approximation
+        return dipolar_tensor_xy(x, y, z) * dx * dy * dz / (4 * pi)
+    end
+
     tensor = 8.0 * newell_g(x, y, z)
 
     tensor -= 4.0 * newell_g(x + dx, y, z)
