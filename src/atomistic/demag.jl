@@ -60,19 +60,16 @@ function init_demag(sim::AtomisticSim, Nx::Int, Ny::Int, Nz::Int)
     Mx = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
     My = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
     Mz = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    Hx = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    Hy = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    Hz = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
 
-    m_plan = plan_rfft(mx_pad)
-    h_plan = plan_irfft(Hx, nx_fft)
+    #m_plan = plan_rfft(mx_pad)
+    h_plan = plan_irfft(Mx, nx_fft)
 
     field = create_zeros(3 * sim.n_total)
     energy = create_zeros(sim.n_total)
 
     demag = Demag(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz, tensor_xy,
-                  tensor_xz, tensor_yz, mx_pad, my_pad, mz_pad, Mx, My, Mz, Hx, Hy, Hz,
-                  m_plan, h_plan, field, energy, "Demag")
+                  tensor_xz, tensor_yz, mx_pad, my_pad, mz_pad, Mx, My, Mz,
+                  plan, h_plan, field, energy, "Demag")
     return demag
 end
 
@@ -92,14 +89,13 @@ function effective_field(demag::Demag, sim::AtomisticSim, spin::AbstractArray{T,
     mul!(demag.My, demag.m_plan, demag.my)
     mul!(demag.Mz, demag.m_plan, demag.mz)
 
-    add_tensor_M(demag.Hx, demag.Hy, demag.Hz, demag.tensor_xx, demag.tensor_yy,
-                 demag.tensor_zz, demag.tensor_xy, demag.tensor_xz, demag.tensor_yz,
-                 demag.Mx, demag.My, demag.Mz)
+    add_tensor_M(demag.Mx, demag.My, demag.Mz, demag.tensor_xx, demag.tensor_yy,
+                 demag.tensor_zz, demag.tensor_xy, demag.tensor_xz, demag.tensor_yz)
     #synchronize()
 
-    mul!(demag.mx, demag.h_plan, demag.Hx)
-    mul!(demag.my, demag.h_plan, demag.Hy)
-    mul!(demag.mz, demag.h_plan, demag.Hz)
+    mul!(demag.mx, demag.h_plan, demag.Mx)
+    mul!(demag.my, demag.h_plan, demag.My)
+    mul!(demag.mz, demag.h_plan, demag.Mz)
 
     collect_h_atomistic_energy(demag.field, demag.energy, spin, demag.mx, demag.my,
                                demag.mz, sim.mu_s, nx, ny, nz)

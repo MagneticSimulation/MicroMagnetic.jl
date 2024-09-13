@@ -9,7 +9,7 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 [![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/stable/)
 [![Actions Status](https://github.com/ww1g11/MicroMagnetic.jl/workflows/CI/badge.svg)](https://github.com/ww1g11/MicroMagnetic.jl/actions)
 [![codecov](https://codecov.io/github/ww1g11/MicroMagnetic.jl/branch/master/graph/badge.svg?token=2t4oGYcWUu)](https://codecov.io/github/ww1g11/MicroMagnetic.jl)
-
+[![DOI](https://img.shields.io/badge/DOI-10.1088%2F1674--1056%2Fad766f-blue)](https://doi.org/10.1088/1674-1056/ad766f)
 
 ### Features
 
@@ -89,7 +89,7 @@ Precompiling CUDAExt
 ```
 
 
-# Quick start
+## Quick start
 Assuming we have a cylindrical FeGe sample with a diameter of 100 nm and a height of 40 nm, we want to know 
 its magnetization distribution and the stray field around it. We can use the following script: 
 
@@ -117,4 +117,24 @@ sim = sim_with(args);
 save_vtk(sim, "m_demag", fields=["demag"]) 
 ```
 The magnetization and the stray field around the cylindrical sample are stored in `m.vts`, which can be opened using Paraview. 
+
+## Questions and Contributions
+
+If you have any questions about usage, please join the conversation on our [GitHub Discussions page](https://github.com/ww1g11/MicroMagnetic.jl/discussions). 
+
+We greatly appreciate contributions, feature requests, and suggestions! If you encounter any issues or have ideas for improving MicroMagnetic.jl, feel free to open an issue on our [GitHub Issues page](https://github.com/ww1g11/MicroMagnetic.jl/issues).
+
+## Citation
+
+If you use MicroMagnetic.jl in your research,  please cite the following publication:
+
+```
+@article{10.1088/1674-1056/ad766f,
+  author={Wang, Weiwei and Lyu, Boyao and Kong, Lingyao and Fangohr, Hans and Du, Haifeng},
+  title={MicroMagnetic.jl: A Julia package for micromagnetic and atomistic simulations with GPU support},
+  journal={Chinese Physics B},
+  url={http://iopscience.iop.org/article/10.1088/1674-1056/ad766f},
+  year={2024}
+}
+```
 
