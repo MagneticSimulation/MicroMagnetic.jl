@@ -17,18 +17,15 @@ mutable struct Demag{T<:AbstractFloat} <: MicroEnergy
     Mx::AbstractArray{Complex{T},3} #output for FFT
     My::AbstractArray{Complex{T},3}
     Mz::AbstractArray{Complex{T},3}
-    Hx::AbstractArray{Complex{T},3}
-    Hy::AbstractArray{Complex{T},3}
-    Hz::AbstractArray{Complex{T},3}
     m_plan::Any
     h_plan::Any
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
-    
     name::String
 end
 
-# FIXME: reduce the memory of the demag tensors
+# Note: the size of the demag tensors can be reduced to ~nx*ny*nz (now the size is ~4*nx*ny*nz)
+# mx_pad can be reused so my_pad and mz_pad can be removed.
 # FIXME: add the real pbc (current imeplenation is macro pbc)
 function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     mesh = sim.mesh
@@ -89,19 +86,16 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     Mx = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
     My = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
     Mz = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    Hx = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    Hy = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    Hz = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
 
-    m_plan = plan_rfft(mx_pad)
-    h_plan = plan_irfft(Hx, nx_fft)
+    #m_plan = plan_rfft(mx_pad)
+    h_plan = plan_irfft(Mx, nx_fft)
 
     field = create_zeros(3 * sim.n_total)
     energy = create_zeros(sim.n_total)
 
     demag = Demag(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz, tensor_xy,
-                  tensor_xz, tensor_yz, mx_pad, my_pad, mz_pad, Mx, My, Mz, Hx, Hy, Hz,
-                  m_plan, h_plan, field, energy, "Demag")
+                  tensor_xz, tensor_yz, mx_pad, my_pad, mz_pad, Mx, My, Mz, plan, h_plan,
+                  field, energy, "Demag")
     return demag
 end
 
@@ -121,13 +115,12 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1},
     mul!(demag.My, demag.m_plan, demag.my)
     mul!(demag.Mz, demag.m_plan, demag.mz)
 
-    add_tensor_M(demag.Hx, demag.Hy, demag.Hz, demag.tensor_xx, demag.tensor_yy,
-                 demag.tensor_zz, demag.tensor_xy, demag.tensor_xz, demag.tensor_yz,
-                 demag.Mx, demag.My, demag.Mz)
+    add_tensor_M(demag.Mx, demag.My, demag.Mz, demag.tensor_xx, demag.tensor_yy,
+                 demag.tensor_zz, demag.tensor_xy, demag.tensor_xz, demag.tensor_yz)
 
-    mul!(demag.mx, demag.h_plan, demag.Hx)
-    mul!(demag.my, demag.h_plan, demag.Hy)
-    mul!(demag.mz, demag.h_plan, demag.Hz)
+    mul!(demag.mx, demag.h_plan, demag.Mx)
+    mul!(demag.my, demag.h_plan, demag.My)
+    mul!(demag.mz, demag.h_plan, demag.Mz)
 
     collect_h_energy(demag.field, demag.energy, spin, demag.mx, demag.my, demag.mz,
                      sim.mu0_Ms, T(mesh.volume), nx, ny, nz)
@@ -468,22 +461,32 @@ end
 # Hx .= tensor_xx.*Mx .+ tensor_xy.*My .+  tensor_xz.*Mz
 # Hy .= tensor_xy.*Mx .+ tensor_yy.*My .+  tensor_yz.*Mz
 # Hz .= tensor_xz.*Mx .+ tensor_yz.*My .+  tensor_zz.*Mz
-@kernel function add_tensor_M_kernel!(Hx, Hy, Hz, @Const(tensor_xx), @Const(tensor_yy),
+# we use Mx, My and Mz to store Hx, Hy and Hz
+@kernel function add_tensor_M_kernel!(Mx, My, Mz, @Const(tensor_xx), @Const(tensor_yy),
                                       @Const(tensor_zz), @Const(tensor_xy),
-                                      @Const(tensor_xz), @Const(tensor_yz), @Const(Mx),
-                                      @Const(My), @Const(Mz))
+                                      @Const(tensor_xz), @Const(tensor_yz))
     i = @index(Global)
-    @inbounds Hx[i] = tensor_xx[i] * Mx[i] + tensor_xy[i] * My[i] + tensor_xz[i] * Mz[i]
-    @inbounds Hy[i] = tensor_xy[i] * Mx[i] + tensor_yy[i] * My[i] + tensor_yz[i] * Mz[i]
-    @inbounds Hz[i] = tensor_xz[i] * Mx[i] + tensor_yz[i] * My[i] + tensor_zz[i] * Mz[i]
+    @inbounds xx = tensor_xx[i]
+    @inbounds yy = tensor_yy[i]
+    @inbounds zz = tensor_zz[i]
+    @inbounds xy = tensor_xy[i]
+    @inbounds xz = tensor_xz[i]
+    @inbounds yz = tensor_yz[i]
+
+    @inbounds Hx = xx * Mx[i] + xy * My[i] + xz * Mz[i]
+    @inbounds Hy = xy * Mx[i] + yy * My[i] + yz * Mz[i]
+    @inbounds Hz = xz * Mx[i] + yz * My[i] + zz * Mz[i]
+
+    @inbounds Mx[i] = Hx
+    @inbounds My[i] = Hy
+    @inbounds Mz[i] = Hz
 end
 
-function add_tensor_M(Hx, Hy, Hz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz,
-                      tensor_yz, Mx, My, Mz)
+function add_tensor_M(Mx, My, Mz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz,
+                      tensor_yz)
     kernel! = add_tensor_M_kernel!(default_backend[], groupsize[])
-    N = length(Hx)
-    kernel!(Hx, Hy, Hz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz,
-            Mx, My, Mz; ndrange=N)
+    kernel!(Mx, My, Mz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz;
+            ndrange=length(Mx))
     KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
