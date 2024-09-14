@@ -11,7 +11,7 @@ format = Documenter.HTML(; prettyurls=get(ENV, "CI", nothing) == "true",
 
 PAGES = ["Home" => "index.md", "basics.md", tutorials, "equations.md",
          #examples,
-         "functions.md", "developer.md"]
+         "api.md", "api_dev.md", "contrib.md"]
 
 if "warnonly=true" in ARGS
     @info("Option warnonly=true is enabled.")
@@ -22,7 +22,7 @@ else
              pages=PAGES, highlightsig=true, checkdocs=:none)
 end
 
-tutorials_cb()
+#tutorials_cb()
 #examples_cb()
 
 deploydocs(; repo="github.com/magneticsimulation/MicroMagnetic.jl.git")
