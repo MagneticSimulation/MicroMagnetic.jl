@@ -195,7 +195,6 @@ end
 
 Add DMI to the system. `type` could be "bulk", "interfacial" or "D2d". 
 
-
 Examples:
 
 ```julia

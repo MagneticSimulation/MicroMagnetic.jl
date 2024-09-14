@@ -296,7 +296,7 @@ end
 @doc raw"""
     add_dmi(sim::AtomisticSim, Dfun::Function; name="dmi")
 
-Add DMI to the system. The DMI is defined as
+Add spatial DMI to the system. The DMI is defined as
 ```math
 \mathcal{H}_\mathrm{dmi} = \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
 ```
