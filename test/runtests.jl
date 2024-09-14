@@ -23,6 +23,8 @@ include("test_skyrmion_number.jl")
 include("atomistic/test_mesh.jl")
 include("atomistic/test_llg.jl")
 include("atomistic/test_fields.jl")
+include("atomistic/test_exch.jl")
+include("atomistic/test_dmi.jl")
 
 include("test_mc.jl")
 include("test_neb.jl")

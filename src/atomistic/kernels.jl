@@ -56,8 +56,7 @@ Jij is represented by Js, which is an array with its length equals to n_ngbs
 Note that the return value is h * alpha + h_ex 
 """
 @kernel function atomistic_spatial_exchange_kernel!(h, energy, @Const(Js), @Const(m),
-                                                    @Const(mu_s), @Const(ngbs),
-                                                    n_ngbs)
+                                                    @Const(mu_s), @Const(ngbs), n_ngbs)
     I = @index(Global)
     i = 3 * I - 2
     T = eltype(h)
@@ -87,6 +86,51 @@ Note that the return value is h * alpha + h_ex
         @inbounds h[i + 0] = fx * ms_inv
         @inbounds h[i + 1] = fy * ms_inv
         @inbounds h[i + 2] = fz * ms_inv
+    end
+end
+
+@doc raw"""
+compute the dmi interaction h_dmi,  which is defined as 
+
+```math
+\mathcal{H}_\mathrm{dmi} =  \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
+```
+
+Jij is a 3d array with size (3, n_ngbs, N)
+"""
+@kernel function atomistic_spatial_dmi_kernel!(h::AbstractArray{T,1},
+                                               energy::AbstractArray{T,1}, @Const(Dij),
+                                               @Const(m), @Const(mu_s), @Const(ngbs),
+                                               n_ngbs) where {T<:AbstractFloat}
+    I = @index(Global)
+    j = 3 * I - 2
+
+    @inbounds ms_local::T = mu_s[I]
+    if ms_local == 0.0
+        @inbounds energy[I] = 0
+        @inbounds h[j] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+    else
+        ms_inv::T = 1 / ms_local
+
+        fx, fy, fz = T(0), T(0), T(0)
+        for k in 1:n_ngbs
+            @inbounds id = ngbs[k, I]
+            @inbounds if id > 0 && mu_s[id] > 0
+                x = 3 * id - 2
+                @inbounds Dx::T = Dij[1, k, I]
+                @inbounds Dy::T = Dij[2, k, I]
+                @inbounds Dz::T = Dij[3, k, I]
+                @inbounds fx += cross_x(Dx, Dy, Dz, m[x], m[x + 1], m[x + 2])
+                @inbounds fy += cross_y(Dx, Dy, Dz, m[x], m[x + 1], m[x + 2])
+                @inbounds fz += cross_z(Dx, Dy, Dz, m[x], m[x + 1], m[x + 2])
+            end
+        end
+        @inbounds energy[I] = -0.5 * (fx * m[j] + fy * m[j + 1] + fz * m[j + 2])
+        @inbounds h[j] = fx * ms_inv
+        @inbounds h[j + 1] = fy * ms_inv
+        @inbounds h[j + 2] = fz * ms_inv
     end
 end
 

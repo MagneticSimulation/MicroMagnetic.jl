@@ -85,8 +85,8 @@ function effective_field(exch::SpatialHeisenberg, sim::AtomisticSim,
     kernal = atomistic_spatial_exchange_kernel!(default_backend[], groupsize[])
     kernal(exch.field, exch.energy, exch.Js, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
            ndrange=N)
-   KernelAbstractions.synchronize(default_backend[])
-   return nothing
+    KernelAbstractions.synchronize(default_backend[])
+    return nothing
 end
 
 function effective_field(dmi::HeisenbergDMI, sim::AtomisticSim, spin::AbstractArray{T,1},
@@ -95,6 +95,20 @@ function effective_field(dmi::HeisenbergDMI, sim::AtomisticSim, spin::AbstractAr
     mesh = sim.mesh
 
     kernal = atomistic_dmi_kernel!(default_backend[], groupsize[])
+    kernal(dmi.field, dmi.energy, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
+           ndrange=N)
+
+    KernelAbstractions.synchronize(default_backend[])
+
+    return nothing
+end
+
+function effective_field(dmi::SpatialHeisenbergDMI, sim::AtomisticSim,
+                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    mesh = sim.mesh
+
+    kernal = atomistic_spatial_dmi_kernel!(default_backend[], groupsize[])
     kernal(dmi.field, dmi.energy, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
            ndrange=N)
 
