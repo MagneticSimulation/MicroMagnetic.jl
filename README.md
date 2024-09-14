@@ -4,11 +4,11 @@
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ww1g11/MicroMagnetic.jl/gh-pages)
-[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/dev/)
-[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/stable/)
-[![Actions Status](https://github.com/ww1g11/MicroMagnetic.jl/workflows/CI/badge.svg)](https://github.com/ww1g11/MicroMagnetic.jl/actions)
-[![codecov](https://codecov.io/github/ww1g11/MicroMagnetic.jl/branch/master/graph/badge.svg?token=2t4oGYcWUu)](https://codecov.io/github/ww1g11/MicroMagnetic.jl)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/magneticsimulation/MicroMagnetic.jl/gh-pages)
+[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl//dev/)
+[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl//stable/)
+[![Actions Status](https://github.com/magneticsimulation/MicroMagnetic.jl/workflows/CI/badge.svg)](https://github.com/magneticsimulation/MicroMagnetic.jl/actions)
+[![codecov](https://codecov.io/github/magneticsimulation/MicroMagnetic.jl/branch/master/graph/badge.svg?token=2t4oGYcWUu)](https://codecov.io/github/magneticsimulation/MicroMagnetic.jl)
 [![DOI](https://img.shields.io/badge/DOI-10.1088%2F1674--1056%2Fad766f-blue)](https://doi.org/10.1088/1674-1056/ad766f)
 
 ### Features
@@ -28,7 +28,7 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 
 You don't have to install anything and you can run MicroMagnetic.jl in the cloud via Binder:
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ww1g11/MicroMagnetic.jl/gh-pages)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/magneticsimulation/MicroMagnetic.jl/gh-pages)
 
 All the julia scripts and Jupyter Notebooks (in tutorials folder) hosted in the repository can be executed and modified.
 
@@ -36,8 +36,8 @@ All the julia scripts and Jupyter Notebooks (in tutorials folder) hosted in the 
 
 The documentation is available:
 
-[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/dev/)
-[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://ww1g11.github.io/MicroMagnetic.jl/stable/)
+[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl//dev/)
+[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl//stable/)
 
 ## Installation
 
@@ -120,9 +120,9 @@ The magnetization and the stray field around the cylindrical sample are stored i
 
 ## Questions and Contributions
 
-If you have any questions about usage, please join the conversation on our [GitHub Discussions page](https://github.com/ww1g11/MicroMagnetic.jl/discussions). 
+If you have any questions about usage, please join the conversation on our [GitHub Discussions page](https://github.com/magneticsimulation/MicroMagnetic.jl/discussions). 
 
-We greatly appreciate contributions, feature requests, and suggestions! If you encounter any issues or have ideas for improving MicroMagnetic.jl, feel free to open an issue on our [GitHub Issues page](https://github.com/ww1g11/MicroMagnetic.jl/issues).
+We greatly appreciate contributions, feature requests, and suggestions! If you encounter any issues or have ideas for improving MicroMagnetic.jl, feel free to open an issue on our [GitHub Issues page](https://github.com/magneticsimulation/MicroMagnetic.jl/issues).
 
 ## Citation
 

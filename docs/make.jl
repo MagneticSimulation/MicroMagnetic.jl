@@ -25,4 +25,4 @@ end
 tutorials_cb()
 #examples_cb()
 
-deploydocs(; repo="github.com/ww1g11/MicroMagnetic.jl.git")
+deploydocs(; repo="github.com/magneticsimulation/MicroMagnetic.jl.git")
