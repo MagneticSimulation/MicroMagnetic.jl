@@ -32,6 +32,13 @@ mutable struct HeisenbergExchange{T<:AbstractFloat} <: Interaction
     name::String
 end
 
+mutable struct SpatialHeisenberg{T<:AbstractFloat} <: Interaction
+    Js::AbstractArray{T,2}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    name::String
+end
+
 # HeisenbergDMI denotes the DM interaction that can be used in 
 # cubic and triangular meshes. 
 mutable struct HeisenbergDMI{T<:AbstractFloat} <: Interaction

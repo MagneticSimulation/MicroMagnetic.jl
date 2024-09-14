@@ -68,8 +68,8 @@ function init_demag(sim::AtomisticSim, Nx::Int, Ny::Int, Nz::Int)
     energy = create_zeros(sim.n_total)
 
     demag = Demag(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz, tensor_xy,
-                  tensor_xz, tensor_yz, mx_pad, my_pad, mz_pad, Mx, My, Mz,
-                  plan, h_plan, field, energy, "Demag")
+                  tensor_xz, tensor_yz, mx_pad, my_pad, mz_pad, Mx, My, Mz, plan, h_plan,
+                  field, energy, "Demag")
     return demag
 end
 

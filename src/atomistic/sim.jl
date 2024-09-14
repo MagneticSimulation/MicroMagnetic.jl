@@ -113,6 +113,86 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
 end
 
 @doc raw"""
+    add_exch(sim::AtomisticSim, Jfun::Function; name="exch")
+
+Add spatial exchange interaction to the system by accepting a function that defines the exchange parameters at different spatial points. The function should accept the indices `(i, j, k)` representing the position of the spin on the mesh and return an **array**. The length of this array should be half the number of neighbors.
+
+For example, for a `CubicMesh`, the function should return an array `[Jx, Jy, Jz]`, where:
+- `Jx` represents the exchange interaction between the site at `(i, j, k)` and the site at `(i+1, j, k)`,
+- `Jy` represents the exchange interaction between the site at `(i, j, k)` and the site at `(i, j+1, k)`,
+- `Jz` represents the exchange interaction between the site at `(i, j, k)` and the site at `(i, j, k+1)`.
+
+The array length corresponds to half the number of neighbors, because exchange interactions are considered only in the positive direction (i.e., the interactions with neighboring sites in increasing index directions).
+
+#### Examples:
+
+```julia
+function spatial_J(i, j, k)
+    Jx = i < 10 ? 1meV : 2meV
+    Jy = 1meV
+    Jz = 1meV
+    return [Jx, Jy, Jz]  # Returns an array
+end
+
+add_exch(sim, spatial_J)
+```
+
+In this example:
+- The exchange interaction in the x-direction (`Jx`) depends on the value of `i`. If `i` is less than 10, it is `1meV`, otherwise it is `2meV`.
+- The interactions in the y- and z-directions (`Jy` and `Jz`) are fixed at `1meV`.
+"""
+function add_exch(sim::AtomisticSim, Jfun::Function; name="exch")
+    mesh = sim.mesh
+    N = sim.n_total
+
+    if !isa(mesh, CubicMesh)
+        error("only support CubicMesh now, will add other meshes later")
+    end
+
+    Js_half = zeros(div(mesh.n_ngbs, 2), N)
+    grid_size = size(mesh)
+    for idx in CartesianIndices(grid_size)
+        id = LinearIndices(grid_size)[idx]
+        i, j, k = Tuple(idx)
+        Js_half[:, id] .= Jfun(i, j, k)
+    end
+
+    Js_cpu = zeros(mesh.n_ngbs, N)
+    ngbs = Array(mesh.ngbs)
+    
+    for idx in CartesianIndices(grid_size)
+        id = LinearIndices(grid_size)[idx]
+        Js_cpu[2, id] = Js_half[1, id]
+        Js_cpu[4, id] = Js_half[2, id]
+        Js_cpu[6, id] = Js_half[3, id]
+
+        i = ngbs[1, id] # the left one
+        i>0 && (Js_cpu[1, id] = Js_half[1, i])
+        
+        i = ngbs[3, id] 
+        i>0 && (Js_cpu[3, id] = Js_half[2, i])
+
+        i = ngbs[5, id]
+        i>0 && (Js_cpu[5, id] = Js_half[3, i])
+    end
+
+    Js = kernel_array(Js_cpu)
+
+    field = create_zeros(3 * N)
+    energy = create_zeros(N)
+
+    exch = SpatialHeisenberg(Js, field, energy, name)
+    push!(sim.interactions, exch)
+    if sim.save_data
+        id = length(sim.interactions)
+        item = SaverItem(string("E_", name), "<J>",
+                         o::AbstractSim -> sum(o.interactions[id].energy))
+        push!(sim.saver.items, item)
+    end
+    return exch
+end
+
+@doc raw"""
     add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
 
 Add bulk dmi energy to the system. The DMI is defined as

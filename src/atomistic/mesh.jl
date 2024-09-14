@@ -90,6 +90,14 @@ mutable struct CubicMesh <: AtomisticMesh
     zperiodic::Bool
 end
 
+function Base.size(mesh::CubicMesh)
+    return mesh.nx, mesh.ny, mesh.nz
+end
+
+function Base.length(mesh::Mesh)
+    return mesh.n_total
+end
+
 @doc raw"""	 
 	CubicMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
 
