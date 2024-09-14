@@ -115,7 +115,9 @@ end
 @doc raw"""
     add_exch(sim::AtomisticSim, Jfun::Function; name="exch")
 
-Add spatial exchange interaction to the system by accepting a function that defines the exchange parameters at different spatial points. The function should accept the indices `(i, j, k)` representing the position of the spin on the mesh and return an **array**. The length of this array should be half the number of neighbors.
+Add spatial exchange interaction to the system by accepting a function that defines the exchange parameters at different spatial points. 
+The function should accept the indices `(i, j, k)` representing the position of the spin on the mesh and return an **array**. 
+The length of this array should be half the number of neighbors.
 
 For example, for a `CubicMesh`, the function should return an array `[Jx, Jy, Jz]`, where:
 - `Jx` represents the exchange interaction between the site at `(i, j, k)` and the site at `(i+1, j, k)`,
@@ -159,7 +161,7 @@ function add_exch(sim::AtomisticSim, Jfun::Function; name="exch")
 
     Js_cpu = zeros(mesh.n_ngbs, N)
     ngbs = Array(mesh.ngbs)
-    
+
     for idx in CartesianIndices(grid_size)
         id = LinearIndices(grid_size)[idx]
         Js_cpu[2, id] = Js_half[1, id]
@@ -167,13 +169,13 @@ function add_exch(sim::AtomisticSim, Jfun::Function; name="exch")
         Js_cpu[6, id] = Js_half[3, id]
 
         i = ngbs[1, id] # the left one
-        i>0 && (Js_cpu[1, id] = Js_half[1, i])
-        
-        i = ngbs[3, id] 
-        i>0 && (Js_cpu[3, id] = Js_half[2, i])
+        i > 0 && (Js_cpu[1, id] = Js_half[1, i])
+
+        i = ngbs[3, id]
+        i > 0 && (Js_cpu[3, id] = Js_half[2, i])
 
         i = ngbs[5, id]
-        i>0 && (Js_cpu[5, id] = Js_half[3, i])
+        i > 0 && (Js_cpu[5, id] = Js_half[3, i])
     end
 
     Js = kernel_array(Js_cpu)
@@ -285,6 +287,90 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
     if sim.save_data
         id = length(sim.interactions)
         item = SaverItem(string("E_", name), "J",
+                         o::AbstractSim -> sum(o.interactions[id].energy))
+        push!(sim.saver.items, item)
+    end
+    return dmi
+end
+
+@doc raw"""
+    add_dmi(sim::AtomisticSim, Dfun::Function; name="dmi")
+
+Add DMI to the system. The DMI is defined as
+```math
+\mathcal{H}_\mathrm{dmi} = \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
+```
+where $\mathbf{D}_{i j}$ is the DM vector.  The function should accept the indices `(i, j, k)` representing the position of the spin 
+on the mesh and return an **array**. The length of this array should be half the number of neighbors.
+
+For example, for a `CubicMesh`, the function should return an array `[(D1, D2, D3), (D4, D5, D6), (D4, D5, D6)]`, where:
+- `(D1, D2, D3)` represents the DM vector between the site at `(i, j, k)` and the site at `(i+1, j, k)`,
+- `(D4, D5, D6)` represents the DM vector between the site at `(i, j, k)` and the site at `(i, j+1, k)`,
+- `(D7, D8, D9)` represents the DM vector between the site at `(i, j, k)` and the site at `(i, j, k+1)`.
+
+The array length corresponds to half the number of neighbors, because exchange interactions are considered only in the positive direction (i.e., the interactions with neighboring sites in increasing index directions).
+
+#### Examples:
+
+```julia
+function spatial_bulk_DMI(i, j, k)
+    Dx = i < 10 ? 0.1meV : 0.2meV
+    Dy = 0.1meV
+    Dz = 0.3meV
+    return [(Dx, 0, 0), (0, Dy, 0), (0, 0, Dz)]  # Returns an array
+end
+
+add_dmi(sim, spatial_bulk_DMI)
+```
+"""
+function add_dmi(sim::AtomisticSim, Dfun::Function; name="dmi")
+    mesh = sim.mesh
+    N = sim.n_total
+
+    if !isa(mesh, CubicMesh)
+        error("only support CubicMesh now, will add other meshes later")
+    end
+
+    Ds_half = zeros(3, div(mesh.n_ngbs, 2), N)
+    grid_size = size(mesh)
+    for idx in CartesianIndices(grid_size)
+        id = LinearIndices(grid_size)[idx]
+        i, j, k = Tuple(idx)
+        Ds = Dfun(i, j, k)
+        for x in 1:div(mesh.n_ngbs, 2)
+            Ds_half[:, x, id] .= Ds[x]
+        end
+    end
+
+    Ds_cpu = zeros(3, mesh.n_ngbs, N)
+    ngbs = Array(mesh.ngbs)
+
+    for idx in CartesianIndices(grid_size)
+        id = LinearIndices(grid_size)[idx]
+        Ds_cpu[:, 2, id] .= Ds_half[:, 1, id]
+        Ds_cpu[:, 4, id] .= Ds_half[:, 2, id]
+        Ds_cpu[:, 6, id] .= Ds_half[:, 3, id]
+
+        i = ngbs[1, id] # the left one
+        i > 0 && (Ds_cpu[:, 1, id] .= -Ds_half[:, 1, i])
+
+        i = ngbs[3, id]
+        i > 0 && (Ds_cpu[:, 3, id] .= -Ds_half[:, 2, i])
+
+        i = ngbs[5, id]
+        i > 0 && (Ds_cpu[:, 5, id] .= -Ds_half[:, 3, i])
+    end
+
+    Dij = kernel_array(Ds_cpu)
+
+    field = create_zeros(3 * N)
+    energy = create_zeros(N)
+
+    dmi = SpatialHeisenbergDMI(Dij, field, energy, name)
+    push!(sim.interactions, dmi)
+    if sim.save_data
+        id = length(sim.interactions)
+        item = SaverItem(string("E_", name), "<J>",
                          o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end

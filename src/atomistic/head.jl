@@ -48,6 +48,16 @@ mutable struct HeisenbergDMI{T<:AbstractFloat} <: Interaction
     name::String
 end
 
+# SpatialHeisenbergDMI denotes the DM interaction that can be used in 
+# cubic and triangular meshes. 
+# Dij is a 3d array with size (3, n_ngbs, N)
+mutable struct SpatialHeisenbergDMI{T<:AbstractFloat} <: Interaction
+    Dij::AbstractArray{T,3}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    name::String
+end
+
 # DMI in Canted AFM
 # HeisenbergCantedDMI denotes the DM interaction that can be used in 
 # cubic and triangular meshes. 
