@@ -1,4 +1,4 @@
-# API Documentation
+# API for users
 
 ```@meta
 CurrentModule = MicroMagnetic
