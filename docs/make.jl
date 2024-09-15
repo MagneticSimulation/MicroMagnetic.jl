@@ -22,4 +22,4 @@ end
 
 tutorials_cb()
 
-deploydocs(; repo="github.com/magneticsimulation/MicroMagnetic.jl.git")
+deploydocs(; repo="github.com/MagneticSimulation/MicroMagnetic.jl")
