@@ -70,8 +70,9 @@ compute tau = (u.nabla) m.
 
     #x-direction
     i1::Int32 = ngbs[1, I] #we assume that i1<0 for the area with Ms=0
-    i2::Int32 = ngbs[2, I]
-    factor::T = i1 * i2 > 0 ? 1 / (2 * dx) : 1 / dx
+    i2::Int32 = ngbs[2, I] 
+    # i1 * i2 may overflow
+    factor::T = (i1 > 0 && i2 > 0) ? 1 / (2 * dx) : 1 / dx
     i1 < 0 && (i1 = I)
     i2 < 0 && (i2 = I)
     j1 = 3 * i1 - 2
@@ -84,7 +85,7 @@ compute tau = (u.nabla) m.
     #y-direction
     i1 = ngbs[3, I]
     i2 = ngbs[4, I]
-    factor = i1 * i2 > 0 ? 1 / (2 * dy) : 1 / dy
+    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dy) : 1 / dy
     i1 < 0 && (i1 = I)
     i2 < 0 && (i2 = I)
     j1 = 3 * i1 - 2
@@ -97,7 +98,7 @@ compute tau = (u.nabla) m.
     #z-direction
     i1 = ngbs[5, I]
     i2 = ngbs[6, I]
-    factor = i1 * i2 > 0 ? 1 / (2 * dz) : 1 / dz
+    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dz) : 1 / dz
     i1 < 0 && (i1 = I)
     i2 < 0 && (i2 = I)
     j1 = 3 * i1 - 2

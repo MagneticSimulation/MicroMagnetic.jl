@@ -249,7 +249,7 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
             error("D2d only support uniform DMI!")
         end
     else
-        error("Supported DMI type:", "interfacial", "bulk", "D2d")
+        error("Supported DMI type:", " interfacial", " bulk", " D2d")
     end
 
     push!(sim.interactions, dmi)
