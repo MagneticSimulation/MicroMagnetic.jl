@@ -70,7 +70,7 @@ compute tau = (u.nabla) m.
 
     #x-direction
     i1::Int32 = ngbs[1, I] #we assume that i1<0 for the area with Ms=0
-    i2::Int32 = ngbs[2, I] 
+    i2::Int32 = ngbs[2, I]
     # i1 * i2 may overflow
     factor::T = (i1 > 0 && i2 > 0) ? 1 / (2 * dx) : 1 / dx
     i1 < 0 && (i1 = I)
@@ -273,8 +273,8 @@ function llg_cpp_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
     px, py, pz = T(driver.p[1]), T(driver.p[2]), T(driver.p[3])
 
     kernel! = llg_cpp_rhs_kernel!(default_backend[], groupsize[])
-    kernel!(dm_dt, spin, sim.field, sim.pins, driver.aj, T(driver.bj), T(ut), T(driver.gamma),
-            T(driver.alpha), px, py, pz; ndrange=sim.n_total)
+    kernel!(dm_dt, spin, sim.field, sim.pins, driver.aj, T(driver.bj), T(ut),
+            T(driver.gamma), T(driver.alpha), px, py, pz; ndrange=sim.n_total)
 
     KernelAbstractions.synchronize(default_backend[])
 

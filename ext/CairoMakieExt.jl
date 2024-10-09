@@ -23,7 +23,7 @@ function calculate_start_step(nx::Int, n::Int)
 end
 
 """
-    MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1), figsize=(500, -1), fig=nothing, ax=nothing, colorrange=[-1, 1])
+    MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1), figsize=(500, -1), fig=nothing, ax=nothing, kwargs...)
 
 Create a plot for the given magnetization.
 
@@ -35,11 +35,21 @@ Create a plot for the given magnetization.
 - `dy::Float64`: The spacing in the y-direction (default: 1.0).
 - `k::Int`: The layer index to plot (starting from 1) (default: 1).
 - `component::Char`: The magnetization component to plot ('x', 'y', or 'z') (default: 'z').
-- `arrows::Tuple{Int, Int}`: The number of arrows to plot, specified as a tuple. By default, arrows=(-1, -1), which auto-scales the number of arrows.
+- `arrows::Tuple{Int, Int}`: The number of arrows to plot, specified as a tuple. By default, arrows=(-1, -1), which auto-scales the number of arrows. If arrows is set to `nothing`, no arrows will be shown.
 - `figsize::Tuple{Int, Int}`: The size of the figure, specified as a tuple (width, height). For example, figsize=(500, 400) or figsize=(500, -1) where -1 means auto-scaled height (default: (500, -1)).
 - `fig`: An existing figure to plot on. If nothing, a new figure is created (default: nothing).
 - `ax`: An existing axis to plot on. If nothing, a new axis is created (default: nothing).
-- `colorrange`: The range of colors for the heatmap (default: nothing).
+- `kwargs...`: Additional keyword arguments that are passed to `heatmap!`.
+
+# Supported `heatmap!` Arguments
+- `alpha`: Transparency level of the heatmap.
+- `colormap`: A list or function that defines the color mapping for the heatmap [Colors](https://docs.makie.org/v0.21/explanations/colors).
+- `colorrange`: The color range of the heatmap.
+- `interpolate`: Whether to interpolate between values.
+- `colorscale`: A scale factor for the color.
+- `transparency`: Whether to apply transparency to the heatmap.
+
+For more details on the supported arguments, please refer to the Makie documentation: [Makie Heatmap Reference](https://docs.makie.org/v0.21/reference/plots/heatmap).
 
 # Returns
 - `fig`: The figure containing the plot.
@@ -54,8 +64,7 @@ MicroMagnetic.plot_m(spin, colorrange=[-1, 1])
 MicroMagnetic.plot_m(spin, dx=0.5, dy=0.5, k=2, component='x', arrows=(5, 5), figsize=(600, 400))
 """
 function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1),
-                              figsize=(500, -1), fig=nothing, ax=nothing,
-                              colorrange=nothing)
+                              figsize=(500, -1), fig=nothing, ax=nothing, kwargs...)
     (_, nx, ny, nz) = size(spin)
     scale_factor = 10^floor(log10(dx))
     dx = dx / scale_factor
@@ -80,6 +89,12 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
 
     max_arrows = 40
 
+    show_arrow = true
+
+    if arrows === nothing
+        arrows = (-1, -1)
+        show_arrow = false
+    end
     arrow_nx = arrows[1]
     arrow_ny = arrows[2]
 
@@ -123,19 +138,17 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
         mm = mz
     end
 
-    #TODO: how to set automatic to colorrange???
-    if colorrange == nothing
-        heatmap!(ax, xs, ys, mm; alpha=0.5)
-    else
-        heatmap!(ax, xs, ys, mm; alpha=0.5, colorrange=colorrange)
+    valid_heatmap_args = [:alpha, :colormap, :colorrange, :interpolate, :colorscale,
+                          :transparency]
+    filtered_kwargs = Dict(kw => val for (kw, val) in kwargs if kw in valid_heatmap_args)
+
+    heatmap!(ax, xs, ys, mm; filtered_kwargs...)
+
+    if show_arrow
+        lengthscale = 0.3 * sqrt(Dx^2 + Dy^2)
+        arrow!(ax, xs[I], ys[J], mx[I, J], my[I, J]; linewidth=2.0, color=:gray36,
+               lengthscale=lengthscale, align=:center)
     end
-    #scatter!(ax, [(x, y) for x in xs for y in ys], color=:white, strokecolor=:black, strokewidth=0.5)
-
-    lengthscale = 0.3 * sqrt(Dx^2 + Dy^2)
-    #FIXME: it seems that align=:center does not work well for some situations?
-    arrows!(ax, xs[I], ys[J], mx[I, J], my[I, J]; linewidth=2.0, color=:gray36,
-            lengthscale=lengthscale, align=:center)
-
     return fig
 end
 
@@ -196,6 +209,9 @@ end
   jld2movie(jld_file; framerate=12, output=nothing, kwargs...)
 
 Create a moive from the given jld2 file.
+
+# Keyword Arguments
+This function forwards all keyword arguments to `MicroMagnetic.plot_m`. Refer to `MicroMagnetic.plot_m` for detailed descriptions of the keyword arguments.
 
 `output`` is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
 """
