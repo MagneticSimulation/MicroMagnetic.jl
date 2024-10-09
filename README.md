@@ -129,17 +129,18 @@ We greatly appreciate contributions, feature requests, and suggestions! If you e
 If you use MicroMagnetic.jl in your research,  please cite the following publication:
 
 ```
-@article{10.1088/1674-1056/ad766f,
-	author = {Wang, Weiwei and Lyu, Boyao and Kong, Lingyao and Fangohr, Hans and Du, Haifeng},
-	title = {MicroMagnetic.jl: A Julia package for micromagnetic and atomistic simulations with GPU support},
-	journal = {Chinese Physics B},
-	year = {2024},
-	volume = {33},
-	number = {10},
-	pages = {107508},
-	doi = {10.1088/1674-1056/ad766f},
-	year = {2024},
-	url = {http://iopscience.iop.org/article/10.1088/1674-1056/ad766f},
+@article{Wang_2024,
+    doi = {10.1088/1674-1056/ad766f},
+    url = {https://dx.doi.org/10.1088/1674-1056/ad766f},
+    year = {2024},
+    month = {oct},
+    publisher = {Chinese Physical Society and IOP Publishing Ltd},
+    volume = {33},
+    number = {10},
+    pages = {107508},
+    author = {Weiwei Wang and Boyao Lyu and Lingyao Kong and Hans Fangohr and Haifeng Du},
+    title = {MicroMagnetic.jl: A Julia package for micromagnetic and atomistic simulations with GPU support},
+    journal = {Chinese Physics B}
 }
 ```
 
