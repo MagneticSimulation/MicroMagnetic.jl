@@ -509,7 +509,7 @@ Create a micromagnetic simulation instance with given arguments.
 - `mu_s`: the magnetic moment, should be [`NumberOrArrayOrFunction`](@ref). By default, mu_s=2*mu_B
 - `A` or `J`: the exchange constant, should be [`NumberOrArrayOrFunction`](@ref).
 - `D` : the DMI constant, should be [`NumberOrArrayOrFunction`](@ref).
-- `dmi_type` : the type of DMI, could be "bulk" or "interfacial".
+- `dmi_type` : the type of DMI, could be "bulk", "interfacial" or "D2d".
 - `Ku`: the anisotropy constant, should be [`NumberOrArrayOrFunction`](@ref).
 - `axis`: the anisotropy axis, should be a tuple, such as (0,0, 1)
 - `demag` : include demagnetization or not, should be a boolean, i.e., true or false. By default,  demag=false.
@@ -558,7 +558,7 @@ function create_sim(mesh, args::Dict)
             add_demag(sim)
         end
 
-        for key in [:Ms, :A, :D, :demag]
+        for key in [:Ms, :A, :D, :demag, :dmi_type]
             haskey(args, key) && delete!(args, key)
         end
 

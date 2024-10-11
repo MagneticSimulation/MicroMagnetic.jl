@@ -146,7 +146,7 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
 
     if show_arrow
         lengthscale = 0.3 * sqrt(Dx^2 + Dy^2)
-        arrow!(ax, xs[I], ys[J], mx[I, J], my[I, J]; linewidth=2.0, color=:gray36,
+        arrows!(ax, xs[I], ys[J], mx[I, J], my[I, J]; linewidth=2.0, color=:gray36,
                lengthscale=lengthscale, align=:center)
     end
     return fig
