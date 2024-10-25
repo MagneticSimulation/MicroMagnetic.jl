@@ -28,6 +28,7 @@ mutable struct LLG_CPP{T<:AbstractFloat} <: Driver
     integrator::Integrator
     tol::Float64
     p::Tuple{Real,Real,Real}
+    ufun::Function
 end
 
 mutable struct LLG_STT{T<:AbstractFloat} <: Driver
@@ -127,7 +128,7 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         if integrator == "DormandPrinceCayley"
             error(@sprintf("Unsupported combination driver %s and %s.", driver, integrator))
         end
-        return LLG_CPP(T(0.5), T(0), T(2.21e5), aj, T(0), dopri5, tol, p)
+        return LLG_CPP(T(0.5), T(0), T(2.21e5), aj, T(0), dopri5, tol, p, fun)
     end
     return nothing
 end
