@@ -242,6 +242,7 @@ where p_perp = p - (m.p)m
         #the above part is the standard LLG equation
 
         @inbounds aj = ut * a_J[I]
+        bj = ut * bj
         c1::T = (aj + alpha * bj) / (1 + alpha * alpha)
         c2::T = (bj - alpha * aj) / (1 + alpha * alpha)
 
