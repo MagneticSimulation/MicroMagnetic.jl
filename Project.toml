@@ -18,7 +18,7 @@ JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 [compat]
 julia = "1.9"
 FFTW = "1"
-JLD2 = "0.4"
+JLD2 = "0.5"
 KernelAbstractions = "0.9.2"
 TimerOutputs = "0.5"
 ReadVTK = "0.2"
