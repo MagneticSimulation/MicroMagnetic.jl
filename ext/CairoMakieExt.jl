@@ -248,6 +248,7 @@ function MicroMagnetic.jld2movie(jld_file; framerate=12, output=nothing, figsize
     function update_function(i)
         index = @sprintf("m/%d", i)
         m = reshape(data[index], 3, nx, ny, nz)
+        empty!(ax)
         return plot_m(m; dx=dx, dy=dy, fig=fig, ax=ax, kwargs...)
     end
 
