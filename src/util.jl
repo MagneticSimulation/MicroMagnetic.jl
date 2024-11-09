@@ -49,7 +49,6 @@ function vector_add2(a::A, a1::A, a2::A, c2::S) where {T<:AbstractFloat, S<:Abst
     end
     kernel! = vector_add2_kernal!(default_backend[], groupsize[])
     kernel!(a, a1, a2, c2; ndrange=length(a))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -61,7 +60,6 @@ function vector_add3(a::A, a1::A, a2::A, a3::A, c2::S, c3::S) where {T<:Abstract
     end
     kernel! = vector_add3_kernal!(default_backend[], groupsize[])
     kernel!(a, a1, a2, a3, c2, c3; ndrange=length(a))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -73,7 +71,6 @@ function vector_add4(a::A, a1::A, a2::A, a3::A, a4::A, c2::S, c3::S, c4::S) wher
     end
     kernel! = vector_add4_kernel!(default_backend[], groupsize[])
     kernel!(a, a1, a2, a3, a4, c2, c3, c4; ndrange=length(a))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -85,7 +82,6 @@ function vector_add5(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, c2::S, c3::S, c4::
     end
     kernel! = vector_add5_kernel!(default_backend[], groupsize[])
     kernel!(a, a1, a2, a3, a4, a5, c2, c3, c4, c5; ndrange=length(a))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -97,7 +93,6 @@ function vector_add6(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, a6::A, c2::S, c3::
     end
     kernel! = vector_add6_kernel!(default_backend[], groupsize[])
     kernel!(a, a1, a2, a3, a4, a5, a6, c2, c3, c4, c5, c6; ndrange=length(a))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -109,7 +104,6 @@ function vector_add6b(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, a6::A, c1::S, c2:
     end
     kernel! = vector_add6b_kernel!(default_backend[], groupsize[])
     kernel!(a, a1, a2, a3, a4, a5, a6, c1, c2, c3, c4, c5, c6; ndrange=length(a))
-    KernelAbstractions.synchronize(default_backend[])
 end
 
 function abs!(a::Array{T,1}, b::Array{T,1})  where {T<:AbstractFloat}

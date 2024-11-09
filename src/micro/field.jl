@@ -6,7 +6,6 @@ function effective_field(zee::Zeeman, sim::MicroSim, spin::AbstractArray{T,1},
     back = default_backend[]
     zeeman_kernel!(back, groupsize[])(spin, zee.field, zee.energy, sim.mu0_Ms, T(factor);
                                       ndrange=N)
-    KernelAbstractions.synchronize(back)
     return nothing
 end
 
@@ -19,7 +18,6 @@ function effective_field(zee::TimeZeeman, sim::MicroSim, spin::AbstractArray{T,1
     time_zeeman_kernel!(back, groupsize[])(spin, zee.field, zee.init_field, zee.energy,
                                            sim.mu0_Ms, T(factor), T(tx), T(ty), T(tz);
                                            ndrange=N)
-    KernelAbstractions.synchronize(back)
     return nothing
 end
 
@@ -33,7 +31,6 @@ function effective_field(anis::Anisotropy, sim::MicroSim, spin::AbstractArray{T,
     anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku, axis[1],
                                           axis[2], axis[3], sim.mu0_Ms, volume; ndrange=N)
 
-    KernelAbstractions.synchronize(back)
     return nothing
 end
 
@@ -51,7 +48,6 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArr
                                                 T(a2z), T(a3x), T(a3y), T(a3z), sim.mu0_Ms,
                                                 volume; ndrange=N)
 
-    KernelAbstractions.synchronize(back)
     return nothing
 end
 
@@ -65,8 +61,7 @@ function effective_field(exch::SpatialExchange, sim::MicroSim, spin::AbstractArr
     back = default_backend[]
     exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms, exch.A,
                                         dx, dy, dz, mesh.ngbs, volume; ndrange=n_total)
-    KernelAbstractions.synchronize(back)
-
+    
     return nothing
 end
 
@@ -81,8 +76,7 @@ function effective_field(exch::UniformExchange, sim::MicroSim, spin::AbstractArr
     uniform_exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
                                                 exch.Ax, exch.Ay, exch.Az, dx, dy, dz,
                                                 mesh.ngbs, volume; ndrange=N)
-    KernelAbstractions.synchronize(back)
-
+    
     return nothing
 end
 
@@ -98,7 +92,6 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
                                        dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs, volume;
                                        ndrange=N)
 
-    KernelAbstractions.synchronize(back)
     return nothing
 end
 
@@ -114,7 +107,7 @@ function effective_field(dmi::SpatialBulkDMI, sim::MicroSim, spin::AbstractArray
                                                dmi.D, dx, dy, dz, mesh.ngbs, volume;
                                                ndrange=N)
 
-    KernelAbstractions.synchronize(back)
+    
     return nothing
 end
 
@@ -130,7 +123,6 @@ function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::AbstractArray
                                                dmi.D, dx, dy, dz, mesh.ngbs, volume;
                                                ndrange=N)
 
-    KernelAbstractions.synchronize(back)
     return nothing
 end
 
@@ -148,7 +140,6 @@ function effective_field(dmi::InterlayerDMI, sim::MicroSim, spin::AbstractArray{
                                               Int32(nx), Int32(ny), dz, volume;
                                               ndrange=(nx, ny))
 
-    KernelAbstractions.synchronize(back)
     return nothing
 end
 
@@ -165,7 +156,6 @@ function effective_field(exch::InterlayerExchange, sim::MicroSim, spin::Abstract
                                                T(exch.J), exch.k1, exch.k2, Int32(nx),
                                                Int32(ny), dz, volume; ndrange=(nx, ny))
 
-    KernelAbstractions.synchronize(back)
     return nothing
 end
 
@@ -192,7 +182,6 @@ function effective_field(stochastic::StochasticField, sim::MicroSim,
                                                 stochastic.temperature, factor, T(volume);
                                                 ndrange=N)
 
-    KernelAbstractions.synchronize(back)
 
     return nothing
 end

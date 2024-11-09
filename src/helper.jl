@@ -118,7 +118,6 @@ function normalise(a::AbstractArray{T,1}, N::Int64) where {T<:AbstractFloat}
     end
 
     local_kernal!(get_backend(a), groupsize[])(a; ndrange=N)
-    KernelAbstractions.synchronize(get_backend(a))
     return nothing
 end
 
@@ -134,8 +133,6 @@ function compute_dm!(dm::AbstractArray{T,1}, m1::AbstractArray{T,1}, m2::Abstrac
     end
 
     local_kernal!(get_backend(dm), groupsize[])(dm, m1, m2; ndrange=N)
-    KernelAbstractions.synchronize(get_backend(dm))
-
     return nothing
 end
 
@@ -168,7 +165,6 @@ function omega_to_spin(omega::AbstractArray{T,1}, spin::AbstractArray{T,1},
     end
 
     local_kernal!(default_backend[], groupsize[])(omega, spin, spin_next; ndrange=N)
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 

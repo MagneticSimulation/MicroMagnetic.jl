@@ -51,7 +51,7 @@ function llg_call_back(sim::AbstractSim, dm_dt::AbstractArray{T,1},
         kernel! = llg_rhs_kernel!(default_backend[], groupsize[])
         kernel!(dm_dt, spin, sim.field, sim.pins, T(driver.alpha), T(driver.gamma),
                 driver.precession; ndrange=N)
-        KernelAbstractions.synchronize(default_backend[])
+        (default_backend[])
     end
 
     return nothing
@@ -120,8 +120,6 @@ function compute_field_stt(h_stt, m, ux, uy, uz, ngbs, ut::T, dx::T, dy::T, dz::
                            N::Int64) where {T<:AbstractFloat}
     kernel! = field_stt_kernel!(default_backend[], groupsize[])
     kernel!(h_stt, m, ux, uy, uz, ngbs, ut, dx, dy, dz; ndrange=N)
-
-    KernelAbstractions.synchronize(default_backend[])
 
     return nothing
 end
@@ -199,7 +197,6 @@ function llg_stt_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
     kernel! = llg_stt_rhs_kernel!(default_backend[], groupsize[])
     kernel!(dm_dt, spin, sim.field, driver.h_stt, sim.pins, T(driver.gamma),
             T(driver.alpha), T(driver.beta); ndrange=sim.n_total)
-    KernelAbstractions.synchronize(default_backend[])
 
     return nothing
 end
@@ -276,8 +273,6 @@ function llg_cpp_call_back(sim::AbstractSim, dm_dt, spin, t::Float64)
     kernel! = llg_cpp_rhs_kernel!(default_backend[], groupsize[])
     kernel!(dm_dt, spin, sim.field, sim.pins, driver.aj, T(driver.bj), T(ut),
             T(driver.gamma), T(driver.alpha), px, py, pz; ndrange=sim.n_total)
-
-    KernelAbstractions.synchronize(default_backend[])
 
     return nothing
 end

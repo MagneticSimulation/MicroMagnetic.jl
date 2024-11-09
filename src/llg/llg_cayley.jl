@@ -49,7 +49,6 @@ function llg_cayley_call_back(sim::AbstractSim, dw_dt::AbstractArray{T,1}, t::Fl
     kernel! = llg_rhs_cayley_kernel!(default_backend[], groupsize[])
     kernel!(dw_dt, sim.spin, sim.field, omega, sim.pins, driver.alpha, driver.gamma,
             driver.precession; ndrange=N)
-    KernelAbstractions.synchronize(default_backend[])
 
     return nothing
 end
@@ -112,8 +111,6 @@ function llg_rhs_stt_cayley(dw_dt::AbstractArray{T,1}, m::AbstractArray{T,1},
                             N::Int64) where {T<:AbstractFloat}
     kernel! = llg_rhs_stt_cayley_kernel!(default_backend[], groupsize[])
     kernel!(dw_dt, m, h, h_stt, omega, alpha, beta, gamma; ndrange=N)
-    KernelAbstractions.synchronize(default_backend[])
-
     return nothing
 end
 
@@ -203,7 +200,6 @@ function llg_rhs_stt_cpp_cayley(dw_dt::AbstractArray{T,1}, m::AbstractArray{T,1}
     kernel! = llg_rhs_stt_cpp_cayley_kernel!(default_backend[], groupsize[])
     kernel!(dw_dt, m, h, h_stt, omega, aj, pins, px, py, pz, alpha, beta, bj, gamma;
             ndrange=N)
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 

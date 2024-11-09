@@ -386,7 +386,6 @@ end
 function compute_demag_tensors(tensor, kernel_fun, Nx, Ny, Nz, dx, dy, dz)
     kernel! = kernel_fun(get_backend(tensor), groupsize[])
     kernel!(tensor, dx, dy, dz, Nx, Ny, Nz; ndrange=size(tensor))
-    KernelAbstractions.synchronize(get_backend(tensor))
     return nothing
 end
 
@@ -412,7 +411,6 @@ end
 function fill_tensors(long_tensor, tensor, tx::Bool, ty::Bool, tz::Bool)
     kernel! = fill_tensors_kernel!(get_backend(tensor), groupsize[])
     kernel!(long_tensor, tensor, tx, ty, tz; ndrange=size(long_tensor))
-    KernelAbstractions.synchronize(get_backend(tensor))
     return nothing
 end
 
@@ -429,7 +427,6 @@ end
 function distribute_m(m, mx_pad, my_pad, mz_pad, Ms, nx::Int64, ny::Int64, nz::Int64)
     kernel! = distribute_m_kernel!(default_backend[], groupsize[])
     kernel!(m, mx_pad, my_pad, mz_pad, Ms; ndrange=(nx, ny, nz))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -453,7 +450,6 @@ function collect_h_energy(h, energy, m, hx, hy, hz, Ms, volume::T, nx::Int64, ny
                           nz::Int64) where {T<:AbstractFloat}
     kernel! = collect_h_kernel!(default_backend[], groupsize[])
     kernel!(h, energy, m, hx, hy, hz, Ms, volume; ndrange=(nx, ny, nz))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -487,6 +483,5 @@ function add_tensor_M(Mx, My, Mz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, te
     kernel! = add_tensor_M_kernel!(default_backend[], groupsize[])
     kernel!(Mx, My, Mz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz;
             ndrange=length(Mx))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end

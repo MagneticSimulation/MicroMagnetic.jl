@@ -1,6 +1,6 @@
 module CUDAExt
 
-using MicroMagnetic: MicroMagnetic
+using MicroMagnetic
 using CUDA
 
 CUDA.allowscalar(false)
