@@ -466,16 +466,6 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
     return anis
 end
 
-@doc raw"""
-    add_thermal_noise(sim::AbstractSim, T::NumberOrArrayOrFunction; name="thermal", k_B=k_B
-
-add the thermal noise fields. 
-
-# Example
-```julia
-    add_thermal_noise(sim, 100.0)
-```
-"""
 
 @doc raw"""
     add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", scaling=t -> 1.0, k_B=k_B)
@@ -503,7 +493,7 @@ For the atomistic model, the thermal noise is defined as
 ### Example
 ```julia
 # Add thermal noise with a constant temperature of 100 K and a scaling function
-add_thermal_noise(sim, 100.0, scaling = t -> exp(-t/10))
+add_thermal_noise(sim, 100.0, scaling = t -> exp(-t/1e-9))
 ```
 """
 function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", scaling=t -> 1.0, k_B=k_B)
