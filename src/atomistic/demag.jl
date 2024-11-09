@@ -230,7 +230,6 @@ end
 function compute_dipolar_tensors(tensor, kernel_fun, Nx, Ny, Nz, dx, dy, dz)
     kernel! = kernel_fun(get_backend(tensor), groupsize[])
     kernel!(tensor, dx, dy, dz, Nx, Ny, Nz; ndrange=size(tensor))
-    KernelAbstractions.synchronize(get_backend(tensor))
     return nothing
 end
 
@@ -249,7 +248,6 @@ function distribute_m_atomistic(m, mx_pad, my_pad, mz_pad, mu_s::AbstractArray{T
                                 nx::Int64, ny::Int64, nz::Int64) where {T<:AbstractFloat}
     kernel! = distribute_m_atomistic_kernel!(default_backend[], groupsize[])
     kernel!(m, mx_pad, my_pad, mz_pad, mu_s; ndrange=(nx, ny, nz))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end
 
@@ -272,6 +270,5 @@ function collect_h_atomistic_energy(h, energy, m, hx, hy, hz, mu_s::AbstractArra
                                     nz::Int64) where {T<:AbstractFloat}
     kernel! = collect_h_atomistic_kernel!(default_backend[], groupsize[])
     kernel!(h, energy, m, hx, hy, hz, mu_s; ndrange=(nx, ny, nz))
-    KernelAbstractions.synchronize(default_backend[])
     return nothing
 end

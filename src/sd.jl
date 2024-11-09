@@ -60,7 +60,6 @@ function compute_tau(driver::EnergyMinimization, m_pre::AbstractArray{T,1},
     if driver.steps == 0
         kernel! = compute_gk_kernel_1!(default_backend[], groupsize[])
         kernel!(driver.gk, m, h; ndrange=N)
-        KernelAbstractions.synchronize(default_backend[])
 
         driver.tau = driver.min_tau
         return nothing
@@ -68,7 +67,6 @@ function compute_tau(driver::EnergyMinimization, m_pre::AbstractArray{T,1},
 
     kernel! = compute_gk_kernel_2!(default_backend[], groupsize[])
     kernel!(driver.gk, driver.ss, driver.sf, driver.ff, m, m_pre, h; ndrange=N)
-    KernelAbstractions.synchronize(default_backend[])
 
     sum1 = sum(driver.ss) #Is it better to use Float64 for driver.ss?
     sum2 = sum(driver.sf)
@@ -93,7 +91,6 @@ function run_step(sim::AbstractSim, driver::EnergyMinimization)
 
     kernel! = run_step_kernel!(default_backend[], groupsize[])
     kernel!(driver.gk, sim.spin, sim.field, sim.pins, driver.tau; ndrange=sim.n_total)
-    KernelAbstractions.synchronize(default_backend[])
     driver.steps += 1
     #max_length_error = error_length_m(sim.spin, sim.n_total)
     if driver.steps % 10 == 0

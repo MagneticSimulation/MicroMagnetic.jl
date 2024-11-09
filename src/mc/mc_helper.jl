@@ -48,7 +48,7 @@ function uniform_random_sphere(spin::AbstractArray{T,1}, rnd::AbstractArray{T,1}
     rand!(rnd)
     kernel! = uniform_random_sphere_kernel!(default_backend[], groupsize[])
     kernel!(spin, rnd; ndrange=N)
-    KernelAbstractions.synchronize(default_backend[])
+    
 
     return nothing
 end
@@ -58,7 +58,7 @@ function uniform_random_circle_xy(spin::AbstractArray{T,1}, rnd::AbstractArray{T
     rand!(rnd)
     kernel! = uniform_random_circle_xy_kernel!(default_backend[], groupsize[])
     kernel!(spin, rnd; ndrange=N)
-    KernelAbstractions.synchronize(default_backend[])
+    
 
     return nothing
 end
@@ -72,7 +72,7 @@ function compute_dE_zeeman_anisotropy_energy(sim::MonteCarlo, za::AnisotropyMC, 
     kernel! = dE_zeeman_anisotropy_energy_kernel!(default_backend[], groupsize[])
     kernel!(sim.spin, sim.nextspin, sim.shape, sim.delta_E, ze.Hx, ze.Hy, ze.Hz, za.Ku,
             za.Kc, za.axis[1], za.axis[2], za.axis[3], bias, cubic; ndrange=(nx, ny, nz))
-    KernelAbstractions.synchronize(default_backend[])
+    
     return nothing
 end
 
@@ -81,7 +81,7 @@ function compute_zeeman_anisotropy_energy(sim::MonteCarlo, za::AnisotropyMC)
     kernel! = zeeman_anisotropy_energy_kernel!(default_backend[], groupsize[])
     kernel!(sim.spin, sim.shape, sim.energy, ze.Hx, ze.Hy, ze.Hz, za.Ku, za.Kc, za.axis[1],
             za.axis[2], za.axis[3]; ndrange=sim.n_total)
-    KernelAbstractions.synchronize(default_backend[])
+    
     return nothing
 end
 
@@ -94,7 +94,7 @@ function add_dE_exch_dmi_energy(sim::MonteCarlo, exch::ExchangeDMI, bias::Int64)
     kernel! = add_dE_exch_dmi_energy_kernel!(default_backend[], groupsize[])
     kernel!(sim.spin, sim.nextspin, sim.shape, sim.delta_E, mesh.ngbs, mesh.n_ngbs, ex.Jx,
             ex.Jy, ex.Jz, ex.D, bias, cubic; ndrange=(nx, ny, nz))
-    KernelAbstractions.synchronize(default_backend[])
+    
     return nothing
 end
 
@@ -104,7 +104,7 @@ function add_exch_dmi_energy(sim::MonteCarlo, exch::ExchangeDMI)
     kernel! = add_exch_dmi_energy_kernel!(default_backend[], groupsize[])
     kernel!(sim.spin, sim.shape, sim.energy, mesh.ngbs, mesh.n_ngbs, ex.Jx, ex.Jy, ex.Jz,
             ex.D; ndrange=sim.n_total)
-    KernelAbstractions.synchronize(default_backend[])
+    
     return nothing
 end
 
@@ -126,7 +126,7 @@ function run_step_bias(sim::MonteCarlo, bias::Int64)
     kernel! = run_monte_carlo_kernel!(default_backend[], groupsize[])
     kernel!(sim.spin, sim.nextspin, sim.rnd, sim.shape, sim.delta_E, sim.T, bias, cubic;
             ndrange=(nx, ny, nz))
-    KernelAbstractions.synchronize(default_backend[])
+    
 
     return nothing
 end

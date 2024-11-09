@@ -96,7 +96,6 @@ function effective_field(demag::DirectDemag, sim::MicroSim, spin::AbstractArray{
     #we borrow the zeeman kernel to compute the demag energy
     zeeman_kernel!(back, groupsize[])(spin, demag.field, demag.energy, sim.mu0_Ms,
                                       T(factor); ndrange=N)
-    KernelAbstractions.synchronize(back)
 
     return nothing
 end

@@ -240,7 +240,6 @@ function compute_distance(neb::NEB, spin::AbstractArray)
         m2 = n == N ? neb.image_r : view(neb.spin, (n * dof + 1):((n + 1) * dof))
 
         kernel!(m1, m2, ds; ndrange=n_total)
-        KernelAbstractions.synchronize(default_backend[])
         neb.distance[n + 1] = LinearAlgebra.norm(ds)
     end
 
@@ -253,11 +252,9 @@ function compute_tangents(neb::NEB, spin::AbstractArray)
     kernel! = compute_tangents_kernel!(default_backend[], groupsize[])
     kernel!(neb.tangent, spin, neb.image_l, neb.image_r, neb.energy, N, neb.dof;
             ndrange=neb.dof)
-    KernelAbstractions.synchronize(default_backend[])
 
     kernel! = reduce_tangent_kernel!(default_backend[], groupsize[])
     kernel!(neb.tangent, spin; ndrange=neb.n_total)
-    KernelAbstractions.synchronize(default_backend[])
 
     dof = neb.dof
     for n in 1:N
