@@ -469,22 +469,45 @@ end
 @doc raw"""
     add_thermal_noise(sim::AbstractSim, T::NumberOrArrayOrFunction; name="thermal", k_B=k_B
 
-add the thermal noise field defined as
+add the thermal noise fields. 
+
+# Example
+```julia
+    add_thermal_noise(sim, 100.0)
+```
+"""
+
+@doc raw"""
+    add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", scaling=t -> 1.0, k_B=k_B)
+
+Adds thermal noise fields to the simulation. For micromagnetic model, the thermal noise is defined as
 
 ```math
 \mathbf{b}^u = \eta \sqrt \frac{2 \alpha k_B T}{\mu_0 M_s \gamma \Delta V dt}
 ```
+and $\eta$ is a random number follows the normal distribution.
 
-where $\eta$ is a random number follows the normal distribution.
+For the atomistic model, the thermal noise is defined as
 
+```math
+\mathbf{b}^u = \eta \sqrt \frac{2 \alpha k_B T}{\gamma \mu_s dt}.
+```
 
-# Example
+### Arguments
+- `sim::AbstractSim`: The simulation object.
+- `Temp::NumberOrArrayOrFunction`: Temperature value (can be a constant, array, or function).
+- `name::String`: Name for the noise field (default: `"thermal"`).
+- `scaling::Function`: A function to scale the noise over time (default: `t -> 1.0`).
+- `k_B::Float64`: Boltzmann constant (default: `k_B`).
+
+### Example
 ```julia
-    add_thermal_noise(sim, 100)
+# Add thermal noise with a constant temperature of 100 K and a scaling function
+add_thermal_noise(sim, 100.0, scaling = t -> exp(-t/10))
 ```
 """
-function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal",
-                           k_B=k_B)
+function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", scaling=t -> 1.0, k_B=k_B)
+
     N = sim.n_total
     T = Float[]
     field = KernelAbstractions.zeros(default_backend[], T, 3 * N)
@@ -494,7 +517,7 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
     eta = KernelAbstractions.zeros(default_backend[], T, 3 * N)
 
     init_scalar!(Spatial_T, sim.mesh, Temp)
-    thermal = StochasticField(Spatial_T, eta, field, energy, -1, name, k_B)
+    thermal = StochasticField(Spatial_T, eta, field, energy, -1, name, k_B, scaling)
 
     push!(sim.interactions, thermal)
 

@@ -358,3 +358,5 @@ to display the timing information. A typical output is shown below:
  compute_system_energy        367    232ms    1.7%   632μs   6.41MiB    1.0%  17.9KiB
  ────────────────────────────────────────────────────────────────────────────────────
 ```
+
+Note: We have removed all explicit synchronization so the measured time for each component are not accurate for GPU backends.
