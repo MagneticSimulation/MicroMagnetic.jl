@@ -1,5 +1,5 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_exch, add_dmi,
-       add_demag, add_dmi_int, add_exch_int
+       add_demag, add_dmi_int, add_exch_int, add_thermal_noise
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -466,7 +466,6 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
     return anis
 end
 
-
 @doc raw"""
     add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", scaling=t -> 1.0, k_B=k_B)
 
@@ -496,8 +495,8 @@ For the atomistic model, the thermal noise is defined as
 add_thermal_noise(sim, 100.0, scaling = t -> exp(-t/1e-9))
 ```
 """
-function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", scaling=t -> 1.0, k_B=k_B)
-
+function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal",
+                           scaling=t -> 1.0, k_B=k_B)
     N = sim.n_total
     T = Float[]
     field = KernelAbstractions.zeros(default_backend[], T, 3 * N)

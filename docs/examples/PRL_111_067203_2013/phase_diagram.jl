@@ -10,13 +10,15 @@ using MicroMagnetic
 using Printf
 using NPZ
 
+@using_gpu()
+
 function relax_system(; H=0.2, T=5)
     mesh = CubicMesh(; nx=28 * 3, ny=16 * 5, nz=1, pbc="xy")
 
     sim = Sim(mesh; driver="LLG", name="skx")
     sim.driver.alpha = 0.1
     sim.driver.gamma = 1.76e11
-    sim.driver.ode.tol = 1e-5
+    sim.driver.integrator.tol = 1e-5
     set_mu_s(sim, mu_s_1)
 
     init_m0_random(sim)
@@ -29,7 +31,7 @@ function relax_system(; H=0.2, T=5)
     add_zeeman(sim, (0, 0, Hz))
     add_thermal_noise(sim, J / k_B * T)
 
-    run_until(sim, 1e-10)
+    run_until(sim, 1e-11)
 
     #save_vtk(sim, "Skx_H_$H-T_$T")
     Q = compute_skyrmion_number(Array(sim.spin), mesh)
