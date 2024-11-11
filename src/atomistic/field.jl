@@ -134,7 +134,7 @@ end
 function effective_field(stochastic::StochasticField, sim::AtomisticSim,
                          spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
-    integrator = sim.driver.ode
+    integrator = sim.driver.integrator
 
     if integrator.nsteps > stochastic.nsteps
         randn!(stochastic.eta)
@@ -146,7 +146,7 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
     gamma = sim.driver.gamma
     alpha = sim.driver.alpha
     k_B = stochastic.k_B
-    factor = 2 * alpha * k_B / (gamma * dt)
+    factor = 2 * alpha * k_B / (gamma * dt) * stochastic.scaling_fun(t)
 
     volume = 1.0 / mu0 # we need this factor to make the energy density correctly
     stochastic_field_kernel!(default_backend[], groupsize[])(spin, stochastic.field,
