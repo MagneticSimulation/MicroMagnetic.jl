@@ -1,7 +1,7 @@
 name = "MicroMagnetic"
 uuid = "cef16ca0-16a8-11ef-389e-9fbcf1974e83"
 authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>", "Boyao Lv <lvboyao@mail.ustc.edu.cn>"]
-version = "0.3.7"
+version = "0.3.8"
 
 [deps]
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
