@@ -474,13 +474,14 @@ Adds thermal noise fields to the simulation. For micromagnetic model, the therma
 ```math
 \mathbf{b}^u = \eta \sqrt \frac{2 \alpha k_B T}{\mu_0 M_s \gamma \Delta V dt}
 ```
-and $\eta$ is a random number follows the normal distribution.
+and $\eta$ is a random number follows the normal distribution where $\gamma=2.211\times 10^5$ m/(A·s) is the gyromagnetic ratio.
 
 For the atomistic model, the thermal noise is defined as
 
 ```math
-\mathbf{b}^u = \eta \sqrt \frac{2 \alpha k_B T}{\gamma \mu_s dt}.
+\mathbf{b}^u = \eta \sqrt \frac{2 \mu_0 \alpha k_B T}{\gamma \mu_s dt}.
 ```
+where $\eta$ is a random number follows the normal distribution and $\gamma=1.76\times 10^{11}$ rad/(T·s). 
 
 ### Arguments
 - `sim::AbstractSim`: The simulation object.

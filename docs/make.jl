@@ -8,7 +8,7 @@ tutorials, tutorials_cb = makedemos("tutorials")
 format = Documenter.HTML(; prettyurls=get(ENV, "CI", nothing) == "true",
                          size_threshold=83886080, assets=["assets/init.js"])
 
-PAGES = ["Home" => "index.md", "basics.md", tutorials, "equations.md", "api.md",
+PAGES = ["Home" => "index.md", "basics.md",  "units.md", tutorials, "equations.md", "api.md",
          "api_dev.md", "contrib.md"]
 
 if "warnonly=true" in ARGS
