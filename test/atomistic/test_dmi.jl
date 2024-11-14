@@ -29,8 +29,24 @@ function test_atomistic_dmi()
     dmi1 = add_dmi(sim, 0.3meV)
     dmi2 = add_dmi(sim, spatial_bulk_DMI)
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
-
     @test isapprox(Array(dmi1.field), Array(dmi2.field), atol=1e-7)
+
+    D = 0.3 * meV
+    Dij = hcat([-D, 0, 0],  # DMI vector for (i-1, j, k)
+               [D, 0, 0],   # DMI vector for (i+1, j, k)
+               [0, -D, 0],  # DMI vector for (i, j-1, k)
+               [0, D, 0],   # DMI vector for (i, j+1, k)
+               [0, 0, -D],  # DMI vector for (i, j, k-1)
+               [0, 0, D])   # DMI vector for (i, j, k+1)
+    
+    add_dmi(sim, Dij)
+    
+    add_dmi(sim, Dij)
+
+    dmi3 = add_dmi(sim, Dij)
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
+
+    @test isapprox(Array(dmi3.field), Array(dmi1.field), atol=1e-7)
 end
 
 #test_atomistic_dmi()
