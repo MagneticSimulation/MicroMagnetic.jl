@@ -1,24 +1,33 @@
 
 export set_mu_s, set_mu_s_kagome
 
-"""
+@doc raw"""
     set_mu_s(sim::AtomisticSim, Ms::NumberOrArrayOrFunction)
 
-Set magnetic moment mu_s of the studied system. For example,
+Set the magnetic moment `mu_s` for the given atomistic system `sim`.
+
+### Usage Examples
+
+You can set a uniform magnetic moment for the entire system as follows:
 
 ```julia
-   set_mu_s(sim, 2*mu_B)
+set_mu_s(sim, 2 * mu_B)
 ```
-or
+
+Alternatively, you can use a function to define spatially varying magnetic moments. For example, to set a circular region with a specific magnetic moment:
+
 ```julia
-function circular_shape(i,j,k,dx,dy,dz)
-    if (i-50.5)^2 + (j-50.5)^2 <= 50^2
-        return 2*mu_B
+function circular_shape(i, j, k, dx, dy, dz)
+    if (i - 50.5)^2 + (j - 50.5)^2 <= 50^2
+        return 2 * mu_B
     end
     return 0.0
 end
 set_mu_s(sim, circular_shape)
 ```
+
+The `circular_shape` function here assigns `2 * mu_B` to atoms within a circle of radius 50 (in lattice units), centered at `(50.5, 50.5)`, 
+    while setting it to `0.0` outside this region.
 """
 function set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
     T = Float[]
@@ -28,6 +37,19 @@ function set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
     return true
 end
 
+@doc raw"""
+    set_mu_s_kagome(sim::AtomisticSim, Ms::Number)
+
+Set the magnetic moment `mu_s` for the given atomistic system `sim` in the Kagome lattice.
+
+### Usage Examples
+
+```julia
+set_mu_s_kagome(sim, 2 * mu_B)
+```
+
+This sets the magnetic moment to `2 * mu_B` for all sites in the Kagome lattice.    
+"""
 function set_mu_s_kagome(sim::AtomisticSim, Ms::Number)
     mesh = sim.mesh
     T = Float[]
@@ -47,6 +69,38 @@ end
     add_exch(sim::AtomisticSim, J::NumberOrArray; name="exch")
 
 Add exchange energy to the system. The length of J should be equal to the length of neigbours.
+"""
+
+@doc raw"""
+
+    add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0, J4=0)
+
+Add exchange interactions to the atomistic simulation `sim`.
+
+### Parameters
+- `J1::NumberOrArray`: The first nearest-neighbor exchange coupling constant. Can be a single number (applied uniformly) or an array with a length equal to the number of first nearest neighbors.
+- `J2, J3, J4` (optional): Exchange coupling constants for second, third, and fourth nearest neighbors, respectively. Each can be a single number or an array with lengths matching their corresponding neighbor counts.
+- `name::String`: Optional identifier for the exchange interaction (default is `"exch"`).
+
+### Usage Examples
+
+To set a uniform exchange coupling for the first nearest neighbors:
+
+    ```julia
+add_exch(sim, 0.1*meV)
+```
+
+To set different exchange couplings for multiple neighbor shells:
+
+```julia
+Js4 = [0.1*meV, 0.2*meV, 0.3*meV, 0.1*meV, 0.2*meV, 0.3*meV]
+add_exch(sim, 0.1*meV, J2=0.2meV, J3=0.0, J4=Js4)
+```
+
+#### Notes
+
+If an array is provided for J1, J2, J3, or J4, its length must match the number of corresponding neighbors defined in the system's mesh. Otherwise, an error will be thrown.
+
 """
 function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0, J4=0)
     mesh = sim.mesh
@@ -197,12 +251,18 @@ end
 @doc raw"""
     add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
 
-Add bulk dmi energy to the system. The DMI is defined as
+Add DMI to the system. `type` could be "bulk" or "interfacial". The DMI is defined as
 ```math
 \mathcal{H}_\mathrm{dmi} = \sum_{\langle i, j\rangle}  \mathbf{D}_{i j} \cdot\left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
 ```
-where $\mathbf{D}_{i j}$ is the DM vector. For the bulk dmi $\mathbf{D}_{i j} = D \hat{r}_{ij}$ and for interfacial dmi 
-$\mathbf{D}_{i j} = D \hat{r}_{ij} \times \hat{z}$
+where $\mathbf{D}_{i j}$ is the DM vector. For the bulk dmi $\mathbf{D}_{i j} = D \hat{r}_{ij}$ and for interfacial dmi $\mathbf{D}_{i j} = D \hat{r}_{ij} \times \hat{z}$.
+
+Examples:
+```julia
+   J = 0.1 * meV
+   add_dmi(sim, 0.01*J, type="bulk")
+```
+
 """
 function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
     N = sim.n_total
@@ -283,6 +343,54 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
         @info("Bulk DMI for CylindricalTubeMesh has been added!")
     end
 
+    push!(sim.interactions, dmi)
+    if sim.save_data
+        id = length(sim.interactions)
+        item = SaverItem(string("E_", name), "J",
+                         o::AbstractSim -> sum(o.interactions[id].energy))
+        push!(sim.saver.items, item)
+    end
+    return dmi
+end
+
+@doc raw"""
+    add_dmi(sim::AtomisticSim, Dij::Array{<:Real, 2}; name="dmi")
+
+Add Dzyaloshinskii-Moriya Interaction (DMI) to the system, defined as:
+```math
+\mathcal{H}_\mathrm{dmi} = \sum_{\langle i, j\rangle} \mathbf{D}_{ij} \cdot \left(\mathbf{m}_{i} \times \mathbf{m}_{j}\right)
+```
+where $\mathbf{D}_{ij}$ is the DMI vector. The `Dij` array should have size `(3, mesh.n_ngbs)` and represents the DMI vectors between each pair of neighboring sites.
+For example, for a `CubicMesh`, the `Dij` array should be an array of DMI vectors `[D1, D2, D3, D4, D5, D6]`, where:
+- `D1` is the DMI vector between the site at `(i, j, k)` and the site at `(i-1, j, k)`,
+- `D2` is the DMI vector between the site at `(i, j, k)` and the site at `(i+1, j, k)`,
+- `D3` is the DMI vector between the site at `(i, j, k)` and the site at `(i, j-1, k)`,
+- `D4` is the DMI vector between the site at `(i, j, k)` and the site at `(i, j+1, k)`,
+- `D5` is the DMI vector between the site at `(i, j, k)` and the site at `(i, j, k-1)`,
+- `D6` is the DMI vector between the site at `(i, j, k)` and the site at `(i, j, k+1)`.
+
+### Examples
+```julia
+# Define bulk DMI for a CubicMesh
+D = 0.1 * meV
+Dij = hcat([-D, 0, 0],  # DMI vector for (i-1, j, k)
+           [D, 0, 0],   # DMI vector for (i+1, j, k)
+           [0, -D, 0],  # DMI vector for (i, j-1, k)
+           [0, D, 0],   # DMI vector for (i, j+1, k)
+           [0, 0, -D],  # DMI vector for (i, j, k-1)
+           [0, 0, D])   # DMI vector for (i, j, k+1)
+
+add_dmi(sim, Dij)
+```
+"""
+function add_dmi(sim::AtomisticSim, Dij::Array{<:Real, 2}; name="dmi")
+    N = sim.n_total
+    mesh = sim.mesh
+    T = Float[]
+    field = create_zeros(3 * N)
+    energy = create_zeros(N)
+    
+    dmi = HeisenbergDMI(kernel_array(Dij), field, energy, name)
     push!(sim.interactions, dmi)
     if sim.save_data
         id = length(sim.interactions)
