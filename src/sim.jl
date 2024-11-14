@@ -694,7 +694,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
 end
 
 """
-    sim_with(args)
+    sim_with(args::Union{NamedTuple, Dict})
 
 [High-Level Interface](@ref) for starting a typical micromagnetic simulation. All parameters are set using `args`, which can be either a `NamedTuple` or a `Dict`.
 
@@ -746,7 +746,7 @@ See examples at [High-Level Interface](@ref).
 - **Data Saving**: The `relax_m_interval` and `dynamic_m_interval` parameters control how frequently magnetization data is saved during `Relax` and `Dynamics` tasks, respectively. Use negative values to disable data saving for these tasks.
 
 """
-function sim_with(args)
+function sim_with(args::Union{NamedTuple, Dict})
     #convert args to a dict
     if !isa(args, Dict)
         args = Dict(key => value for (key, value) in pairs(args))
@@ -880,4 +880,9 @@ function sim_with(args)
     end
 
     return sim
+end
+
+
+function sim_with(;args...)
+    return sim_with(Dict(args))
 end
