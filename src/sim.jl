@@ -1,7 +1,7 @@
 using JLD2
 
 export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
-       set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with
+       set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with, advance_step
 
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
@@ -885,4 +885,9 @@ end
 
 function sim_with(;args...)
     return sim_with(Dict(args))
+end
+
+
+function advance_step(sim::AbstractSim)
+    advance_step(sim, sim.driver.integrator)
 end

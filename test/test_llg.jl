@@ -54,7 +54,7 @@ function test_llg_rk(integrator="RungeKutta")
     set_Ms(sim, 8e5)
     sim.driver.alpha = 0.05
     sim.driver.gamma = 2.21e5
-    sim.driver.integrator.dt = 1e-13
+    sim.driver.integrator.step = 1e-13
 
     add_zeeman(sim, (0, 0, 1e5))
     init_m0(sim, (1.0, 0, 0))

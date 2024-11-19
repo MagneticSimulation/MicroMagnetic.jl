@@ -2,7 +2,7 @@
 
 mutable struct RungeKuttaCayley{T<:AbstractFloat} <: Integrator
     t::Float64
-    dt::Float64
+    step::Float64
     nsteps::Int64
     omega::AbstractArray{T,1}
     dw_dt::AbstractArray{T,1}
@@ -27,7 +27,7 @@ function RungeKuttaCayley(n_total::Int64, rhs_fun, step::Float64)
 end
 
 function advance_step(sim::AbstractSim, integrator::RungeKuttaCayley)
-    h = integrator.dt
+    h = integrator.step
     k1 = integrator.k1
     k2 = integrator.k2
     k3 = integrator.k3
