@@ -11,7 +11,7 @@
 
 mutable struct ModifiedEuler{T<:AbstractFloat} <: Integrator
    t::Float64
-   dt::Float64
+   step::Float64
    nsteps::Int64
    k1::AbstractArray{T,1}
    k2::AbstractArray{T,1}
@@ -26,7 +26,7 @@ function ModifiedEuler(n_total::Int64, rhs_fun, step::Float64)
 end
 
 function advance_step(sim::AbstractSim, integrator::ModifiedEuler)
-    h = integrator.dt
+    h = integrator.step
     k1 =  integrator.k1
     k2 =  integrator.k2
 
