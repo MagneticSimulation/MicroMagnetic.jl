@@ -146,7 +146,7 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
     gamma = sim.driver.gamma
     alpha = sim.driver.alpha
     k_B = stochastic.k_B
-    factor = 2 * mu0 * alpha * k_B / (gamma * dt) * stochastic.scaling_fun(t)
+    factor = 2 * alpha * k_B / (gamma * dt) * stochastic.scaling_fun(t)
 
     stochastic_field_kernel!(default_backend[], groupsize[])(spin, stochastic.field,
                                                              stochastic.energy, sim.mu_s,
