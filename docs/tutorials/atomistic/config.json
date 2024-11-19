@@ -1,7 +1,9 @@
 {
-  "title": "PRL **111** 067203 (2013)", 
   "order": [
     "skyrmion.jl",
+    "skyrmion_lattice.jl",
+    "skyrmion_afm.jl",
+    "sllg.jl",
     "phase_diagram.jl"
   ]
 }

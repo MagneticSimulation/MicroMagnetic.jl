@@ -6,8 +6,9 @@
 # tag: atomistic; skyrmion
 # ---
 
+# In this tutorial, we verify the phase diagram shown in Supplementary information of PRL **111** 067203 (2013).
 using MicroMagnetic
-using Printf
+using CairoMakie
 using NPZ
 
 @using_gpu()
@@ -15,10 +16,10 @@ using NPZ
 function relax_system(; H=0.2, T=5)
     mesh = CubicMesh(; nx=28 * 3, ny=16 * 5, nz=1, pbc="xy")
 
-    sim = Sim(mesh; driver="LLG", name="skx")
+    sim = Sim(mesh; driver="LLG", name="skx", integrator="RungeKutta")
     sim.driver.alpha = 0.1
     sim.driver.gamma = 1.76e11
-    sim.driver.integrator.tol = 1e-5
+    sim.driver.integrator.step = 1e-15
     set_mu_s(sim, mu_s_1)
 
     init_m0_random(sim)
@@ -31,7 +32,9 @@ function relax_system(; H=0.2, T=5)
     add_zeeman(sim, (0, 0, Hz))
     add_thermal_noise(sim, J / k_B * T)
 
-    run_until(sim, 1e-11)
+    for _ in 1:Int(5e4)
+        advance_step(sim)
+    end
 
     #save_vtk(sim, "Skx_H_$H-T_$T")
     Q = compute_skyrmion_number(Array(sim.spin), mesh)
@@ -58,7 +61,7 @@ end
 
 # We plot the phase diagram using the following script.
 
-using CairoMakie
+
 
 function plot_phase_diagram()
     Qs = npzread("assets/Qs.npy")
@@ -67,7 +70,7 @@ function plot_phase_diagram()
     Ts = [0.05 * i for i in 0:10]
     Qs = reshape(Qs, (length(Ts), length(Hs)))
 
-    fig = Figure(; resolution=(800, 600), fontsize=28)
+    fig = Figure(; figsize=(800, 600), fontsize=28)
     ax = Axis(fig[1, 1]; title="Skyrmion number", xlabel="T", ylabel="H")
 
     hm = heatmap!(ax, Ts, Hs, Qs; interpolate=true, colormap=:RdBu)
