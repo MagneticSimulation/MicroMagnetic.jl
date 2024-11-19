@@ -1,54 +1,65 @@
 # ---
 # title: Magnetic skyrmion
 # author: Weiwei Wang
-# date: 2022-10-04
-# description: an example to demostrate how to obtain a skyrmion in MicroMagnetic.
+# date: 2024-11-19
+# description: to check how to use the parameters given in PRL **111** 067203 (2013).
 # tag: atomistic; skyrmion
 # ---
 
-# In this example, we show how to obtain a magnetic skyrmion using atomistic module in MicroMagnetic.
-# We import MicroMagnetic and use double float precision in the simulation.
+# In this example, we demostrate how to get a skyrmion using MicroMagnetic.jl. We use the parameters given in PRL **111** 067203 (2013).
+
+#==============
+!!! note "Used parameters in the simulation"
+    |Parameter | Value  | 
+    | :----:   | :----: | 
+    | Lattice constant | $a = 0.5$ nm |
+    | Spin length      | $S = 1$      | 
+    | Magnetic moment  |  $\mu_s = 2 \mu_B$ |
+    | Excahnge constant |  $J = 50 k_B$   |
+    | DMI         | $D/J = 0.5$  |     |
+    | External field  | $H \mu_s /J  = 0.2$ | 
+===============#
+
 using MicroMagnetic
 using CairoMakie
 
-# We create a CubicMesh
-mesh = CubicMesh(; nx=120, ny=120, nz=1, pbc="xy");
+mesh = CubicMesh(; nx=50, ny=50, nz=1, pbc="xy")
 
-# To start the simulation, we need to give an initial state.
-# We define a function in which we set the spins around site (60,60) to be negative
 function m0_fun(i, j, k, dx, dy, dz)
-    r2 = (i - 60)^2 + (j - 60)^2
+    r2 = (i - 25)^2 + (j - 25)^2
     if r2 < 10^2
-        return (0.1, 0, -1)
+        return (0.01, 0, -1)
     end
     return (0, 0, 1)
 end
 
 # We define a function to specify the problem.
-function relax_system(mesh)
+function relax_system()
     #We create a simulation with 'SD' driver
-    sim = Sim(mesh; driver="SD", name="skyrmion")
+    sim = Sim(mesh; driver="SD", name="skx")
 
-    #We set mu_s of the system
-    set_mu_s(sim, 1.0)
-    sim.driver.max_tau = 1000.0
-
-    #Set the exchange, dmi and zeeman
-    add_exch(sim, 1.0; name="exch")
-    add_zeeman(sim, (0, 0, 3.75e-3))
-    add_dmi(sim, 0.09; name="dmi")
+    set_mu_s(sim, mu_s_1) # set mu_s of the system
 
     #Initialize the system using the `m0_fun` function
     init_m0(sim, m0_fun)
 
+    J = 50 * k_B
+    add_exch(sim, J; name="exch")
+    add_dmi(sim, 0.5 * J; name="dmi")
+
+    Hz = 0.2 * J / mu_s_1
+    add_zeeman(sim, (0, 0, Hz)) # the unit of Hz is Tesla
+
     #Relax the system
-    relax(sim; max_steps=2000, stopping_dmdt=1e-4, using_time_factor=false)
+    relax(sim; max_steps=2000, stopping_dmdt=0.01)
+
+    #Save the magnetization to vtk file
+    save_vtk(sim, "skx"; fields=["exch", "dmi"])
 
     return sim
 end
 
-# Recall the function 
-sim = relax_system(mesh);
+sim = relax_system();
 
 # After obtain the skyrmion, we use the following script to plot the skyrmion
 plot_m(sim)
