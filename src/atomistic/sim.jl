@@ -2,7 +2,7 @@
 export set_mu_s, set_mu_s_kagome
 
 @doc raw"""
-    set_mu_s(sim::AtomisticSim, Ms::NumberOrArrayOrFunction)
+    set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
 
 Set the magnetic moment `mu_s` for the given atomistic system `sim`.
 

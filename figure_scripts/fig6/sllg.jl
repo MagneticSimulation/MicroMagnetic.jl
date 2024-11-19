@@ -12,10 +12,13 @@ function run()
     sim = create_sim(mesh; Ms=1.42e5, Ku=7.2e5, axis=(0, 0, 1), driver="LLG", alpha=0.1,
                      T=300, name="sllg")
     run_until(sim, 1e-10)
-    return save_vtk(sim, "1.vts")
+    println(sim.driver.integrator.nfevals)
+    save_vtk(sim, "1.vts")
+
+    return sim
 end
 
-#run()
+run()
 
 function compute_Z()
     K = 7.2e5
@@ -49,7 +52,7 @@ function plot_distribution()
     ax = Axis(fig[1, 1]; xlabel=L"$m_z$", ylabel=L"log($P_\mathrm{eq}$)")
 
     mzs, ps = analytical()
-    l1 = lines!(ax; linestyle=:solid, mzs, log.(ps), color=:slateblue1, label="Analytical")
+    l1 = lines!(ax, mzs, log.(ps); linestyle=:solid, color=:slateblue1, label="Analytical")
     s1 = scatter!(ax, mz, log.(h.weights); markersize=10, strokewidth=1, alpha=0,
                   color=:white, label="MicroMagnetic.jl")
 
@@ -57,9 +60,8 @@ function plot_distribution()
     #axislegend(ax, [l1, l2, l3], [L"\beta=0", L"\beta=0.1", L"\beta=0.2"], position = :rt, orientation = :horizontal, labelsize=18)
     #axislegend(ax, [s1], [L"\text{JuMag}"], position=(0.78, 0.07), orientation = :horizontal, labelsize=16)
 
-    return save("P_mz.pdf", fig)
-    #end
-
+    save("P_mz.pdf", fig)
+    return nothing
 end
 
 plot_distribution()

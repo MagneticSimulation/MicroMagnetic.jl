@@ -135,6 +135,7 @@ Sets the global verbosity level for logging.
 ```julia
 set_verbose(true)  # Enables verbose logging
 set_verbose(false) # Disables verbose logging
+```
 """
 function set_verbose(verbose::Bool=true) 
     Verbose[] = verbose 
