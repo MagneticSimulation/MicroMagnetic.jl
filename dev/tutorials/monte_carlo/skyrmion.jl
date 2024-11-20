@@ -35,9 +35,9 @@ function relax_system(; Hz = 0.1)
     end
 
     #Gradual cooling to reach the target temperature of 10K.
-    for T in 100:-20:10
+    for T in 100:-10:10
         sim.T = T
-        run_sim(sim; max_steps = 100_000, save_vtk_every = -1, save_m_every = -1)
+        run_sim(sim; max_steps = 50_000, save_vtk_every = -1, save_m_every = -1)
     end
 
     #Save the final results.
