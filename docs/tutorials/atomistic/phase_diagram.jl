@@ -61,8 +61,6 @@ end
 
 # We plot the phase diagram using the following script.
 
-
-
 function plot_phase_diagram()
     Qs = npzread("assets/Qs.npy")
 
