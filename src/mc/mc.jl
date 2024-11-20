@@ -61,7 +61,7 @@ function add_dmi(sim::MonteCarlo; D=0, Dz=0, type="bulk")
     if isa(mesh, TriangularMesh)
         for i in 1:6
             theta = (i - 1) * 2 * pi / 6
-            Dij[:, i] .= [D * cos(theta), D * sin[theta], 0]
+            Dij[:, i] .= [D * cos(theta), D * sin(theta), 0]
         end
 
         if type == "interfacial"

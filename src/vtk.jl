@@ -44,6 +44,13 @@ function save_vtk(sim::AbstractSim, fname::String; fields::Array{String,1}=Strin
         xyz[2, i, j, k] = (j - 0.5 - ny / 2) * dy / scale_factor
         xyz[3, i, j, k] = (k - 0.5 - nz / 2) * dz / scale_factor
     end
+
+    if isa(mesh, TriangularMesh)
+        for k in 1:(nz + 1), j in 1:(ny + 1), i in 1:(nx + 1)
+            xyz[1, i, j, k] -= (j-1)*dx/2 / scale_factor
+        end
+    end
+
     vtk = vtk_grid(fname, xyz)
     spin = zeros(eltype(sim.spin), length(sim.spin))
     copyto!(spin, sim.spin)
