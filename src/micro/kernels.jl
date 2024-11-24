@@ -101,12 +101,12 @@ The kernel cubic_anisotropy_kernel! works for both the micromagnetic and atomist
         @inbounds h[j + 3] = 0
     else
         Ms_inv::T = 4.0 * Kc[id] / Ms_local
-        @inbounds mxp::T = a1x * m[j + 1] + a1y * m[j + 2] + a1z * m[j + 3]
-        @inbounds myp::T = a2x * m[j + 1] + a2y * m[j + 2] + a2z * m[j + 3]
-        @inbounds mzp::T = a3x * m[j + 1] + a3y * m[j + 2] + a3z * m[j + 3]
-        mxp3::T = mxp * mxp * mxp
-        myp3::T = myp * myp * myp
-        mzp3::T = mzp * mzp * mzp
+        @inbounds mxp = a1x * m[j + 1] + a1y * m[j + 2] + a1z * m[j + 3]
+        @inbounds myp = a2x * m[j + 1] + a2y * m[j + 2] + a2z * m[j + 3]
+        @inbounds mzp = a3x * m[j + 1] + a3y * m[j + 2] + a3z * m[j + 3]
+        mxp3 = mxp * mxp * mxp
+        myp3 = myp * myp * myp
+        mzp3 = mzp * mzp * mzp
         @inbounds h[j + 1] = Ms_inv * (mxp3 * a1x + myp3 * a2x + mzp3 * a3x)
         @inbounds h[j + 2] = Ms_inv * (mxp3 * a1y + myp3 * a2y + mzp3 * a3y)
         @inbounds h[j + 3] = Ms_inv * (mxp3 * a1z + myp3 * a2z + mzp3 * a3z)

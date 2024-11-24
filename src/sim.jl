@@ -512,6 +512,9 @@ Create a micromagnetic simulation instance with given arguments.
 - `dmi_type` : the type of DMI, could be "bulk", "interfacial" or "D2d".
 - `Ku`: the anisotropy constant, should be [`NumberOrArrayOrFunction`](@ref).
 - `axis`: the anisotropy axis, should be a tuple, such as (0,0, 1)
+- `Kc`: the cubic anisotropy constant, should be [`NumberOrArrayOrFunction`](@ref).
+- `axis1`: the cubic anisotropy axis1, should be a tuple, such as (1,0,0)
+- `axis2`: the cubic anisotropy axis2, should be a tuple, such as (0,1,0)
 - `demag` : include demagnetization or not, should be a boolean, i.e., true or false. By default,  demag=false.
 - `H`: the external field, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
 - `m0` : the initial magnetization, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
@@ -591,6 +594,16 @@ function create_sim(mesh, args::Dict)
         haskey(args, :axis) && delete!(args, :axis)
     end
 
+    if haskey(args, :Kc)
+        axis1 = haskey(args, :axis1) ? args[:axis1] : (1, 0, 0)
+        axis2 = haskey(args, :axis2) ? args[:axis2] : (0, 1, 0)
+
+        add_cubic_anis(sim, args[:Kc], axis1=axis1, axis2=axis2)
+
+        haskey(args, :axis1) && delete!(args, :axis1)
+        haskey(args, :axis2) && delete!(args, :axis2)
+    end
+
     # add the external field
     if haskey(args, :H)
         add_zeeman(sim, args[:H])
@@ -608,7 +621,7 @@ function create_sim(mesh, args::Dict)
     m0_value = haskey(args, :m0) ? args[:m0] : (0.8, 0.6, 0)
     init_m0(sim, m0_value)
 
-    for key in [:driver, :name, :Ku, :H, :m0, :shape, :T]
+    for key in [:driver, :name, :Ku, :Kc, :H, :m0, :shape, :T]
         haskey(args, key) && delete!(args, key)
     end
 
@@ -716,6 +729,9 @@ end
 - `dmi_type`: The type of DMI, either "bulk" or "interfacial".
 - `Ku`: The anisotropy constant, which should be a [`NumberOrArrayOrFunction`](@ref).
 - `axis`: The anisotropy axis, provided as a tuple, e.g., `(0, 0, 1)`.
+- `Kc`: the cubic anisotropy constant, should be [`NumberOrArrayOrFunction`](@ref).
+- `axis1`: the cubic anisotropy axis1, should be a tuple, such as (1,0,0)
+- `axis2`: the cubic anisotropy axis2, should be a tuple, such as (0,1,0)
 - `demag`: Whether to include demagnetization. This should be a boolean (`true` or `false`). The default is `demag=false`.
 - `H`: The external magnetic field, which should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref).
 - `m0`: The initial magnetization, which should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref).
