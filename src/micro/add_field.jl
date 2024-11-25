@@ -507,7 +507,8 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
     eta = KernelAbstractions.zeros(default_backend[], T, 3 * N)
 
     init_scalar!(Spatial_T, sim.mesh, Temp)
-    thermal = StochasticField(Spatial_T, eta, field, energy, -1, name, k_B, scaling)
+    thermal = StochasticField(Spatial_T, eta, field, energy, -1, name, k_B, scaling,
+                              average(Spatial_T), T(1))
 
     push!(sim.interactions, thermal)
 
@@ -516,6 +517,11 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(o.interactions[id].energy)))
+
+        push!(sim.saver.items,
+              SaverItem(string("T_", name), "<K>",
+                        o::AbstractSim -> o.interactions[id].average_temperature *
+                                          o.interactions[id].scaling_factor))
     end
     return thermal
 end

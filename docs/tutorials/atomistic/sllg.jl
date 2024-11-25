@@ -16,8 +16,8 @@ using CairoMakie
 @using_gpu()
 
 # We define a function to describe the simulation setup.
-function run(;dt=1e-15)
-    mesh = CubicMesh(nx=30, ny=30, nz=30)
+function run(; dt=1e-15)
+    mesh = CubicMesh(; nx=30, ny=30, nz=30)
 
     V = 2.8e-26
     sim = Sim(mesh; driver="LLG", integrator="RungeKutta")
@@ -27,22 +27,19 @@ function run(;dt=1e-15)
 
     #In principle, this value does not influence the result, however, 
     #a large value will require a longer time to reach the equilibrium.
-    set_mu_s(sim, 1.42e5*V) 
+    set_mu_s(sim, 1.42e5 * V)
 
     init_m0_random(sim)
 
-    add_anis(sim, 7.2e5*V, axis=(0, 0, 1))
+    add_anis(sim, 7.2e5 * V; axis=(0, 0, 1))
     add_thermal_noise(sim, 300.00)
-    
+
     #dt = 1e-15, so the total time is 1e-15 * 1e5 = 1e-10 s
-    for _ in 1:Int(1e5)
-        advance_step(sim)
-    end
+    relax(sim; max_steps=Int(1e5), stopping_dmdt=0, save_data_every=1000)
 
     save_vtk(sim, "sllg.vts")
     return sim
 end
-
 
 # We define the analytical solution for the magnetization distribution.
 #using SpecialFunctions
@@ -64,7 +61,6 @@ end
 #using StatsBase
 #using LinearAlgebra
 function run_and_plot()
-
     if !isfile("sllg.vts")
         run()
     end
