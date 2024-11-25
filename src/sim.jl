@@ -267,7 +267,7 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
 
 ```julia
     relax(sim, max_steps=10000, stopping_dmdt=0.1)
-
+```
 """
 function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=100,
                save_m_every=-1, using_time_factor=true, maxsteps=nothing)
@@ -299,7 +299,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
 
     driver = sim.driver
     @info @sprintf("Running Driver : %s.", typeof(driver))
-    for i in 0:max_steps
+    for i in 1:max_steps
         @timeit timer "run_step" run_step(sim, driver)
 
         step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
@@ -318,13 +318,14 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
                                max_dmdt / dmdt_factor)
         end
 
-        if save_data_every > 0 && i % save_data_every == 0
-            compute_system_energy(sim, sim.spin, t)
-            write_data(sim)
-        end
-
         if sim.save_data
             sim.saver.nsteps += 1
+        end
+
+        if save_data_every > 0 && i % save_data_every == 0
+            compute_system_energy(sim, sim.spin, t)
+            sim.saver.t = t
+            write_data(sim)
         end
 
         if save_m_every > 0

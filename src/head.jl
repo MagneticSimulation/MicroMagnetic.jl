@@ -227,4 +227,6 @@ mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy
     name::String
     k_B::Float64
     scaling_fun::Function
+    average_temperature::T
+    scaling_factor::T
 end

@@ -136,6 +136,11 @@ function fftfreq(N; d=1)
     return f
 end
 
+function average(x::AbstractArray{T,1}) where {T<:AbstractFloat}
+    return sum(x)/length(x)
+end
+
+
 """
 This is a helper function to convert m to cylindrical coordinates (mr, mt, mz) for spins 
 uniformly located in CylindricalTubeMeshGPU

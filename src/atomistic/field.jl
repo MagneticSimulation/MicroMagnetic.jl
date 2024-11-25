@@ -4,7 +4,7 @@ function effective_field(zee::Zeeman, sim::AtomisticSim, spin::AbstractArray{T,1
 
     kernal = zeeman_kernel!(default_backend[], groupsize[])
     kernal(spin, zee.field, zee.energy, sim.mu_s, T(1); ndrange=N)
-    
+
     return nothing
 end
 
@@ -15,7 +15,7 @@ function effective_field(zee::TimeZeeman, sim::AtomisticSim, spin::AbstractArray
     kernal = time_zeeman_kernel!(default_backend[], groupsize[])
     kernal(spin, zee.field, zee.init_field, zee.energy, sim.mu_s, T(1), T(tx), T(ty), T(tz);
            ndrange=N)
-    
+
     return nothing
 end
 
@@ -49,7 +49,6 @@ function effective_field(exch::HeisenbergExchange, sim::AtomisticSim,
     kernal = atomistic_exchange_kernel!(default_backend[], groupsize[])
     kernal(exch.field, exch.energy, exch.Js1, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs, T(0);
            ndrange=N)
-    
 
     # The exchange interaction for next-nearest neighbours
     if hasproperty(mesh, :n_ngbs2) && length(exch.Js2) == mesh.n_ngbs2
@@ -127,7 +126,7 @@ function effective_field(dmi::HeisenbergTubeBulkDMI, sim::AtomisticSim,
     kernal = tube_bulk_dmi_kernel!(default_backend[], groupsize[])
     kernal(dmi.field, dmi.energy, dmi.D, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs,
            mesh.nr; ndrange=N)
-    
+
     return nothing
 end
 
@@ -146,7 +145,10 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
     gamma = sim.driver.gamma
     alpha = sim.driver.alpha
     k_B = stochastic.k_B
-    factor = 2 * alpha * k_B / (gamma * dt) * stochastic.scaling_fun(t)
+    scaling_factor = stochastic.scaling_fun(t)
+    factor::T = 2 * alpha * k_B / (gamma * dt) * scaling_factor
+
+    stochastic.scaling_factor = scaling_factor
 
     stochastic_field_kernel!(default_backend[], groupsize[])(spin, stochastic.field,
                                                              stochastic.energy, sim.mu_s,
