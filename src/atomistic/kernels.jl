@@ -45,6 +45,53 @@ Note that the return value is h * alpha + h_ex
 end
 
 @doc raw"""
+compute the biquadratic exchange interaction h_ex, which is defined as 
+
+```math
+\mathbf{H}_\mathrm{ex, i} = \frac{2}{\mu_s} \sum_{\langle i, j\rangle} K_{ij} (\mathbf{m}_i \cdot \mathbf{m}_j) \mathbf{m}_{j}.
+```
+
+Kij is represented by Ks, which is an array with its length equals to n_ngbs.
+"""
+@kernel function atomistic_exchange_bq_kernel!(h, energy, @Const(Ks), @Const(m),
+                                               @Const(mu_s), @Const(ngbs),
+                                               n_ngbs)
+    I = @index(Global)
+    i = 3 * I - 2
+
+    T = eltype(h)
+
+    @inbounds ms_local = mu_s[I]
+    if ms_local == 0.0
+        @inbounds energy[I] = 0
+        @inbounds h[i + 0] = 0
+        @inbounds h[i + 1] = 0
+        @inbounds h[i + 2] = 0
+    else
+        ms_inv::T = 2.0 / ms_local
+
+        fx, fy, fz = T(0), T(0), T(0)
+        local_energy = T(0)
+        for j in 1:n_ngbs
+            @inbounds id = ngbs[j, I]
+            if id > 0 && mu_s[id] > 0
+                k = 3 * id - 2
+                @inbounds amp = dot_product(m[i], m[i + 1], m[i + 2], m[k], m[k + 1],
+                                            m[k + 2])
+                @inbounds fx += Ks[j] * amp * m[k + 0]
+                @inbounds fy += Ks[j] * amp * m[k + 1]
+                @inbounds fz += Ks[j] * amp * m[k + 2]
+                @inbounds local_energy -= Ks[j] * amp * amp
+            end
+        end
+        @inbounds energy[I] = local_energy
+        @inbounds h[i + 0] = fx * ms_inv
+        @inbounds h[i + 1] = fy * ms_inv
+        @inbounds h[i + 2] = fz * ms_inv
+    end
+end
+
+@doc raw"""
 compute the exchange interaction h_ex,  which is defined as 
 
 ```math

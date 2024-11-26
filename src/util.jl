@@ -41,6 +41,17 @@ end
     return 2*atan(b, a)
 end
 
+# compute A = A + B 
+function vector_add(A::AbstractArray{T, 1}, B::AbstractArray{T, 1}) where {T<:AbstractFloat}
+    @kernel function vector_add_kernel!(a, b)
+        i = @index(Global)
+        @inbounds a[i] = a[i] + b[i]
+    end
+    kernel! = vector_add_kernel!(default_backend[])
+    kernel!(A, B; ndrange=length(A))
+    return nothing
+end
+
 # compute a = a1 + c2*a2 
 function vector_add2(a::A, a1::A, a2::A, c2::S) where {T<:AbstractFloat, S<:AbstractFloat, A<:AbstractArray{T,1}}
     @kernel function vector_add2_kernal!(a, @Const(a1), @Const(a2), c)

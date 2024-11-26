@@ -121,7 +121,7 @@ mutable struct MicroSim{T<:AbstractFloat} <: AbstractSim
     n_total::Int64
     name::String
     driver_name::String
-    interactions::Array
+    interactions::Array{MicroEnergy}
     save_data::Bool
     MicroSim{T}() where {T<:AbstractFloat} = new()
 end

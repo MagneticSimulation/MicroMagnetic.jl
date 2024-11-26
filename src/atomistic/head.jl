@@ -32,6 +32,13 @@ mutable struct HeisenbergExchange{T<:AbstractFloat} <: Interaction
     name::String
 end
 
+mutable struct BiquadraticExchange{T<:AbstractFloat} <: Interaction
+    Ks::AbstractArray{T,1} #The length of Js should be equal to the number of neighbours
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    name::String
+end
+
 mutable struct SpatialHeisenberg{T<:AbstractFloat} <: Interaction
     Js::AbstractArray{T,2}
     field::AbstractArray{T,1}
