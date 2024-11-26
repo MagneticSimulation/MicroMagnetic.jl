@@ -42,8 +42,7 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArr
     a1x, a1y, a1z = anis.axis1
     a2x, a2y, a2z = anis.axis2
     a3x, a3y, a3z = anis.axis3
-    back = default_backend[]
-    cubic_anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Kc,
+    cubic_anisotropy_kernel!(default_backend[])(spin, anis.field, anis.energy, anis.Kc,
                                                 T(a1x), T(a1y), T(a1z), T(a2x), T(a2y),
                                                 T(a2z), T(a3x), T(a3y), T(a3z), sim.mu0_Ms,
                                                 volume; ndrange=N)
@@ -313,12 +312,10 @@ After running this function, the effective field is calculated and saved in sim.
 function effective_field(sim::AbstractSim, spin, t::Float64=0.0)
     fill!(sim.field, 0.0)
     for interaction in sim.interactions
-        if isa(interaction, Zeeman)
-            @timeit timer interaction.name sim.field .+= interaction.field
-        else
-            @timeit timer interaction.name effective_field(interaction, sim, spin, t)
-            sim.field .+= interaction.field
+        if !isa(interaction, Zeeman)
+            effective_field(interaction, sim, spin, t)
         end
+        vector_add(sim.field, interaction.field)
     end
     return nothing
 end

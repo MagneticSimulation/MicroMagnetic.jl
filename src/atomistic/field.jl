@@ -71,6 +71,17 @@ function effective_field(exch::HeisenbergExchange, sim::AtomisticSim,
     return nothing
 end
 
+function effective_field(exch::BiquadraticExchange, sim::AtomisticSim,
+                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    mesh = sim.mesh
+
+    kernel! = atomistic_exchange_bq_kernel!(default_backend[])
+    kernel!(exch.field, exch.energy, exch.Ks, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
+            ndrange=N)
+    return nothing
+end
+
 function effective_field(exch::SpatialHeisenberg, sim::AtomisticSim,
                          spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total

@@ -1,5 +1,5 @@
 
-export set_mu_s, set_mu_s_kagome
+export set_mu_s, set_mu_s_kagome, add_exch_bq
 
 @doc raw"""
     set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
@@ -76,6 +76,10 @@ Add exchange energy to the system. The length of J should be equal to the length
     add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0, J4=0)
 
 Add exchange interactions to the atomistic simulation `sim`.
+
+```math
+\mathcal{H}_\mathrm{ex} = -J \sum_{\langle i, j\rangle} \mathbf{m}_{i} \cdot \mathbf{m}_{j}
+```
 
 ### Parameters
 - `J1::NumberOrArray`: The first nearest-neighbor exchange coupling constant. Can be a single number (applied uniformly) or an array with a length equal to the number of first nearest neighbors.
@@ -163,6 +167,46 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
                          o::AbstractSim -> sum(o.interactions[id].energy))
         push!(sim.saver.items, item)
     end
+    return exch
+end
+
+@doc raw"""
+    add_exch_bq(sim::AtomisticSim, K::NumberOrArray; name="exch_bq")
+
+Add biquadratic exchange interaction to the atomistic simulation `sim`. The biquadratic exchange interaction is defined as
+
+```math
+\mathcal{H}_\mathrm{ex} = - \sum_{\langle i, j\rangle} K_{ij} (\mathbf{m}_{i} \cdot \mathbf{m}_{j})^2
+```
+
+"""
+function add_exch_bq(sim::AtomisticSim, K::NumberOrArray; name="exch_bq")
+    mesh = sim.mesh
+    T = Float[]
+
+    Ks = create_zeros(mesh.n_ngbs)
+    if isa(K, Number)
+        Ks .= K
+    elseif length(K) == length(Ks)
+        copyto!(Ks, K)
+    else
+        @error("K should be a number or an array with length $(mesh.n_ngbs)!")
+    end
+
+    N = sim.n_total
+    field = create_zeros(3 * N)
+    energy = create_zeros(N)
+
+    exch = BiquadraticExchange(Ks, field, energy, name)
+
+    push!(sim.interactions, exch)
+    if sim.save_data
+        id = length(sim.interactions)
+        item = SaverItem(string("E_", name), "<J>",
+                         o::AbstractSim -> sum(o.interactions[id].energy))
+        push!(sim.saver.items, item)
+    end
+
     return exch
 end
 
@@ -383,13 +427,13 @@ Dij = hcat([-D, 0, 0],  # DMI vector for (i-1, j, k)
 add_dmi(sim, Dij)
 ```
 """
-function add_dmi(sim::AtomisticSim, Dij::Array{<:Real, 2}; name="dmi")
+function add_dmi(sim::AtomisticSim, Dij::Array{<:Real,2}; name="dmi")
     N = sim.n_total
     mesh = sim.mesh
     T = Float[]
     field = create_zeros(3 * N)
     energy = create_zeros(N)
-    
+
     dmi = HeisenbergDMI(kernel_array(Dij), field, energy, name)
     push!(sim.interactions, dmi)
     if sim.save_data

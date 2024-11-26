@@ -58,12 +58,12 @@ add_exch_int(sim::MicroSim, J::Float64; k1=1, k2=-1, name="exch_int")
 add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1, name="dmi_int")
 ```
 
-
 ## Interfaces -- Atomistic 
 ```@docs
 set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
 add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0, J4=0)
 add_exch(sim::AtomisticSim, Jfun::Function; name="exch")
+add_exch_bq(sim::AtomisticSim, K::NumberOrArray; name="exch_bq")
 add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
 add_dmi(sim::AtomisticSim, Dij::Array{<:Real, 2}; name="dmi")
 add_dmi(sim::AtomisticSim, Dfun::Function; name="dmi")
