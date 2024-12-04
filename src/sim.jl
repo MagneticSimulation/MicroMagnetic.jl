@@ -94,7 +94,7 @@ function set_Ms(sim::AbstractSim, shape::Shape, Ms::Number)
 end
 
 """
-    set_pinning(sim::MicroSim, ids::ArrayOrFunction)
+    set_pinning(sim::AbstractSim, ids::ArrayOrFunction)
 
 Pinning the spins at the given ids.
 
@@ -108,7 +108,7 @@ end
 set_pinning(sim, pinning_boundary)
 ```
 """
-function set_pinning(sim::MicroSim, ids::ArrayOrFunction)
+function set_pinning(sim::AbstractSim, ids::ArrayOrFunction)
     pins = zeros(Bool, sim.n_total)
     init_scalar!(pins, sim.mesh, ids)
     copyto!(sim.pins, pins)
