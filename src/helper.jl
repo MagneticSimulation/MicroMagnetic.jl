@@ -28,7 +28,7 @@ function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, init_fun::Function) whe
     return true
 end
 
-function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::Shape,
+function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::Union{CSGNode, Shape},
                       init::Number) where {T}
     a = isa(v, Array) ? v : Array(v)
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz

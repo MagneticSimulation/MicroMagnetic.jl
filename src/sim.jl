@@ -84,11 +84,11 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
 end
 
 """
-    set_Ms(sim::AbstractSim, geo::Shape, Ms::Number)
+    set_Ms(sim::AbstractSim, shape::Union{CSGNode,Shape}, Ms::Number)
 
 Set the saturation magnetization Ms within the Shape.
 """
-function set_Ms(sim::AbstractSim, shape::Shape, Ms::Number)
+function set_Ms(sim::AbstractSim, shape::Union{CSGNode,Shape}, Ms::Number)
     init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms * mu_0)
     return true
 end
