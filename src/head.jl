@@ -134,6 +134,9 @@ mutable struct Zeeman{T<:AbstractFloat} <: MicroEnergy
 end
 
 mutable struct TimeZeeman{T<:AbstractFloat} <: MicroEnergy
+    time_fx::T
+    time_fy::T
+    time_fz::T
     time_fun::Function
     init_field::AbstractArray{T,1}
     field::AbstractArray{T,1}
