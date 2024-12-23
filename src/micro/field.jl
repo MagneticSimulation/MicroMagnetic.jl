@@ -14,6 +14,9 @@ function effective_field(zee::TimeZeeman, sim::MicroSim, spin::AbstractArray{T,1
     N = sim.n_total
     factor = sim.mesh.volume
     tx, ty, tz = zee.time_fun(t)
+    zee.time_fx = tx
+    zee.time_fy = ty
+    zee.time_fz = tz
     back = default_backend[]
     time_zeeman_kernel!(back, groupsize[])(spin, zee.field, zee.init_field, zee.energy,
                                            sim.mu0_Ms, T(factor), T(tx), T(ty), T(tz);

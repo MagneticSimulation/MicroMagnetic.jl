@@ -106,23 +106,24 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
     field_kb = kernel_array(init_field)
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)
+    Hout = zeros(T, 3)
 
-    zeeman = TimeZeeman(ft, field_kb, field, energy, name)
-    push!(sim.interactions, zeeman)
+    zee = TimeZeeman(T(0), T(0), T(0), ft, field_kb, field, energy, name)
+    push!(sim.interactions, zee)
 
     if sim.save_data
         id = length(sim.interactions)
         if isa(H0, Tuple) && length(H0) == 3  # FIXME: the output should depends on time!!!
             field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
                                     string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
-                                   o::AbstractSim -> H0)
+                                   o::AbstractSim -> (H0[1]*zee.time_fx, H0[2]*zee.time_fy, H0[3]*zee.time_fz))
             push!(sim.saver.items, field_item)
         end
         push!(sim.saver.items,
               SaverItem(string("E_", name), "J",
                         o::AbstractSim -> sum(o.interactions[id].energy)))
     end
-    return zeeman
+    return zee
 end
 
 @doc raw"""
