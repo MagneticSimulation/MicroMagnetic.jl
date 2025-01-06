@@ -1,3 +1,6 @@
+@inline safe_div(a, b) = b == 0 ? 0.0 : a / b
+
+
 """
     The kernel for the Zeeman interaction, works for both the micromagnetic and atomistic model,
 where factor = cell_size for the micromagnetic model and factor = 1 for atomistic model.
@@ -138,7 +141,7 @@ end
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
                 k = 3 * id - 2
-                @inbounds A_eff = 2 * A[I] * A[id] / (A[I] + A[id])
+                @inbounds A_eff = safe_div(2 * A[I] * A[id], A[I] + A[id])
                 @inbounds fx += A_eff * nabla[j] * (m[k] - m[i])
                 @inbounds fy += A_eff * nabla[j] * (m[k + 1] - m[i + 1])
                 @inbounds fz += A_eff * nabla[j] * (m[k + 2] - m[i + 2])
@@ -252,7 +255,7 @@ end
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
                 k = 3 * id - 2
-                @inbounds D = 2 * Ds[I] * Ds[id] / (Ds[I] + Ds[id])
+                @inbounds D = safe_div(2 * Ds[I] * Ds[id], Ds[I] + Ds[id])
                 @inbounds fx += D *
                                 Dd[j] *
                                 cross_x(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
@@ -295,7 +298,7 @@ end
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
                 k = 3 * id - 2
-                @inbounds D = 2 * Ds[I] * Ds[id] / (Ds[I] + Ds[id])
+                @inbounds D = safe_div(2 * Ds[I] * Ds[id], Ds[I] + Ds[id])
                 @inbounds fx += D *
                                 Dd[j] *
                                 cross_x(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
