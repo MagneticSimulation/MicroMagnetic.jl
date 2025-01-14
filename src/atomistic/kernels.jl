@@ -36,7 +36,7 @@ Note that the return value is h * alpha + h_ex
             end
         end
 
-        @inbounds energy_I::T = -0.5 * (fx * m[i] + fy * m[i + 1] + fz * m[i + 2])
+        @inbounds energy_I = -0.5 * (fx * m[i] + fy * m[i + 1] + fz * m[i + 2])
         @inbounds energy[I] = energy[I] * alpha + energy_I
         @inbounds h[i + 0] = h[i + 0] * alpha + fx * ms_inv
         @inbounds h[i + 1] = h[i + 1] * alpha + fy * ms_inv

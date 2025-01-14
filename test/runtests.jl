@@ -29,3 +29,6 @@ include("atomistic/test_dmi.jl")
 
 include("test_mc.jl")
 include("test_neb.jl")
+
+include("eigen/test_cubic.jl")
+include("eigen/test_afm.jl")
