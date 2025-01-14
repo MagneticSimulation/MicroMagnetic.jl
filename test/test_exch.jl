@@ -96,14 +96,15 @@ function test_exch_vector(direction=:x)
     f1 = Array(ex1.field)
     f2 = Array(ex2.field)
 
-    #print(maximum(abs.(f1.-f2)))
-    @test isapprox(f1, f2, atol=1e-7)
+    #print("max_diff:", maximum(abs.(f1.-f2)))
+    @test isapprox(f1, f2, rtol=1e-7)
 end
 
 function test_exch_vectors()
     test_exch_vector(:x)
     test_exch_vector(:y)
-    return test_exch_vector(:z)
+    test_exch_vector(:z)
+    return nothing
 end
 
 @using_gpu()

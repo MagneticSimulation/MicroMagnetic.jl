@@ -20,12 +20,13 @@ function effective_field(zee::TimeZeeman, sim::AtomisticSim, spin::AbstractArray
 end
 
 function effective_field(anis::Anisotropy, sim::AtomisticSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
+                         t::Float64; output=nothing) where {T<:AbstractFloat}
     N = sim.n_total
     axis = anis.axis
 
-    kernal = anisotropy_kernel!(default_backend[], groupsize[])
-    kernal(spin, anis.field, anis.energy, anis.Ku, axis[1], axis[2], axis[3], sim.mu_s,
+    heff = output == nothing ? anis.field : output
+    kernal = anisotropy_kernel!(default_backend[])
+    kernal(spin, heff, anis.energy, anis.Ku, axis[1], axis[2], axis[3], sim.mu_s,
            T(1); ndrange=N)
 
     return nothing
@@ -41,30 +42,32 @@ function effective_field(anis::TubeAnisotropy, sim::AtomisticSim, spin::Abstract
 end
 
 function effective_field(exch::HeisenbergExchange, sim::AtomisticSim,
-                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+                         spin::AbstractArray{T,1}, t::Float64; output=nothing) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
 
+    heff = output == nothing ? exch.field : output
+
     # The exchange interaction for nearest neighbours
-    kernal = atomistic_exchange_kernel!(default_backend[], groupsize[])
-    kernal(exch.field, exch.energy, exch.Js1, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs, T(0);
+    kernal = atomistic_exchange_kernel!(default_backend[])
+    kernal(heff, exch.energy, exch.Js1, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs, T(0);
            ndrange=N)
 
     # The exchange interaction for next-nearest neighbours
     if hasproperty(mesh, :n_ngbs2) && length(exch.Js2) == mesh.n_ngbs2
-        kernal(exch.field, exch.energy, exch.Js2, spin, sim.mu_s, mesh.ngbs2, mesh.n_ngbs2,
+        kernal(heff, exch.energy, exch.Js2, spin, sim.mu_s, mesh.ngbs2, mesh.n_ngbs2,
                T(1); ndrange=N)
     end
 
     # The exchange interaction for next-next-nearest neighbours
     if hasproperty(mesh, :n_ngbs3) && length(exch.Js3) == mesh.n_ngbs3
-        kernal(exch.field, exch.energy, exch.Js3, spin, sim.mu_s, mesh.ngbs3, mesh.n_ngbs3,
+        kernal(heff, exch.energy, exch.Js3, spin, sim.mu_s, mesh.ngbs3, mesh.n_ngbs3,
                T(1); ndrange=N)
     end
 
     # The exchange interaction for next-next-next-nearest neighbours
     if hasproperty(mesh, :n_ngbs4) && length(exch.Js4) == mesh.n_ngbs4
-        kernal(exch.field, exch.energy, exch.Js4, spin, sim.mu_s, mesh.ngbs4, mesh.n_ngbs4,
+        kernal(heff, exch.energy, exch.Js4, spin, sim.mu_s, mesh.ngbs4, mesh.n_ngbs4,
                T(1); ndrange=N)
     end
 

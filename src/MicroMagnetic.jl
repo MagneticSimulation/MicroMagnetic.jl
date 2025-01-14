@@ -186,8 +186,9 @@ end
 function ovf2png() end
 function plot_m() end
 function jld2movie() end
+function dynamic_matrix() end
 
-export ovf2png, plot_m, jld2movie
+export ovf2png, plot_m, jld2movie, dynamic_matrix
 
 include("const.jl")
 include("micro/mesh.jl")

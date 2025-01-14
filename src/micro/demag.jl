@@ -100,7 +100,7 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
 end
 
 function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
+                         t::Float64; output=nothing) where {T<:AbstractFloat}
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, sim.mesh.ny, sim.mesh.nz
 
@@ -122,7 +122,9 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1},
     mul!(demag.my, demag.h_plan, demag.My)
     mul!(demag.mz, demag.h_plan, demag.Mz)
 
-    collect_h_energy(demag.field, demag.energy, spin, demag.mx, demag.my, demag.mz,
+    heff = output == nothing ? demag.field : output
+
+    collect_h_energy(heff, demag.energy, spin, demag.mx, demag.my, demag.mz,
                      sim.mu0_Ms, T(mesh.volume), nx, ny, nz)
 
     return nothing
@@ -409,7 +411,7 @@ end
 end
 
 function fill_tensors(long_tensor, tensor, tx::Bool, ty::Bool, tz::Bool)
-    kernel! = fill_tensors_kernel!(get_backend(tensor), groupsize[])
+    kernel! = fill_tensors_kernel!(get_backend(tensor))
     kernel!(long_tensor, tensor, tx, ty, tz; ndrange=size(long_tensor))
     return nothing
 end
@@ -425,7 +427,7 @@ end
 end
 
 function distribute_m(m, mx_pad, my_pad, mz_pad, Ms, nx::Int64, ny::Int64, nz::Int64)
-    kernel! = distribute_m_kernel!(default_backend[], groupsize[])
+    kernel! = distribute_m_kernel!(default_backend[])
     kernel!(m, mx_pad, my_pad, mz_pad, Ms; ndrange=(nx, ny, nz))
     return nothing
 end
@@ -448,7 +450,7 @@ end
 
 function collect_h_energy(h, energy, m, hx, hy, hz, Ms, volume::T, nx::Int64, ny::Int64,
                           nz::Int64) where {T<:AbstractFloat}
-    kernel! = collect_h_kernel!(default_backend[], groupsize[])
+    kernel! = collect_h_kernel!(default_backend[])
     kernel!(h, energy, m, hx, hy, hz, Ms, volume; ndrange=(nx, ny, nz))
     return nothing
 end

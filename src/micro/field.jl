@@ -38,14 +38,15 @@ function effective_field(anis::Anisotropy, sim::MicroSim, spin::AbstractArray{T,
 end
 
 function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
+                         t::Float64; output=nothing) where {T<:AbstractFloat}
     N = sim.n_total
     volume = T(sim.mesh.volume)
 
     a1x, a1y, a1z = anis.axis1
     a2x, a2y, a2z = anis.axis2
     a3x, a3y, a3z = anis.axis3
-    cubic_anisotropy_kernel!(default_backend[])(spin, anis.field, anis.energy, anis.Kc,
+    heff = output == nothing ? anis.field : output
+    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc,
                                                 T(a1x), T(a1y), T(a1z), T(a2x), T(a2y),
                                                 T(a2z), T(a3x), T(a3y), T(a3z), sim.mu0_Ms,
                                                 volume; ndrange=N)
@@ -322,6 +323,19 @@ function effective_field(sim::AbstractSim, spin, t::Float64=0.0)
     end
     return nothing
 end
+
+"""
+function effective_field(sim::AbstractSim, spin, output)
+    fill!(output, 0.0)
+    for interaction in sim.interactions
+        if !isa(interaction, Zeeman)
+            effective_field(interaction, sim, spin, 0.0)
+        end
+        vector_add(output, interaction.field)
+    end
+    return nothing
+end
+"""
 
 function compute_system_energy(sim::AbstractSim, spin::AbstractArray, t::Float64)
     @timeit timer "compute_system_energy" begin
