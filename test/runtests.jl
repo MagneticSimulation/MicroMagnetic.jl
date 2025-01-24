@@ -32,3 +32,4 @@ include("test_neb.jl")
 
 include("eigen/test_cubic.jl")
 include("eigen/test_afm.jl")
+include("eigen/test_demag.jl")

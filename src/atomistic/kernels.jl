@@ -76,8 +76,7 @@ Kij is represented by Ks, which is an array with its length equals to n_ngbs.
             @inbounds id = ngbs[j, I]
             if id > 0 && mu_s[id] > 0
                 k = 3 * id - 2
-                @inbounds amp = dot_product(m[i], m[i + 1], m[i + 2], m[k], m[k + 1],
-                                            m[k + 2])
+                @inbounds amp = m[i] * m[k] + m[i+1] * m[k+1] + m[i+2] * m[k+2]
                 @inbounds fx += Ks[j] * amp * m[k + 0]
                 @inbounds fy += Ks[j] * amp * m[k + 1]
                 @inbounds fz += Ks[j] * amp * m[k + 2]

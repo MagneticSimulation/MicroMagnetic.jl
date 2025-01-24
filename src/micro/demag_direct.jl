@@ -79,23 +79,23 @@ function init_direct_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
 end
 
 function effective_field(demag::DirectDemag, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
+                         t::Float64; output=nothing) where {T<:AbstractFloat}
+    
+    heff = output == nothing ? demag.field : output
     try
-        mul!(demag.field, demag.tensor, spin)
+        mul!(heff, demag.tensor, spin)
     catch e #only works in cpu for AbstractFloat
-        fill!(demag.field, 0)
-        M, N = size(demag.tensor)
-        for j in 1:N, i in 1:M
-            demag.field[i] += demag.tensor[i, j] * spin[j]
+        fill!(heff, 0)
+        N = length(heff)
+        for i = 1:N, j=1:N
+            heff[i] += demag.tensor[i, j] * spin[j]
         end
     end
 
     N = sim.n_total
     factor = 0.5 * sim.mesh.volume
-    back = default_backend[]
     #we borrow the zeeman kernel to compute the demag energy
-    zeeman_kernel!(back, groupsize[])(spin, demag.field, demag.energy, sim.mu0_Ms,
-                                      T(factor); ndrange=N)
-
+    zeeman_kernel!(default_backend[])(spin, heff, demag.energy, sim.mu0_Ms, T(factor); ndrange=N)
+    
     return nothing
 end
