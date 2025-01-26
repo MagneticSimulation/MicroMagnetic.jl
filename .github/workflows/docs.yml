@@ -3,14 +3,14 @@
 name: Documentation
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
+  push:
+    branches:
+      - master 
+    tags: '*'
+  pull_request:
 
 jobs:
   build:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       actions: write
       contents: write
