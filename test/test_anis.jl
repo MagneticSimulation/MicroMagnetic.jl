@@ -65,8 +65,8 @@ function test_hex_anis()
     sim = Sim(mesh)
     Ms = 8.6e5
     set_Ms(sim, Ms)
-    mx, my, mz = 0.7, -0.4, 1.2
-    init_m0(sim, (mx, my, mz); norm=false)
+    m0 = (0.7, -0.4, 1.2)
+    init_m0(sim, m0; norm=false)
 
     K1, K2, K3 = 1.23e2, 3.7e3, 6.9e2
     anis = add_hex_anis(sim, K1=K1, K2=K2, K3=K3)
@@ -76,14 +76,10 @@ function test_hex_anis()
     field = Array(anis.field)
     energy = Array(anis.energy)
 
-    m0 = [mx, my, mz]
-    dy = Enzyme.gradient(Forward, hexagonal_energy, m0, Const(K1), Const(K2), Const(K3))[1]
-    println(dy)
+    gd = Enzyme.gradient(Forward, hexagonal_energy, m0, Const(K1), Const(K2), Const(K3))
+    expected = - collect(gd[1]) ./ (MicroMagnetic.mu_0*Ms)
 
-    mu0 = MicroMagnetic.mu_0
-    @test isapprox(field[1], -dy[1]/(mu0*Ms))
-    @test isapprox(field[2], -dy[2]/(mu0*Ms))
-    @test isapprox(field[3], -dy[3]/(mu0*Ms))
+    @test isapprox(field[1:3], expected)
     @test isapprox(energy[1]*1e27, hexagonal_energy(m0, K1, K2, K3), rtol=1e-5)
 end
 
