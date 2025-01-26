@@ -38,6 +38,7 @@ init_m0_skyrmion
 add_zeeman
 add_anis
 add_cubic_anis
+add_hex_anis
 add_thermal_noise
 update_zeeman
 update_anis

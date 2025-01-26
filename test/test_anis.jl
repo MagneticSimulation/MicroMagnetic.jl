@@ -1,6 +1,7 @@
 using MicroMagnetic
 using Test
 using LinearAlgebra
+using Enzyme
 
 if !isdefined(Main, :test_functions)
     include("test_utils.jl")
@@ -53,5 +54,38 @@ function test_cubic_anis()
     @test isapprox(energy[1], -Kc * (0.6^4 + 0.8^4) * 1e-27)
 end
 
+function hexagonal_energy(m, K1, K2, K3)
+    mx, my, mz = m[1], m[2], m[3]
+    return K1*(1-mz*mz) + K2*(1-mz*mz)^2 + K3*(mx^6-15*mx^4*my^2+15*mx^2*my^4-my^6)
+end
+
+function test_hex_anis()
+    mesh = FDMesh(; nx=10, ny=1, nz=1)
+
+    sim = Sim(mesh)
+    Ms = 8.6e5
+    set_Ms(sim, Ms)
+    mx, my, mz = 0.7, -0.4, 1.2
+    init_m0(sim, (mx, my, mz); norm=false)
+
+    K1, K2, K3 = 1.23e2, 3.7e3, 6.9e2
+    anis = add_hex_anis(sim, K1=K1, K2=K2, K3=K3)
+
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
+
+    field = Array(anis.field)
+    energy = Array(anis.energy)
+
+    m0 = [mx, my, mz]
+    dy = Enzyme.gradient(Forward, hexagonal_energy, m0, Const(K1), Const(K2), Const(K3))[1]
+    println(dy)
+
+    mu0 = MicroMagnetic.mu_0
+    @test isapprox(field[1], -dy[1]/(mu0*Ms))
+    @test isapprox(field[2], -dy[2]/(mu0*Ms))
+    @test isapprox(field[3], -dy[3]/(mu0*Ms))
+    @test isapprox(energy[1]*1e27, hexagonal_energy(m0, K1, K2, K3), rtol=1e-5)
+end
+
 @using_gpu()
-test_functions("Anisotropy", test_anis, test_cubic_anis)
+test_functions("Anisotropy", test_anis, test_cubic_anis, test_hex_anis)
