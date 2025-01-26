@@ -117,6 +117,33 @@ The kernel cubic_anisotropy_kernel! works for both the micromagnetic and atomist
     end
 end
 
+"""
+The kernel hexagonal_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
+"""
+@kernel function hexagonal_anisotropy_kernel!(@Const(m), h, energy, K1::T, K2::T, K3::T, 
+                                            @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu0_Ms[id]
+
+    if Ms_local == 0.0
+        @inbounds energy[id] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        Ms_inv::T = 1.0 / Ms_local
+        @inbounds mx = m[j + 1]
+        @inbounds my = m[j + 2]
+        @inbounds mz = m[j + 3]
+        @inbounds h[j + 1] = -6*K3*Ms_inv*(mx^5-10*mx^3*my^2+5*mx*my^4)
+        @inbounds h[j + 2] = -6*K3*Ms_inv*(-5*mx^4*my+10*mx^2*my^3-my^5)
+        @inbounds h[j + 3] = 2*mz*Ms_inv*(K1 + 2*K2*(1-mz*mz))
+        @inbounds energy[id] = (K1*(1-mz*mz) + K2*(1-mz*mz)^2 + K3*(mx^6-15*mx^4*my^2+15*mx^2*my^4-my^6)) * volume
+    end
+end
+
 @kernel function exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(A), dx::T,
                                   dy::T, dz::T, @Const(ngbs),
                                   volume::T) where {T<:AbstractFloat}

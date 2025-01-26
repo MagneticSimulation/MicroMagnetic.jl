@@ -174,6 +174,30 @@ The typical energy terms are
 ```
 
 
+- **Hexagonal Anisotropy**
+
+  The energy density of the hexagonal anisotropy is given by:
+
+```math
+E = K_1 \sin^2 \theta + K_2 \sin^4 \theta + K_3 \sin^6 \theta \cos 6\phi
+```
+
+Here, $\theta$ is the angle between the magnetization vector $\mathbf{m}$ and the $c$-axis ($z$-axis).
+$\phi$ is the angle of the projection of $\mathbf{m}$ on the hexagonal plane, measured with respect to the $x$-axis.
+
+Using the identity $\cos 6x = -\sin^6 x + 15 \cos^2 x \sin^4 x - 15 \cos^4 x \sin^2 x + \cos^6 x$, the energy density 
+can be rewritten in terms of $m_x$, $m_y$, and $m_z$ as:
+```math
+E = K_1 (1 - m_z^2) + K_2 (1 - m_z^2)^2 + K_3 \left( m_x^6 - 15m_x^4 m_y^2 + 15m_x^2 m_y^4 - m_y^6 \right)
+```
+Therefore, The corresponding effective field is given by:
+```math
+\mathbf{H}_\mathrm{eff} = -\frac{6K_3}{\mu_0 M_s} \left( m_x^5 - 10m_x^3m_y^2 + 5m_xm_y^4 \right) \mathbf{e}_x 
+ -\frac{6K_3}{\mu_0 M_s} \left( -5m_x^4m_y + 10m_x^2m_y^3 - m_y^5 \right) \mathbf{e}_y 
++ \frac{2m_z}{\mu_0 M_s} \left[ K_1 + 2K_2(1 - m_z^2) \right] \mathbf{e}_z
+```
+
+
 ### Dzyaloshinskii-Moriya Energy
 In the continuum limit, the DMI energy density $w_\mathrm{dmi}$ is associated with the so-called *Lifshitz invariants*, which are terms in the form
 

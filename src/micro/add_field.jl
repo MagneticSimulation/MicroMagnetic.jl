@@ -1,4 +1,5 @@
-export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_exch, add_dmi,
+export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
+       add_exch, add_dmi,
        add_demag, add_dmi_int, add_exch_int, add_thermal_noise
 
 """
@@ -466,6 +467,40 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
     end
     return anis
 end
+
+@doc raw"""
+    add_hex_anis(sim::AbstractSim; K1=0, K2=0, K3=0, name="hex")
+
+Add hexagonal anisotropy to a simulation. The energy density of the anisotropy is defined as:
+
+```math
+E = K_1 \sin^2 \theta + K_2 \sin^4 \theta + K_3 \sin^6 \theta \cos 6\phi
+```
+
+# Example
+```julia
+add_hex_anis(sim, K1=1e3, K2=0, K3=1e2)
+```
+"""
+function add_hex_anis(sim::AbstractSim; K1=0, K2=0, K3=0, name="hex")
+    n_total = sim.n_total
+    field = create_zeros(3 * n_total)
+    energy = create_zeros(n_total)
+
+    T = Float[]
+    anis = HexagonalAnisotropy(T(K1), T(K2), T(K3), field, energy, name)
+    push!(sim.interactions, anis)
+
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "<J>",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
+    end
+    return anis
+end
+
+
 
 @doc raw"""
     add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", scaling=t -> 1.0, k_B=k_B)
