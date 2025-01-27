@@ -449,3 +449,31 @@ end
                                 volume
     end
 end
+
+
+"""
+The kernel she_torque_kernel! compute the effective field defined as 
+        (1/gamma)*(beta*sigma + m x sigma)
+and sigma = c1 - (m.c2)^2 c3
+"""
+@kernel function she_torque_kernel!(@Const(m), h, @Const(mu0_Ms), gamma::T, beta::T, c1x::T, c1y::T, c1z::T, 
+                                    c2x::T, c2y::T, c2z::T, c3x::T, c3y::T, c3z::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu0_Ms[id]
+
+    if Ms_local == 0.0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        @inbounds sa = m[j + 1] * c2x + m[j + 2] * c2y + m[j + 3] * c2z
+        sx = (c1x - sa*sa * c3x)/gamma
+        sy = (c1y - sa*sa * c3y)/gamma
+        sz = (c1z - sa*sa * c3z)/gamma
+        @inbounds h[j + 1] = beta*sx + cross_x(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
+        @inbounds h[j + 2] = beta*sy + cross_y(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
+        @inbounds h[j + 3] = beta*sz + cross_z(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
+    end
+end

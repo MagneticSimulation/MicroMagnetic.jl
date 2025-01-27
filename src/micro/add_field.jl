@@ -1,5 +1,5 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
-       add_exch, add_dmi,
+       add_exch, add_dmi, add_she_torque,
        add_demag, add_dmi_int, add_exch_int, add_thermal_noise
 
 """
@@ -637,4 +637,78 @@ function add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1, name=
                         o::AbstractSim -> sum(o.interactions[id].energy)))
     end
     return dmi
+end
+
+@doc raw"""
+    add_she_torque(sim::AbstractSim, sigma_s::Tuple{Real,Real,Real}, sigma_sa::Tuple{Real,Real,Real}; a1=(1,0,0), a2=(0,1,0), beta=0, name="she")
+
+Add an effective field to represent the SHE torque given by 
+
+```math
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t} 
+- \mathbf{m} \times (\mathbf{m} \times \boldsymbol{\sigma}_{x y}^\mathrm{S H E}) -  \beta\mathbf{m} \times \boldsymbol{\sigma}_{x y}^\mathrm{S H E}
+```
+
+The equivalent effective field is
+```math
+\mathbf{H}_\mathrm{she} = (1/\gamma)(\beta \boldsymbol{\sigma}_{x y}^\mathrm{S H E} + \mathbf{m} \times \boldsymbol{\sigma}_{x y}^\mathrm{S H E})
+```
+where 
+```math
+\boldsymbol{\sigma}_{x y}^\mathrm{S H E}=\widetilde{\boldsymbol{\sigma}}_\mathrm{S} \times \hat{\mathbf{a}}_2-\left({\mathbf{m}} \cdot\left(\hat{\mathbf{a}}_2 \times \hat{\mathbf{a}}_1\right)\right)^2\left(\widetilde{\boldsymbol{\sigma}}_\mathrm{SA} \times \hat{\mathbf{a}}_2\right)
+```
+
+### Example
+```julia
+    add_she_torque(sim, (0.1, 0.2, 0.3), (0.3, 0.4, 0.5), beta=0.1)
+```
+
+"""
+function add_she_torque(sim::AbstractSim, sigma_s::Tuple{Real,Real,Real}, sigma_sa::Tuple{Real,Real,Real}; a1=(1,0,0), a2=(0,1,0), beta=0, name="she")
+    n_total = sim.n_total
+    field = create_zeros(3 * n_total)
+
+    c1 = cross_product(sigma_s, a2)
+    c2 = cross_product(a2, a1)
+    c3 = cross_product(sigma_sa, a2)
+    T = Float[]
+    torque = SHETorqueField(c1, c2, c3, T(beta), field, name)
+
+    push!(sim.interactions, torque)
+
+    return torque
+end
+
+
+@doc raw"""
+    add_cpp_torque(sim::MicroSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="cpp")
+
+Add an effective field to represent the spin transfer torque given by 
+
+```math
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
++ (\mathbf{u} \cdot \nabla) \mathbf{m} - \beta [\mathbf{m}\times (\mathbf{u} \cdot \nabla)\mathbf{m}] - a_J \mathbf{m} \times (\mathbf{m} \times \mathbf{p})
+ -  b_J \mathbf{m} \times \mathbf{p}
+```
+
+The equivalent effective field is
+```math
+\mathbf{H}_\mathrm{stt} = (1/\gamma)(a_J \mathbf{m} \times \mathbf{p} +  b_J \mathbf{p})
+```
+"""
+function add_cpp_torque(sim::MicroSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="cpp")
+    n_total = sim.n_total
+    field = create_zeros(3 * n_total)
+
+    spatial_aj = zeros(T, sim.n_total)
+    init_scalar!(spatial_aj, sim.mesh, aj)
+    aj_zb = kernel_array(spatial_aj)
+
+    T = Float[]
+
+    torque = CPPTorqueField(p[1], p[2], p[3], aj_zb, bj, T(bj), field, name)
+
+    push!(sim.interactions, torque)
+
+    return torque
 end
