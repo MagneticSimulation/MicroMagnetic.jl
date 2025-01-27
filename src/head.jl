@@ -242,3 +242,22 @@ mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy
     average_temperature::T
     scaling_factor::T
 end
+
+mutable struct CPPTorqueField{T<:AbstractFloat} <: MicroEnergy
+    px::Real
+    py::Real
+    pz::Real
+    aj::AbstractArray{T,1}
+    bj::T
+    field::AbstractArray{T,1}
+    name::String
+end
+
+mutable struct SHETorqueField{T<:AbstractFloat} <: MicroEnergy
+    c1::Tuple{Real,Real,Real} # = sigma_s x a2
+    c2::Tuple{Real,Real,Real} # = a2 x a1
+    c3::Tuple{Real,Real,Real} # = sigma_sa x a2
+    beta::T
+    field::AbstractArray{T,1}
+    name::String
+end

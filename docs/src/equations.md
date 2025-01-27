@@ -319,6 +319,17 @@ The driver `LLG_STT_CPP` has put them together,
  -  b_J \mathbf{m} \times \mathbf{p}
 ```
 
+### Spin transfer torque as effective field.
+
+The spin transfer torque can also be considered as an effective field. For example, the LLG equation with CPP STT can be rewritten as 
+```math
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times (\mathbf{H}_\mathrm{stt}+\mathbf{H}_\mathrm{eff}) + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
+```
+with $\mathbf{H}_\mathrm{stt} = (1/\gamma)(a_J \mathbf{m} \times \mathbf{p} +  b_J \mathbf{p})$. Similarly, note that 
+$(\mathbf{u} \cdot \nabla) \mathbf{m} = - \mathbf{m} \times [ \mathbf{m} \times (\mathbf{u} \cdot \nabla) \mathbf{m}] $ and thus,
+ for zhang-li model, we have 
+$\mathbf{H}_\mathrm{stt} = (1/\gamma)[\mathbf{m} \times (\mathbf{u} \cdot \nabla) \mathbf{m} + \beta (\mathbf{u} \cdot \nabla) \mathbf{m}]$. 
+
 ## SLLG equation
 
 The SLLG equation, i.e., LLG equation including the stochastic field $\mathbf{b}$, is given by

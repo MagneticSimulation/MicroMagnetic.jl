@@ -203,6 +203,21 @@ function effective_field(stochastic::StochasticField, sim::MicroSim,
     return nothing
 end
 
+function effective_field(torque::SHETorqueField, sim::MicroSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    mesh = sim.mesh
+    gamma = sim.driver.gamma
+    
+    back = default_backend[]
+    c1x, c1y, c1z = torque.c1[1], torque.c1[2], torque.c1[3]
+    c2x, c2y, c2z = torque.c2[1], torque.c2[2], torque.c2[3]
+    c3x, c3y, c3z = torque.c3[1], torque.c3[2], torque.c3[3]
+    she_torque_kernel!(back, groupsize[])(spin, torque.field, sim.mu0_Ms, gamma, torque.beta, 
+                      T(c1x), T(c1y), T(c1z), T(c2x), T(c2y), T(c2z), T(c3x), T(c3y), T(c3z); ndrange=N)
+
+    return nothing
+end
+
 #we keep this function for debug and testing purpose, only works on CPU
 function effective_field_debug(exch::SpatialExchange, sim::MicroSim, spin::Array{Float64,1},
                                t::Float64)
@@ -352,8 +367,10 @@ function compute_system_energy(sim::AbstractSim, spin::AbstractArray, t::Float64
     @timeit timer "compute_system_energy" begin
         fill!(sim.energy, 0.0)
         for interaction in sim.interactions
-            effective_field(interaction, sim, spin, t)
-            sim.energy .+= interaction.energy
+            if hasproperty(interaction, :energy)
+                effective_field(interaction, sim, spin, t)
+                sim.energy .+= interaction.energy
+            end
         end
     end
     return 0
