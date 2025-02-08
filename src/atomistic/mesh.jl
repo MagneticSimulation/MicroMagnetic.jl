@@ -20,7 +20,7 @@ struct TriangularMesh <: AtomisticMesh
 end
 
 @doc raw"""
-    TriangularMesh(; dx=1e-9, nx=1, ny=1, pbc="open")
+    TriangularMesh2D(; dx=1e-9, nx=1, ny=1, pbc="open")
 
 Create a 2d triangular mesh. The index of the nearest neighbours and the next-nearest 
 neighbours are given as follows:
@@ -35,7 +35,7 @@ neighbours are given as follows:
 | 6          | bottom-right   | 6           | bottom-right|
 
 """
-function TriangularMesh(; dx=1e-9, dz=1e-9, nx=1, ny=1, pbc="open")
+function TriangularMesh2D(; dx=1e-9, dz=1e-9, nx=1, ny=1, pbc="open")
     nz = 1
     dz = 1e-9
     n_total = nx * ny * nz
@@ -66,6 +66,61 @@ function TriangularMesh(; dx=1e-9, dz=1e-9, nx=1, ny=1, pbc="open")
     nngbs = kernel_array(nngbs)
 
     return TriangularMesh(dx, dy, dz, nx, ny, nz, n_total, 6, 6, ngbs, nngbs, pbc_x, pbc_y,
+                          pbc_z)
+end
+
+
+@doc raw"""
+    TriangularMesh(; dx=1e-9, nx=1, ny=1, nz=1, pbc="open")
+
+Create a triangular mesh. The index of the nearest neighbours and the next-nearest 
+neighbours are given as follows:
+
+| nearest index | location   | next-nearest index | location |
+| :--------: | :------------: | :---------: | :---------: |
+| 1          | right          | 1           | top-right   |
+| 2          | top-right      | 2           | top         |
+| 3          | top-left       | 3           | top-left    |
+| 4          | left           | 4           | bottom-left |
+| 5          | bottom-left    | 5           | bottom      |
+| 6          | bottom-right   | 6           | bottom-right|
+| 7          | above          | 5           | bottom      |
+| 8          | below          | 6           | bottom-right|
+
+"""
+function TriangularMesh(; dx=1e-9, dz=1e-9, nx=1, ny=1, pbc="open")
+    nz = 1
+    dz = 1e-9
+    n_total = nx * ny * nz
+    ngbs = zeros(Int32, 8, n_total)
+    nngbs = zeros(Int32, 6, n_total) #FIXME: 
+    pbc_x = 'x' in pbc ? true : false
+    pbc_y = 'y' in pbc ? true : false
+    pbc_z = 'z' in pbc ? true : false
+    for k in 1:nz, j in 1:ny, i in 1:nx
+        id = index(i, j, k, nx, ny, nz)
+        ngbs[1, id] = indexpbc(i + 1, j, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #right
+        ngbs[2, id] = indexpbc(i + 1, j + 1, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #top_right
+        ngbs[3, id] = indexpbc(i, j + 1, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #top_left
+        ngbs[4, id] = indexpbc(i - 1, j, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #left
+        ngbs[5, id] = indexpbc(i - 1, j - 1, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #bottom_left
+        ngbs[6, id] = indexpbc(i, j - 1, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #bottom_right
+        ngbs[7, id] = indexpbc(i, j, k + 1, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #above
+        ngbs[8, id] = indexpbc(i, j, k - 1, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #below
+
+        nngbs[1, id] = indexpbc(i + 2, j + 1, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #top_right
+        nngbs[2, id] = indexpbc(i + 1, j + 2, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #top
+        nngbs[3, id] = indexpbc(i - 1, j + 1, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #top_left
+        nngbs[4, id] = indexpbc(i - 2, j - 1, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #bottom_left
+        nngbs[5, id] = indexpbc(i - 1, j - 2, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #bottom
+        nngbs[6, id] = indexpbc(i + 1, j - 1, k, nx, ny, nz, pbc_x, pbc_y, pbc_z)  #bottom_right
+    end
+    dy = dx * sqrt(3) / 2
+
+    ngbs = kernel_array(ngbs)
+    nngbs = kernel_array(nngbs)
+
+    return TriangularMesh(dx, dy, dz, nx, ny, nz, n_total, 8, 6, ngbs, nngbs, pbc_x, pbc_y,
                           pbc_z)
 end
 
