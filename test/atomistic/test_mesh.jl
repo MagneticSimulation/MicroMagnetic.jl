@@ -21,9 +21,9 @@ end
 function test_TriangularMesh()
     mesh = TriangularMesh(dx=1e-9, dz=1e-9, nx=3, ny=3, pbc="xy")
     @test mesh.nz == 1
-    @test mesh.n_ngbs == 6
+    @test mesh.n_ngbs == 8
     @test mesh.n_ngbs2 == 6
-    @test size(mesh.ngbs) == (6, mesh.n_total)
+    @test size(mesh.ngbs) == (8, mesh.n_total)
     @test size(mesh.ngbs2) == (6, mesh.n_total)
 end
 
