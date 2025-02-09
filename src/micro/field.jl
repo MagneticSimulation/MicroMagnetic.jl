@@ -45,7 +45,7 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArr
     a1x, a1y, a1z = anis.axis1
     a2x, a2y, a2z = anis.axis2
     a3x, a3y, a3z = anis.axis3
-    heff = output == nothing ? anis.field : output
+    heff = output === nothing ? anis.field : output
     cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc,
                                                 T(a1x), T(a1y), T(a1z), T(a2x), T(a2y),
                                                 T(a2z), T(a3x), T(a3y), T(a3z), sim.mu0_Ms,
@@ -203,16 +203,16 @@ function effective_field(stochastic::StochasticField, sim::MicroSim,
     return nothing
 end
 
-function effective_field(torque::SHETorqueField, sim::MicroSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(torque::SHETorqueField, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
-    mesh = sim.mesh
     gamma = sim.driver.gamma
     
     back = default_backend[]
     c1x, c1y, c1z = torque.c1[1], torque.c1[2], torque.c1[3]
     c2x, c2y, c2z = torque.c2[1], torque.c2[2], torque.c2[3]
     c3x, c3y, c3z = torque.c3[1], torque.c3[2], torque.c3[3]
-    she_torque_kernel!(back, groupsize[])(spin, torque.field, sim.mu0_Ms, gamma, torque.beta, 
+    ms = isa(sim, MicroSim) ? sim.mu0_Ms : sim.mu_s
+    she_torque_kernel!(back, groupsize[])(spin, torque.field, ms, gamma, torque.beta, 
                       T(c1x), T(c1y), T(c1z), T(c2x), T(c2y), T(c2z), T(c3x), T(c3y), T(c3z); ndrange=N)
 
     return nothing

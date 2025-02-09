@@ -84,8 +84,8 @@ neighbours are given as follows:
 | 4          | left           | 4           | bottom-left |
 | 5          | bottom-left    | 5           | bottom      |
 | 6          | bottom-right   | 6           | bottom-right|
-| 7          | above          | 5           | bottom      |
-| 8          | below          | 6           | bottom-right|
+| 7          | above          |            |       |
+| 8          | below          |            |       |
 
 """
 function TriangularMesh(; dx=1e-9, dz=1e-9, nx=1, ny=1, pbc="open")
