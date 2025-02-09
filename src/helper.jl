@@ -290,6 +290,38 @@ function compute_skyrmion_number(v::Array{T,1}, m::Array{T,1},
     return nothing
 end
 
+function compute_skyrmion_number(v::Array{T,1}, m::Array{T,1}, mesh::Mesh, shape::Union{CSGNode, Shape}) where {T<:AbstractFloat}
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    for k in 1:nz, j in 1:ny, i in 1:nx
+        id = index(i, j, k, nx, ny, nz)
+        mx, my, mz = m[3 * id - 2], m[3 * id - 1], m[3 * id]
+        sx1, sy1, sz1 = T(0), T(0), T(0)
+        sx2, sy2, sz2 = T(0), T(0), T(0)
+        id1 = 3 * _x_minus_one(i, id, nx, ny, nz, mesh.xperiodic)
+        id2 = 3 * _y_minus_one(j, id, nx, ny, nz, mesh.yperiodic)
+        v[id] = 0
+        x = (i - 0.5 - nx / 2) * dx
+        y = (j - 0.5 - ny / 2) * dy
+        z = (k - 0.5 - nz / 2) * dz
+        if id1 > 0 && id2 > 0 && point_inside_shape((x, y, z), shape)
+            sx1, sy1, sz1 = m[id1 - 2], m[id1 - 1], m[id1]
+            sx2, sy2, sz2 = m[id2 - 2], m[id2 - 1], m[id2]
+            v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+        end
+
+        id1 = 3 * _x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
+        id2 = 3 * _y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
+        if id1 > 0 && id2 > 0 && point_inside_shape((x, y, z), shape)
+            sx1, sy1, sz1 = m[id1 - 2], m[id1 - 1], m[id1]
+            sx2, sy2, sz2 = m[id2 - 2], m[id2 - 1], m[id2]
+            v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
+        end
+        v[id] /= (4 * pi)
+    end
+    return nothing
+end
+
 #shape factor is defined as (1/4*pi) \int \partial_i m * \partial_j m dx dy
 function compute_shape_factor(m::Array{T,1}, mesh::Mesh; r=0) where {T<:AbstractFloat}
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
@@ -496,6 +528,13 @@ function compute_skyrmion_number(m::Array{T,1}, mesh::Mesh) where {T<:AbstractFl
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     v = zeros(T, nx * ny * nz)
     compute_skyrmion_number(v, m, mesh)
+    return sum(v)
+end
+
+function compute_skyrmion_number(m::Array{T,1}, mesh::Mesh, shape::Union{CSGNode, Shape}) where {T<:AbstractFloat}
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    v = zeros(T, nx * ny * nz)
+    compute_skyrmion_number(v, m, mesh, shape)
     return sum(v)
 end
 
