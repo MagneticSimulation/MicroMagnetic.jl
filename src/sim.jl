@@ -275,6 +275,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         @warn "The parameter 'maxsteps' is deprecated. Please use 'max_steps' in relax function."
         max_steps = maxsteps
     end
+
     # to dertermine which driver is used.
     llg_driver = isa(sim.driver, LLG)
 
@@ -290,7 +291,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             file["mesh/dz"] = sim.mesh.dz
 
             file["steps"] = max_steps
-            return file["save_m_every"] = save_m_every
+            file["save_m_every"] = save_m_every
         end
     end
 
@@ -332,7 +333,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
                 m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
                 index = @sprintf("%d", i)
-                return m_group[index] = Array(sim.spin)
+                m_group[index] = Array(sim.spin)
             end
         end
 
@@ -348,7 +349,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
                 jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
                     m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
                     index = @sprintf("%d", i)
-                    return m_group[index] = Array(sim.spin)
+                    m_group[index] = Array(sim.spin)
                 end
             end
 
@@ -660,17 +661,9 @@ In this example:
 
 This setup will save the computed guiding center to the simulation output, in addition to the default data like energies and average magnetization.
 """
+## FIXME: remove saver_item
 function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1,
                  saver_item=nothing, call_back=nothing)
-    if isa(saver_item, SaverItem)
-        push!(sim.saver.items, saver_item)
-    end
-
-    if isa(saver_item, AbstractArray)
-        for item in saver_item
-            push!(sim.saver.items, item)
-        end
-    end
 
     if save_m_every > 0
         jldopen(@sprintf("%s.jld2", sim.name), "w") do file
@@ -699,7 +692,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
             jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
                 m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
                 index = @sprintf("%d", i)
-                return m_group[index] = Array(sim.spin)
+                m_group[index] = Array(sim.spin)
             end
         end
     end
@@ -749,6 +742,7 @@ end
 - `relax_m_interval::Int`: Interval for saving magnetization data during a `Relax` task. A negative value disables magnetization saving.
 - `dynamic_m_interval::Int`: Interval for saving magnetization data during a `Dynamics` task. A negative value disables magnetization saving.
 - `using_time_factor::Bool`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
+- `save_vtk::Bool`: Boolean flag to save the magnetization to vtk files after finishing each task. Default is `false`.
 
 #### Example
 
@@ -782,6 +776,8 @@ function sim_with(args::Union{NamedTuple, Dict})
     dynamic_m_interval = get(args, :dynamic_m_interval, -1)
     call_back = get(args, :call_back, nothing)
     saver_item = get(args, :saver_item, nothing)
+    vtk_saving = get(args, :save_vtk, false)
+    name = haskey(args, :name) ? args[:name] : "unnamed"
 
     if !haskey(args, :mesh)
         error("A mesh must be provided to start the simulation.")
@@ -797,6 +793,16 @@ function sim_with(args::Union{NamedTuple, Dict})
         sim = create_sim(mesh, args)
 
         haskey(args, :task) && delete!(args, :task)
+
+        if isa(saver_item, SaverItem)
+            push!(sim.saver.items, saver_item)
+        end
+    
+        if isa(saver_item, AbstractArray)
+            for item in saver_item
+                push!(sim.saver.items, item)
+            end
+        end
 
         if startswith(lowercase(task), "rel") # task == relax 
             for key in [:stopping_dmdt, :max_steps, :relax_data_interval, :relax_m_interval,
@@ -815,17 +821,22 @@ function sim_with(args::Union{NamedTuple, Dict})
             end
 
             for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back,
-                        saver_item]
+                        :saver_item, :save_vtk]
                 haskey(args, key) && delete!(args, key)
             end
 
             run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
-                    save_m_every=dynamic_m_interval, call_back=call_back,
-                    saver_item=saver_item)
+                    save_m_every=dynamic_m_interval, call_back=call_back)
         end
 
         for key in args
             @warn @sprintf("Key '%s' is not used.", key)
+        end
+
+        if vtk_saving
+            !isdir("vtks") && mkdir("vtks")
+            vtkname = @sprintf("vtks/%s.vts", name)
+            save_vtk(sim, vtkname)
         end
 
         return sim
@@ -841,6 +852,16 @@ function sim_with(args::Union{NamedTuple, Dict})
 
     sim = create_sim(mesh, args)
     haskey(args, :task) && delete!(args, :task)
+
+    if isa(saver_item, SaverItem)
+        push!(sim.saver.items, saver_item)
+    end
+
+    if isa(saver_item, AbstractArray)
+        for item in saver_item
+            push!(sim.saver.items, item)
+        end
+    end
 
     for n in 1:N
         task_ = haskey(dict, :task) ? dict[:task][n] : task
@@ -879,16 +900,21 @@ function sim_with(args::Union{NamedTuple, Dict})
             set_driver_arguments(sim, args)
 
             for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back,
-                        :saver_item]
+                        :saver_item, :save_vtk]
                 haskey(args, key) && delete!(args, key)
             end
 
             run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
-                    save_m_every=dynamic_m_interval, call_back=call_back,
-                    saver_item=saver_item)
+                    save_m_every=dynamic_m_interval, call_back=call_back)
 
         else
             error("Only support two types of task: 'Relax' and 'Dynamics'.")
+        end
+
+        if vtk_saving
+            !isdir("vtks") && mkdir("vtks")
+            vtkname = @sprintf("vtks/%s_%d.vts", name, n)
+            save_vtk(sim, vtkname)
         end
     end
 
