@@ -1,0 +1,3 @@
+#               step             E_total                 m_x                 m_y                 m_z              E_exch               E_dmi           zeeman_Hx           zeeman_Hy           zeeman_Hz            E_zeeman 
+#         <unitless>                 <J>          <unitless>          <unitless>          <unitless>                 <J>                   J               <A/m>               <A/m>               <A/m>                 <J> 
+                39 -3.796196569722e-18 -1.614125711609e-05 +4.696365031747e-19 +9.623101597808e-01 -3.441396608930e-18 -2.264645997817e-20                  0                  0 +7.435032720498e+00 -3.321535008141e-19 
