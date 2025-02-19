@@ -203,17 +203,15 @@ function effective_field(stochastic::StochasticField, sim::MicroSim,
     return nothing
 end
 
-function effective_field(torque::SHETorqueField, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(torque::SAHETorqueField, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     gamma = sim.driver.gamma
     
     back = default_backend[]
-    c1x, c1y, c1z = torque.c1[1], torque.c1[2], torque.c1[3]
     c2x, c2y, c2z = torque.c2[1], torque.c2[2], torque.c2[3]
-    c3x, c3y, c3z = torque.c3[1], torque.c3[2], torque.c3[3]
     ms = isa(sim, MicroSim) ? sim.mu0_Ms : sim.mu_s
-    she_torque_kernel!(back, groupsize[])(spin, torque.field, ms, gamma, torque.beta, 
-                      T(c1x), T(c1y), T(c1z), T(c2x), T(c2y), T(c2z), T(c3x), T(c3y), T(c3z); ndrange=N)
+    sahe_torque_kernel!(back, groupsize[])(spin, torque.field, ms, gamma, torque.beta, 
+                      torque.c1, T(c2x), T(c2y), T(c2z), torque.c3; ndrange=N)
 
     return nothing
 end

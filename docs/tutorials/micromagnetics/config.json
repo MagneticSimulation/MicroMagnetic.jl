@@ -8,7 +8,7 @@
     "std5.jl",
     "skyrmion_stt.jl",
     "stoner_wohlfarth.jl",
-    "chi.jl",
+    "chi.jl"
   ]
 }
   

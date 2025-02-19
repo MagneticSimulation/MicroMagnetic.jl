@@ -253,10 +253,10 @@ mutable struct CPPTorqueField{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
-mutable struct SHETorqueField{T<:AbstractFloat} <: MicroEnergy
-    c1::Tuple{Real,Real,Real} # = sigma_s x a2
+mutable struct SAHETorqueField{T<:AbstractFloat} <: MicroEnergy
+    c1::AbstractArray{T,1} # = sigma_s x a2
     c2::Tuple{Real,Real,Real} # = a2 x a1
-    c3::Tuple{Real,Real,Real} # = sigma_sa x a2
+    c3::AbstractArray{T,1} # = sigma_sa x a2
     beta::T
     field::AbstractArray{T,1}
     name::String

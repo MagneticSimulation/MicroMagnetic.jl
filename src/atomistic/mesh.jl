@@ -71,7 +71,7 @@ end
 
 
 @doc raw"""
-    TriangularMesh(; dx=1e-9, nx=1, ny=1, nz=1, pbc="open")
+    TriangularMesh(;dx=1e-9, dz=1e-9, nx=1, ny=1, nz = 1, pbc="open")
 
 Create a triangular mesh. The index of the nearest neighbours and the next-nearest 
 neighbours are given as follows:
@@ -88,9 +88,7 @@ neighbours are given as follows:
 | 8          | below          |            |       |
 
 """
-function TriangularMesh(; dx=1e-9, dz=1e-9, nx=1, ny=1, pbc="open")
-    nz = 1
-    dz = 1e-9
+function TriangularMesh(; dx=1e-9, dz=1e-9, nx=1, ny=1, nz = 1, pbc="open")
     n_total = nx * ny * nz
     ngbs = zeros(Int32, 8, n_total)
     nngbs = zeros(Int32, 6, n_total) #FIXME: 

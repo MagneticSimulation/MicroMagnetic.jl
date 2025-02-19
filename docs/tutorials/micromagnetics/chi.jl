@@ -110,7 +110,7 @@ end
 function plot_chi()
 
     freq, rx, ix = compute_chi()
-    data = readdlm("./assets/chi.txt")
+    data = readdlm("assets/chi.txt")
 
     freq = data[:, 1]
     ix = data[:, 3]
@@ -121,19 +121,19 @@ function plot_chi()
     scatterlines!(ax, freq, ix; markersize=6)
     xlims!(ax, 0, 15)
     ylims!(ax, -10, 200)
-    save("./assets/chi.png", fig) #src
+    save("assets/chi.png", fig) #src
     return fig
 end
 
-if !isfile("./assets/chi.txt")
+if !isfile("assets/chi.txt")
 
-    #run_dynamics(sim)
+    run_dynamics(sim)
 
     freq, rx, ix = compute_chi()
 
     s = div(length(freq), 2)
     data = [freq[s:end] rx[s:end] ix[s:end]]
-    writedlm("./assets/chi.txt", data)
+    writedlm("assets/chi.txt", data)
 end
 
 plot_chi()

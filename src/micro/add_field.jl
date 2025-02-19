@@ -1,5 +1,5 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
-       add_exch, add_dmi, add_she_torque,
+       add_exch, add_dmi, add_sahe_torque,
        add_demag, add_dmi_int, add_exch_int, add_thermal_noise
 
 """
@@ -640,9 +640,9 @@ function add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1, name=
 end
 
 @doc raw"""
-    add_she_torque(sim::AbstractSim, sigma_s::Tuple{Real,Real,Real}, sigma_sa::Tuple{Real,Real,Real}; a1=(1,0,0), a2=(0,1,0), beta=0, name="she")
+    add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction, sigma_sa::TupleOrArrayOrFunction; a1=(1,0,0), a2=(0,1,0), beta=0, name="she")
 
-Add an effective field to represent the SHE torque given by 
+Add an effective field to represent the torque due to spin anomalous Hall effect, which is given by 
 
 ```math
 \frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t} 
@@ -660,19 +660,41 @@ where
 
 ### Example
 ```julia
-    add_she_torque(sim, (0.1, 0.2, 0.3), (0.3, 0.4, 0.5), beta=0.1)
+    add_sahe_torque(sim, (0.1, 0.2, 0.3), (0.3, 0.4, 0.5), beta=0.1)
 ```
 
 """
-function add_she_torque(sim::AbstractSim, sigma_s::Tuple{Real,Real,Real}, sigma_sa::Tuple{Real,Real,Real}; a1=(1,0,0), a2=(0,1,0), beta=0, name="she")
+function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction, sigma_sa::TupleOrArrayOrFunction; a1=(1,0,0), a2=(0,1,0), beta=0, name="she")
     n_total = sim.n_total
-    field = create_zeros(3 * n_total)
+    mesh = sim.mesh
 
-    c1 = cross_product(sigma_s, a2)
-    c2 = cross_product(a2, a1)
-    c3 = cross_product(sigma_sa, a2)
     T = Float[]
-    torque = SHETorqueField(c1, c2, c3, T(beta), field, name)
+    field = create_zeros(T, 3 * n_total)
+    sigma_s3 = zeros(T, 3 * n_total)
+    sigma_sa3 = zeros(T, 3 * n_total)
+
+    init_vector!(sigma_s3, sim.mesh, sigma_s)
+    init_vector!(sigma_sa3, sim.mesh, sigma_sa)
+
+    for i in 1:mesh.n_total
+        j = 3*(i-1) + 1
+        a = sigma_s3[j]
+        b = sigma_s3[j+1]
+        c = sigma_s3[j+2]
+        sigma_s3[j] = cross_x(a, b, c, a2[1], a2[2], a2[3])
+        sigma_s3[j+1] = cross_y(a, b, c, a2[1], a2[2], a2[3])
+        sigma_s3[j+2] = cross_z(a, b, c, a2[1], a2[2], a2[3])
+
+        a = sigma_sa3[j]
+        b = sigma_sa3[j+1]
+        c = sigma_sa3[j+2]
+        sigma_sa3[j] = cross_x(a, b, c, a2[1], a2[2], a2[3])
+        sigma_sa3[j+1] = cross_y(a, b, c, a2[1], a2[2], a2[3])
+        sigma_sa3[j+2] = cross_z(a, b, c, a2[1], a2[2], a2[3])
+    end
+
+    c2 = cross_product(a2, a1)
+    torque = SAHETorqueField(kernel_array(sigma_s3), c2, kernel_array(sigma_sa3), T(beta), field, name)
 
     push!(sim.interactions, torque)
 
