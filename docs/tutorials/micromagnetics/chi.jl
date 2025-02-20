@@ -47,7 +47,7 @@ mesh = FDMesh(; nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9);
 # ## Step 1: Relaxing the System
 # The first step in our simulation is to relax the system to obtain a stable magnetization configuration, often referred to as an "S" state. We encapsulate this process in the `relax_system` function.
 function relax_system(mesh)
-   sim = Sim(mesh; driver="SD", name="std4")
+   sim = Sim(mesh; driver="SD", name="std4_bar")
 
    Ms = 8e5
    A = 1.3e-11
@@ -82,7 +82,7 @@ function run_dynamics(sim)
 end
 
 function compute_chi(Ms=8e5)
-    data, units = read_table("std4_llg.txt")
+    data, units = read_table("std4_bar_llg.txt")
 
     time = data["time"]
     dt = time[2] - time[1]
@@ -108,8 +108,7 @@ function compute_chi(Ms=8e5)
 end
 
 function plot_chi()
-
-    freq, rx, ix = compute_chi()
+    
     data = readdlm("assets/chi.txt")
 
     freq = data[:, 1]
