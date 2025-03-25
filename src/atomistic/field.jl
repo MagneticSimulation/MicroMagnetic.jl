@@ -12,6 +12,9 @@ function effective_field(zee::TimeZeeman, sim::AtomisticSim, spin::AbstractArray
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     tx, ty, tz = zee.time_fun(t)
+    zee.time_fx = tx
+    zee.time_fy = ty
+    zee.time_fz = tz
     kernal = time_zeeman_kernel!(default_backend[], groupsize[])
     kernal(spin, zee.field, zee.init_field, zee.energy, sim.mu_s, T(1), T(tx), T(ty), T(tz);
            ndrange=N)

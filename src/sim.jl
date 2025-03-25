@@ -661,9 +661,18 @@ In this example:
 
 This setup will save the computed guiding center to the simulation output, in addition to the default data like energies and average magnetization.
 """
-## FIXME: remove saver_item
 function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1,
                  saver_item=nothing, call_back=nothing)
+
+    if isa(saver_item, SaverItem)
+        push!(sim.saver.items, saver_item)
+    end
+            
+    if isa(saver_item, AbstractArray)
+        for item in saver_item
+            push!(sim.saver.items, item)
+        end
+    end
 
     if save_m_every > 0
         jldopen(@sprintf("%s.jld2", sim.name), "w") do file

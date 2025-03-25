@@ -113,10 +113,11 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
     push!(sim.interactions, zee)
 
     if sim.save_data
+        unit = isa(sim, MicroSim) ? "<A/m>" : "<Tesla>"
         id = length(sim.interactions)
-        if isa(H0, Tuple) && length(H0) == 3  # FIXME: the output should depends on time!!!
+        if isa(H0, Tuple) && length(H0) == 3
             field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
-                                    string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
+                                    string(name, "_Hz")), (unit, unit, unit),
                                    o::AbstractSim -> (H0[1]*zee.time_fx, H0[2]*zee.time_fy, H0[3]*zee.time_fz))
             push!(sim.saver.items, field_item)
         end

@@ -5,10 +5,14 @@ export build_matrix
 function build_matrix(sim; gamma=2.21e5, sparse=false, alpha=0.01)
     @info("Building matrix ...")
     spin = zeros(AbstractFloat, 3 * sim.n_total)
-    m0 = Array(sim.spin)
+    m0 = Array(sim.spin) 
+    Ms = isa(sim, MicroSim) ? Array(sim.mu0_Ms) : sim.mu_s
 
     # add perturbation to static magnetization m0
     for i in 1:(sim.n_total)
+        if Ms[i] == 0
+            continue
+        end
         x = 3 * (i - 1) + 1
         R = rotation_matrix(m0[x], m0[x + 1], m0[x + 2])
         v = ones(AbstractFloat, 3)
