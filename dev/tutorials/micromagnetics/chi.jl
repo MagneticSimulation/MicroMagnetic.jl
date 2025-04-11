@@ -47,7 +47,7 @@ function compute_chi(Ms=8e5)
     N = length(time)
     println(dt)
 
-    freq = fftshift(fftfreq(N, dt)) / dt^2
+    freq = fftshift(fftfreq(N, 1/dt))
 
     M = data["m_y"]
     H = data["zee_Hy"]
