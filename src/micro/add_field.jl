@@ -324,7 +324,7 @@ function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true)
 end
 
 """
-    add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
+    add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis::TupleOrArrayOrFunction, name="anis")
 
 Add Anisotropy to the system, where the energy density is given by
 
@@ -332,22 +332,30 @@ Add Anisotropy to the system, where the energy density is given by
     E_\\mathrm{anis} =  K_{u} (1 - \\vec{m} \\cdot \\hat{u})^2
 ```
 """
-function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
+function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis::TupleOrArrayOrFunction=(0,0,1),
                   name="anis")
     n_total = sim.n_total
     T = Float[]
     Kus = zeros(T, n_total)
     init_scalar!(Kus, sim.mesh, Ku)
 
-    Kus_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
-    field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
-    energy = KernelAbstractions.zeros(default_backend[], T, n_total)
+    Kus_kb = kernel_array(Kus)
+    field = create_zeros(3 * n_total)
+    energy = create_zeros(n_total)
 
-    lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
-    naxis = (T(axis[1] / lt), T(axis[2] / lt), T(axis[3] / lt))
+    if isa(axis, Tuple)
+        lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
+        naxis = (T(axis[1] / lt), T(axis[2] / lt), T(axis[3] / lt))
+        anis = Anisotropy(Kus_kb, naxis, field, energy, name)
+    else
+        axes = zeros(T, 3 * n_total)
+        init_vector!(axes, sim.mesh, axis)
+        normalise(axes, n_total)
 
-    copyto!(Kus_kb, Kus)
-    anis = Anisotropy(Kus_kb, naxis, field, energy, name)
+        axes_kb = kernel_array(axes)
+        anis = SpatialAnisotropy(Kus_kb, axes_kb, field, energy, name)
+    end
+
     push!(sim.interactions, anis)
 
     if sim.save_data
@@ -360,6 +368,7 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
     @info "Uniaxial Anisotropy has been added."
     return anis
 end
+
 
 """
     add_anis(sim::AbstractSim, geo::Shape, Ku::Number; axis=(0,0,1), name="anis")

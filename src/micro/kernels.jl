@@ -66,9 +66,9 @@ The kernel spatial_anisotropy_kernel! works for both the micromagnetic and atomi
 
     @inbounds Ms_local = mu0_Ms[id]
 
-    @inbounds ax = axes[1, I]
-    @inbounds ay = axes[2, I]
-    @inbounds az = axes[3, I]
+    @inbounds ax = axes[j+1]
+    @inbounds ay = axes[j+2]
+    @inbounds az = axes[j+3]
 
     if Ms_local == 0.0
         @inbounds energy[id] = 0
@@ -77,7 +77,7 @@ The kernel spatial_anisotropy_kernel! works for both the micromagnetic and atomi
         @inbounds h[j + 3] = 0
     else
         Ms_inv::T = 2.0 / Ms_local
-        @inbounds sa = m[j + 1] * axis_x + m[j + 2] * axis_y + m[j + 3] * axis_z
+        @inbounds sa = m[j + 1] * ax + m[j + 2] * ay + m[j + 3] * az
         @inbounds h[j + 1] = Ku[id] * sa * ax * Ms_inv
         @inbounds h[j + 2] = Ku[id] * sa * ay * Ms_inv
         @inbounds h[j + 3] = Ku[id] * sa * az * Ms_inv

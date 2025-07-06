@@ -152,6 +152,14 @@ mutable struct Anisotropy{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
+mutable struct SpatialAnisotropy{T<:AbstractFloat} <: MicroEnergy
+    Ku::AbstractArray{T,1}
+    axes::AbstractArray{T, 1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    name::String
+end
+
 mutable struct CubicAnisotropy{T<:AbstractFloat} <: MicroEnergy
     Kc::AbstractArray{T,1}
     axis1::Tuple

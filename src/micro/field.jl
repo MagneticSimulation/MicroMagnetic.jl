@@ -37,6 +37,17 @@ function effective_field(anis::Anisotropy, sim::MicroSim, spin::AbstractArray{T,
     return nothing
 end
 
+function effective_field(anis::SpatialAnisotropy, sim::MicroSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    volume = T(sim.mesh.volume)
+
+    back = default_backend[]
+    spatial_anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku, anis.axes, sim.mu0_Ms, volume; ndrange=N)
+
+    return nothing
+end
+
 function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64; output=nothing) where {T<:AbstractFloat}
     N = sim.n_total
