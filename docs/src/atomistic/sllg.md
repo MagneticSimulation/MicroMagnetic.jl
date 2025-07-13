@@ -1,21 +1,20 @@
-# ---
-# title: Stochastic LLG
-# author: Weiwei Wang
-# date: 2024-11-19
-# description: an example to demostrate how to use thermal noises in MicroMagnetic.
-# tag: atomistic; sllg; thermal noise;
-# ---
+# Stochastic LLG
 
-# In this example, we will verify the thermal noise in SLLG, see [Fig.6 script](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/figure_scripts/fig6/sllg.jl).
-# We will then compare the distribution of magnetization with the analytical solution. 
+In this example, we will verify the thermal noise in SLLG, see [Fig.6 script](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/figure_scripts/fig6/sllg.jl).
+We will then compare the distribution of magnetization with the analytical solution.
 
-# We import necessary packages.
+We import necessary packages.
+
+```julia
 using MicroMagnetic
 using CairoMakie
 
 @using_gpu()
+```
 
-# We define a function to describe the simulation setup.
+We define a function to describe the simulation setup.
+
+```julia
 function run(; dt=1e-15)
     mesh = CubicMesh(; nx=30, ny=30, nz=30)
 
@@ -25,7 +24,7 @@ function run(; dt=1e-15)
     sim.driver.gamma = 1.76e11
     sim.driver.integrator.step = dt
 
-    #In principle, this value does not influence the result, however, 
+    #In principle, this value does not influence the result, however,
     #a large value will require a longer time to reach the equilibrium.
     set_mu_s(sim, 1.42e5 * V)
 
@@ -40,9 +39,12 @@ function run(; dt=1e-15)
     save_vtk(sim, "sllg.vts")
     return sim
 end
+```
 
-# We define the analytical solution for the magnetization distribution.
-#using SpecialFunctions
+We define the analytical solution for the magnetization distribution.
+
+```julia
+using SpecialFunctions
 function analytical()
     K = 7.2e5
     V = 2.8e-26
@@ -54,12 +56,14 @@ function analytical()
     ps = 1.0 / Z * exp.(-chi * (1 .- mzs .^ 2))
     return mzs, ps
 end
+```
 
-# To run the simulation and plot the distribution of magnetization, we define the following function.
-# Note: the package `StatsBase`, `SpecialFunctions` and `LinearAlgebra` are required for this function.
+To run the simulation and plot the distribution of magnetization, we define the following function.
+Note: the package `StatsBase`, `SpecialFunctions` and `LinearAlgebra` are required for this function.
 
-#using StatsBase
-#using LinearAlgebra
+```julia
+using StatsBase
+using LinearAlgebra
 function run_and_plot()
     if !isfile("sllg.vts")
         run()
@@ -85,10 +89,13 @@ function run_and_plot()
     save("P_mz.png", fig)
     return fig
 end
+```
 
-# Run the simulation and plot the distribution of magnetization
+Run the simulation and plot the distribution of magnetization
 
+```julia
 run_and_plot()
+```
 
-# The plot should look like this:
-# ![](assets/P_mz.png)
+The plot should look like this:
+![](../public/P_mz.png)

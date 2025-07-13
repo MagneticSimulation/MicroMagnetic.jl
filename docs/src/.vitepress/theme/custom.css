@@ -1,0 +1,11 @@
+.VPHero .name {
+  line-height: 1.4 !important;
+  margin-bottom: 1rem;
+  padding-bottom: 0.2em; 
+  display: inline-block;
+}
+
+.VPHero .tagline {
+  opacity: 0.9;
+}
+

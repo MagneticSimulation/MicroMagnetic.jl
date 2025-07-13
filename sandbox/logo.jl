@@ -43,4 +43,4 @@ function draw_micromagnetic_logo(output_path="logo.svg")
     println("Logo saved to: ", output_path)
 end
 
-draw_micromagnetic_logo()
+draw_micromagnetic_logo("logo.svg")

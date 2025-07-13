@@ -431,7 +431,7 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name="anis")  #
 end
 
 @doc raw"""
-    add_cubic_anis(sim::AbstractSim, Kc::Float64; axis1=(1,0,0), axis2=(0,1,0), name="cubic")
+    add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,0,0), axis2=(0,1,0), name="cubic")
 
 add a cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1). The third axis is defined as axis3 = axis1 x axis2.
 

@@ -1,71 +1,76 @@
-# MicroMagnetic.jl
+```@raw html
+---
+# https://vitepress.dev/reference/default-theme-home-page
+layout: home
 
-_A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
+hero:
+  name: "MicroMagnetic.jl"
+  tagline: A Julia package for classical spin dynamics and micromagnetic simulations with GPU support.
+  image: 
+    src: /logo.svg
+    alt: MicroMagnetic
+  actions:
+    - theme: brand
+      text: Get Started
+      link: /basics
+    - theme: alt
+      text: API
+      link: /api
+    - theme: alt
+      text: View on Github
+      link: https://github.com/MagneticSimulation/MicroMagnetic.jl
 
 
-### Features
+features:
+  - icon: <img src="/skyrmion_phase_diagram.png" />
+    title: Skyrmion phases
+    details: Compute skyrmion phases using stochastic LLG
+    link: /atomistic/phase_diagram
+  - icon: <img src="/P_mz.png" />
+    title: Distribution of magnetization
+    details: Compute the distribution of magnetization using stochastic LLG
+    link: /atomistic/sllg
+  - icon: <img src="/final_m.png" />
+    title: Skyrmion phases
+    details: Compute skyrmion phases using monte carlo
+    link: /monte_carlo/skyrmion
 
-- Supports classical spin dynamics and micromagnetic simulations.
-- Compatible with CPU and multiple GPU platforms, including NVIDIA, AMD, Intel, and Apple GPUs.
-- Supports both double and single precision.
-- Supports Monte Carlo simulations for atomistic models.
-- Implements the Nudged-Elastic-Band method for energy barrier computations.
-- Supports Spin-transfer torques, including Zhang-Li and Slonczewski models.
-- Incorporates various energy terms and thermal fluctuations.
-- Supports constructive solid geometry.
-- Supports periodic boundary conditions.
-- Easily extensible to add new features.
-
-## Installation
-
-Install MicroMagnetic is straightforward as long as Julia (<http://julialang.org/downloads/>) is installed, and it is equally easy in Windows, Linux and Mac.  
-
-In [Julia](http://julialang.org), packages can be easily installed with the Julia package manager.
-From the Julia REPL, type ] to enter the Pkg REPL mode and run:
-
-```julia
-pkg> add MicroMagnetic
-```
-
-Or, equivalently:
-
-```julia
-julia> using Pkg;
-julia> Pkg.add("MicroMagnetic")
-```
-
-To install the latest development version:
-```julia
-pkg> add MicroMagnetic#master
-```
-
-To enable GPU support, one has to install one of the following packages:
-
-!!! note "GPU Support"
-    | GPU Manufacturer      | Julia Package                                      |
-    | :------------------:  | :-----------------------------------------------:  |
-    | NVIDIA                | [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)     |
-    | AMD                   | [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl) |
-    | Intel                 | [oneAPI.jl](https://github.com/JuliaGPU/oneAPI.jl) |
-    | Apple                 | [Metal.jl](https://github.com/JuliaGPU/Metal.jl)   |
-
-For example, we can install `CUDA` for NVIDIA GPUs:
-
-```julia
-pkg> add CUDA
-```
-
-Now we will see similar messages if we type `using MicroMagnetic`
+  - icon: <img src="/std4.png" />
+    title: Standard Problem 4
+    details: Simulate the standard problem 4 using sim_with
+    link: /micromagnetics/std4_sim_with
+  - icon: <img src="/sw.png" />
+    title: Stoner–Wohlfarth model
+    details: Compute Stoner–Wohlfarth loop using a particle
+    link: /micromagnetics/stoner_wohlfarth
+  - icon: <img src="/skx_lattice.png" />
+    title: Skyrmion lattice
+    details: Relax the system to obtain the skyrmion lattices.
+    link: /atomistic/skyrmion_lattice
+---
 
 ```
-julia> using MicroMagnetic
-julia> using CUDA
-Precompiling CUDAExt
-  1 dependency successfully precompiled in 8 seconds. 383 already precompiled.
-[ Info: Switch the backend to CUDA.CUDAKernels.CUDABackend(false, false)
-```
 
-# Quick start
+````@raw html
+<p style="margin-bottom:2cm"></p>
+
+<div class="vp-doc" style="width:80%; margin:auto">
+
+<h1> Features </h1>
+<ul>
+  <li>Supports classical spin dynamics and micromagnetic simulations.</li>
+  <li>Compatible with CPU and multiple GPU platforms, including NVIDIA, AMD, Intel, and Apple GPUs.</li>
+  <li>Supports both double and single precision.</li>
+  <li>Supports Monte Carlo simulations for atomistic models.</li>
+  <li>Implements the Nudged-Elastic-Band method for energy barrier computations.</li>
+  <li>Supports Spin-transfer torques, including Zhang-Li and Slonczewski models.</li>
+  <li>Incorporates various energy terms and thermal fluctuations.</li>
+  <li>Supports constructive solid geometry.</li>
+  <li>Supports periodic boundary conditions.</li>
+  <li>Easily extensible to add new features.</li>
+</ul>
+
+<h2> Quick start </h2>
 Assuming we have a cylindrical FeG sample with a diameter of 100 nm and a height of 40 nm, we want to know its magnetization distribution and the stray field around it. 
 We can use the following script: 
 
@@ -94,40 +99,10 @@ save_vtk(sim, "m_demag", fields=["demag"])
 ```
 The magnetization and the stray field around the cylindrical sample are stored in `m_demag.vts`, which can be opened using Paraview. 
 
-## Running MicroMagnetic.jl from Python
 
-Thanks to [PythonCall.jl](https://github.com/JuliaPy/PythonCall.jl), running MicroMagnetic.jl from Python is seamless.
+<h2> Structure of MicroMagnetic.jl </h2>
 
-Below is an example setup for **Standard Problem #4**:
-
-```python
-from juliacall import Main as jl
-jl.seval("using MicroMagnetic")
-
-# Define simulation parameters
-args = {
-    "name": "std4",
-    "task_s": ["relax", "dynamics"],                   # List of tasks to perform
-    "mesh": jl.FDMesh(nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9),  # Julia FDMesh object
-    "Ms": 8e5,                                         # Saturation magnetization (A/m)
-    "A": 1.3e-11,                                      # Exchange stiffness constant (J/m)
-    "demag": True,                                     # Enable demagnetization
-    "m0": (1, 0.25, 0.1),                              # Initial magnetization vector
-    "alpha": 0.02,                                     # Gilbert damping coefficient
-    "steps": 100,                                      # Number of dynamic simulation steps
-    "dt": 0.01 * jl.ns,                                # Time step size (0.01 ns)
-    "stopping_dmdt": 0.01,                             # Stopping criterion for relaxation
-    "dynamic_m_interval": 1,                           # Save magnetization at each step
-    "H_s": [(0, 0, 0), (-24.6 * jl.mT, 4.3 * jl.mT, 0)]  # Sequence of applied magnetic fields
-}
-
-# Run the simulation
-sim = jl.sim_with(**args)
-```
-
-# Structure of MicroMagnetic.jl
-```@raw html
-<div class="mermaid">
+```mermaid
 graph LR;
     MicroMagnetic.jl --> Micromagnetic
     MicroMagnetic.jl --> Atomistic
@@ -139,5 +114,7 @@ graph LR;
     Micromagnetic --> O[NEB, Eigenvale method]
     Atomistic --> O[NEB, Eigenvale method]
     Atomistic --> M[Monte Carlo]
-</div>
 ```
+
+</div>
+````

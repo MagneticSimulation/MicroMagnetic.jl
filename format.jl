@@ -5,6 +5,11 @@ function find_newest_modified_files(folder_path::String, n::Int)
     files_heap = []
 
     for (root, dirs, files) in walkdir(folder_path)
+        if occursin(r"node_modules($|[/\\])", root)
+            empty!(dirs)
+            continue
+        end
+
         for file in files
             file_path = joinpath(root, file)
             stats = stat(file_path)

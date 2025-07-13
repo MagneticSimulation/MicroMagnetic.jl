@@ -1,8 +1,8 @@
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-DemoCards = "311a05b2-6137-4a5a-b473-18580a3d38b5"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
 CubicSplines = "9c784101-8907-5a6d-9be6-98f00873c89b"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"

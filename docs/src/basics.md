@@ -11,8 +11,8 @@ mesh = FDMesh(;dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1)
 
 In fact, [`FDMesh`](@ref) is used in our micromagnetic simulations, while for atomic models, we can use [`CubicMesh`](@ref), [`TriangularMesh`](@ref), as well as [`CylindricalTubeMesh`](@ref), etc.
 
-```@raw html
-<div class="mermaid">
+
+```mermaid
 graph LR;
     Mesh --> FDMesh
     Mesh --> AtomisticMesh
@@ -20,21 +20,21 @@ graph LR;
     AtomisticMesh --> SquareMesh
     AtomisticMesh --> CubicMesh
     AtomisticMesh --> CylindricalTubeMesh
-</div>
+
 ```
 
 ## Sim
 In MicroMagnetic, we can create different Sim objects based on the computational system or problem type. MicroMagnetic defines four types of Sims:
 
-```@raw html
-<div class="mermaid">
+
+```mermaid
 graph LR
    AbstractSim --> MicroSim
    AbstractSim --> AtomisticSim
    AbstractSim --> NEB
    AbstractSim --> MonteCarlo
-</div>
 ```
+
 
 For [MicroSim](@ref MicroMagnetic.MicroSim) and [AtomisticSim](@ref MicroMagnetic.AtomisticSim), we recommend using the [`create_sim`](@ref) function to create them, as the [`create_sim`](@ref) function 
 can specify some parameters while creating Sim. Of course, these parameters can also be specified later. 
