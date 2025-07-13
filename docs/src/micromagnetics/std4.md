@@ -97,4 +97,4 @@ jld2movie("std4.jld2"; output="assets/std4.mp4", component='x');
 nothing #hide
 ```
 
-![](assets/std4.mp4)
+TODO: check if gif can be used.

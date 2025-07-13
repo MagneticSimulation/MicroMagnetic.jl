@@ -20,30 +20,30 @@ hero:
       text: View on Github
       link: https://github.com/MagneticSimulation/MicroMagnetic.jl
 
-
+<!-- FIXME: Need to update /MicroMagnetic.jl/dev/ to /MicroMagnetic.jl/v0.x.x when version upgrades -->
 features:
-  - icon: <img src="/skyrmion_phase_diagram.png" />
+  - icon: <img width="64" height="64" src="/MicroMagnetic.jl/dev/skyrmion_phase_diagram.png" />
     title: Skyrmion phases
     details: Compute skyrmion phases using stochastic LLG
     link: /atomistic/phase_diagram
-  - icon: <img src="/P_mz.png" />
+  - icon: <img width="64" height="64" src="/MicroMagnetic.jl/dev/P_mz.png" />
     title: Distribution of magnetization
     details: Compute the distribution of magnetization using stochastic LLG
     link: /atomistic/sllg
-  - icon: <img src="/final_m.png" />
+  - icon: <img width="64" height="64" src="/MicroMagnetic.jl/dev/final_m.png" />
     title: Skyrmion phases
     details: Compute skyrmion phases using monte carlo
     link: /monte_carlo/skyrmion
 
-  - icon: <img src="/std4.png" />
+  - icon: <img src="/MicroMagnetic.jl/dev/std4.png" />
     title: Standard Problem 4
     details: Simulate the standard problem 4 using sim_with
     link: /micromagnetics/std4_sim_with
-  - icon: <img src="/sw.png" />
+  - icon: <img src="/MicroMagnetic.jl/dev/sw.png" />
     title: Stoner–Wohlfarth model
     details: Compute Stoner–Wohlfarth loop using a particle
     link: /micromagnetics/stoner_wohlfarth
-  - icon: <img src="/skx_lattice.png" />
+  - icon: <img src="/MicroMagnetic.jl/dev/skx_lattice.png" />
     title: Skyrmion lattice
     details: Relax the system to obtain the skyrmion lattices.
     link: /atomistic/skyrmion_lattice

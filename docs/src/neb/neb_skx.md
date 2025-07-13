@@ -56,42 +56,38 @@ We need to define the initial and final state, which is stored in the init\_imag
 Note that any acceptable object, such as a function, a tuple, or an array, can be used.
 Moreover, the init\_images list could contain the intermediate state if you have one.
 
-````@example 
+```julia
 init_images = [read_vtk("skx.vts"), (0, 0, 1)];
-nothing #hide
-````
+```
 
 We need an interpolation array to specify how many images will be used in the NEB simulation.
 Note the length of the interpolation array is the length of init\_images minus one. For example,
 if init\_images = [read_vtk("skx.vts"), read_vtk("skx2.vts"), (0, 0, 1)], the length of interpolation should be 2,
 i.e., something like interpolation = [5,5].
 
-````@example 
+```julia 
 interpolation = [6];
-nothing #hide
-````
+```
 
 To use the NEB, we use the create_sim method to create a Sim instance.
 
-````@example 
+```julia 
 sim = create_sim(mesh; params...);
-nothing #hide
-````
+```
 
 We create the NEB instance and set the spring_constant, the driver could be "SD" or "LLG"
 
-````@example 
+```julia 
 neb = NEB(sim, init_images, interpolation; name="skx_fm", driver="SD");
-nothing #hide
 ````
 
 neb.spring_constant = 1e7
 
 Relax the whole system
 
-````@example 
+```julia
 relax(neb; stopping_dmdt=0.1, save_vtk_every=1000, max_steps=5000)
-````
+```
 
 After running the simulation, the energy text file ('skx_fm_energy.txt') and the corresponding
 distance text file ('skx_fm_distance.txt') are generated.
