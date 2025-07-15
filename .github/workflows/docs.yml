@@ -1,6 +1,6 @@
 # see https://documenter.juliadocs.org/stable/man/hosting/
 
-name: Documentation
+name: Docs and Sync
 
 on:
   push:
@@ -31,4 +31,26 @@ jobs:
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
         run: julia --project=docs/ docs/make.jl warnonly=true
           
+  sync:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch: [master, gh-pages] 
+    steps:
+      - name: Checkout ${{ matrix.branch }}
+        uses: actions/checkout@v4
+        with: 
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0
           
+      - name: Add remote and push ${{ matrix.branch }}
+        run: |
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/ww1g11/MicroMagnetic.jl.git
+          git push gitlab HEAD:${{ matrix.branch }} --force
+        env:
+          GIT_TERMINAL_PROMPT: 0
+          
+      - name: Verify ${{ matrix.branch }} push
+        run: |
+          echo "✅ ${{ matrix.branch }} synced: $(git rev-parse --short HEAD)"
