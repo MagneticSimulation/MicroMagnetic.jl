@@ -255,4 +255,29 @@ function MicroMagnetic.jld2movie(jld_file; framerate=12, output=nothing, figsize
     return record(update_function, fig, output, 0:save_m_every:steps; framerate=framerate)
 end
 
+
+function MicroMagnetic.plot_voronoi(mesh; min_dist=10, seed=123456, output="voronoi.png")
+    
+    grain_ids, gb_mask, points = voronoi(mesh; min_dist = min_dist, seed=seed)
+
+    nx, ny = mesh.nx, mesh.ny
+    dx, dy = mesh.dx*1e9, mesh.dy*1e9
+    Lx, Ly = nx*dx, ny*dy
+
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    heatmap!(ax, 0:Lx, 0:Ly, grain_ids)
+    
+    for i in 1:length(points)
+        p = points[i]
+        text!(ax,  @sprintf("%d", i), 
+            position = (round(Int, p[1]), round(Int, p[2])), 
+            align = (:center, :center),
+            fontsize = 14
+        )
+    end
+    
+    save(output, fig)
+end
+
 end

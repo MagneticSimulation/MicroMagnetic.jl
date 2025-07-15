@@ -58,6 +58,7 @@ add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk
 add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true)
 add_exch_int(sim::MicroSim, J::Float64; k1=1, k2=-1, name="exch_int")
 add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1, name="dmi_int")
+voronoi(mesh; min_dist = 20, seed=123456)
 ```
 
 ## Interfaces -- Atomistic 
