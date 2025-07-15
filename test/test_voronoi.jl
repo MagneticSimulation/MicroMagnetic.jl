@@ -23,7 +23,9 @@ end
 function test_plot_voronoi()
     mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=100, ny=100, nz=2)
 
-    plot_voronoi(mesh, min_dist=30, seed=10000)
+    grain_ids, gb_mask, points = voronoi(mesh, min_dist=30, seed=10000)
+
+    plot_voronoi(grain_ids, points, dx=2, dy=2)
 end
 
 

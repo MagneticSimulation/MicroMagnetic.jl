@@ -256,12 +256,9 @@ function MicroMagnetic.jld2movie(jld_file; framerate=12, output=nothing, figsize
 end
 
 
-function MicroMagnetic.plot_voronoi(mesh; min_dist=10, seed=123456, output="voronoi.png")
+function MicroMagnetic.plot_voronoi(grain_ids, points; dx=2, dy=2, output="voronoi.png")
     
-    grain_ids, gb_mask, points = voronoi(mesh; min_dist = min_dist, seed=seed)
-
-    nx, ny = mesh.nx, mesh.ny
-    dx, dy = mesh.dx*1e9, mesh.dy*1e9
+    nx, ny = size(grain_ids)
     Lx, Ly = nx*dx, ny*dy
 
     fig = Figure()
