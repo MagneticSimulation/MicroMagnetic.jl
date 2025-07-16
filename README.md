@@ -1,12 +1,15 @@
-# MicroMagnetic.jl 
+<table>
+  <tr>
+    <td><img src="docs/src/public/logo.svg" alt="Logo" width="64"/></td>
+    <td><h1>MicroMagnetic.jl</h1></td>
+  </tr>
+</table>
 
 ### **Previous name: JuMag.jl**
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._
 
-
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/magneticsimulation/MicroMagnetic.jl/gh-pages)
-[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl//dev/)
-[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl//stable/)
+[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl/dev/)
+[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl/stable/)
 [![Actions Status](https://github.com/magneticsimulation/MicroMagnetic.jl/workflows/CI/badge.svg)](https://github.com/magneticsimulation/MicroMagnetic.jl/actions)
 [![codecov](https://codecov.io/github/magneticsimulation/MicroMagnetic.jl/branch/master/graph/badge.svg?token=2t4oGYcWUu)](https://codecov.io/github/magneticsimulation/MicroMagnetic.jl)
 [![DOI](https://img.shields.io/badge/DOI-10.1088%2F1674--1056%2Fad766f-blue)](https://doi.org/10.1088/1674-1056/ad766f)
@@ -24,20 +27,14 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 - Supports periodic boundary conditions.
 - Easily extensible to add new features.
 
-## Run MicroMagnetic.jl in the cloud
+## Website
+Access our complete web resources including documentation, tutorials and examples:
 
-You don't have to install anything and you can run MicroMagnetic.jl in the cloud via Binder:
+[![Latest Version](https://img.shields.io/badge/website-latest-blue?style=flat-square&logo=github)](https://magneticsimulation.github.io/MicroMagnetic.jl/dev/)
+[![Stable Version](https://img.shields.io/badge/website-stable-blue?style=flat-square&logo=github)](https://magneticsimulation.github.io/MicroMagnetic.jl/stable/)  
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/magneticsimulation/MicroMagnetic.jl/gh-pages)
-
-All the julia scripts and Jupyter Notebooks (in tutorials folder) hosted in the repository can be executed and modified.
-
-## Documentation
-
-The documentation is available:
-
-[![Docs latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl//dev/)
-[![Docs stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://magneticsimulation.github.io/MicroMagnetic.jl//stable/)
+#### Mirror Site 
+[![GitLab Mirror](https://img.shields.io/badge/mirror-gitlab-blue?style=flat-square&logo=gitlab)](https://ww1g11.gitlab.io/MicroMagnetic.jl/)  
 
 ## Installation
 
