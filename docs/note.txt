@@ -1,0 +1,1 @@
+The docs can be found at https://ww1g11.github.io/JuMagDocs.jl/latest/

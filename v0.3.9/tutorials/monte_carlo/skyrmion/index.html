@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Skyrmion Phase using Monte Carlo · MicroMagnetic.jl</title><meta name="title" content="Skyrmion Phase using Monte Carlo · MicroMagnetic.jl"/><meta property="og:title" content="Skyrmion Phase using Monte Carlo · MicroMagnetic.jl"/><meta property="twitter:title" content="Skyrmion Phase using Monte Carlo · MicroMagnetic.jl"/><meta name="description" content="Documentation for MicroMagnetic.jl."/><meta property="og:description" content="Documentation for MicroMagnetic.jl."/><meta property="twitter:description" content="Documentation for MicroMagnetic.jl."/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><script src="../../../assets/init.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">MicroMagnetic.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><a class="tocitem" href="../../../basics/">Basics</a></li><li><a class="tocitem" href="../../../units/">Units</a></li><li><span class="tocitem">Tutorials</span><ul><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">Micromagnetics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../micromagnetics/nanobar/">Nanobar</a></li><li><a class="tocitem" href="../../micromagnetics/vortex/">Magnetic vortex</a></li><li><a class="tocitem" href="../../micromagnetics/std4_sim_with/">Standard Problem 4 (sim_with)</a></li><li><a class="tocitem" href="../../micromagnetics/std4/">Standard Problem 4</a></li><li><a class="tocitem" href="../../micromagnetics/std5_sim_with/">Standard Problem 5 (sim_with)</a></li><li><a class="tocitem" href="../../micromagnetics/std5/">Standard Problem 5</a></li><li><a class="tocitem" href="../../micromagnetics/skyrmion_stt/">Skyrmion dynamics under spin transfer torques</a></li><li><a class="tocitem" href="../../micromagnetics/stoner_wohlfarth/">Stoner–Wohlfarth model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Atomistic</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../atomistic/skyrmion/">Magnetic skyrmion</a></li><li><a class="tocitem" href="../../atomistic/skyrmion_lattice/">Skyrmion lattice</a></li><li><a class="tocitem" href="../../atomistic/skyrmion_afm/">Antiferromagnetic skyrmion</a></li><li><a class="tocitem" href="../../atomistic/sllg/">Stochastic LLG</a></li><li><a class="tocitem" href="../../atomistic/phase_diagram/">Phase diagram</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-3" type="checkbox" checked/><label class="tocitem" for="menuitem-4-3"><span class="docs-label">Monte carlo</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../M_T_curve/">M-T curve using Monte Carlo</a></li><li class="is-active"><a class="tocitem" href>Skyrmion Phase using Monte Carlo</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-4" type="checkbox"/><label class="tocitem" for="menuitem-4-4"><span class="docs-label">Neb</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../neb/neb_skx/">Skyrmion collapse using NEB</a></li></ul></li></ul></li><li><a class="tocitem" href="../../../equations/">Equations</a></li><li><a class="tocitem" href="../../../api/">API for users</a></li><li><a class="tocitem" href="../../../api_dev/">API for developers</a></li><li><a class="tocitem" href="../../../contrib/">Contributing</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li><a class="is-disabled">Monte carlo</a></li><li class="is-active"><a href>Skyrmion Phase using Monte Carlo</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Skyrmion Phase using Monte Carlo</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MagneticSimulation/MicroMagnetic.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/docs/tutorials/monte_carlo/skyrmion.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Skyrmion-Phase-using-Monte-Carlo"><a class="docs-heading-anchor" href="#Skyrmion-Phase-using-Monte-Carlo">Skyrmion Phase using Monte Carlo</a><a id="Skyrmion-Phase-using-Monte-Carlo-1"></a><a class="docs-heading-anchor-permalink" href="#Skyrmion-Phase-using-Monte-Carlo" title="Permalink"></a></h1><p><a href="../skyrmion.jl"><img src="https://img.shields.io/badge/download-julia-brightgreen.svg" alt="Source code"/></a> <a href="https://nbviewer.jupyter.org/github/MagneticSimulation/MicroMagnetic.jl/blob/gh-pages/v0.3.9/tutorials/monte_carlo/skyrmion.ipynb"><img src="https://img.shields.io/badge/show-nbviewer-579ACA.svg" alt="notebook"/></a> <img src="https://img.shields.io/badge/Author-Weiwei%20Wang-blue" alt="Author"/> <img src="https://img.shields.io/date/1732060800" alt="Update time"/></p><p>This example simulates the magnetic skyrmion phase using Monte Carlo methods. The parameters for the system are taken from the paper:</p><ul><li>&quot;Very large Dzyaloshinskii-Moriya interaction in two-dimensional Janus manganese dichalcogenides and its application to realize skyrmion states,&quot; <em>Physical Review B</em>, vol. 101, p. 184401 (2020).</li></ul><p>Here, we replicate the skyrmion phase of MnSTe shown in Figure 4 of the paper, simulating at a temperature of 10K and an external field of 1.5T.</p><pre><code class="language-julia hljs">using MicroMagnetic
+using NPZ
+
+@using_gpu()  # Enable GPU acceleration if available.</code></pre><p>Relaxation function to compute the skyrmion phase.</p><pre><code class="language-julia hljs">function relax_system(; Hz = 0.1)
+    #Create a triangular mesh with periodic boundary conditions in the x and y directions.
+    mesh = TriangularMesh(nx = 160, ny = 160, pbc = &quot;xy&quot;)
+
+    #Initialize the Monte Carlo simulation object.
+    sim = MonteCarlo(mesh; name = &quot;mc&quot;)
+
+    #Set up the initial magnetization with random orientation.
+    init_m0_random(sim)
+
+    #Add simulation parameters:
+    #Exchange interaction.
+    add_exch(sim; J = 10.52 * meV)
+
+    #Dzyaloshinskii-Moriya interaction (DMI).
+    add_dmi(sim; D = 2.63 * meV, type = &quot;interfacial&quot;)
+
+    #Zeeman interaction with external field Hz.
+    mu_s = 3.64 * mu_B  # Magnetic moment per spin.
+    add_zeeman(sim; Hz = Hz * mu_s)
+
+    #Uniaxial anisotropy.
+    add_anis(sim; Ku = 0.29 * meV)
+
+    #Perform high-temperature annealing to prepare the system.
+    Ts = [100000, 1000, 500]  # Annealing temperatures (in K).
+    for T in Ts
+        sim.T = T
+        run_sim(sim; max_steps = 10_000, save_vtk_every = -1, save_m_every = -1)
+    end
+
+    #Gradual cooling to reach the target temperature of 10K.
+    for T in 100:-10:10
+        sim.T = T
+        run_sim(sim; max_steps = 50_000, save_vtk_every = -1, save_m_every = -1)
+    end
+
+    #Save the final results.
+    save_vtk(sim, &quot;final.vts&quot;)                  # Save magnetization as a VTK file.
+    npzwrite(&quot;final_m.npy&quot;, Array(sim.spin))    # Save magnetization as a NumPy file.
+end</code></pre><pre><code class="nohighlight hljs">relax_system (generic function with 1 method)</code></pre><p>Uncomment the following line to run the simulation with an external field of 1.5T.</p><pre><code class="language-julia hljs">#relax_system(Hz = 1.5)</code></pre><p>The final magnetization data is saved in &quot;final.vts&quot; and &quot;final_m.npy&quot;. You can visualize the results using ParaView or Python. Below is an example Python script:</p><pre><code class="language-python hljs">import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.transforms import Affine2D
+
+# Load the magnetization data.
+m = np.load(&quot;final_m.npy&quot;)
+m = np.reshape(m, (3, 160, 160), order=&#39;F&#39;)  # Reshape to a 3x160x160 array.
+
+dx = 3.6
+
+# Plot the z-component of the magnetization (m_z).
+fig, ax = plt.subplots(figsize=(3, 2))
+im = ax.imshow(
+    np.transpose(m[2, :, :]),
+    extent=[0, 160 * dx, 0, 160 * dx * np.sqrt(3) / 2],
+    origin=&#39;lower&#39;,
+    cmap=&#39;coolwarm&#39;
+)
+
+# Apply a skew transformation to create a hexagonal visualization.
+transform = Affine2D().skew_deg(-30, 0) + ax.transData
+im.set_transform(transform)
+
+# Adjust the x-axis limits to center the visualization.
+ax.set_xlim(-80 * dx, 160 * dx)
+
+plt.tight_layout()
+plt.savefig(&quot;final_m.png&quot;)</code></pre><p>The plot should look like this:</p><p><img src="../assets/final_m.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/JuliaDocs/DemoCards.jl">DemoCards.jl</a> and <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../M_T_curve/">« M-T curve using Monte Carlo</a><a class="docs-footer-nextpage" href="../../neb/neb_skx/">Skyrmion collapse using NEB »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Sunday 16 February 2025 04:33">Sunday 16 February 2025</span>. Using Julia version 1.10.8.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
