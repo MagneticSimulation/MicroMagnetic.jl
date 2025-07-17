@@ -46,7 +46,7 @@ jobs:
           
       - name: Add remote and push ${{ matrix.branch }}
         run: |
-          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/ww1g11/MicroMagnetic.jl.git
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab.com/MagneticSimulation/MicroMagnetic.jl.git
           git push gitlab HEAD:${{ matrix.branch }} --force
         env:
           GIT_TERMINAL_PROMPT: 0

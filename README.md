@@ -34,7 +34,7 @@ Access our complete web resources including documentation, tutorials and example
 [![Stable Version](https://img.shields.io/badge/website-stable-blue?style=flat-square&logo=github)](https://magneticsimulation.github.io/MicroMagnetic.jl/stable/)  
 
 #### Mirror Site 
-[![GitLab Mirror](https://img.shields.io/badge/mirror-gitlab-blue?style=flat-square&logo=gitlab)](https://ww1g11.gitlab.io/MicroMagnetic.jl/)  
+[![GitLab Mirror](https://img.shields.io/badge/mirror-gitlab-blue?style=flat-square&logo=gitlab)](https://magneticsimulation.gitlab.io/MicroMagnetic.jl/)  
 
 ## Installation
 
