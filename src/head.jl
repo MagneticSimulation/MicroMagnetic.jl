@@ -196,7 +196,7 @@ mutable struct UniformExchange{T<:AbstractFloat} <: MicroEnergy
 end
 
 mutable struct InterlayerExchange{T<:AbstractFloat} <: MicroEnergy
-    J::Float64
+    Js::AbstractArray{T,1}
     k1::Int32
     k2::Int32
     field::AbstractArray{T,1}

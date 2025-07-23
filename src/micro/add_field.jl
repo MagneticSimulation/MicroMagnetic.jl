@@ -573,7 +573,7 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
 end
 
 @doc raw"""
-    add_exch_int(sim::AbstractSim, J::Float64; k1=1, k2=-1, name="rkky")
+    add_exch_int(sim::AbstractSim, J::NumberOrArrayOrFunction; k1=1, k2=-1, name="rkky")
 
 Add an RKKY-type exchange for interlayers. The energy of RKKY-type exchange is defined as 
 
@@ -588,15 +588,22 @@ The effective field is given then as
 \mathbf{H}_i = \frac{1}{\mu_0 M_s}  \frac{J_\mathrm{rkky}}{\Delta_z} \mathbf{m}_{j} 
 ```
 """
-function add_exch_int(sim::MicroSim, J::Float64; k1=1, k2=-1, name="exch_int")
+function add_exch_int(sim::MicroSim, J::NumberOrArrayOrFunction; k1=1, k2=-1, name="exch_int")
     n_total = sim.n_total
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)
 
+    mesh = sim.mesh 
+
+    mesh_tmp = FDMesh(nx=mesh.nx, ny=mesh.ny, nz=1, dx=mesh.dx, dy=mesh.dy, dz=mesh.dz)
+
+    Js = create_zeros(mesh.nx*mesh.ny)
+    init_scalar!(Js, mesh_tmp, J)
+
     if k2 == -1
         k2 = sim.mesh.nz
     end
-    exch = InterlayerExchange(J, Int32(k1), Int32(k2), field, energy, name)
+    exch = InterlayerExchange(Js, Int32(k1), Int32(k2), field, energy, name)
 
     push!(sim.interactions, exch)
 

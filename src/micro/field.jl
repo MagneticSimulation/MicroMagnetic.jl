@@ -178,7 +178,7 @@ function effective_field(exch::InterlayerExchange, sim::MicroSim, spin::Abstract
 
     back = default_backend[]
     interlayer_exch_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
-                                               T(exch.J), exch.k1, exch.k2, Int32(nx),
+                                               exch.Js, exch.k1, exch.k2, Int32(nx),
                                                Int32(ny), dz, volume; ndrange=(nx, ny))
 
     return nothing

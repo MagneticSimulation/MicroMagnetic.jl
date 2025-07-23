@@ -73,7 +73,12 @@ function test_interlayer()
 end
 
 function test_interlayer_exch()
+
     J = 1e-5
+
+    function spatial_Js(i,j,k,dx,dy,dz)
+        return J
+    end
     Ms = 8e5
     dz = 2e-9
 
@@ -83,7 +88,7 @@ function test_interlayer_exch()
     set_Ms(sim, spatial_Ms)
     init_m0(sim, init_single_skx)
 
-    exch = add_exch_int(sim, J; k1=1, k2=3)
+    exch = add_exch_int(sim, spatial_Js; k1=1, k2=3)
 
     MicroMagnetic.effective_field(sim, sim.spin)
 

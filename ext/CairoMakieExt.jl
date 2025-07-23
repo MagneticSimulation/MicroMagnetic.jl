@@ -263,7 +263,7 @@ function MicroMagnetic.plot_voronoi(grain_ids, points; dx=2, dy=2, output="voron
 
     fig = Figure()
     ax = Axis(fig[1, 1])
-    heatmap!(ax, 0:Lx, 0:Ly, grain_ids)
+    heatmap!(ax, 0:Lx, 0:Ly, grain_ids, colormap=Reverse(:viridis))
     
     for i in 1:length(points)
         p = points[i]

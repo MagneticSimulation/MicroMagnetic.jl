@@ -372,13 +372,14 @@ end
     end
 end
 
-@kernel function interlayer_exch_kernel!(@Const(m), h, energy, @Const(mu0_Ms), J::T,
+@kernel function interlayer_exch_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(Js),
                                          K1::Int32, K2::Int32, nx::Int32, ny::Int32, dz::T,
                                          volume::T) where {T<:AbstractFloat}
     i, j = @index(Global, NTuple)
 
     id1 = (K1 - 1) * nx * ny + (j - 1) * nx + i
     id2 = (K2 - 1) * nx * ny + (j - 1) * nx + i
+    id = (j - 1) * nx + i
 
     k1 = 3 * id1 - 2
     k2 = 3 * id2 - 2
@@ -392,6 +393,7 @@ end
 
     @inbounds Ms1 = mu0_Ms[id1]
     @inbounds Ms2 = mu0_Ms[id2]
+    @inbounds J = Js[id]
     if Ms1 > 0 && Ms2 > 0
         Ms_inv = J / (Ms1 * dz)
         @inbounds h[k1] = Ms_inv * mtx
