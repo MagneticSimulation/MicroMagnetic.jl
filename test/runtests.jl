@@ -36,3 +36,5 @@ include("test_voronoi.jl")
 include("eigen/test_cubic.jl")
 include("eigen/test_afm.jl")
 include("eigen/test_demag.jl")
+
+include("fem/test_mesh.jl")

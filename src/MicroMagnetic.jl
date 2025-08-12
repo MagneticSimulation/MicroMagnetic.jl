@@ -237,6 +237,9 @@ include("eigen/eigen.jl")
 
 include("tools/ltem.jl")
 
+include("fem/mesh.jl")
+include("fem/util.jl")
+
 function __init__() end
 
 end #module
