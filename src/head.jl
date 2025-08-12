@@ -126,6 +126,28 @@ mutable struct MicroSim{T<:AbstractFloat} <: AbstractSim
     MicroSim{T}() where {T<:AbstractFloat} = new()
 end
 
+mutable struct MicroSimFE{T<:AbstractFloat} <: AbstractSim
+    mesh::FEMesh
+    driver::Driver
+    saver::DataSaver
+    spin::AbstractArray{T,1}
+    prespin::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    mu0_Ms::AbstractArray{T,1}
+    L_mu::AbstractArray{T,1}
+    pins::Array{Bool,1}
+    n_total::Int64  # n_nodes
+    n_cells::Int64
+    name::String
+    driver_name::String
+    interactions::Array
+    save_data::Bool
+    kwargs::Any
+    MicroSimFE{T}() where {T<:AbstractFloat} = new()
+end
+
+
 mutable struct Zeeman{T<:AbstractFloat} <: MicroEnergy
     H0::Tuple
     field::AbstractArray{T,1}

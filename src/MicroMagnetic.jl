@@ -13,6 +13,9 @@ end
 export reset_timer
 
 const Float = Ref(Float64)
+
+using SparseArrays
+const DefaultSparseMatrixCSC = Ref(SparseMatrixCSC)
 """
     set_precision(x::Type{<:AbstractFloat}=Float64)
 
@@ -49,7 +52,6 @@ end
 
 const default_backend = Backend[CPU()]
 const all_backends = Backend[CPU(), CPU(), CPU(), CPU()]
-
 
 export set_backend
 @doc raw"""
@@ -118,7 +120,6 @@ function set_backend(backend="cuda")
     return true
 end
 
-
 # A global reference to control verbose logging
 # Verbose is a Ref that holds a Boolean value indicating whether verbose logging is enabled
 const Verbose = Ref(false)
@@ -137,8 +138,8 @@ set_verbose(true)  # Enables verbose logging
 set_verbose(false) # Disables verbose logging
 ```
 """
-function set_verbose(verbose::Bool=true) 
-    Verbose[] = verbose 
+function set_verbose(verbose::Bool=true)
+    return Verbose[] = verbose
 end
 export set_verbose
 
@@ -163,7 +164,7 @@ end
 
 export @using_gpu
 macro using_gpu()
-    quote
+    return quote
         try
             using CUDA
         catch
@@ -192,6 +193,7 @@ export ovf2png, plot_m, jld2movie, dynamic_matrix
 
 include("const.jl")
 include("micro/mesh.jl")
+include("fem/mesh.jl")
 include("head.jl")
 include("util.jl")
 include("csg.jl")
@@ -204,6 +206,9 @@ include("micro/field.jl")
 include("micro/demag.jl")
 include("micro/demag_direct.jl")
 include("micro/add_field.jl")
+include("fem/sim.jl")
+include("fem/util.jl")
+include("fem/field.jl")
 include("helper.jl")
 include("integrator/heun.jl")
 include("integrator/rk.jl")
@@ -237,8 +242,7 @@ include("eigen/eigen.jl")
 
 include("tools/ltem.jl")
 
-include("fem/mesh.jl")
-include("fem/util.jl")
+
 
 function __init__() end
 

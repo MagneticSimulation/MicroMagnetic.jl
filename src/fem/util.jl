@@ -169,10 +169,10 @@ function compute_L_inv_neg!(mesh::FEMesh)
         L_inv_neg[3 * i + 3] = -1.0 / nodal_volumes[i + 1]
     end
 
-    return mesh.L_inv_neg = L_inv_neg
+    return mesh.L_inv_neg = kernel_array(L_inv_neg)
 end
 
-function compute_L_Ms!(L_mu::Array{Float64,1}, mesh::FEMesh, Ms::Array{Float64,1})
+function compute_L_Ms!(L_mu::AbstractArray{Float64,1}, mesh::FEMesh, Ms::Array{Float64,1})
     nodal_Ms = zeros(mesh.number_nodes)
     cv = mesh.cell_verts
 
@@ -180,11 +180,13 @@ function compute_L_Ms!(L_mu::Array{Float64,1}, mesh::FEMesh, Ms::Array{Float64,1
         nodal_Ms[cv[k, i]] += mesh.volumes[i] * Ms[i] / 4.0
     end
 
+    L_mu_tmp = zeros(size(L_mu))
     for i in 0:(mesh.number_nodes - 1)
-        L_mu[3 * i + 1] = nodal_Ms[i + 1]
-        L_mu[3 * i + 2] = nodal_Ms[i + 1]
-        L_mu[3 * i + 3] = nodal_Ms[i + 1]
+        L_mu_tmp[3 * i + 1] = nodal_Ms[i + 1]
+        L_mu_tmp[3 * i + 2] = nodal_Ms[i + 1]
+        L_mu_tmp[3 * i + 3] = nodal_Ms[i + 1]
     end
+    L_mu .= L_mu_tmp
 end
 
 #areas is an array
