@@ -39,3 +39,4 @@ include("eigen/test_demag.jl")
 
 include("fem/test_mesh.jl")
 include("fem/test_llg.jl")
+include("fem/test_fields.jl")

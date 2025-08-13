@@ -31,6 +31,102 @@ function average_m(sim::MicroSimFE)
     return (mx, my, mz)
 end
 
+"""
+    add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
+
+Add Anisotropy to the system, where the energy density is given by
+
+```math
+E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
+```
+"""
+function add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
+                  name="anis")
+    mesh = sim.mesh
+    Kus = zeros(Float64, sim.n_cells)
+    init_scalar!(Kus, sim.mesh, Ku)
+
+    N = sim.n_total
+    T = Float[]
+    field = create_zeros(3*N)
+    energy = create_zeros(N)
+
+    if isa(axis, Tuple)
+        @info "The uniform anisotropy axis is used in the simulation!"
+        lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
+        axes = zeros(Float64, 3 * sim.n_cells)
+        for i in 1:(sim.n_cells)
+            axes[3 * (i - 1) + 1] = axis[1] / lt
+            axes[3 * (i - 1) + 2] = axis[2] / lt
+            axes[3 * (i - 1) + 3] = axis[3] / lt
+        end
+    elseif isa(axis, Array)
+        @info "The material-dependent anisotropy axes are used in the simulation!"
+        axes = zeros(Float64, 3 * sim.n_cells)
+        for i in 1:(sim.n_cells)
+            id = mesh.material_ids[i]
+            axes[3 * (i - 1) + 1] = axis[1, id]
+            axes[3 * (i - 1) + 2] = axis[2, id]
+            axes[3 * (i - 1) + 3] = axis[3, id]
+        end
+    end
+
+    K_matrix = spzeros(3 * N, 3 * N)
+
+    anis = AnisotropyFE(Kus, axes, field, energy, K_matrix, name)
+    push!(sim.interactions, anis)
+
+    assemble_anis_matirx(anis, sim)
+
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::MicroSimFE -> sum(o.interactions[id].energy)))
+    end
+    return anis
+end
+
+
+"""
+    add_exch(sim::MicroSimFEM, A::NumberOrArrayOrFunction; name="exch")
+
+Add exchange energy to the system.
+"""
+function add_exch(sim::MicroSimFE, A::NumberOrArrayOrFunction; name="exch", method=:Direct)
+    N = sim.n_total
+
+    Spatial_A = zeros(Float64, sim.n_cells)
+
+    #initialize a sparse matrix on CPU
+    K_mat = spzeros(3 * N, 3 * N)
+
+    T = Float[]
+    field = create_zeros(3*N)
+    energy = create_zeros(N)
+
+    mass_matrix = assemble_mass_matirx(sim.mesh)
+
+    exch = ExchangeFE(Spatial_A, field, energy, K_mat, mass_matrix, method, name)
+
+    init_scalar!(Spatial_A, sim.mesh, A)
+
+    # note that exch.K_matrix will be come to the GPU version if necessary
+    assemble_exch_matirx(exch, sim)
+
+    push!(sim.interactions, exch)
+
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::MicroSimFE -> sum(o.interactions[id].energy)))
+    end
+
+    return exch
+end
+
+
 function save_inp(sim::MicroSimFE, fname::String)
     mesh = sim.mesh
 

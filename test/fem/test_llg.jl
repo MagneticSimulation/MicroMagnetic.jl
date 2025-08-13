@@ -17,7 +17,8 @@ end
 
 function test_llg(;integrator="DormandPrince")
 
-  mesh = FEMesh("meshes/one_hex.mesh", unit_length=1e-9)
+  filepath = joinpath(@__DIR__, "meshes/one_hex.mesh")
+  mesh = FEMesh(filepath, unit_length=1e-9)
   sim = Sim(mesh, name="spin", integrator=integrator)
 
   set_Ms(sim, 8e5)

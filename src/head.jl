@@ -291,3 +291,22 @@ mutable struct SAHETorqueField{T<:AbstractFloat} <: MicroEnergy
     field::AbstractArray{T,1}
     name::String
 end
+
+mutable struct ExchangeFE{T<:AbstractFloat} <: MicroEnergy
+    A::Array{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    K_matrix::AbstractSparseMatrix
+    Mass_matrix::AbstractSparseMatrix
+    method::Any
+    name::String
+end
+
+mutable struct AnisotropyFE{T<:AbstractFloat} <: MicroEnergy
+    Ku::Array{T,1}
+    axis::Array{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{Float64,1}
+    K_matrix::AbstractSparseMatrix
+    name::String
+end

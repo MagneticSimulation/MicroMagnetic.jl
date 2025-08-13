@@ -14,6 +14,17 @@ where factor = cell_size for the micromagnetic model and factor = 1 for atomisti
 end
 
 """
+    The kernel for the Zeeman interaction, works for both the FE micromagnetic model.
+"""
+@kernel function zeeman_fe_kernel!(@Const(m), @Const(h), energy, @Const(L_mu),
+                                factor::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+    @inbounds mh = m[j + 1] * h[j + 1] * L_mu[j+1] + m[j + 2] * h[j + 2] * L_mu[j+2] + m[j + 3] * h[j + 3] * L_mu[j+3]
+    @inbounds energy[id] = -factor * mh
+end
+
+"""
 Similar to the zeeman_kernel! that this kernel works for both the micromagnetic and atomistic model,
 and factor = cell_size for the micromagnetic model and factor = 1 for atomistic model.
 """
