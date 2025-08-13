@@ -2,6 +2,10 @@ using MicroMagnetic
 using Test
 using DelimitedFiles
 
+if !isdefined(Main, :test_functions)
+    include("../test_utils.jl")
+end
+
 function test_zeeman()
     filepath = joinpath(@__DIR__, "meshes/octa.mesh")
     mesh = FEMesh(filepath)
@@ -111,8 +115,12 @@ function test_exchange_field()
     @test abs(sum(z.energy) - expected_energy) / expected_energy < 1e-10
 end
 
+
+
 test_zeeman()
 test_init_m_function()
-test_zeeman_field()
-test_anis_field()
-test_exchange_field()
+
+@using_gpu()
+test_functions("Test zeeman (FE)", test_zeeman_field, precisions=[Float64])
+test_functions("Test anisotropy (FE)", test_anis_field, precisions=[Float64])
+test_functions("Test exchange (FE)", test_exchange_field, precisions=[Float64])

@@ -25,8 +25,9 @@ function assemble_anis_matirx(anis::AnisotropyFE, sim::MicroSimFE)
         end
     end
 
-    
-    anis.K_matrix = DefaultSparseMatrixCSC[](K_mat)
+    if default_backend[] != CPU()
+        anis.K_matrix = DefaultSparseMatrixCSC[](K_mat)
+    end
     
 end
 
@@ -65,8 +66,9 @@ function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
             end
         end
     end
-
-    exch.K_matrix = DefaultSparseMatrixCSC[](K)
+    if default_backend[] != CPU()
+        exch.K_matrix = DefaultSparseMatrixCSC[](K)
+    end
 end
 
 
