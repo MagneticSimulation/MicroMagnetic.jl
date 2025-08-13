@@ -100,3 +100,61 @@ function effective_field(anis::Union{AnisotropyFE, ExchangeFE}, sim::MicroSimFE,
 
     return nothing
 end
+
+
+function effective_field(demag::DemagFE, sim::MicroSimFE, spin::Array{Float64,1},
+                         t::Float64)
+
+    mesh = sim.mesh
+
+    # step1: phi1 = D*m
+    mul!(demag.g1, demag.D, spin)
+
+    # step2: solve K1*phi1 = g1
+    demag.phi1 = demag.K1 \ demag.g1
+
+    # step3: u1_bnd = U1*phi1
+    #mul!(demag.u1_bnd, demag.U1, demag.phi1)
+    for i in 1:(mesh.number_nodes_bnd)
+        id = mesh.map_b2g[i]
+        demag.u1_bnd[i] = demag.phi1[id]
+    end
+
+    # step4: u2_bnd = B*u1_bnd
+    if demag.using_hmatrix
+        #HMatrixGPU.mul!(demag.u2_bnd, demag.H, demag.u1_bnd)
+    else
+        mul!(demag.u2_bnd, demag.B, demag.u1_bnd)
+    end
+
+    # step5: g2 = U2*u2_bnd
+    #mul!(demag.g2, demag.U2, demag.u2_bnd)
+    for i in 1:(mesh.number_nodes_bnd)
+        id = mesh.map_b2g[i]
+        demag.g2[id] = demag.u2_bnd[i]
+    end
+
+    # step6: solve K2*phi2 = g2
+    demag.phi2 = demag.K2 \ demag.g2
+
+    # step7: phi = phi1 + phi2
+    demag.phi1 .+= demag.phi2
+
+    # step8: F = G*phi
+    mul!(demag.field, demag.G, demag.phi1)
+
+    demag.field .*= mesh.L_inv_neg
+
+    f_Ms = demag.field .* sim.L_mu
+
+    v_coeff = mesh.unit_length^3 * mu_0
+
+    for i in 1:(sim.n_total)
+        j = 3 * (i - 1)
+        demag.energy[i] = -0.5 *
+                          (spin[j + 1] * f_Ms[j + 1] +
+                           spin[j + 2] * f_Ms[j + 2] +
+                           spin[j + 3] * f_Ms[j + 3]) *
+                          v_coeff
+    end
+end

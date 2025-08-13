@@ -126,6 +126,29 @@ function add_exch(sim::MicroSimFE, A::NumberOrArrayOrFunction; name="exch", meth
     return exch
 end
 
+"""
+method could be "bem", "bem_hmatrix", "direct", "direct_hmatrix"
+"""
+function add_demag(sim::MicroSimFE; name="demag", method="bem", kwargs...)
+    if method == "direct" || method == "direct_hmatrix"
+        #demag = init_hmatix_demag(sim, method; kwargs...)
+    else
+        demag = init_demag(sim, method; kwargs...)
+    end
+
+    push!(sim.interactions, demag)
+    demag.name = name
+
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "J",
+                        o::MicroSimFE -> sum(o.interactions[id].energy)))
+    end
+
+    return demag
+end
+
 
 function save_inp(sim::MicroSimFE, fname::String)
     mesh = sim.mesh

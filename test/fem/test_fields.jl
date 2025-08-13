@@ -115,10 +115,50 @@ function test_exchange_field()
     @test abs(sum(z.energy) - expected_energy) / expected_energy < 1e-10
 end
 
+function test_demag_field(; method="bem", compare_phi=true)
+    filepath = joinpath(@__DIR__, "meshes/cylinder.mesh")
+    mesh = FEMesh(filepath)
+    sim = Sim(mesh; driver="SD")
+    set_Ms(sim, 8.6e5)
+
+    init_m0(sim, init_m_fun)
+
+    demag = add_demag(sim; method=method, R=100.0)
+
+    MicroMagnetic.effective_field(sim, sim.spin, 0.0)
+    N = 3 * sim.n_total
+    if compare_phi
+        filepath = joinpath(@__DIR__, "fields/g_phi.txt")
+        g_phi = readdlm(filepath; header=true)[1]
+        g1 = g_phi[:, 4]
+        phi1 = g_phi[:, 5]
+        #println("diff:", g1[1:10], demag.g1[1:10])
+        println("g1 max diff: ", maximum(abs.(demag.g1 - g1)))
+        @test maximum(abs.(demag.g1 - g1)) < 1e-8
+
+        println("phi1 max diff: ", maximum(abs.(demag.phi1 - phi1)))
+        @test maximum(abs.(demag.phi1 - phi1)) < 6e-9
+    end
+
+    filepath = joinpath(@__DIR__, "fields/demag.txt")
+    f0 = readdlm(filepath; header=true)[1]
+    field = reshape(transpose(f0[:, 4:6]), N, 1)
+    eps = 5e-5
+    mean = sum(abs.(field)) / length(field)
+    mean_diff = sum(abs.(demag.field - field)) / length(field)
+    println("mean diff: ", mean_diff / mean)
+    @test mean_diff / mean < 0.05
+    @test maximum(abs.(demag.field - field)) / mean < eps
+
+    energy = 3.97e-21
+    @test (sum(demag.energy) - energy) / energy < 0.02
+end
+
 
 
 test_zeeman()
 test_init_m_function()
+test_demag_field()
 
 @using_gpu()
 test_functions("Test zeeman (FE)", test_zeeman_field, precisions=[Float64])
