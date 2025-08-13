@@ -1,6 +1,10 @@
 using MicroMagnetic
 using Test
 
+if !isdefined(Main, :test_functions)
+    include("../test_utils.jl")
+end
+
 function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     precession = gamma / (1 + alpha*alpha)
     beta = precession * H0 * ts
@@ -12,7 +16,7 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
 end
 
 function test_llg(;integrator="DormandPrince")
-  
+
   mesh = FEMesh("meshes/one_hex.mesh", unit_length=1e-9)
   sim = Sim(mesh, name="spin", integrator=integrator)
 
@@ -43,7 +47,5 @@ function test_llg(;integrator="DormandPrince")
 end
 
 
-
-test_llg(integrator="DormandPrince")
-
-
+@using_gpu()
+test_functions("LLG (FE)", test_llg)

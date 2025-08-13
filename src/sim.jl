@@ -1,4 +1,5 @@
 using JLD2
+using KernelAbstractions
 
 export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
        set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with, advance_step
@@ -35,17 +36,17 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.prespin = create_zeros(3 * n_total)
     sim.field = create_zeros(3 * n_total)
     sim.energy = create_zeros(n_total)
+    sim.pins = create_zeros(Bool, n_total)
 
     if isa(mesh, FDMesh)
         sim.mu0_Ms = create_zeros(n_total)
     elseif isa(mesh, FEMesh)
-        sim.mu0_Ms = create_zeros(sim.n_cells)
+        sim.mu0_Ms = zeros(T, sim.n_cells)
         sim.L_mu = create_zeros(3 * n_total)
     else
         sim.mu_s = create_zeros(n_total)
     end
     
-    sim.pins = create_zeros(Bool, n_total)
     sim.driver_name = driver
     sim.driver = create_driver(driver, integrator, n_total)
     sim.interactions = []
