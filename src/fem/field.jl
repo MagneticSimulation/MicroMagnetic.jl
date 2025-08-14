@@ -26,7 +26,7 @@ function assemble_anis_matirx(anis::AnisotropyFE, sim::MicroSimFE)
     end
 
     if default_backend[] != CPU()
-        anis.K_matrix = DefaultSparseMatrixCSC[](K_mat)
+        anis.K_matrix = GPUSparseMatrixCSC[](K_mat)
     end
     
 end
@@ -67,7 +67,7 @@ function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
         end
     end
     if default_backend[] != CPU()
-        exch.K_matrix = DefaultSparseMatrixCSC[](K)
+        exch.K_matrix = GPUSparseMatrixCSC[](K)
     end
 end
 
@@ -102,8 +102,8 @@ function effective_field(anis::Union{AnisotropyFE, ExchangeFE}, sim::MicroSimFE,
 end
 
 
-function effective_field(demag::DemagFE, sim::MicroSimFE, spin::Array{Float64,1},
-                         t::Float64)
+function effective_field(demag::DemagFE, sim::MicroSimFE, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
 
     mesh = sim.mesh
 
@@ -115,10 +115,7 @@ function effective_field(demag::DemagFE, sim::MicroSimFE, spin::Array{Float64,1}
 
     # step3: u1_bnd = U1*phi1
     #mul!(demag.u1_bnd, demag.U1, demag.phi1)
-    for i in 1:(mesh.number_nodes_bnd)
-        id = mesh.map_b2g[i]
-        demag.u1_bnd[i] = demag.phi1[id]
-    end
+    demag.u1_bnd .= demag.phi1[mesh.map_b2g]
 
     # step4: u2_bnd = B*u1_bnd
     if demag.using_hmatrix
@@ -129,10 +126,7 @@ function effective_field(demag::DemagFE, sim::MicroSimFE, spin::Array{Float64,1}
 
     # step5: g2 = U2*u2_bnd
     #mul!(demag.g2, demag.U2, demag.u2_bnd)
-    for i in 1:(mesh.number_nodes_bnd)
-        id = mesh.map_b2g[i]
-        demag.g2[id] = demag.u2_bnd[i]
-    end
+    demag.g2[mesh.map_b2g] .= demag.u2_bnd
 
     # step6: solve K2*phi2 = g2
     demag.phi2 = demag.K2 \ demag.g2
@@ -145,16 +139,8 @@ function effective_field(demag::DemagFE, sim::MicroSimFE, spin::Array{Float64,1}
 
     demag.field .*= mesh.L_inv_neg
 
-    f_Ms = demag.field .* sim.L_mu
+    v_coeff = 0.5 * mesh.unit_length^3
+    backend = default_backend[]
+    zeeman_fe_kernel!(backend, groupsize[])(spin, demag.field, demag.energy, sim.L_mu, T(v_coeff); ndrange=sim.n_total)
 
-    v_coeff = mesh.unit_length^3 * mu_0
-
-    for i in 1:(sim.n_total)
-        j = 3 * (i - 1)
-        demag.energy[i] = -0.5 *
-                          (spin[j + 1] * f_Ms[j + 1] +
-                           spin[j + 2] * f_Ms[j + 2] +
-                           spin[j + 3] * f_Ms[j + 3]) *
-                          v_coeff
-    end
 end

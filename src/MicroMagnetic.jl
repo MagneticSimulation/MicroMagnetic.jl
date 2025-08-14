@@ -15,7 +15,10 @@ export reset_timer
 const Float = Ref(Float64)
 
 using SparseArrays
-const DefaultSparseMatrixCSC = Ref(SparseMatrixCSC)
+const GPUSparseMatrixCSC = Ref(SparseMatrixCSC)
+const GPUSparseMatrixCSR = Ref(SparseMatrixCSC)
+const GPUMatrix = Ref(Matrix)
+
 """
     set_precision(x::Type{<:AbstractFloat}=Float64)
 

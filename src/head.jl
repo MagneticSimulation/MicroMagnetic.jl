@@ -306,7 +306,7 @@ mutable struct AnisotropyFE{T<:AbstractFloat} <: MicroEnergy
     Ku::Array{T,1}
     axis::Array{T,1}
     field::AbstractArray{T,1}
-    energy::AbstractArray{Float64,1}
+    energy::AbstractArray{T,1}
     K_matrix::AbstractSparseMatrix
     name::String
 end

@@ -1,25 +1,25 @@
 using Printf
 using LinearAlgebra
 
-mutable struct DemagFE
-    D::SparseMatrixCSC
-    G::SparseMatrixCSC
+mutable struct DemagFE{T<:AbstractFloat}
+    D::AbstractSparseMatrix
+    G::AbstractSparseMatrix
     K1::Any
     K2::Any
-    B::Matrix{Float64}
-    g1::Array{Float64,1}
-    g2::Array{Float64,1}
-    phi1::Array{Float64,1}
-    phi2::Array{Float64,1}
-    u1_bnd::Array{Float64,1}
-    u2_bnd::Array{Float64,1}
-    field::Array{Float64,1}
-    energy::Array{Float64,1}
+    B::AbstractMatrix{T}
+    g1::AbstractArray{T,1}
+    g2::AbstractArray{T,1}
+    phi1::AbstractArray{T,1}
+    phi2::AbstractArray{T,1}
+    u1_bnd::AbstractArray{T,1}
+    u2_bnd::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
     H::Any
     name::String
     method::String
     using_hmatrix::Bool
-    DemagFE() = new()
+    DemagFE{T}() where {T<:AbstractFloat} = new()
 end
 
 
@@ -112,7 +112,7 @@ function assemble_matirx_DGK1K2(demag::DemagFE, sim::MicroSimFE)
     K1 = spzeros(mesh.number_nodes, mesh.number_nodes)
     K2 = spzeros(mesh.number_nodes, mesh.number_nodes)
     Ms = sim.mu0_Ms ./ mu_0
-    map_g2b = mesh.map_g2b
+    map_g2b = Array(mesh.map_g2b)
 
     for c in 1:(mesh.number_cells)
         k1 = mesh.cell_verts[1, c]
@@ -150,15 +150,24 @@ function assemble_matirx_DGK1K2(demag::DemagFE, sim::MicroSimFE)
         end
     end
 
+    map_b2g = Array(mesh.map_b2g)
     for i in 1:(mesh.number_nodes_bnd)
-        j = mesh.map_b2g[i]
+        j = map_b2g[i]
         K2[j, j] = 1.0
     end
 
-    demag.D = D
-    demag.G = G
-    demag.K1 = K1
-    demag.K2 = K2
+    if default_backend[] != CPU()
+        demag.D = GPUSparseMatrixCSC[](D)
+        demag.G = GPUSparseMatrixCSC[](G)
+        demag.K1 = GPUSparseMatrixCSR[](K1)
+        demag.K2 = GPUSparseMatrixCSR[](K2)
+    else
+        demag.D = D
+        demag.G = G
+        demag.K1 = K1
+        demag.K2 = K2
+    end
+
 end
 
 
@@ -186,7 +195,7 @@ end
 function assemble_matrix_B(demag::DemagFE, sim::MicroSimFE)
     mesh = sim.mesh
     B = zeros(mesh.number_nodes_bnd, mesh.number_nodes_bnd)
-    map_g2b = mesh.map_g2b
+    map_g2b = Array(mesh.map_g2b)
 
     Threads.@threads for n in 1:(mesh.number_nodes)
 
@@ -225,31 +234,36 @@ function assemble_matrix_B(demag::DemagFE, sim::MicroSimFE)
         end
     end
 
-    demag.B = B
+    if default_backend[] != CPU()
+        demag.B = GPUMatrix[](B)
+    else
+        demag.B = B
+    end
     
 end
 
 function init_demag(sim::MicroSimFE, method; kwargs...)
     mesh = sim.mesh
 
-    demag = DemagFE()
+    T = Float[]
+    demag = DemagFE{T}()
     demag.method = method
 
-    demag.g1 = zeros(mesh.number_nodes)
-    demag.g2 = zeros(mesh.number_nodes)
-    demag.phi1 = zeros(mesh.number_nodes)
-    demag.phi2 = zeros(mesh.number_nodes)
+    demag.g1 = create_zeros(mesh.number_nodes)
+    demag.g2 = create_zeros(mesh.number_nodes)
+    demag.phi1 = create_zeros(mesh.number_nodes)
+    demag.phi2 = create_zeros(mesh.number_nodes)
 
-    demag.u1_bnd = zeros(mesh.number_nodes_bnd)
-    demag.u2_bnd = zeros(mesh.number_nodes_bnd)
+    demag.u1_bnd = create_zeros(mesh.number_nodes_bnd)
+    demag.u2_bnd = create_zeros(mesh.number_nodes_bnd)
 
-    demag.field = zeros(3 * mesh.number_nodes)
-    demag.energy = zeros(mesh.number_nodes)
+    demag.field = create_zeros(3 * mesh.number_nodes)
+    demag.energy = create_zeros(mesh.number_nodes)
 
     assemble_matirx_DGK1K2(demag, sim)
 
     try
-        demag.K1 = factorize(demag.K1) #reuse the factorization to speed up the calculation
+        demag.K1 = cholesky(demag.K1) #reuse the factorization to speed up the calculation
     catch
         try
             demag.K1 = lu(demag.K1)
@@ -259,25 +273,21 @@ function init_demag(sim::MicroSimFE, method; kwargs...)
     end
 
     try
-        demag.K2 = factorize(demag.K2) #reuse the factorization to speed up the calculation
+        demag.K2 = lu(demag.K2)
     catch
-        try
-            demag.K2 = lu(demag.K2)
-        catch
-            demag.K2 = qr(demag.K2)
-        end
+        demag.K2 = qr(demag.K2)
     end
 
     demag.using_hmatrix = false
 
     if demag.method == "bem_hmatrix"
         demag.using_hmatrix = true
-        @info("CPU BEM HMatrix demag is added")
+        @info("BEM HMatrix demag is added")
         #HMatrixGPU.set_backend("cpu")
         #demag.H = init_Hmatrix(sim, mesh; kwargs...)
         #@info HMatrixGPU.info(demag.H)
     elseif demag.method == "bem"
-        @info "CPU BEM demag is added"
+        @info "BEM demag is added"
         @info "Start to build BEM matrix, will take a while ..."
         time = @elapsed assemble_matrix_B(demag, sim)
         @info @sprintf("Building the BEM matrix is finished, it takes %0.2f seconds.", time)

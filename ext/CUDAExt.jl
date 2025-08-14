@@ -9,7 +9,9 @@ CUDA.allowscalar(false)
 function set_cuda_backend()
     MicroMagnetic.all_backends[1] = CUDA.CUDABackend()
     MicroMagnetic.set_backend("cuda")
-    MicroMagnetic.DefaultSparseMatrixCSC[] = CuSparseMatrixCSC
+    MicroMagnetic.GPUSparseMatrixCSC[] = CuSparseMatrixCSC
+    MicroMagnetic.GPUSparseMatrixCSR[] = CuSparseMatrixCSR
+    MicroMagnetic.GPUMatrix[] = CuMatrix
     return nothing
 end
 

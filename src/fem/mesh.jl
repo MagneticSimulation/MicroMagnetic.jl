@@ -9,8 +9,8 @@ mutable struct FEMesh <: Mesh
     coordinates::Array{Float64,2}  #coordinates array
     cell_verts::Array{Int32,2}
     face_verts::Array{Int32,2}
-    map_g2b::Array{Int64,1}
-    map_b2g::Array{Int64,1}
+    map_g2b::AbstractArray{Int32,1}
+    map_b2g::AbstractArray{Int32,1}
     volumes::Array{Float64,1}
     L_inv_neg::AbstractArray{Float64,1}
     region_ids::Array{Int64,1}
@@ -84,7 +84,7 @@ function load_mesh_netgen_neutral(fname::String)
 end
 
 function build_boundary_maps!(mesh::FEMesh)
-    map_g2b = zeros(Int64, mesh.number_nodes)
+    map_g2b = zeros(Int32, mesh.number_nodes)
     map_g2b .= -1
 
     at_bounary = zeros(Bool, mesh.number_nodes)
@@ -100,15 +100,15 @@ function build_boundary_maps!(mesh::FEMesh)
         end
     end
     mesh.number_nodes_bnd = number_nodes_bnd
-    mesh.map_g2b = map_g2b
+    mesh.map_g2b = kernel_array(map_g2b)
 
-    map_b2g = zeros(Int64, mesh.number_nodes_bnd)
+    map_b2g = zeros(Int32, mesh.number_nodes_bnd)
     for i in 1:(mesh.number_nodes)
         if map_g2b[i] > 0
             map_b2g[map_g2b[i]] = i
         end
     end
-    return mesh.map_b2g = map_b2g
+    return mesh.map_b2g = kernel_array(map_b2g)
 end
 
 function compute_surface_normals!(mesh::FEMesh)

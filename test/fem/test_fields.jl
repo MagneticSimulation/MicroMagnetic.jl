@@ -1,6 +1,11 @@
 using MicroMagnetic
 using Test
 using DelimitedFiles
+if Base.find_package("CUDSS") !== nothing
+    using CUDSS
+else
+    @warn("CUDSS is needed for FE demag when using CUDA.")
+end
 
 if !isdefined(Main, :test_functions)
     include("../test_utils.jl")
@@ -16,9 +21,11 @@ function test_zeeman()
 
     MicroMagnetic.effective_field(sim, sim.spin, 1.23e-11)
 
-    @test z.field[1] == 1.0
-    @test z.field[2] == 2.0
-    @test z.field[3] == 1e5
+    f = Array(z.field)
+
+    @test f[1] == 1.0
+    @test f[2] == 2.0
+    @test f[3] == 1e5
 end
 
 function init_m_fun(x, y, z)
@@ -41,7 +48,7 @@ function test_init_m_function()
     mxyz = reshape(transpose(m0[:, 4:6]), N, 1)
     #println("max diff: ", maximum(abs.(sim.spin - mxyz)))
     eps = 1e-6
-    @test maximum(abs.(sim.spin - mxyz)) < eps
+    @test maximum(abs.(Array(sim.spin) - mxyz)) < eps
     #print(mxyz[1:50])
 end
 
@@ -133,11 +140,12 @@ function test_demag_field(; method="bem", compare_phi=true)
         g1 = g_phi[:, 4]
         phi1 = g_phi[:, 5]
         #println("diff:", g1[1:10], demag.g1[1:10])
-        println("g1 max diff: ", maximum(abs.(demag.g1 - g1)))
-        @test maximum(abs.(demag.g1 - g1)) < 1e-8
+        println("g1 max diff: ", maximum(abs.(Array(demag.g1) - g1)))
+        println("g1 min diff: ", minimum(abs.(Array(demag.g1) - g1)))
+        @test maximum(abs.(Array(demag.g1) - g1)) < 1e-8
 
-        println("phi1 max diff: ", maximum(abs.(demag.phi1 - phi1)))
-        @test maximum(abs.(demag.phi1 - phi1)) < 6e-9
+        println("phi1 max diff: ", maximum(abs.(Array(demag.phi1) - phi1)))
+        @test maximum(abs.(Array(demag.phi1) - phi1)) < 6e-9
     end
 
     filepath = joinpath(@__DIR__, "fields/demag.txt")
@@ -145,10 +153,10 @@ function test_demag_field(; method="bem", compare_phi=true)
     field = reshape(transpose(f0[:, 4:6]), N, 1)
     eps = 5e-5
     mean = sum(abs.(field)) / length(field)
-    mean_diff = sum(abs.(demag.field - field)) / length(field)
+    mean_diff = sum(abs.(Array(demag.field) - field)) / length(field)
     println("mean diff: ", mean_diff / mean)
     @test mean_diff / mean < 0.05
-    @test maximum(abs.(demag.field - field)) / mean < eps
+    @test maximum(abs.(Array(demag.field) - field)) / mean < eps
 
     energy = 3.97e-21
     @test (sum(demag.energy) - energy) / energy < 0.02
@@ -158,9 +166,9 @@ end
 
 test_zeeman()
 test_init_m_function()
-test_demag_field()
 
 @using_gpu()
 test_functions("Test zeeman (FE)", test_zeeman_field, precisions=[Float64])
 test_functions("Test anisotropy (FE)", test_anis_field, precisions=[Float64])
 test_functions("Test exchange (FE)", test_exchange_field, precisions=[Float64])
+test_functions("Test demag (FE)", test_demag_field, precisions=[Float64])
