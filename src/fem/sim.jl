@@ -6,6 +6,19 @@ function set_Ms(sim::MicroSimFE, Ms::NumberOrArray)
     return true
 end
 
+function set_Ms(sim::MicroSimFE, Ms::Number; region_id=1)
+    mesh = sim.mesh
+    mu0_Ms = Array(sim.mu0_Ms)
+    for i in 1:mesh.number_cells
+        if mesh.region_ids[i] == region_id
+            mu0_Ms[i] = mu_0 * Ms
+        end
+    end
+    sim.mu0_Ms .= mu0_Ms
+    compute_L_Ms!(sim.L_mu, sim.mesh, sim.mu0_Ms)
+    return true
+end
+
 function init_m0(sim::MicroSimFE, m0::TupleOrArrayOrFunction; norm=true)
     init_vector!(sim.prespin, sim.mesh, m0)
     if norm

@@ -13,7 +13,7 @@ mutable struct FEMesh <: Mesh
     map_b2g::AbstractArray{Int32,1}
     volumes::Array{Float64,1}
     L_inv_neg::AbstractArray{Float64,1}
-    region_ids::Array{Int64,1}
+    region_ids::Array{Int32,1}
     surface_ids::Array{Int64,1}
     surface_normals::Array{Float64,2}
     FEMesh() = new()
@@ -57,7 +57,7 @@ function load_mesh_netgen_neutral(fname::String)
     N = parse(Int64, readline(io)) #then it sould be the total number of cells
     mesh.number_cells = N
     mesh.cell_verts = zeros(Float64, 4, N)
-    mesh.region_ids = zeros(Integer, N)
+    mesh.region_ids = ones(Integer, N)
 
     for i in 1:N
         x = split(readline(io))

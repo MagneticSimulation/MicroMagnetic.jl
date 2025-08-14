@@ -192,3 +192,44 @@ function read_vtk(filename; field="m", point_data=false)
     f = copy(get_data(data[field]))
     return reshape(f, length(f))
 end
+
+
+"""
+    save_vtk(sim::MicroSimFEM, fname::String; fields::Array{String, 1} = String[])
+
+Save magnetization or other fields to vtk.
+
+```julia
+    save_vtk(sim, "m")
+```
+"""
+function save_vtk(sim::MicroSimFE, fname::String; fields::Array{String, 1} = String[])
+  mesh = sim.mesh
+  points = mesh.coordinates
+  celltype = VTKCellTypes.VTK_LAGRANGE_TETRAHEDRON
+  cells = MeshCell{VTKCellType, Vector{Int32}}[]
+  for i in 1:mesh.number_cells
+    cell = MeshCell(celltype, mesh.cell_verts[:, i])
+    push!(cells, cell)
+  end
+
+  mkpath(dirname(fname))
+  
+  vtk = vtk_grid(fname, points, cells)
+  vtk_cell_data(vtk, mesh.region_ids, "region")
+  vtk_point_data(vtk, Array(sim.spin), "m")
+  
+  if length(fields) > 0
+    fields = Set(fields)
+
+    for i in sim.interactions
+      if i.name in fields
+        t = isa(sim.driver, LLG) ? sim.driver.integrator.t : 0.0
+        MicroMagnetic.effective_field(i, sim, sim.spin, t)
+        vtk_point_data(vtk, Array(i.field), i.name)
+      end
+    end
+  end
+
+  vtk_save(vtk)
+end
