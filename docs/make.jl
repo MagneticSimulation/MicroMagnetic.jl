@@ -15,20 +15,23 @@ Micromagnetic = ["Nanobar" => "micromagnetics/nanobar.md",
                  "Standard Problem 5 (sim_with)" => "micromagnetics/std5_sim_with.md",
                  "Standard Problem 5" => "micromagnetics/std5.md",
                  "Skyrmion dynamics STT" => "micromagnetics/skyrmion_stt.md",
-                 "Stoner–Wohlfarth model" => "micromagnetics/stoner_wohlfarth.md",
+                 "Stoner-Wohlfarth model" => "micromagnetics/stoner_wohlfarth.md",
                  "Dynamical susceptibility" => "micromagnetics/chi.md"]
+
+FE = ["Magnetized Sphere" => "fem/sphere_demag.md"]
+API = ["api.md", "api_dev.md"]
 
 Miscellaneous = ["Skyrmion Phase (Monte Carlo)" => "monte_carlo/skyrmion.md",
                  "M-T curve (Monte Carlo)" => "monte_carlo/M_T_curve.md",
                  "Skyrmion collapse (NEB)" => "neb/neb_skx.md"]
 
 PAGES = ["Home" => "index.md",
-         "Manual" => ["install.md", "basics.md", "units.md", "equations.md"],
+         "Manual" => ["install.md", "basics.md", "units.md", "fem.md", "equations.md", "contrib.md"],
          "Atomistic" => Atomistic, 
-         "Micromagnetic" => Micromagnetic, 
+         "Micromagnetics (FD)" => Micromagnetic, 
+         "Micromagnetics (FE)" => FE,
          "Miscellaneous" => Miscellaneous, 
-         "api.md", "api_dev.md",
-         "contrib.md"]
+         "API" => API]
 
 
 makedocs(; 

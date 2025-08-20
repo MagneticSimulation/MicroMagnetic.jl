@@ -189,21 +189,6 @@ function compute_L_Ms!(L_mu::AbstractArray{T,1}, mesh::FEMesh, Ms::Array{T,1}) w
     copyto!(L_mu, L_mu_tmp)
 end
 
-#areas is an array
-#property is an array with the same length of areas and contain
-#the property information
-#target is used to filter areas according to property
-function max_id_with_filter(areas, property, target)
-    max_value, id = minimum(areas), -1
-    for i in 1:length(areas)
-        if areas[i] >= max_value && property[i] == target
-            max_value = areas[i]
-            id = i
-        end
-    end
-    return id
-end
-
 function compute_normal(x1::Array{Float64,1}, x2::Array{Float64,1}, x3::Array{Float64,1})
     v1 = x2 .- x1
     v2 = x3 .- x1
@@ -211,105 +196,6 @@ function compute_normal(x1::Array{Float64,1}, x2::Array{Float64,1}, x3::Array{Fl
     return v / norm2(v)
 end
 
-function extract_normal_axes_by_maximum_area(mesh::FEMesh)
-    N_surfaces = length(Set(mesh.surface_ids)) #the total surfaces number of the defined geometry
-    N_materials = length(Set(mesh.material_ids)) #the total materials number
-
-    surface_normals = zeros(3, N_surfaces)
-    surface_node = zeros(Int64, N_surfaces) # we only need one node for each surface
-
-    areas = zeros(N_surfaces)
-    #compute the total areas of each surfaces
-    for f in 1:(mesh.number_faces_bnd)
-        i = mesh.face_verts[1, f]
-        j = mesh.face_verts[2, f]
-        k = mesh.face_verts[3, f]
-
-        v1 = mesh.coordinates[:, i]
-        v2 = mesh.coordinates[:, j]
-        v3 = mesh.coordinates[:, k]
-
-        id = mesh.surface_ids[f]
-        if surface_node[id] == 0  # we calculate the surface normal and store one node to surface_node array
-            surface_node[id] = i
-            surface_normals[:, id] .= compute_normal(v1, v2, v3)
-        end
-        areas[id] += triangle_area(v1, v2, v3)
-    end
-
-    #mapping for materials and nodes
-    materials_dict = Dict{Int64,Set}()
-    for c in 1:(mesh.number_cells)
-        mid = mesh.material_ids[c]
-        if !haskey(materials_dict, mid)
-            materials_dict[mid] = Set{Int64}()
-        end
-        for i in mesh.cell_verts[:, c]
-            push!(materials_dict[mid], i)
-        end
-    end
-
-    #we need to group the areas according to material ids.
-    #we assume that each individual geometry does not connect to other geometries
-    #so each surface should only belongs to one material
-    map_surface2material = zeros(Int64, N_surfaces)
-    for i in 1:N_surfaces
-        for j in 1:length(materials_dict)
-            if surface_node[i] in materials_dict[j]
-                map_surface2material[i] = j
-                break
-            end
-        end
-    end
-
-    #finally, we find the maximum area for each material and return the corresponding normals.
-    max_normals = zeros(3, N_materials)
-    for i in 1:N_materials
-        id = max_id_with_filter(areas, map_surface2material, i)
-        max_normals[:, i] .= surface_normals[:, id]
-    end
-
-    return max_normals
-end
-
-function material_gaussian_distribution(mesh::FEMesh, mean, std_dev)
-    cell_gaussian = zeros(mesh.number_cells)
-
-    N_materials = length(Set(mesh.material_ids))
-    material_gaussian = mean .+ randn(rng, N_materials) * std_dev
-    for i in 1:(mesh.number_cells)
-        cell_gaussian[i] = material_gaussian[mesh.material_ids[i]]
-    end
-    return cell_gaussian
-end
-
-function compute_prsim_volume(radius, height)
-    return 3 * sqrt(3) / 2 * radius * radius * height
-end
-
-function compute_prsim_radius(volume, height_radius_ratio)
-    return (2 / (3 * sqrt(3)) * volume / height_radius_ratio)^(1 / 3)
-end
-
-function compute_particle_volume(mesh::FEMesh, material_id)
-    ids = findall(x -> x == material_id, mesh.material_ids)
-    return sum(mesh.volumes[ids])
-end
-
-"""
-return an array with length
-"""
-function spatial_particle_function(mesh, fun)
-    N_cells = mesh.number_cells
-    values = zeros(N_cells)
-    N_materials = length(Set(mesh.material_ids))
-    for id in 1:N_materials
-        ids = findall(x -> x == id, mesh.material_ids)
-        v = fun(mesh, id)
-        values[ids] .= v
-    end
-    return values
-end
 
 function init_vector!(v::Array{T,1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
     N = mesh.number_nodes
@@ -325,6 +211,21 @@ function init_vector!(v::Array{T,1}, mesh::FEMesh, init::Function) where {T<:Abs
     end
     return nothing
 end
+
+function init_scalar_nodes!(v::Array{T,1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
+    N = mesh.number_nodes
+
+    for i in 1:N
+        x, y, z = mesh.coordinates[:, i]
+        v[i] = init(x, y, z)
+    end
+
+    if NaN in v
+        error("NaN is given by the input function.")
+    end
+    return nothing
+end
+
 
 function init_vector!(v::AbstractArray{T,1}, mesh::FEMesh, init_fun) where {T<:AbstractFloat}
     init_v = zeros(T, 3 * mesh.number_nodes)
