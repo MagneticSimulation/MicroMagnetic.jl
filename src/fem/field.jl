@@ -107,7 +107,7 @@ function effective_field(demag::DemagFE, sim::MicroSimFE, spin::AbstractArray{T,
 
     mesh = sim.mesh
 
-    # step1: phi1 = D*m
+    # step1: g1 = D*m
     mul!(demag.g1, demag.D, spin)
 
     # step2: solve K1*phi1 = g1

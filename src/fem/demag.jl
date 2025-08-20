@@ -104,8 +104,22 @@ function boundary_element(xp::Array{Float64,1}, x1::Array{Float64,1}, x2::Array{
     return res
 end
 
+function compute_degrees(K::SparseMatrixCSC)
+    m, n = size(K)
+    row_nnz = zeros(Int, m)
+    
+    for col in 1:n
+        for i in nzrange(K, col)
+            row = rowvals(K)[i]
+            row_nnz[row] += 1
+        end
+    end
+    
+    return row_nnz
+end
+
 #assemble the matrix D, G and K1, and K2
-function assemble_matirx_DGK1K2(demag::DemagFE, sim::MicroSimFE)
+function assemble_matirx_DGK1K2(demag::DemagFE, sim::MicroSimFE; using_constraint=true)
     mesh = sim.mesh
     D = spzeros(mesh.number_nodes, 3 * mesh.number_nodes)
     G = spzeros(3 * mesh.number_nodes, mesh.number_nodes)
@@ -154,6 +168,31 @@ function assemble_matirx_DGK1K2(demag::DemagFE, sim::MicroSimFE)
     for i in 1:(mesh.number_nodes_bnd)
         j = map_b2g[i]
         K2[j, j] = 1.0
+    end
+
+    if using_constraint
+        regions = maximum(mesh.region_ids)
+        N_rank = rank(K1)
+        if size(K1, 1) - N_rank != regions
+            @warn("The number of mesh regions are not equal to the number of connected region!!!")
+        end
+
+        degrees = compute_degrees(K1)
+
+        N_constraints = min(size(K1, 1) - N_rank, regions)
+        for id = 1:N_constraints
+            mask = mesh.region_ids .== id
+            selected = mesh.cell_verts[1, mask]
+            I = argmax(degrees[selected])
+            J = selected[I]
+            
+            K1[J, :] .= 0
+            K1[:, J] .= 0
+            K1[J, J] = 1
+
+            D[J, :] .= 0 #make sure demag.g1[I] = 0
+        end
+        
     end
 
     if default_backend[] != CPU()
