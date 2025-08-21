@@ -299,7 +299,9 @@ function init_demag(sim::MicroSimFE, method; kwargs...)
     demag.field = create_zeros(3 * mesh.number_nodes)
     demag.energy = create_zeros(mesh.number_nodes)
 
-    assemble_matirx_DGK1K2(demag, sim)
+    constraint = :constraint in keys(kwargs) ? kwargs[:constraint] : true
+
+    assemble_matirx_DGK1K2(demag, sim, using_constraint = constraint)
 
     try
         demag.K1 = cholesky(demag.K1) #reuse the factorization to speed up the calculation

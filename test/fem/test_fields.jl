@@ -130,7 +130,7 @@ function test_demag_field(; method="bem", compare_phi=true)
 
     init_m0(sim, init_m_fun)
 
-    demag = add_demag(sim; method=method, R=100.0)
+    demag = add_demag(sim; method=method, constraint=false)
 
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     N = 3 * sim.n_total
