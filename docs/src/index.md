@@ -43,7 +43,7 @@ features:
     title: Stoner–Wohlfarth model
     details: Compute Stoner–Wohlfarth loop using a particle
     link: /micromagnetics/stoner_wohlfarth
-  - icon: <img src="./figures/sphere_field.png" />
+  - icon: <img src="/MicroMagnetic.jl/dev/skx_lattice.png" />
     title: Skyrmion lattice
     details: Relax the system to obtain the skyrmion lattices.
     link: /atomistic/skyrmion_lattice

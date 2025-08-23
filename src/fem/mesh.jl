@@ -68,6 +68,9 @@ function load_mesh_netgen_neutral(fname::String)
         mesh.cell_verts[4, i] = parse(Int64, x[5])
     end
 
+    close(io)
+
+    """
     N = parse(Int64, readline(io)) #finally it sould be the total surface number
     mesh.number_faces_bnd = N
     mesh.face_verts = zeros(Int64, 3, N)
@@ -80,7 +83,75 @@ function load_mesh_netgen_neutral(fname::String)
         mesh.face_verts[2, i] = parse(Int64, x[3])
         mesh.face_verts[3, i] = parse(Int64, x[4])
     end
+    """
     return mesh
+end
+
+function build_boundary_surfaces!(mesh::FEMesh)
+    # Dictionary: face (sorted vertex tuple) -> (count, opposite vertex)
+    face_info = Dict{Tuple{Int,Int,Int}, Tuple{Int, Int}}()
+    
+    # Iterate through all tetrahedral elements
+    for i in 1:mesh.number_cells
+        verts = mesh.cell_verts[:, i]  # Get the four vertex indices of current tetrahedron
+        
+        # Generate the four faces of the tetrahedron with their opposite vertices
+        faces = [
+            (verts[1], verts[2], verts[3], verts[4]),  # Face and its opposite vertex
+            (verts[1], verts[2], verts[4], verts[3]),
+            (verts[1], verts[3], verts[4], verts[2]),
+            (verts[2], verts[3], verts[4], verts[1])
+        ]
+        
+        for face in faces
+            # Extract the three face vertices and the opposite vertex
+            a, b, c, opp = face
+            # Create sorted key for the face
+            sorted_face = sort([a, b, c])
+            key = (sorted_face[1], sorted_face[2], sorted_face[3])
+            
+            # Update dictionary with face information
+            if haskey(face_info, key)
+                count, _ = face_info[key]
+                face_info[key] = (count + 1, opp)
+            else
+                face_info[key] = (1, opp)
+            end
+        end
+    end
+
+    for (key, (count, _)) in collect(face_info)
+        if count != 1
+            delete!(face_info, key)
+        end
+    end
+
+    mesh.number_faces_bnd = length(face_info)
+    mesh.face_verts = zeros(Int64, 3, mesh.number_faces_bnd)
+
+    # Process each boundary face to ensure correct normal orientation
+    for (i, (key, (_, opp))) in enumerate(face_info)
+        # Extract vertices from the sorted key
+        face_verts = collect(key)
+        
+        # Get coordinates of the four points
+        a = mesh.coordinates[:, opp]
+        b = mesh.coordinates[:, face_verts[1]]
+        c = mesh.coordinates[:, face_verts[2]]
+        d = mesh.coordinates[:, face_verts[3]]
+        
+        vol = tet_volume(a, b, c, d)
+        
+        if vol < 0.0
+            mesh.face_verts[1, i] = face_verts[1]
+            mesh.face_verts[2, i] = face_verts[3]
+            mesh.face_verts[3, i] = face_verts[2]
+        else
+            mesh.face_verts[1, i] = face_verts[1]
+            mesh.face_verts[2, i] = face_verts[2]
+            mesh.face_verts[3, i] = face_verts[3]
+        end
+    end
 end
 
 function build_boundary_maps!(mesh::FEMesh)
@@ -133,6 +204,7 @@ function FEMesh(fname::String; unit_length=1e-9)
     mesh.unit_length = unit_length
     compute_mesh_volume!(mesh)
     compute_L_inv_neg!(mesh)
+    build_boundary_surfaces!(mesh)
     build_boundary_maps!(mesh)
     return mesh
 end
