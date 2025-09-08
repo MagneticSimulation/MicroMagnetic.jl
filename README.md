@@ -1,9 +1,10 @@
 <table>
   <tr>
-    <td><img src="docs/src/public/logo.svg" alt="Logo" width="64"/></td>
+    <td><img src="docs/src/public/logo.png" alt="Logo" width="64"/></td>
     <td><h1>MicroMagnetic.jl</h1></td>
   </tr>
 </table>
+
 
 ### **Previous name: JuMag.jl**
 _A Julia package for classical spin dynamics and micromagnetic simulations with GPU support._

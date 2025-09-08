@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetrahedron Visualization</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #222;
+            font-family: Arial, sans-serif;
+        }
+        canvas { 
+            display: block; 
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            z-index: 100;
+            max-width: 300px;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        #screenshot-preview {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            z-index: 100;
+        }
+        #preview-img {
+            max-width: 200px;
+            border: 1px solid white;
+        }
+        #status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #ff9900;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h3>Tetrahedron Visualization</h3>
+        <button id="saveBtn">Save as Image</button>
+        
+        <div class="slider-container">
+            <label for="vertexDistanceSlider">Vertex Distance: <span id="vertexDistanceValue">0.5</span></label>
+            <input type="range" id="vertexDistanceSlider" min="0.2" max="1.0" step="0.1" value="0.5">
+        </div>
+        
+        <div class="slider-container">
+            <label for="zoomSlider">Zoom: <span id="zoomValue">5</span></label>
+            <input type="range" id="zoomSlider" min="3" max="15" step="0.1" value="5">
+        </div>
+        
+        <div class="slider-container">
+            <label for="paddingSlider">Image Padding: <span id="paddingValue">10</span>px</label>
+            <input type="range" id="paddingSlider" min="0" max="50" step="5" value="10">
+        </div>
+        
+        <div class="slider-container">
+            <label for="arrowSizeSlider">Arrow Size: <span id="arrowSizeValue">1.0</span></label>
+            <input type="range" id="arrowSizeSlider" min="0.5" max="2.0" step="0.1" value="1.0">
+        </div>
+        
+        <div class="slider-container">
+            <label for="edgeWidthSlider">Edge Width: <span id="edgeWidthValue">0.02</span></label>
+            <input type="range" id="edgeWidthSlider" min="0.01" max="0.15" step="0.01" value="0.02">
+        </div>
+        
+        <div class="slider-container">
+            <label for="arrowWidthSlider">Arrow Width: <span id="arrowWidthValue">0.04</span></label>
+            <input type="range" id="arrowWidthSlider" min="0.01" max="0.2" step="0.01" value="0.04">
+        </div>
+        
+        <p>Drag to rotate, Scroll to zoom</p>
+        
+        <div id="status"></div>
+    </div>
+
+    <div id="screenshot-preview">
+        <h4>Preview</h4>
+        <img id="preview-img" src="" alt="Preview">
+        <button id="download-btn">Download</button>
+        <button id="close-preview">Close</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = null;
+        
+        let cameraZ = 5;
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = cameraZ;
+        
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true,
+            alpha: true,
+            preserveDrawingBuffer: true
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+        
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        const ambientLight = new THREE.AmbientLight(0x606060);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        fillLight.position.set(-1, -1, -1);
+        scene.add(fillLight);
+        
+        let vertexDistance = 0.5;
+        
+        function getVertices() {
+            return [
+                new THREE.Vector3(vertexDistance, vertexDistance, vertexDistance),
+                new THREE.Vector3(vertexDistance, -vertexDistance, -vertexDistance),
+                new THREE.Vector3(-vertexDistance, vertexDistance, -vertexDistance),
+                new THREE.Vector3(-vertexDistance, -vertexDistance, vertexDistance)
+            ];
+        }
+        
+        const juliaColors = [
+            0xcb3c33,
+            0x389826,
+            0x4063d8,
+            0x9558b2
+        ];
+        
+        const edges = [
+            [0, 1], [0, 2], [0, 3],
+            [1, 2], [1, 3],
+            [2, 3]
+        ];
+        
+        let edgeMeshes = [];
+        let edgeWidth = 0.02;
+        
+        function createEdges() {
+            edgeMeshes.forEach(mesh => scene.remove(mesh));
+            edgeMeshes = [];
+            
+            const vertices = getVertices();
+            
+            for (const edge of edges) {
+                const start = vertices[edge[0]];
+                const end = vertices[edge[1]];
+                
+                const length = start.distanceTo(end);
+                const direction = new THREE.Vector3().subVectors(end, start).normalize();
+                
+                const edgeGeometry = new THREE.CylinderGeometry(edgeWidth, edgeWidth, length, 8);
+                const startColor = new THREE.Color(juliaColors[edge[0]]);
+                const endColor = new THREE.Color(juliaColors[edge[1]]);
+                
+                const edgeMaterial = new THREE.MeshPhongMaterial({
+                    vertexColors: true,
+                    shininess: 100
+                });
+                
+                const colors = [];
+                const positionAttr = edgeGeometry.getAttribute('position');
+                
+                for (let i = 0; i < positionAttr.count; i++) {
+                    const y = positionAttr.getY(i);
+                    const progress = (y + length/2) / length;
+                    const color = new THREE.Color().lerpColors(startColor, endColor, progress);
+                    colors.push(color.r, color.g, color.b);
+                }
+                
+                edgeGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                
+                const edgeMesh = new THREE.Mesh(edgeGeometry, edgeMaterial);
+                edgeMesh.position.copy(start).add(end).multiplyScalar(0.5);
+                edgeMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+                
+                scene.add(edgeMesh);
+                edgeMeshes.push(edgeMesh);
+            }
+            
+            document.getElementById('edgeWidthValue').textContent = edgeWidth.toFixed(2);
+        }
+        
+        
+        const sphereRadius = 0.2;
+        let arrowLength = 1.0;
+        let arrowWidth = 0.04;
+        
+        let arrowGroups = [];
+        let sphereMeshes = []; // 添加一个数组来存储球体引用
+        
+        function createArrows() {
+            arrowGroups.forEach(group => scene.remove(group));
+            arrowGroups = [];
+            
+            const vertices = getVertices();
+
+            const directions = [new THREE.Vector3(1, 1, 1), 
+                              new THREE.Vector3(0, 1, -1), 
+                              new THREE.Vector3(-1, 0, 1), 
+                              new THREE.Vector3(1, -1, 0)];
+            
+            for (let i = 0; i < vertices.length; i++) {
+                const vertex = vertices[i];
+                const direction = directions[i].normalize();
+                
+                const arrowGroup = new THREE.Group();
+                
+                const shaftLength = arrowLength * 0.7;
+                const shaftRadius = arrowWidth;
+                const shaftGeometry = new THREE.CylinderGeometry(shaftRadius, shaftRadius, shaftLength, 16);
+                const shaftMaterial = new THREE.MeshPhongMaterial({ color: juliaColors[i], shininess: 100 });
+                const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
+                shaft.position.set(0, shaftLength / 2, 0);
+                
+                const headLength = arrowLength * 0.3;
+                const headRadius = arrowWidth * 2;
+                const headGeometry = new THREE.ConeGeometry(headRadius, headLength, 32);
+                const headMaterial = new THREE.MeshPhongMaterial({ color: juliaColors[i], shininess: 100 });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.set(0, shaftLength + headLength / 2, 0);
+                
+                arrowGroup.add(shaft);
+                arrowGroup.add(head);
+                
+                const arrowStart = vertex.clone().sub(direction.clone().multiplyScalar(arrowLength * 0.42));
+                arrowGroup.position.copy(arrowStart);
+                
+                arrowGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+                
+                scene.add(arrowGroup);
+                arrowGroups.push(arrowGroup);
+            }
+            
+            document.getElementById('arrowSizeValue').textContent = arrowLength.toFixed(1);
+            document.getElementById('arrowWidthValue').textContent = arrowWidth.toFixed(2);
+        }
+        
+        function createSpheres() {
+            // 移除所有现有的球体
+            sphereMeshes.forEach(mesh => scene.remove(mesh));
+            sphereMeshes = [];
+            
+            const vertices = getVertices();
+            
+            for (let i = 0; i < vertices.length; i++) {
+                const vertex = vertices[i];
+                
+                const sphereGeometry = new THREE.SphereGeometry(sphereRadius, 32, 32);
+                const sphereMaterial = new THREE.MeshPhongMaterial({ color: juliaColors[i], shininess: 100 });
+                const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                sphere.position.copy(vertex);
+                sphere.userData = { isSphere: true };
+                
+                scene.add(sphere);
+                sphereMeshes.push(sphere); // 存储球体引用
+            }
+        }
+        
+        function updateAll() {
+            createEdges();
+            createSpheres();
+            createArrows();
+        }
+        
+        let currentScreenshotDataURL = '';
+        let padding = 10;
+        let isSaving = false;
+        
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+            setTimeout(() => {
+                document.getElementById('status').textContent = '';
+            }, 3000);
+        }
+        
+        function saveSceneAsImage() {
+            if (isSaving) return;
+            
+            isSaving = true;
+            document.getElementById('saveBtn').disabled = true;
+            updateStatus('Generating image...');
+            
+            try {
+                const canvas = renderer.domElement;
+                
+                const offscreenCanvas = document.createElement('canvas');
+                offscreenCanvas.width = canvas.width;
+                offscreenCanvas.height = canvas.height;
+                const offscreenCtx = offscreenCanvas.getContext('2d');
+                
+                offscreenCtx.drawImage(canvas, 0, 0);
+                
+                const imageData = offscreenCtx.getImageData(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+                
+                const bounds = findContentBounds(imageData);
+                
+                if (bounds) {
+                    const cropX = Math.max(0, bounds.minX - padding);
+                    const cropY = Math.max(0, bounds.minY - padding);
+                    const cropWidth = Math.min(offscreenCanvas.width - cropX, bounds.maxX - bounds.minX + padding * 2);
+                    const cropHeight = Math.min(offscreenCanvas.height - cropY, bounds.maxY - bounds.minY + padding * 2);
+                    
+                    const croppedCanvas = document.createElement('canvas');
+                    croppedCanvas.width = cropWidth;
+                    croppedCanvas.height = cropHeight;
+                    const ctx = croppedCanvas.getContext('2d');
+                    
+                    ctx.drawImage(offscreenCanvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+                    
+                    currentScreenshotDataURL = croppedCanvas.toDataURL('image/png');
+                    
+                    document.getElementById('preview-img').src = currentScreenshotDataURL;
+                    document.getElementById('screenshot-preview').style.display = 'block';
+                    
+                    updateStatus('Image generated!');
+                } else {
+                    updateStatus('No content detected');
+                }
+            } catch (error) {
+                console.error('Error saving image:', error);
+                updateStatus('Error: ' + error.message);
+            } finally {
+                isSaving = false;
+                document.getElementById('saveBtn').disabled = false;
+            }
+        }
+        
+        function findContentBounds(imageData) {
+            const data = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+            
+            let minX = width;
+            let minY = height;
+            let maxX = 0;
+            let maxY = 0;
+            let foundContent = false;
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const alpha = data[(y * width + x) * 4 + 3];
+                    if (alpha > 10) {
+                        foundContent = true;
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+            
+            return foundContent ? { minX, minY, maxX, maxY } : null;
+        }
+        
+        function downloadImage() {
+            if (currentScreenshotDataURL) {
+                const link = document.createElement('a');
+                link.href = currentScreenshotDataURL;
+                link.download = 'tetrahedron_' + new Date().toISOString().replace(/:/g, '-') + '.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                updateStatus('Downloading...');
+            }
+        }
+        
+        function closePreview() {
+            document.getElementById('screenshot-preview').style.display = 'none';
+        }
+        
+        function updateCamera() {
+            camera.position.z = cameraZ;
+            camera.updateProjectionMatrix();
+            document.getElementById('zoomValue').textContent = cameraZ.toFixed(1);
+        }
+        
+        function updateArrowSize() {
+            createArrows();
+        }
+        
+        function updateEdgeWidth() {
+            createEdges();
+        }
+        
+        function updateArrowWidth() {
+            createArrows();
+        }
+        
+        function updateVertexDistance() {
+            document.getElementById('vertexDistanceValue').textContent = vertexDistance.toFixed(1);
+            updateAll();
+        }
+        
+        document.getElementById('saveBtn').addEventListener('click', saveSceneAsImage);
+        document.getElementById('download-btn').addEventListener('click', downloadImage);
+        document.getElementById('close-preview').addEventListener('click', closePreview);
+        
+        const zoomSlider = document.getElementById('zoomSlider');
+        zoomSlider.addEventListener('input', function() {
+            cameraZ = parseFloat(this.value);
+            updateCamera();
+        });
+        
+        const paddingSlider = document.getElementById('paddingSlider');
+        paddingSlider.addEventListener('input', function() {
+            padding = parseInt(this.value);
+            document.getElementById('paddingValue').textContent = padding;
+        });
+        
+        const arrowSizeSlider = document.getElementById('arrowSizeSlider');
+        arrowSizeSlider.addEventListener('input', function() {
+            arrowLength = parseFloat(this.value);
+            updateArrowSize();
+        });
+        
+        const edgeWidthSlider = document.getElementById('edgeWidthSlider');
+        edgeWidthSlider.addEventListener('input', function() {
+            edgeWidth = parseFloat(this.value);
+            updateEdgeWidth();
+        });
+        
+        const arrowWidthSlider = document.getElementById('arrowWidthSlider');
+        arrowWidthSlider.addEventListener('input', function() {
+            arrowWidth = parseFloat(this.value);
+            updateArrowWidth();
+        });
+        
+        const vertexDistanceSlider = document.getElementById('vertexDistanceSlider');
+        vertexDistanceSlider.addEventListener('input', function() {
+            vertexDistance = parseFloat(this.value);
+            updateVertexDistance();
+        });
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        updateAll();
+        animate();
+    </script>
+</body>
+</html>

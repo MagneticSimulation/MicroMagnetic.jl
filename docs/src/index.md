@@ -7,7 +7,7 @@ hero:
   name: "MicroMagnetic.jl"
   tagline: A Julia package for classical spin dynamics and micromagnetic simulations with GPU support.
   image: 
-    src: /logo.svg
+    src: /logo.png
     alt: MicroMagnetic
   actions:
     - theme: brand
