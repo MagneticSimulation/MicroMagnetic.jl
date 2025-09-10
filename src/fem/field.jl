@@ -6,6 +6,9 @@ function assemble_anis_matirx(anis::AnisotropyFE, sim::MicroSimFE)
     mu0_Ms = sim.mu0_Ms
 
     for c in 1:(mesh.number_cells)
+        if mu0_Ms[c] < eps()
+            continue
+        end
         k1 = mesh.cell_verts[1, c]
         k2 = mesh.cell_verts[2, c]
         k3 = mesh.cell_verts[3, c]
@@ -42,6 +45,9 @@ function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
     mu0_Ms = sim.mu0_Ms
 
     for c in 1:(mesh.number_cells)
+        if mu0_Ms[c] < eps()
+            continue
+        end
         k1 = mesh.cell_verts[1, c]
         k2 = mesh.cell_verts[2, c]
         k3 = mesh.cell_verts[3, c]

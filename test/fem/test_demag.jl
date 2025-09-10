@@ -49,5 +49,22 @@ function test_demag_field_sphere(; method="bem")
     @test error < 0.04
 end
 
+function test_exch_sphere_air()
+    filepath = joinpath(@__DIR__, "meshes/sphere_air.mesh")
+    mesh = FEMesh(filepath, unit_length=1e-9)
+    sim = Sim(mesh; driver="SD")
+    set_Ms(sim, 8e5, region_id=1)
+
+    init_m0(sim, (0,0,1))
+
+    f = add_exch(sim, 1e-13)
+
+    MicroMagnetic.effective_field(sim, sim.spin)
+
+    @test !any(isnan, f.field)
+    @test maximum(abs.(f.field)) < 1e-8
+end
+
 @using_gpu()
 test_functions("Test Demag (FE)", test_demag_field_sphere, precisions=[Float64])
+test_functions("Test Exch Air (FE)", test_exch_sphere_air, precisions=[Float64])
