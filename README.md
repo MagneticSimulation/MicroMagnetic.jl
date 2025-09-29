@@ -37,6 +37,9 @@ Access our complete web resources including documentation, tutorials and example
 #### Mirror Site 
 [![GitLab Mirror](https://img.shields.io/badge/mirror-gitlab-blue?style=flat-square&logo=gitlab)](https://magneticsimulation.gitlab.io/MicroMagnetic.jl/)  
 
+### QQ group support 
+We have a QQ group. If you have any questions related to Micromagnetic.jl, please join the QQ group (1065654259).
+
 ## Installation
 
 Install MicroMagnetic is straightforward as long as Julia (<http://julialang.org/downloads/>) is installed, and it is equally easy in Windows, Linux and Mac.  
