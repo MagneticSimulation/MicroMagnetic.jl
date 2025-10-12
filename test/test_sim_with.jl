@@ -39,7 +39,7 @@ function test_sim_with()
 
     sim = sim_with(args)
     m = Array(sim.spin)
-    println(m[1:3])
+    println(m[1:3], analytical)
     @test isapprox(m[1:3], analytical)
 
     args = (name="test_read", task="relax", mesh=mesh, m0=(1, 2, 3), Ms=8e5, A=1e-11, stopping_dmdt=0.01,
@@ -47,6 +47,7 @@ function test_sim_with()
 
     sim = sim_with(args)
     m = Array(sim.spin)
+    println(m[1:3], [0, 0, -1])
     @test isapprox(m[1:3], [0, 0, -1])
     return nothing
 end
@@ -59,6 +60,6 @@ function test_read_table()
 end
 
 
-#@using_gpu()
+@using_gpu()
 test_functions("sim_with", test_sim_with)
 test_functions("read_table", test_read_table)

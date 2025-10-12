@@ -30,6 +30,9 @@ function init_m0(sim::MicroSimFE, m0::TupleOrArrayOrFunction; norm=true)
     end
 
     sim.spin[:] .= sim.prespin[:]
+    if isdefined(sim.driver, :integrator) && sim.driver.integrator isa AdaptiveRK
+        set_initial_condition!(sim, sim.driver.integrator)
+    end
 end
 
 function average_m(sim::MicroSimFE)

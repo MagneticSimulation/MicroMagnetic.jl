@@ -223,11 +223,18 @@ function initialize!(integrator::AdaptiveRK, y0::AbstractArray)
     for k in integrator.ks
         k .= 0.0
     end
-    return integrator.y_temp .= 0.0  # Also reset temporary storage
+    integrator.y_temp .= 0.0 
+    return nothing
 end
 
 function set_initial_condition!(integrator::AdaptiveRK, y0::AbstractArray)
     return integrator.y_current .= y0
+end
+
+function set_initial_condition!(sim, integrator::AdaptiveRK)
+    integrator.y_current .= 0
+    y = view(integrator.y_current, 1:(3 * sim.n_total))
+    copyto!(y, sim.spin)
 end
 
 function get_current_state(integrator::AdaptiveRK)

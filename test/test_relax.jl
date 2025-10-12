@@ -37,7 +37,8 @@ end
 
 function test_relax()
     relax_system(; driver="LLG")
-    return relax_system(; driver="SD")
+    relax_system(; driver="SD")
+    return nothing
 end
 
 @using_gpu()

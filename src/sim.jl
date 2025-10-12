@@ -5,10 +5,47 @@ export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, r
        set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with, advance_step
 
 """
-    Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince")
+    Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
 
-Create a simulation instance for given mesh.
+Create a simulation instance for the given mesh with specified driver and integrator.
 
+# Arguments
+- `mesh::Mesh`: The computational mesh defining the simulation geometry. Can be:
+  - `FDMesh`: Finite difference mesh for micromagnetics
+  - `FEMesh`: Finite element mesh for micromagnetics  
+  - Other mesh types: Creates atomistic simulation
+
+# Keyword Arguments
+- `driver::String="LLG"`: The simulation driver type. Options:
+  - `"None"`: No driver (static simulation)
+  - `"SD"`: Energy minimization (Steepest Descent)
+  - `"LLG"`: Landau-Lifshitz-Gilbert equation
+  - `"LLG_STT"`: LLG with spin transfer torque
+  - `"LLG_CPP"`: LLG with CPP spin transfer torque
+- `name::String="dyn"`: Name identifier for the simulation
+- `integrator::String="DormandPrince"`: Time integration method. Options:
+  - Fixed step methods: `"Heun"`, `"RungeKutta"`, `"RungeKuttaCayley"`
+  - Adaptive step methods: `"DormandPrince"` (DOPRI54), `"BS23"`, `"CashKarp54"`, `"Fehlberg54"` (RKF54)
+  - Cayley-transform methods: `"DormandPrinceCayley"`, `"RungeKuttaCayley"`
+- `save_data::Bool=true`: Whether to enable data saving during simulation
+
+# Returns
+- `MicroSim{Float}`: For FDMesh simulations
+- `MicroSimFE{Float}`: For FEMesh simulations  
+- `AtomisticSim{Float}`: For AtomisticMesh types
+
+# Examples
+```julia
+# Create LLG simulation with Dormand-Prince integrator
+mesh = FDMesh(nx=100, ny=100, nz=1)
+sim = Sim(mesh, driver="LLG", integrator="DormandPrince")
+
+# Create energy minimization simulation  
+sim_sd = Sim(mesh, driver="SD")
+
+# Create STT simulation with adaptive stepping
+sim_stt = Sim(mesh, driver="LLG_STT", integrator="BS23")
+```
 """
 function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
              save_data=true)
@@ -210,8 +247,7 @@ function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
     copyto!(sim.prespin, sim.spin)
 
     if isdefined(sim.driver, :integrator) && sim.driver.integrator isa AdaptiveRK
-        f = view(sim.driver.integrator.y_current, 1:(3 * sim.n_total))
-        copyto!(f, sim.spin)
+        set_initial_condition!(sim, sim.driver.integrator)
     end
 
     return true
@@ -324,6 +360,12 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
     @info @sprintf("Running Driver : %s.", typeof(driver))
     for i in 1:max_steps
         @timeit timer "run_step" run_step(sim, driver)
+
+        if llg_driver && isa(sim.driver.integrator, AdaptiveRK)
+            copyto!(sim.prespin, sim.spin)
+            y = view(sim.driver.integrator.y_current, 1:(3 * sim.n_total))
+            copyto!(sim.spin, y)
+        end
 
         step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
 
@@ -452,6 +494,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator,
         return
     end
 
+    copyto!(sim.prespin, sim.spin)
     integrate_to_time(sim, integrator, t_end)
     y = view(sim.driver.integrator.y_current, 1:(3 * sim.n_total))
     copyto!(sim.spin, y)
@@ -840,6 +883,7 @@ function sim_with(args::Union{NamedTuple,Dict})
             if driver == "SD"
                 set_driver(sim; driver="LLG", integrator="DormandPrince")
                 set_driver_arguments(sim, args)
+                set_initial_condition!(sim, sim.driver.integrator)
             end
 
             for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back,
@@ -891,7 +935,7 @@ function sim_with(args::Union{NamedTuple,Dict})
 
         if haskey(dict, :Ms)
             Ms_ = dict[:Ms][n]
-            if shape == nothing
+            if shape === nothing
                 set_Ms(sim, Ms_)
             else
                 set_Ms(sim, shape, Ms_)
@@ -920,6 +964,7 @@ function sim_with(args::Union{NamedTuple,Dict})
                 set_driver(sim; driver=driver_, integrator="DormandPrince")
             end
             set_driver_arguments(sim, args)
+            set_initial_condition!(sim, sim.driver.integrator)
 
             for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back,
                         :saver_item, :save_vtk]
