@@ -82,7 +82,8 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
     end
 
     supported_integrators = ["Heun", "RungeKutta", "RungeKuttaCayley", "DormandPrince",
-                             "DormandPrinceCayley"]
+                             "DormandPrinceCayley", "DOPRI54", "BS23", "CashKarp54",
+                             "Fehlberg54", "RKF54"]
     if !(integrator in supported_integrators)
         error("Supported integrators for GPU: ", join(supported_integrators, " "))
     end
@@ -104,8 +105,14 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         dopri5 = RungeKutta(n_total, call_back_fun, 5e-14)
     elseif integrator == "RungeKuttaCayley"
         dopri5 = RungeKuttaCayley(n_total, call_back_fun, 5e-14)
-    elseif integrator == "DormandPrince"
+    elseif integrator == "DormandPrince" || integrator == "DOPRI54"
         dopri5 = DormandPrince(n_total, call_back_fun, tol)
+    elseif integrator == "BS23"
+        dopri5 = BogackiShampine23(n_total, call_back_fun, tol)
+    elseif integrator == "CashKarp54"
+        dopri5 = CashKarp54(n_total, call_back_fun, tol)
+    elseif integrator == "Fehlberg54" || integrator == "RKF54"
+        dopri5 = Fehlberg54(n_total, call_back_fun, tol)
     elseif integrator == "DormandPrinceCayley"
         dopri5 = DormandPrinceCayley(n_total, call_back_fun, tol)
     end

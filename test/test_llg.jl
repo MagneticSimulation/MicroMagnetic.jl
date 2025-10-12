@@ -16,7 +16,9 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
 end
 
 function test_llg(integrator="DormandPrince")
-    #Test mesh
+    tol = integrator == "BS23" ? 1e-7 : 1e-8
+    error = integrator == "BS23" ? 2e-6 : 8e-7
+
     mesh = FDMesh(; nx=1, ny=1, dx=1e-9)
 
     sim = Sim(mesh; name="spin", integrator=integrator)
@@ -24,27 +26,28 @@ function test_llg(integrator="DormandPrince")
     set_Ms(sim, 8e5)
     sim.driver.alpha = 0.05
     sim.driver.gamma = 2.21e5
-    sim.driver.integrator.tol = 1e-8
+
+    sim.driver.integrator.tol = tol
 
     add_zeeman(sim, (0, 0, 1e5))
 
     init_m0(sim, (1.0, 0, 0))
 
-    for i in 1:300
-        run_until(sim, 1e-12 * i)
+    for i in 1:10
+        run_until(sim, 1e-10 * i)
     end
 
-    #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
-    ts = Array([3e-10])
+    #println(sim.driver.integrator.t, " ", integrator)
+
+    ts = Array([1e-9])
     mx, my, mz = analytical(0.05, 2.21e5, 1e5, ts)
 
     m = Array(sim.spin)
 
-    @test abs(mx[1] - m[1]) < 8e-7
-    @test abs(my[1] - m[2]) < 8e-7
-    @test abs(mz[1] - m[3]) < 8e-7
+    @test abs(mx[1] - m[1]) < error
+    @test abs(my[1] - m[2]) < error
+    @test abs(mz[1] - m[3]) < error
 end
-
 
 function test_llg_rk(integrator="RungeKutta")
     #Test mesh
@@ -74,15 +77,32 @@ function test_llg_rk(integrator="RungeKutta")
     @test abs(mz[1] - m[3]) < 8e-6
 end
 
-function test_llgs()
-    for integrator in ["DormandPrince", "DormandPrinceCayley"]
-        test_llg(integrator)
-    end
+function test_llg_dp()
+    test_llg("DormandPrince")
+    return test_llg("DormandPrinceCayley")
+end
 
+function test_llg_bs()
+    return test_llg("BS23")
+end
+
+function test_llg_ck()
+    return test_llg("CashKarp54")
+end
+
+function test_llg_fh()
+    return test_llg("Fehlberg54")
+end
+
+function test_llg_fixed_dt()
     for integrator in ["Heun", "RungeKutta", "RungeKuttaCayley"]
         test_llg_rk(integrator)
-    end   
+    end
 end
 
 @using_gpu()
-test_functions("LLG", test_llgs)
+test_functions("LLG DormandPrince", test_llg_dp)
+test_functions("LLG BS23", test_llg_bs)
+test_functions("LLG CashKarp54", test_llg_ck)
+test_functions("LLG Fehlberg54", test_llg_fh)
+test_functions("LLG Fixed dt", test_llg_fixed_dt)

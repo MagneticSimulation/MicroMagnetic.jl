@@ -26,7 +26,7 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.mesh = mesh
     if isa(mesh, FEMesh)
         n_total = mesh.number_nodes
-        sim.n_cells = mesh.number_cells    
+        sim.n_cells = mesh.number_cells
     else
         n_total = mesh.nx * mesh.ny * mesh.nz
     end
@@ -46,7 +46,7 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     else
         sim.mu_s = create_zeros(n_total)
     end
-    
+
     sim.driver_name = driver
     sim.driver = create_driver(driver, integrator, n_total)
     sim.interactions = []
@@ -208,6 +208,12 @@ function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
 
     copyto!(sim.spin, spin)
     copyto!(sim.prespin, sim.spin)
+
+    if isdefined(sim.driver, :integrator) && sim.driver.integrator isa AdaptiveRK
+        f = view(sim.driver.integrator.y_current, 1:(3 * sim.n_total))
+        copyto!(f, sim.spin)
+    end
+
     return true
 end
 
@@ -307,7 +313,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             file["mesh/dz"] = sim.mesh.dz
 
             file["steps"] = max_steps
-            file["save_m_every"] = save_m_every
+            return file["save_m_every"] = save_m_every
         end
     end
 
@@ -349,7 +355,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
                 m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
                 index = @sprintf("%d", i)
-                m_group[index] = Array(sim.spin)
+                return m_group[index] = Array(sim.spin)
             end
         end
 
@@ -365,7 +371,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
                 jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
                     m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
                     index = @sprintf("%d", i)
-                    m_group[index] = Array(sim.spin)
+                    return m_group[index] = Array(sim.spin)
                 end
             end
 
@@ -446,17 +452,9 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator,
         return
     end
 
-    # so we have t_end > self.t
-    if integrator.step_next <= 0
-        integrator.step_next = compute_init_step_DP(sim, t_end - integrator.t)
-    end
-
-    while integrator.t < t_end
-        if integrator.step_next + integrator.t > t_end
-            integrator.step_next = t_end - integrator.t
-        end
-        advance_step(sim, integrator)
-    end
+    integrate_to_time(sim, integrator, t_end)
+    y = view(sim.driver.integrator.y_current, 1:(3 * sim.n_total))
+    copyto!(sim.spin, y)
 
     sim.saver.t = t_end
     if save_data
@@ -616,7 +614,7 @@ function create_sim(mesh, args::Dict)
         axis1 = haskey(args, :axis1) ? args[:axis1] : (1, 0, 0)
         axis2 = haskey(args, :axis2) ? args[:axis2] : (0, 1, 0)
 
-        add_cubic_anis(sim, args[:Kc], axis1=axis1, axis2=axis2)
+        add_cubic_anis(sim, args[:Kc]; axis1=axis1, axis2=axis2)
 
         haskey(args, :axis1) && delete!(args, :axis1)
         haskey(args, :axis2) && delete!(args, :axis2)
@@ -679,11 +677,10 @@ This setup will save the computed guiding center to the simulation output, in ad
 """
 function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1,
                  saver_item=nothing, call_back=nothing)
-
     if isa(saver_item, SaverItem)
         push!(sim.saver.items, saver_item)
     end
-            
+
     if isa(saver_item, AbstractArray)
         for item in saver_item
             push!(sim.saver.items, item)
@@ -717,7 +714,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
             jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
                 m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
                 index = @sprintf("%d", i)
-                m_group[index] = Array(sim.spin)
+                return m_group[index] = Array(sim.spin)
             end
         end
     end
@@ -782,7 +779,7 @@ See examples at [High-Level Interface](@ref).
 - **Data Saving**: The `relax_m_interval` and `dynamic_m_interval` parameters control how frequently magnetization data is saved during `Relax` and `Dynamics` tasks, respectively. Use negative values to disable data saving for these tasks.
 
 """
-function sim_with(args::Union{NamedTuple, Dict})
+function sim_with(args::Union{NamedTuple,Dict})
     #convert args to a dict
     if !isa(args, Dict)
         args = Dict(key => value for (key, value) in pairs(args))
@@ -822,7 +819,7 @@ function sim_with(args::Union{NamedTuple, Dict})
         if isa(saver_item, SaverItem)
             push!(sim.saver.items, saver_item)
         end
-    
+
         if isa(saver_item, AbstractArray)
             for item in saver_item
                 push!(sim.saver.items, item)
@@ -950,12 +947,10 @@ function sim_with(args::Union{NamedTuple, Dict})
     return sim
 end
 
-
-function sim_with(;args...)
+function sim_with(; args...)
     return sim_with(Dict(args))
 end
 
-
 function advance_step(sim::AbstractSim)
-    advance_step(sim, sim.driver.integrator)
+    return advance_step(sim, sim.driver.integrator)
 end

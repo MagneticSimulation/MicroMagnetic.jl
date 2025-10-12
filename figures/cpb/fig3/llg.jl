@@ -46,10 +46,10 @@ function plot_m()
     mx, my, mz = analytical(0.2, 2.21e5, 1e5, ts)
 
     ts_ns = ts * 1e9
-    l1 = lines!(ax; linestyle=:solid, ts_ns, mx, label=L"m_x")
-    l2 = lines!(ax; linestyle=:dash, linewidth=2, ts_ns, my, color=:sienna1, label=L"m_y")
-    l3 = lines!(ax; linestyle=Linestyle([0.5, 1.0, 1.5, 2.5]), linewidth=2,
-                color=:slateblue1, ts_ns, mz, label=L"m_z")
+    l1 = lines!(ax, ts_ns, mx, linestyle=:solid, label=L"m_x")
+    l2 = lines!(ax, ts_ns, my, linestyle=:dash, linewidth=2, color=:sienna1, label=L"m_y")
+    l3 = lines!(ax, ts_ns, mz, linestyle=Linestyle([0.5, 1.0, 1.5, 2.5]), linewidth=2,
+                color=:slateblue1, label=L"m_z")
 
     ts, m = test_llg()
     ts_ns = ts * 1e9

@@ -96,6 +96,17 @@ function vector_add5(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, c2::S, c3::S, c4::
     return nothing
 end
 
+# compute a = c1*a1 + c2*a2 + c3*a3 + c4*a4 + c5*a5
+function vector_add5b(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, c1::S, c2::S, c3::S, c4::S, c5::S) where {T<:AbstractFloat, S<:AbstractFloat, A<:AbstractArray{T,1}}
+    @kernel function vector_add5b_kernel!(a, @Const(a1), @Const(a2), @Const(a3), @Const(a4), @Const(a5), c1, c2, c3, c4, c5)
+        i = @index(Global)
+        @inbounds a[i] = c1 * a1[i] + c2 * a2[i] + c3 * a3[i] + c4 * a4[i] + c5 * a5[i]
+    end
+    kernel! = vector_add5b_kernel!(default_backend[], groupsize[])
+    kernel!(a, a1, a2, a3, a4, a5, c1, c2, c3, c4, c5; ndrange=length(a))
+    return nothing
+end
+
 # compute a = a1 + c2*a2 + c3*a3 + c4*a4 + c5*a5 + c6*a6
 function vector_add6(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, a6::A, c2::S, c3::S, c4::S, c5::S, c6::S) where {T<:AbstractFloat, S<:AbstractFloat, A<:AbstractArray{T,1}}
     @kernel function vector_add6_kernel!(a, @Const(a1), @Const(a2), @Const(a3), @Const(a4), @Const(a5), @Const(a6), c2, c3, c4, c5, c6)
