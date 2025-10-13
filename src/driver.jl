@@ -19,6 +19,14 @@ mutable struct LLG{T<:AbstractFloat} <: Driver
     tol::Float64
 end
 
+mutable struct SpatialLLG{T<:AbstractFloat} <: Driver
+    precession::Bool
+    alpha::AbstractArray{T, 1}
+    gamma::T
+    integrator::Integrator
+    tol::Float64
+end
+
 mutable struct LLG_CPP{T<:AbstractFloat} <: Driver
     alpha::T
     beta::T
@@ -61,7 +69,7 @@ mutable struct LLG_STT_CPP{T<:AbstractFloat} <: Driver
 end
 
 function create_driver(driver::String, integrator::String, n_total::Int64)
-    supported_drivers = ["None", "SD", "LLG", "LLG_STT", "LLG_CPP"]
+    supported_drivers = ["None", "SD", "LLG", "LLG_STT", "LLG_CPP", "SpatialLLG"]
     if !(driver in supported_drivers)
         error("Supported drivers: ", join(supported_drivers, " "))
     end
@@ -96,6 +104,8 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
                         llg_stt_call_back
     elseif driver == "LLG_CPP"
         call_back_fun = llg_cpp_call_back
+    elseif driver == "SpatialLLG"
+        call_back_fun = spatial_llg_call_back
     end
 
     tol = 1e-6
@@ -119,6 +129,10 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
 
     if driver == "LLG"
         return LLG(true, T(0.1), T(2.21e5), dopri5, tol)
+    elseif driver == "SpatialLLG"
+        alpha = create_zeros(n_total)
+        alpha .= 0.1
+        return SpatialLLG(true, alpha, T(2.21e5), dopri5, tol)
     elseif driver == "LLG_STT"
         tol = 1e-6
         ux = create_zeros(n_total)

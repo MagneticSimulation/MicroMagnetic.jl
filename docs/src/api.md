@@ -32,6 +32,7 @@ set_verbose
 Sim
 NEB
 set_driver
+set_alpha(sim::AbstractSim, alpha::ArrayOrFunction)
 init_m0
 init_m0_random
 init_m0_skyrmion

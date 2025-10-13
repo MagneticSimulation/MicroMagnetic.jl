@@ -2,7 +2,7 @@ using JLD2
 using KernelAbstractions
 
 export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
-       set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with, advance_step
+       set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with, advance_step, set_alpha
 
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
@@ -13,13 +13,14 @@ Create a simulation instance for the given mesh with specified driver and integr
 - `mesh::Mesh`: The computational mesh defining the simulation geometry. Can be:
   - `FDMesh`: Finite difference mesh for micromagnetics
   - `FEMesh`: Finite element mesh for micromagnetics  
-  - Other mesh types: Creates atomistic simulation
+  - `AtomisticMesh`: Creates atomistic simulation
 
 # Keyword Arguments
 - `driver::String="LLG"`: The simulation driver type. Options:
   - `"None"`: No driver (static simulation)
   - `"SD"`: Energy minimization (Steepest Descent)
   - `"LLG"`: Landau-Lifshitz-Gilbert equation
+  - `"SpatialLLG"` : Spatial LLG equation allowing spatial damping constant.
   - `"LLG_STT"`: LLG with spin transfer torque
   - `"LLG_CPP"`: LLG with CPP spin transfer torque
 - `name::String="dyn"`: Name identifier for the simulation
@@ -165,6 +166,52 @@ function set_pinning(sim::AbstractSim, ids::ArrayOrFunction)
     pins = zeros(Bool, sim.n_total)
     init_scalar!(pins, sim.mesh, ids)
     copyto!(sim.pins, pins)
+    return true
+end
+
+
+"""
+    set_alpha(sim::AbstractSim, alpha::ArrayOrFunction)
+
+Set the damping parameter α for a simulation with `SpatialLLG` driver.
+
+This function updates the spatially varying damping coefficient array in the simulation's driver.
+The α parameter can be specified either as a uniform value (via a function) or as a spatially varying array.
+
+# Arguments
+- `sim::AbstractSim`: The simulation object containing the driver
+- `alpha::ArrayOrFunction`: The damping parameter specification, which can be:
+  - A function `f(i, j, k, dx, dy, dz) -> Float64` that returns the α value at each spatial coordinate
+  - An array of Float64 values with length equal to `sim.n_total`
+
+# Examples
+```julia
+# Set uniform α value of 0.1 using a function
+set_alpha(sim, (i, j, k, dx, dy, dz) -> 0.1)
+
+# Set spatially varying α using an array
+alpha_array = rand(sim.n_total) * 0.2 + 0.01  # Random values between 0.01 and 0.21
+set_alpha(sim, alpha_array)
+
+# Set spatial α with a function
+function spatial_alpha(i, j, k, dx, dy, dz)
+    if i < 10
+        return 0.01
+    else
+        return 0.99
+    end
+end
+set_alpha(sim, spatial_alpha)
+```
+"""
+function set_alpha(sim::AbstractSim, alpha::ArrayOrFunction)
+    if !isa(sim.driver, SpatialLLG)
+        @warn("set_alpha only works for the SpatialLLG driver")
+        return
+    end
+    alpha_array = zeros(Float[], sim.n_total)
+    init_scalar!(alpha_array, sim.mesh, alpha)
+    copyto!(sim.driver.alpha, alpha_array)
     return true
 end
 
