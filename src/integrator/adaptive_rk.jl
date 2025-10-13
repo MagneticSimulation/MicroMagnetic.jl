@@ -106,7 +106,7 @@ function advance_step(sim::AbstractSim, integrator::AdaptiveRK)
     nstep = 1
     while true
         # Perform the RK step
-        max_error = rk_step_inner(sim, integrator.step, t, integrator) / integrator.tol
+        max_error = rk_step_inner(sim, integrator.step, t, integrator)
 
         # Handle NaN errors
         if isnan(max_error)

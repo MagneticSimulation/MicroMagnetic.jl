@@ -39,8 +39,9 @@ function rk_step_bs23!(sim::AbstractSim, step::Float64, t::Float64, integrator::
     integrator.nfevals += 3
         
     y_temp .= -(5/72) .* k1 .+ (1/12) .* k2 .+ (1/9) .* k3 .+ (-1/8) .* k4
-    
-    max_error = maximum(abs.(y_temp))*step + eps() 
+
+    # 1 + abs.(y_next)  means atol = rtol = tol, 
+    max_error = maximum(abs.(y_temp ./ (1 .+ abs.(y_next)))) * step/integrator.tol
     
     return max_error
 end
@@ -97,7 +98,8 @@ function rk_step_dopri54!(sim::AbstractSim, step::Float64, t::Float64, I::Adapti
     I.nfevals += 6
     vector_add6b(y_temp, k1, k3, k4, k5, k6, k7, w[1], w[3], w[4], w[5], w[6], w[7])
 
-    max_error = maximum(abs.(y_temp))*step + eps()
+    #max_error = maximum(abs.(y_temp))*step + eps()
+    max_error = maximum(abs.(y_temp ./ (1 .+ abs.(y_next)))) * step/I.tol
     
     return max_error
 end
@@ -155,8 +157,8 @@ function rk_step_cashkarp54!(sim::AbstractSim, step::Float64, t::Float64, integr
 
     I.nfevals += 6
     vector_add5b(y_temp, k1, k3, k4, k5, k6, w[1], w[3], w[4], w[5], w[6])
-    max_error = maximum(abs.(y_temp)) * step + eps()
-
+    #max_error = maximum(abs.(y_temp)) * step + eps()
+    max_error = maximum(abs.(y_temp ./ (1 .+ abs.(y_next)))) * step/integrator.tol
     
     return max_error
 end
@@ -213,5 +215,6 @@ function rk_step_fehlberg54!(sim::AbstractSim, step::Float64, t::Float64, integr
     I.nfevals += 6
     vector_add5b(y_temp, k1, k3, k4, k5, k6, w[1], w[3], w[4], w[5], w[6])
 
-    max_error = maximum(abs.(y_temp)) * step + eps()
+    max_error = maximum(abs.(y_temp ./ (1 .+ abs.(y_next)))) * step/integrator.tol
+    return max_error 
 end
