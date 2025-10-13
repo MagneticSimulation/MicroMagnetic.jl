@@ -11,10 +11,20 @@ mutable struct EnergyMinimization{T<:AbstractFloat} <: Driver
     steps::Int64
 end
 
+# Landau-Lifshitz-Gilbert driver
 mutable struct LLG{T<:AbstractFloat} <: Driver
     precession::Bool
     alpha::T
     gamma::T
+    integrator::Integrator
+    tol::Float64
+end
+
+# Inertial LLG driver
+mutable struct InertialLLG{T<:AbstractFloat} <: Driver
+    alpha::T
+    gamma::T
+    tau::T  # angular momentum relaxation time
     integrator::Integrator
     tol::Float64
 end
@@ -69,7 +79,7 @@ mutable struct LLG_STT_CPP{T<:AbstractFloat} <: Driver
 end
 
 function create_driver(driver::String, integrator::String, n_total::Int64)
-    supported_drivers = ["None", "SD", "LLG", "LLG_STT", "LLG_CPP", "SpatialLLG"]
+    supported_drivers = ["None", "SD", "LLG", "LLG_STT", "LLG_CPP", "SpatialLLG", "InertialLLG"]
     if !(driver in supported_drivers)
         error("Supported drivers: ", join(supported_drivers, " "))
     end
@@ -106,6 +116,9 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         call_back_fun = llg_cpp_call_back
     elseif driver == "SpatialLLG"
         call_back_fun = spatial_llg_call_back
+    elseif driver == "InertialLLG"
+        call_back_fun = inertial_llg_call_back
+        n_total = 2*n_total
     end
 
     tol = 1e-6
@@ -133,6 +146,8 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         alpha = create_zeros(n_total)
         alpha .= 0.1
         return SpatialLLG(true, alpha, T(2.21e5), dopri5, tol)
+    elseif driver == "InertialLLG"
+        return InertialLLG(T(0.01), T(2.21e5), T(10e-12), dopri5, tol)
     elseif driver == "LLG_STT"
         tol = 1e-6
         ux = create_zeros(n_total)
