@@ -20,6 +20,7 @@ Create a simulation instance for the given mesh with specified driver and integr
   - `"None"`: No driver (static simulation)
   - `"SD"`: Energy minimization (Steepest Descent)
   - `"LLG"`: Landau-Lifshitz-Gilbert equation
+  - `"InertialLLG"` : Inertial LLG Equation
   - `"SpatialLLG"` : Spatial LLG equation allowing spatial damping constant.
   - `"LLG_STT"`: LLG with spin transfer torque
   - `"LLG_CPP"`: LLG with CPP spin transfer torque

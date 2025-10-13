@@ -275,6 +275,58 @@ and the corresponding LL form is given by
 (1+\alpha^2)\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} - \alpha \gamma \mathbf{m} \times (\mathbf{m} \times \mathbf{H})
 ```
 
+## Inertial LLG Equation
+
+The Inertial LLG equation describes the dynamics of magnetization with inertial effects, extending the classical LLG equation by including a second-order time derivative term:
+
+```math
+\frac{d \mathbf{m}}{dt} = - \gamma \mathbf{m}  \times \mathbf{H}_\mathrm{eff} +\alpha \mathbf{m} \times \frac{d \mathbf{m}}{dt} + \eta \mathbf{m} \times \frac{d^2 \mathbf{m}}{dt^2}
+```
+
+where $\mathbf{m}$ is the normalized magnetization vector ($|\mathbf{m}| = 1$), $\gamma$ is the gyromagnetic ratio, $\mathbf{H}_\mathrm{eff}$ is the effective magnetic field, 
+$\alpha$ is the Gilbert damping parameter, $\eta = \alpha \tau$ is the inertial parameter, with $\tau$ being the angular momentum relaxation time.
+
+To facilitate numerical implementation, we introduce the velocity variable:
+
+```math
+\mathbf{v} = \frac{d \mathbf{m}}{dt}
+```
+
+Substituting this definition, the ILLG equation becomes:
+
+```math
+\mathbf{v} = - \gamma \mathbf{m}  \times \mathbf{H}_\mathrm{eff} +\alpha \mathbf{m} \times \mathbf{v} + \eta \mathbf{m} \times \frac{d \mathbf{v}}{dt}
+```
+
+Taking the cross product of both sides with $\mathbf{m}$:
+
+```math
+\mathbf{m} \times \mathbf{v} =
+-\gamma \mathbf{m} \times ( \mathbf{m} \times \mathbf{H}_\mathrm{eff})
++ \alpha \mathbf{m} \times (\mathbf{m} \times \mathbf{v})
++ \eta \mathbf{m} \times (\mathbf{m} \times \frac{d \mathbf{v}}{dt})
+```
+
+Applying the vector triple product identity $\mathbf{a}\times (\mathbf{b} \times \mathbf{c}) = (\mathbf{a}\cdot\mathbf{c})\mathbf{b}-(\mathbf{a}\cdot\mathbf{b})\mathbf{c}$ to the inertial term:
+
+```math
+\eta \mathbf{m} \times (\mathbf{m} \times \frac{d \mathbf{v}}{dt}) = 
+\eta (\mathbf{m} \cdot \frac{d \mathbf{v}}{dt}) \mathbf{m}- \eta \frac{d \mathbf{v}}{dt}
+= -\eta v^2 \mathbf{m} - \eta \frac{d \mathbf{v}}{dt}
+```
+
+The simplification $(\mathbf{m} \cdot \frac{d \mathbf{v}}{dt}) = -v^2$ follows from differentiating the constraint $\mathbf{m} \cdot \mathbf{v} = 0$, which itself derives from the conservation of magnetization magnitude $|\mathbf{m}| = 1$. The ILLG equation can be transformed into the following coupled first-order system suitable for numerical integration:
+
+```math
+\begin{aligned}
+\frac{d \mathbf{m}}{dt} &= \mathbf{v} \\
+\frac{d \mathbf{v}}{dt} &=
+-\frac{1}{\eta}\mathbf{m} \times \mathbf{v} 
+-\frac{\gamma}{\eta} \mathbf{m} \times ( \mathbf{m} \times \mathbf{H}_\mathrm{eff})
++ \frac{\alpha}{\eta}  \mathbf{m} \times (\mathbf{m} \times \mathbf{v}) - v^2 \mathbf{m}
+\end{aligned}
+```
+
 ## LLG equation with extensions
 
 ### Spin transfer torque
