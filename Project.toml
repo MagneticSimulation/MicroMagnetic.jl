@@ -1,7 +1,7 @@
 name = "MicroMagnetic"
 uuid = "cef16ca0-16a8-11ef-389e-9fbcf1974e83"
 authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>", "Boyao Lv <lvboyao@mail.ustc.edu.cn>"]
-version = "0.3.9"
+version = "0.4.0"
 
 [deps]
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"

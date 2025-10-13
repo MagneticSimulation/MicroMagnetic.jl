@@ -15,17 +15,22 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     return mx, my, mz
 end
 
-function test_llg(integrator="DormandPrince")
+function test_llg(integrator="DormandPrince"; driver="LLG")
     tol = integrator == "BS23" ? 1e-7 : 1e-8
     error = integrator == "BS23" ? 2e-6 : 8e-7
 
     mesh = FDMesh(; nx=1, ny=1, dx=1e-9)
 
-    sim = Sim(mesh; name="spin", integrator=integrator)
+    sim = Sim(mesh; name="spin", integrator=integrator, driver=driver)
 
     set_Ms(sim, 8e5)
-    sim.driver.alpha = 0.05
     sim.driver.gamma = 2.21e5
+
+    if driver == "SpatialLLG"
+        set_alpha(sim, (i, j, k, dx, dy, dz) -> 0.05)
+    else
+        sim.driver.alpha = 0.05
+    end
 
     sim.driver.integrator.tol = tol
 
@@ -94,6 +99,11 @@ function test_llg_fh()
     return test_llg("Fehlberg54")
 end
 
+function test_llg_spatial()
+    test_llg(driver="SpatialLLG")
+    return nothing
+end
+
 function test_llg_fixed_dt()
     for integrator in ["Heun", "RungeKutta", "RungeKuttaCayley"]
         test_llg_rk(integrator)
@@ -101,6 +111,7 @@ function test_llg_fixed_dt()
 end
 
 @using_gpu()
+test_functions("Spatial LLG", test_llg_spatial)
 test_functions("LLG DormandPrince", test_llg_dp)
 test_functions("LLG BS23", test_llg_bs)
 test_functions("LLG CashKarp54", test_llg_ck)
