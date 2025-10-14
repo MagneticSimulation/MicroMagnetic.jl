@@ -13,14 +13,21 @@ function effective_field(zee::TimeZeeman, sim::MicroSim, spin::AbstractArray{T,1
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     factor = sim.mesh.volume
-    tx, ty, tz = zee.time_fun(t)
-    zee.time_fx = tx
-    zee.time_fy = ty
-    zee.time_fz = tz
-    back = default_backend[]
-    time_zeeman_kernel!(back, groupsize[])(spin, zee.field, zee.init_field, zee.energy,
-                                           sim.mu0_Ms, T(factor), T(tx), T(ty), T(tz);
-                                           ndrange=N)
+    if zee.is_scalar
+       tx = zee.time_fun(t)
+       zee.time_fx = tx
+       zee.time_fy = tx
+       zee.time_fz = tx
+    else
+       tx, ty, tz = zee.time_fun(t)
+       zee.time_fx = tx
+       zee.time_fy = ty
+       zee.time_fz = tz
+    end
+
+    kernel = time_zeeman_kernel!(default_backend[], groupsize[])
+    kernel(spin, zee.field, zee.init_field, zee.energy, sim.mu0_Ms, T(factor), T(zee.time_fx), T(zee.time_fy), T(zee.time_fz);
+            ndrange=N)
     return nothing
 end
 

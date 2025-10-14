@@ -70,31 +70,85 @@ function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeema
     return nothing
 end
 
+
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
 
-Add a time varying zeeman to system.
+Add a time-varying Zeeman interaction to the simulation system.
 
-The input `ft` is a function of time `t` and its return value should be a tuple with length 3.
+# Arguments
+- `sim::AbstractSim`: The simulation object to which the Zeeman interaction will be added.
+- `H0::TupleOrArrayOrFunction`: The spatial field configuration, which can be:
+  - A tuple of 3 numbers representing a uniform field in x, y, z directions
+  - An array representing a spatially varying field
+  - A function that returns the field at specific spatial coordinates
+- `ft::Function`: The time-dependent function that modulates the field amplitude.
+- `name::String`: (Optional) A name identifier for this interaction. Defaults to "timezeeman".
 
-Example:
+# Time Function Specification
+The time function `ft` should accept a time argument `t` and return either:
+- **Scalar return**: A single value that will be applied uniformly to all three field components
+- **Tuple return**: A 3-element tuple `(fx, fy, fz)` specifying individual scaling factors for x, y, z components
 
+The function is evaluated at each time step to modulate the applied field.
+
+# Examples
+
+## Example 1: Uniform rotating field with vector time function
 ```julia
-  function time_fun(t)
-    w = 2*pi*2.0e9
-    return (sin(w*t), cos(w*t), 0)
-  end
+function time_fun(t)
+    w = 2*pi*2.0e9  # 2 GHz frequency
+    return (sin(w*t), cos(w*t), 0)  # Rotating in xy-plane
+end
 
-  function spatial_H(i, j, k, dx, dy, dz)
-    H = 1e3
-    if i<=2
-        return (H, H, 0)
+function spatial_H(i, j, k, dx, dy, dz)
+    H = 1e3  # 1000 A/m base field strength
+    if i <= 2
+        return (H, H, 0)  # Apply field only in first two cells
     end
-    return (0, 0, 0)
-  end
+    return (0, 0, 0)      # Zero field elsewhere
+end
 
-  add_zeeman(sim, spatial_H, time_fun)
+add_zeeman(sim, spatial_H, time_fun)
 ```
+
+## Example 2: Uniformly oscillating field with scalar time function
+```julia
+function time_fun_scalar(t)
+    w = 2*pi*1.0e9  # 1 GHz frequency
+    return sin(w*t)  # Same modulation for all components
+end
+
+# Apply uniform field in z-direction
+add_zeeman(sim, (0, 0, 1e3), time_fun_scalar)
+```
+
+## Example 3: Complex modulated field
+```julia
+function complex_time_fun(t)
+    w1 = 2*pi*1.0e9
+    w2 = 2*pi*0.5e9
+    # Different modulation for each component
+    fx = sin(w1*t) * cos(w2*t)
+    fy = 0.5 * (1 + sin(w1*t))
+    fz = exp(-t/1e-9)  # Exponential decay in z-component
+    return (fx, fy, fz)
+end
+
+# Spatially uniform initial field
+add_zeeman(sim, (1e3, 2e3, 0.5e3), complex_time_fun, name="modulated_zeeman")
+```
+
+# Field Initialization
+The `H0` parameter defines the spatial distribution of the field:
+- For uniform fields: Use a 3-element tuple `(Hx, Hy, Hz)`
+- For spatially varying fields: Provide a function with signature `(i, j, k, dx, dy, dz) -> (Hx, Hy, Hz)`
+  where `i, j, k` are grid indices and `dx, dy, dz` are spatial steps
+
+# Energy Calculation
+The Zeeman energy density is calculated as:
+E = -μ₀ * M ⋅ H
+where M is the magnetization and H is the applied field.
 """
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
                     name="timezeeman")
@@ -107,9 +161,15 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
     field_kb = kernel_array(init_field)
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)
-    Hout = zeros(T, 3)
 
-    zee = TimeZeeman(T(0), T(0), T(0), ft, field_kb, field, energy, name)
+    f0 = ft(0)
+    ft_length = f0 isa Tuple ? length(f0) : 1
+    if ft_length != 3 && ft_length != 1
+        error("The time_fun function should return either 1 value (scalar) or 3 values (as a tuple).")
+    end
+
+    is_scalar = ft_length == 1 ? true : false
+    zee = TimeZeeman(T(0), T(0), T(0), ft, is_scalar, field_kb, field, energy, name)
     push!(sim.interactions, zee)
 
     if sim.save_data

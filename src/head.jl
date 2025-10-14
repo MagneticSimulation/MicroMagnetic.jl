@@ -160,6 +160,7 @@ mutable struct TimeZeeman{T<:AbstractFloat} <: MicroEnergy
     time_fy::T
     time_fz::T
     time_fun::Function
+    is_scalar::Bool
     init_field::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}

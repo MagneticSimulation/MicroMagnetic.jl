@@ -544,7 +544,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator,
 
     copyto!(sim.prespin, sim.spin)
     integrate_to_time(sim, integrator, t_end)
-    y = view(sim.driver.integrator.y_current, 1:(3 * sim.n_total))
+    y = view(integrator.y_current, 1:(3 * sim.n_total))
     copyto!(sim.spin, y)
 
     sim.saver.t = t_end

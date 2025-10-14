@@ -9,6 +9,10 @@ function time_fun(t)
     return (cos(1e6 * t), cos(1e9 * t), 1)
 end
 
+function time_fun2(t)
+    return cos(1e9 * t)
+end
+
 function test_zeeman()
     mesh = FDMesh(; dx=2e-9, nx=3, ny=2, nz=1, pbc="x")
 
@@ -21,21 +25,28 @@ function test_zeeman()
 
     z1 = add_zeeman(sim, (1, 2, 2e3))
     z2 = add_zeeman(sim, (1, 2, 2e3), time_fun)
+    z3 = add_zeeman(sim, (1, 2, 2e3), time_fun2, name="z3")
 
     T = MicroMagnetic.Float[]
     
+    t = 1.23e-9
     MicroMagnetic.effective_field(z1, sim, sim.spin, 0.0)
     MicroMagnetic.effective_field(z2, sim, sim.spin, 0.0)
+    MicroMagnetic.effective_field(z3, sim, sim.spin, t)
     f1 = Array(z1.field)
     f2 = Array(z2.field)
+    f3 = Array(z3.field)
     @test f1[1] == T(1.0)
     @test f1[2] == T(2.0)
     @test f1[3] == T(2e3)
     @test isapprox(f1, f2)
 
+    @test f3[1] == T(1.0*cos(1e9 * t))
+    @test f3[2] == T(2.0*cos(1e9 * t))
+    @test f3[3] == T(2e3*cos(1e9 * t))
+
     @test abs(sum(Array(z1.energy))) > 0
     @test sum(Array(z1.energy)) == sum(Array(z2.energy))
-
 
     update_zeeman(sim, (3, 4.9, -10.01))
     f1 = Array(z1.field)
@@ -55,6 +66,7 @@ function test_zeeman()
     return nothing
 end
 
+#test_zeeman()
 @using_gpu()
 test_functions("Zeeman", test_zeeman)
 

@@ -11,12 +11,20 @@ end
 function effective_field(zee::TimeZeeman, sim::AtomisticSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
-    tx, ty, tz = zee.time_fun(t)
-    zee.time_fx = tx
-    zee.time_fy = ty
-    zee.time_fz = tz
-    kernal = time_zeeman_kernel!(default_backend[], groupsize[])
-    kernal(spin, zee.field, zee.init_field, zee.energy, sim.mu_s, T(1), T(tx), T(ty), T(tz);
+    if zee.is_scalar
+       tx = zee.time_fun(t)
+       zee.time_fx = tx
+       zee.time_fy = tx
+       zee.time_fz = tx
+    else
+       tx, ty, tz = zee.time_fun(t)
+       zee.time_fx = tx
+       zee.time_fy = ty
+       zee.time_fz = tz
+    end
+
+    kernel = time_zeeman_kernel!(default_backend[], groupsize[])
+    kernel(spin, zee.field, zee.init_field, zee.energy, sim.mu_s, T(1), T(zee.time_fx), T(zee.time_fy), T(zee.time_fz);
            ndrange=N)
 
     return nothing
