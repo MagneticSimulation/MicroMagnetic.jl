@@ -1,6 +1,7 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
        add_exch, add_dmi, add_sahe_torque,
-       add_demag, add_dmi_int, add_exch_int, add_thermal_noise
+       add_demag, add_dmi_int, add_exch_int, add_thermal_noise,
+       add_df_torque
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -778,16 +779,14 @@ function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction, sigm
     return torque
 end
 
-
 @doc raw"""
-    add_cpp_torque(sim::MicroSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="cpp")
+    add_df_torque(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="sot")
 
-Add an effective field to represent the spin transfer torque given by 
+Add damping-like and field-like torque (DFT) to LLG equation, which is useful to model spin-orbit torques (SOT) or Slonczewski torque with constant $\epsilon(\theta)$.
 
 ```math
-\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
-+ (\mathbf{u} \cdot \nabla) \mathbf{m} - \beta [\mathbf{m}\times (\mathbf{u} \cdot \nabla)\mathbf{m}] - a_J \mathbf{m} \times (\mathbf{m} \times \mathbf{p})
- -  b_J \mathbf{m} \times \mathbf{p}
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H}_\text{eff} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
+- a_J \mathbf{m} \times (\mathbf{m} \times \mathbf{p}) -  b_J \mathbf{m} \times \mathbf{p}
 ```
 
 The equivalent effective field is
@@ -795,17 +794,16 @@ The equivalent effective field is
 \mathbf{H}_\mathrm{stt} = (1/\gamma)(a_J \mathbf{m} \times \mathbf{p} +  b_J \mathbf{p})
 ```
 """
-function add_cpp_torque(sim::MicroSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="cpp")
+function add_df_torque(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="sot")
     n_total = sim.n_total
     field = create_zeros(3 * n_total)
 
+    T = Float[]
     spatial_aj = zeros(T, sim.n_total)
     init_scalar!(spatial_aj, sim.mesh, aj)
     aj_zb = kernel_array(spatial_aj)
 
-    T = Float[]
-
-    torque = CPPTorqueField(p[1], p[2], p[3], aj_zb, bj, T(bj), field, name)
+    torque = DFTorqueField(T(p[1]), T(p[2]), T(p[3]), aj_zb, T(bj), field, name)
 
     push!(sim.interactions, torque)
 

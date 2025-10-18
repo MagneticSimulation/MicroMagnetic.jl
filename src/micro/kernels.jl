@@ -490,3 +490,31 @@ and sigma = c1 - (m.c2)^2 c3
         @inbounds h[j + 3] = beta*sz + cross_z(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
     end
 end
+
+
+"""
+The kernel df_torque_kernel! compute the effective field defined as 
+        H = (1/gamma)(a_J m x p +  b_J p)
+"""
+@kernel function df_torque_kernel!(@Const(m), h, @Const(mu0_Ms), gamma::T, @Const(aj), bj::T,
+                                    px::T, py::T, pz::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds a = aj[id] / gamma
+    @inbounds Ms_local = mu0_Ms[id]
+
+    if Ms_local == 0.0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        b::T = bj / gamma
+        @inbounds mx::T = m[j + 1]
+        @inbounds my::T = m[j + 2]
+        @inbounds mz::T = m[j + 3]
+        @inbounds h[j + 1] = a * cross_x(mx, my, mz, px, py, pz) + b*px
+        @inbounds h[j + 2] = a * cross_y(mx, my, mz, px, py, pz) + b*py
+        @inbounds h[j + 3] = a * cross_z(mx, my, mz, px, py, pz) + b*pz
+    end
+end

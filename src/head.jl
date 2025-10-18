@@ -274,10 +274,11 @@ mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy
     scaling_factor::T
 end
 
-mutable struct CPPTorqueField{T<:AbstractFloat} <: MicroEnergy
-    px::Real
-    py::Real
-    pz::Real
+
+mutable struct DFTorqueField{T<:AbstractFloat} <: MicroEnergy
+    px::T
+    py::T
+    pz::T
     aj::AbstractArray{T,1}
     bj::T
     field::AbstractArray{T,1}
