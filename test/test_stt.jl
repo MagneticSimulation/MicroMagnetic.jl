@@ -29,12 +29,12 @@ function relax_system(mesh)
 end
 
 function run_dynamics_stt(mesh; alpha=0.1, beta=0.2, u=5.8, integrator="DormandPrince")
-    sim = Sim(mesh; name="stt_dyn", driver="LLG_STT", integrator=integrator)
+    sim = Sim(mesh; name="stt_dyn", driver="LLG", integrator=integrator)
     set_Ms(sim, 8.6e5)
     sim.driver.alpha = alpha
-    sim.driver.beta = beta
     sim.driver.gamma = 2.21e5
-    set_ux(sim, u)   #init_scalar!(sim.driver.ux, mesh, u)
+
+    stt = add_stt(sim, model=:zhang_li, b=u, J=(1.0, 0, 0), xi=beta)
 
     add_exch(sim, 1.3e-11)
     add_anis(sim, 1e5; axis=(1, 0, 0))

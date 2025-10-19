@@ -226,9 +226,35 @@ function effective_field(torque::DFTorqueField, sim::AbstractSim, spin::Abstract
     gamma = sim.driver.gamma
     
     back = default_backend[]
-    ms = isa(sim, MicroSim) ? sim.mu0_Ms : sim.mu_s
-    df_torque_kernel!(back, groupsize[])(spin, torque.field, ms, gamma, torque.aj, 
+    df_torque_kernel!(back, groupsize[])(spin, torque.field, gamma, torque.aj, 
                       torque.bj, torque.px, torque.py, torque.pz; ndrange=N)
+
+    return nothing
+end
+
+function effective_field(torque::ZhangLiTorque, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    gamma = sim.driver.gamma
+    mesh = sim.mesh
+
+    ut = T(torque.ufun(t)/gamma)
+
+    back = default_backend[]
+    zhangli_torque_kernel!(back, groupsize[])(spin, torque.field, torque.bJ, mesh.ngbs, torque.xi, 
+                           ut, T(mesh.dx), T(mesh.dy), T(mesh.dz); ndrange=N)
+
+    return nothing
+end
+
+function effective_field(torque::SlonczewskiTorque, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    
+    lambda_sq = T(torque.Lambda^2)
+    ft = T(torque.ufun(t)*torque.beta)
+
+    back = default_backend[]
+    slonczewski_torque_kernel!(back, groupsize[])(spin, torque.field, torque.J, lambda_sq,
+                              torque.P, torque.xi, ft, torque.px, torque.py, torque.pz; ndrange=N)
 
     return nothing
 end

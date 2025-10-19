@@ -40,10 +40,12 @@ add_zeeman
 add_anis
 add_cubic_anis
 add_hex_anis
-add_sahe_torque
-add_thermal_noise
+add_df_torque
 update_zeeman
 update_anis
+add_stt
+add_sahe_torque
+add_thermal_noise
 create_sim
 relax
 run_sim

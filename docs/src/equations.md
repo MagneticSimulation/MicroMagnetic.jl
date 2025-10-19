@@ -327,60 +327,124 @@ The simplification $(\mathbf{m} \cdot \frac{d \mathbf{v}}{dt}) = -v^2$ follows f
 \end{aligned}
 ```
 
-## LLG equation with extensions
+## Spin Transfer Torques
 
-### Spin transfer torque
+Spin transfer torque (STT) is a fundamental phenomenon in spintronics where spin-polarized electric currents exert torques on magnetic moments, enabling the manipulation of magnetization states. This effect is typically modeled through extensions to the Landau-Lifshitz-Gilbert (LLG) equation.
 
-In micromagnetics, the spin transfer torque is modelled with the extended LLG equation Zhang-Li extension, 
-which reads
+### Zhang-Li Model
+
+The Zhang-Li model incorporates STT into the LLG equation. The equation for the magnetization vector **m** is:
 
 ```math
-\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
-+ (\mathbf{u} \cdot \nabla) \mathbf{m} - \beta [\mathbf{m}\times (\mathbf{u} \cdot \nabla)\mathbf{m}]
+\frac{d \mathbf{m}}{dt} = -\gamma \mathbf{m} \times \mathbf{H}_\mathrm{eff} + \alpha \mathbf{m} \times \frac{d \mathbf{m}}{dt}
+- b \mathbf{m} \times [\mathbf{m} \times (\mathbf{} \cdot \nabla) \mathbf{m}] 
+- \xi b \mathbf{m} \times (\mathbf{j} \cdot \nabla) \mathbf{m} 
+```
+
+where **j** is the current density vector and $\xi$ is the non-adiabatic parameter. The coefficient $b$ is defined as:
+```math
+b = \frac{P \mu_B}{e M_s (1 + \xi^2)}
+```
+with $P$ being the spin polarization, $\mu_B$ the Bohr magneton, and $e>0$ the elementary charge.
+
+Note that $\mathbf{m} \times [ \mathbf{m} \times (\mathbf{j} \cdot \nabla) \mathbf{m}] = -(\mathbf{j} \cdot \nabla) \mathbf{m}$, the equation  simplifies to:
+
+```math
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H}_\mathrm{eff}  + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
+- (\mathbf{u} \cdot \nabla) \mathbf{m} + \beta [\mathbf{m}\times (\mathbf{u} \cdot \nabla)\mathbf{m}]
+```
+
+where
+```math
+\mathbf{u} = -b \mathbf{J}, \, \, \, \, \beta = \xi
+```
+and the unit of **u** is m/s. 
+
+### Alternative Formulations
+
+Other models may define the current strength parameter differently. For comparison, $\mathbf{u}$ is defined as follows:
+
+```math
+\mathbf{u} = -\frac{P g \mu_B}{2 e M_s} \mathbf{j}
+```
+
+For detailed discussions on model differences, see [this reference](https://www.ctcms.nist.gov/~rdm/std5/spec5.xhtml).
+
+### Atomistic Model
+
+In atomistic simulations, the current strength is adapted for discrete spins:
+
+```math
+\mathbf{u} = -\frac{P g \mu_B a^3}{2 e \mu_s} \mathbf{j} = -\frac{P a^3}{2 e S} \mathbf{j}
+```
+
+where $a$ is the lattice constant, $\mu_s$ is the magnetic moment, $S = |\mathbf{S}|$ is the magnitude of the local spin vector.
+
+## Slonczewski spin transfer torque
+
+The LLG equation including the Slonczewski torque is 
+
+```math
+\frac{d\mathbf{m}}{dt} = -\gamma \mathbf{m} \times \mathbf{H}_{\text{eff}}
+   + \alpha \left( \mathbf{m} \times \frac{d\mathbf{m}}{dt} \right)
+   + \gamma \beta \epsilon \left[ \mathbf{m} \times (\mathbf{m}_p \times \mathbf{m}) \right]
+   - \gamma \beta \xi \mathbf{m} \times \mathbf{m}_p
+```
+
+where $\mathbf{m}=\mathbf{M}/M_s$, $\gamma$ the gyromagnetic ratio, $\mathbf{m}_p$ is electron polarization direction, and $\xi$ is the secondary spin-torque parameter.
+The coefficient $\beta$ is defined as follows:
+```math
+\beta =  \frac{\hbar}{\mu_0 e} \frac{J}{t M_s}
+```
+where $e$ is electron charge (C), $J$ is current density (A/m²), $t$ is free layer thickness (m), $M_s$ is the saturation magnetization (A/m).  The coefficient $\epsilon$ is defined as 
+```math
+\epsilon = \frac{P \Lambda^2}{(\Lambda^2 + 1) + (\Lambda^2 - 1)(\mathbf{m} \cdot \mathbf{m}_p)}
+```
+where $P$ is the spin polarization, $\Lambda$ is the Slonczewski parameter.
+
+For constant $\epsilon=P/2$ which corresponding to $\Lambda=1$, the Slonczewski torque reduced to [PRL **102**, 067206 (2009)]
+```math
+\frac{\partial \mathbf{m}}{\partial t} = -\gamma \, \mathbf{m} \times \mathbf{H}_{\text{eff}} 
++ \alpha \, \mathbf{m} \times \frac{\partial \mathbf{m}}{\partial t} 
+- a_J \, \mathbf{m} \times (\mathbf{m} \times \mathbf{m}_p) 
+- b_J \, \mathbf{m} \times \mathbf{m}_p
 ```
 where 
 ```math
-\mathbf{u} = \frac{p g \mu_B}{2 e M_s} \mathbf{j}
+a_J = \frac{\hbar \gamma}{2 \mu_0 e} \frac{P J}{t M_s}, \qquad b_J = \xi a_J 
 ```
-represents the strength of the current. The unit of $\mathbf{u}$ is m/s. 
-In the definition of  $\mathbf{u}$,
-$p$ is the spin polarization of the electric current, $e(>0)$ is the elementary charge,
-$M_s$ is the saturation magnetization and $\mathbf{j}$ is electric current density.
 
-For the atomistic model, 
-```math
-\mathbf{u} = \frac{p g \mu_B a^3}{2 e \mu_s} \mathbf{j} = \frac{p a^3}{2 e S} \mathbf{j}.
-```
-where $S = |\mathbf{S}|$ is the length of local spin.
+## Damping-Like and Field-Like Torques
 
-In MicroMagnetic, the the extended LLG equation Zhang-Li extension is implemented in the driver `LLG_STT`.  
-Moreover, the driver `LLG_CPP` implements the LLG equation with spin transfer torque
-for the current-perpendicular-to-plane (CPP) case,
+The Landau-Lifshitz-Gilbert (LLG) equation can be extended to include damping-like and field-like torques, which are essential for modeling spin-orbit torques (SOT) or Slonczewski torque with constant $\epsilon(\theta)$. The modified LLG equation is expressed as:
 
 ```math
-\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t} - a_J \mathbf{m} \times (\mathbf{m} \times \mathbf{p})
- -  b_J \mathbf{m} \times \mathbf{p}
+\frac{\partial \mathbf{m}}{\partial t} = -\gamma \, \mathbf{m} \times \mathbf{H}_{\text{eff}} 
++ \alpha \, \mathbf{m} \times \frac{\partial \mathbf{m}}{\partial t} 
+- a_J \, \mathbf{m} \times (\mathbf{m} \times \mathbf{p}) 
+- b_J \, \mathbf{m} \times \mathbf{p}
 ```
-The spin valve structures and  spin orbit torques can use the `LLG_CPP` driver.
 
-The driver `LLG_STT_CPP` has put them together,
+where $a_J$ and $b_J$ are the coefficients of the damping-like and field-like torques, respectively, and $\mathbf{p}$ is a unit vector. In the context of SOT in particular,  $\mathbf{p}$ represents the direction of the spin current generated by spin-orbit coupling.
+
+## Effective Field Formulation
+
+For numerical simulations, spin-transfer torque (STT) can be equivalently expressed as an effective field contribution. The LLG equation with STT represented as an effective field becomes:
 
 ```math
-\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
-+ (\mathbf{u} \cdot \nabla) \mathbf{m} - \beta [\mathbf{m}\times (\mathbf{u} \cdot \nabla)\mathbf{m}] - a_J \mathbf{m} \times (\mathbf{m} \times \mathbf{p})
- -  b_J \mathbf{m} \times \mathbf{p}
+\frac{\partial \mathbf{m}}{\partial t} = -\gamma \, \mathbf{m} \times (\mathbf{H}_{\text{eff}} + \mathbf{H}_{\text{stt}}) 
++ \alpha \, \mathbf{m} \times \frac{\partial \mathbf{m}}{\partial t}
 ```
 
-### Spin transfer torque as effective field.
-
-The spin transfer torque can also be considered as an effective field. For example, the LLG equation with CPP STT can be rewritten as 
+In the Zhang-Li model for STT, the effective field is given:
 ```math
-\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times (\mathbf{H}_\mathrm{stt}+\mathbf{H}_\mathrm{eff}) + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
+\mathbf{H}_{\text{stt}} = -\frac{1}{\gamma} \left[ \mathbf{m} \times (\mathbf{u} \cdot \nabla) \mathbf{m} + \beta \, (\mathbf{u} \cdot \nabla) \mathbf{m} \right]
 ```
-with $\mathbf{H}_\mathrm{stt} = (1/\gamma)(a_J \mathbf{m} \times \mathbf{p} +  b_J \mathbf{p})$. Similarly, note that 
-$(\mathbf{u} \cdot \nabla) \mathbf{m} = - \mathbf{m} \times [ \mathbf{m} \times (\mathbf{u} \cdot \nabla) \mathbf{m}] $ and thus,
- for zhang-li model, we have 
-$\mathbf{H}_\mathrm{stt} = (1/\gamma)[\mathbf{m} \times (\mathbf{u} \cdot \nabla) \mathbf{m} + \beta (\mathbf{u} \cdot \nabla) \mathbf{m}]$. 
+
+For damping-like and field-like torques, the effective field can be derived as:
+```math
+\mathbf{H}_{\text{stt}} = \frac{1}{\gamma} \left( a_J \, \mathbf{m} \times \mathbf{p} + b_J \, \mathbf{p} \right)
+```
 
 ## SLLG equation
 

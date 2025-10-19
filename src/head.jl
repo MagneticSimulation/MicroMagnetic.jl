@@ -285,6 +285,28 @@ mutable struct DFTorqueField{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
+mutable struct ZhangLiTorque{T<:AbstractFloat} <: MicroEnergy
+    xi::T
+    bJ::AbstractArray{T,1} # bJ = b*J
+    field::AbstractArray{T,1}
+    ufun::Function
+    name::String
+end
+
+mutable struct SlonczewskiTorque{T<:AbstractFloat} <: MicroEnergy
+    px::T
+    py::T
+    pz::T
+    beta::T
+    Lambda::T
+    xi::T
+    P::T
+    J::AbstractArray{T,1} # bJ = b*J
+    field::AbstractArray{T,1}
+    ufun::Function
+    name::String
+end
+
 mutable struct SAHETorqueField{T<:AbstractFloat} <: MicroEnergy
     c1::AbstractArray{T,1} # = sigma_s x a2
     c2::Tuple{Real,Real,Real} # = a2 x a1

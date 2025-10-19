@@ -496,25 +496,106 @@ end
 The kernel df_torque_kernel! compute the effective field defined as 
         H = (1/gamma)(a_J m x p +  b_J p)
 """
-@kernel function df_torque_kernel!(@Const(m), h, @Const(mu0_Ms), gamma::T, @Const(aj), bj::T,
+@kernel function df_torque_kernel!(@Const(m), h, gamma::T, @Const(aj), bj::T,
                                     px::T, py::T, pz::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
     @inbounds a = aj[id] / gamma
-    @inbounds Ms_local = mu0_Ms[id]
 
-    if Ms_local == 0.0
-        @inbounds h[j + 1] = 0
-        @inbounds h[j + 2] = 0
-        @inbounds h[j + 3] = 0
-    else
-        b::T = bj / gamma
-        @inbounds mx::T = m[j + 1]
-        @inbounds my::T = m[j + 2]
-        @inbounds mz::T = m[j + 3]
-        @inbounds h[j + 1] = a * cross_x(mx, my, mz, px, py, pz) + b*px
-        @inbounds h[j + 2] = a * cross_y(mx, my, mz, px, py, pz) + b*py
-        @inbounds h[j + 3] = a * cross_z(mx, my, mz, px, py, pz) + b*pz
-    end
+    b::T = bj / gamma
+    @inbounds mx::T = m[j + 1]
+    @inbounds my::T = m[j + 2]
+    @inbounds mz::T = m[j + 3]
+    @inbounds h[j + 1] = a * cross_x(mx, my, mz, px, py, pz) + b*px
+    @inbounds h[j + 2] = a * cross_y(mx, my, mz, px, py, pz) + b*py
+    @inbounds h[j + 3] = a * cross_z(mx, my, mz, px, py, pz) + b*pz
+end
+
+"""
+The kernel slonczewski_torque_kernel! compute the effective field defined as 
+        H = (beta*J)(epsilon* m x m_p +  xi*m_p)
+"""
+@kernel function slonczewski_torque_kernel!(@Const(m), h, @Const(J), lambda_sq::T, 
+                                            P::T, xi::T, ft::T,
+                                            px::T, py::T, pz::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds mx::T = m[j + 1]
+    @inbounds my::T = m[j + 2]
+    @inbounds mz::T = m[j + 3]
+
+    mp::T = mx * px + my * py + mz * pz
+    epsilon::T = P * lambda_sq / (lambda_sq + 1 + (lambda_sq - 1) * mp);
+
+    @inbounds a = J[id]*ft # note ft is multiplied by the coefficient beta 
+    @inbounds h[j + 1] = a * (epsilon*cross_x(mx, my, mz, px, py, pz) + xi*px)
+    @inbounds h[j + 2] = a * (epsilon*cross_y(mx, my, mz, px, py, pz) + xi*py)
+    @inbounds h[j + 3] = a * (epsilon*cross_z(mx, my, mz, px, py, pz) + xi*pz)
+end
+
+"""
+The kernel zhangli_torque_kernel! compute the effective field defined as 
+   H = (b/gamma)*[m x (J.nabla) m + xi (J.nabla) m]
+"""
+@kernel function zhangli_torque_kernel!(@Const(m), h, @Const(bJ), @Const(ngbs), 
+                                   xi::T, ut::T, dx::T, dy::T, dz::T) where {T<:AbstractFloat}
+    I = @index(Global)
+    j = 3 * I - 2
+
+    fx::T, fy::T, fz::T = T(0), T(0), T(0)
+
+    #x-direction
+    i1::Int32 = ngbs[1, I] #we assume that i1<0 for the area with Ms=0
+    i2::Int32 = ngbs[2, I]
+    # i1 * i2 may overflow
+    factor::T = (i1 > 0 && i2 > 0) ? 1 / (2 * dx) : 1 / dx
+    i1 < 0 && (i1 = I)
+    i2 < 0 && (i2 = I)
+    j1 = 3 * i1 - 2
+    j2 = 3 * i2 - 2
+    @inbounds u = bJ[j] * factor
+    @inbounds fx += u * (m[j2] - m[j1])
+    @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
+    @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
+
+    #y-direction
+    i1 = ngbs[3, I]
+    i2 = ngbs[4, I]
+    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dy) : 1 / dy
+    i1 < 0 && (i1 = I)
+    i2 < 0 && (i2 = I)
+    j1 = 3 * i1 - 2
+    j2 = 3 * i2 - 2
+    @inbounds u = bJ[j+1] * factor
+    @inbounds fx += u * (m[j2] - m[j1])
+    @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
+    @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
+
+    #z-direction
+    i1 = ngbs[5, I]
+    i2 = ngbs[6, I]
+    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dz) : 1 / dz
+    i1 < 0 && (i1 = I)
+    i2 < 0 && (i2 = I)
+    j1 = 3 * i1 - 2
+    j2 = 3 * i2 - 2
+    @inbounds u = bJ[j+2] * factor
+    @inbounds fx += u * (m[j2] - m[j1])
+    @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
+    @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
+
+    fx = ut * fx 
+    fy = ut * fy 
+    fz = ut * fz 
+
+    # the above part is h = (b/gamma)*ut*(J.nabla) m, note we have divided ut by gamma.
+
+    @inbounds mx::T = m[j + 0]
+    @inbounds my::T = m[j + 1]
+    @inbounds mz::T = m[j + 2]
+    @inbounds h[j + 0] = cross_x(mx, my, mz, fx, fy, fz) + xi*fx
+    @inbounds h[j + 1] = cross_y(mx, my, mz, fx, fy, fz) + xi*fy
+    @inbounds h[j + 2] = cross_z(mx, my, mz, fx, fy, fz) + xi*fz
 end

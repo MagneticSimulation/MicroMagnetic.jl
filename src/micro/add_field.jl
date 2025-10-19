@@ -1,7 +1,7 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
        add_exch, add_dmi, add_sahe_torque,
        add_demag, add_dmi_int, add_exch_int, add_thermal_noise,
-       add_df_torque
+       add_df_torque, add_stt
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -30,7 +30,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
         if isa(H0, Tuple) && length(H0) == 3
             field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
                                     string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
-                                   o::AbstractSim -> o.interactions[id].H0)
+                                    o::AbstractSim -> o.interactions[id].H0)
             push!(sim.saver.items, field_item)
         end
         push!(sim.saver.items,
@@ -733,7 +733,8 @@ The equivalent effective field is
 ```
 where 
 ```math
-\boldsymbol{\sigma}_{x y}^\mathrm{S H E}=\widetilde{\boldsymbol{\sigma}}_\mathrm{S} \times \hat{\mathbf{a}}_2-\left({\mathbf{m}} \cdot\left(\hat{\mathbf{a}}_2 \times \hat{\mathbf{a}}_1\right)\right)^2\left(\widetilde{\boldsymbol{\sigma}}_\mathrm{SA} \times \hat{\mathbf{a}}_2\right)
+\boldsymbol{\sigma}_{x y}^\mathrm{S H E}=\widetilde{\boldsymbol{\sigma}}_\mathrm{S} \times \hat{\mathbf{a}}_2
+-\left({\mathbf{m}} \cdot\left(\hat{\mathbf{a}}_2 \times \hat{\mathbf{a}}_1\right)\right)^2\left(\widetilde{\boldsymbol{\sigma}}_\mathrm{SA} \times \hat{\mathbf{a}}_2\right)
 ```
 
 ### Example
@@ -804,6 +805,223 @@ function add_df_torque(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number
     aj_zb = kernel_array(spatial_aj)
 
     torque = DFTorqueField(T(p[1]), T(p[2]), T(p[3]), aj_zb, T(bj), field, name)
+
+    push!(sim.interactions, torque)
+
+    return torque
+end
+
+
+@doc raw"""
+    add_stt(sim::AbstractSim; model::Symbol=:slonczewski, name="stt", kwargs...)
+
+Add spin transfer torque (STT) to the Landau-Lifshitz-Gilbert equation using various theoretical models.
+
+Spin transfer torque is a fundamental phenomenon in spintronics where spin-polarized electric currents exert torques on magnetic moments, 
+enabling precise manipulation of magnetization dynamics in nanoscale devices.
+
+# Supported Models
+
+## Zhang-Li Model (`model=:zhang_li`)
+
+The Zhang-Li model describes spin transfer torque for in-plane current flows in continuous magnetic materials. 
+This model is particularly suitable for describing current-induced domain wall motion, magnetization dynamics 
+in nanowires, and spatially non-uniform current distributions.
+
+The modified LLG equation becomes:
+
+```math
+\frac{d \mathbf{m}}{dt} = -\gamma \mathbf{m} \times \mathbf{H}_\mathrm{eff} + \alpha \mathbf{m} \times \frac{d \mathbf{m}}{dt}
+- b \mathbf{m} \times [\mathbf{m} \times (\mathbf{j} \cdot \nabla) \mathbf{m}] 
+- \xi b \mathbf{m} \times (\mathbf{j} \cdot \nabla) \mathbf{m}
+```
+
+where $\mathbf{j}$ is the current density vector and $\xi$ is the non-adiabatic parameter. The coefficient $b$ is calculated as:
+```math
+b = \frac{P \mu_B}{e M_s (1 + \xi^2)}
+```
+
+### Parameters
+
+- **Required:**
+  - `J::TupleOrArrayOrFunction`: Current density specification (A/m²)
+    - **Constant vector:** `Tuple` or `Vector` specifying uniform current flow
+    - **Spatially varying:** `Function` that returns current density at position `(x,y,z)`
+
+- **Coefficient specification (choose one approach):**
+  - **Physical parameters approach:**
+    - `P::Real`: Spin polarization (0 ≤ P ≤ 1)
+    - `Ms::Real`: Saturation magnetization (A/m)
+  - **Direct coefficient approach:**
+    - `b::Real`: Pre-calculated Zhang-Li torque coefficient
+
+- **Optional:**
+  - `xi::Real=0.0`: Non-adiabatic parameter (default: 0.0)
+  - `ft::Function`: Time-dependent function modulating current density amplitude
+
+### Examples
+
+```julia
+# Basic usage with uniform current vector
+add_stt(sim, model=:zhang_li, P=0.5, Ms=8e5, xi=0.05, J=(1e12, 0, 0))
+
+# Using pre-calculated coefficient
+add_stt(sim, model=:zhang_li, b=72.5, xi=0.1, J=(1, 0, 0))
+
+# Time-dependent current pulse with spatial variation
+function current_pulse(t)
+    return t < 1e-9 ? 1.0 : 0.0  # 1 ns pulse
+end
+
+function spatial_current(i, j, k, dx, dy, dz)
+    current =  k > 5 ? 1e12 : 2e11
+    return (current, 0.0, 0.0)
+end
+add_stt(sim, model=:zhang_li, P=0.5, Ms=8e5, J=spatial_current, ft=current_pulse)
+```
+
+## Slonczewski Model (`model=:slonczewski`)
+
+The Slonczewski model describes spin transfer torque for perpendicular current flows in magnetic tunnel junctions (MTJs) 
+and spin valves. The extended LLG equation is:
+
+```math
+\frac{d\mathbf{m}}{dt} = -\gamma \mathbf{m} \times \mathbf{H}_{\text{eff}}
+   + \alpha \left( \mathbf{m} \times \frac{d\mathbf{m}}{dt} \right)
+   + \gamma \beta \epsilon \left[ \mathbf{m} \times (\mathbf{m}_p \times \mathbf{m}) \right]
+   - \gamma \beta \xi \mathbf{m} \times \mathbf{m}_p
+```
+where $\mathbf{m}=\mathbf{M}/M_s$, $\gamma$ the gyromagnetic ratio, $\mathbf{m}_p$ is electron polarization direction, and $\xi$ 
+is the secondary spin-torque parameter. The coefficients $\beta$ and $\epsilon$ are defined as follows:
+```math
+\beta =  \frac{\hbar}{\mu_0 e} \frac{J}{t M_s}, \qquad \epsilon = \frac{P \Lambda^2}{(\Lambda^2 + 1) + (\Lambda^2 - 1)(\mathbf{m} \cdot \mathbf{m}_p)}
+```
+where $e$ is electron charge (C), $J$ is current density (A/m²), $t$ is free layer thickness (m), $M_s$ is the saturation magnetization (A/m),
+$P$ is the spin polarization, $\Lambda$ is the Slonczewski parameter.
+
+### Parameters
+- **Required:**
+  - `J::NumberOrArrayOrFunction`: Current density magnitude (A/m²)
+  - `tf::Real`: Free layer thickness (m)
+  - `Ms::Real`: Saturation magnetization (A/m)
+  - `p::Union{Tuple, Vector}`: Polarization direction vector
+  - `P::Real`: Spin polarization (0 ≤ P ≤ 1)
+
+- **Optional:**
+  - `xi::Real=0.0`: Secondary spin-torque parameter (default: 0.0)
+  - `Lambda::Real=2.0`: Slonczewski parameter (default: 2.0)
+  - `ft::Function`: Time-dependent function modulating current density amplitude
+
+### Examples
+
+```julia
+# Const current density
+add_stt(sim, model=:slonczewski, J=1e12, tf=2e-9, Ms=8e5, p=(0,0,1), P=0.7)
+
+# With secondary spin-torque parameter
+add_stt(sim, model=:slonczewski, J=8e11, tf=1.5e-9, Ms=6e5, p=(1,0,0), P=0.5, xi=0.05)
+
+
+# Time-dependent current pulse with Gaussian current profile
+function current_pulse(t)
+    return t < 1e-9 ? 1.0 : 0.0  # 1 ns pulse
+end
+function gaussian_current(i, j, k, dx, dy, dz)
+    x, y = (i-100)*dx, (j-100)*dy
+    sigma = 50e-9  # 50 nm width
+    r_sq = x^2 + y^2
+    return 1e12 * exp(-r_sq/(2*sigma^2))
+end
+
+add_stt(sim, model=:slonczewski, J=gaussian_current, tf=2e-9, Ms=8e5, p=(0,0,1), P=0.4, ft=current_pulse)
+```
+"""
+function add_stt(sim::AbstractSim; model::Symbol=:slonczewski, kwargs...)
+
+    params = Dict(kwargs)
+    if !haskey(params, :J)
+        throw(ArgumentError("Current density parameter `J` is required."))
+    end
+
+    if model == :zhang_li
+        return add_zhang_li_torque(sim, "zhangli", params)
+    elseif model == :slonczewski
+        return add_slonczewski_torque(sim, "slonczewski", params)
+    else
+        supported_models = [:zhang_li, :slonczewski]
+        throw(ArgumentError("Unsupported STT model: $model. Supported models are: $supported_models"))
+    end
+end
+
+
+function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
+    has_b = haskey(params, :b)
+    has_P = haskey(params, :P) && haskey(params, :Ms)
+
+    if has_b && has_P
+        @warn("Parameters `(P, Ms)`` will be ignored since `b` is provided.")
+    end
+    
+    xi = get(params, :xi, 0) 
+    b = if has_b 
+        params[:b]
+    elseif has_P
+        P = params[:P]
+        Ms = params[:Ms]
+        P*mu_B/(c_e*Ms)/(1+xi^2)
+    else
+        throw(ArgumentError("Zhang-Li model requires either `b` or `(P, Ms)` parameters"))
+    end
+
+    T = Float[]
+    n_total = sim.n_total
+
+    bJ_cpu = zeros(T, 3 * n_total)
+    init_vector!(bJ_cpu, sim.mesh, params[:J])
+    bJ_cpu .*= b
+    bJ = kernel_array(bJ_cpu)
+
+    field = create_zeros(3 * n_total)
+
+    ft = haskey(params, :ft) ? params[:ft] : t -> 1.0
+
+    torque = ZhangLiTorque(T(xi), bJ, field, ft, name)
+
+    push!(sim.interactions, torque)
+
+    return torque
+end
+
+
+function add_slonczewski_torque(sim::AbstractSim, name, params::Dict)
+
+    for k in [:tf, :Ms, :p, :P]
+        if !haskey(params, k)
+            throw(ArgumentError("Parameter $k is not provided"))
+        end
+    end
+    
+    xi = get(params, :xi, 0) 
+    Lambda = get(params, :Lambda, 2.0) 
+    tf = params[:tf]
+    Ms = params[:Ms]
+    P = params[:P]
+    p = params[:p]
+
+    beta = h_bar/(mu_0*Ms*c_e*tf)  
+
+    T = Float[]
+    n_total = sim.n_total
+
+    J_cpu = zeros(T, n_total)
+    init_scalar!(J_cpu, sim.mesh, params[:J])
+    J = kernel_array(J_cpu)
+
+    field = create_zeros(3 * n_total)
+
+    ft = haskey(params, :ft) ? params[:ft] : t -> 1.0
+
+    torque = SlonczewskiTorque(T(p[1]), T(p[2]), T(p[3]), T(beta), T(Lambda), T(xi), T(P), J, field, ft, name)
 
     push!(sim.interactions, torque)
 
