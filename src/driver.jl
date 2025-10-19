@@ -1,6 +1,6 @@
 mutable struct EmptyDriver <: Driver end
 
-mutable struct EnergyMinimization{T<:AbstractFloat} <: Driver
+mutable struct SD{T<:AbstractFloat} <: Driver
     gk::AbstractArray{T,1}
     ss::AbstractArray{T,1}
     sf::AbstractArray{T,1}
@@ -96,7 +96,7 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         sf = create_zeros(n_total)
         ff = create_zeros(n_total)
         max_tau = 1.0
-        return EnergyMinimization(gk, ss, sf, ff, T(0.0), T(max_tau), T(1e-10), 0)
+        return SD(gk, ss, sf, ff, T(0.0), T(max_tau), T(1e-10), 0)
     end
 
     supported_integrators = ["Heun", "RungeKutta", "RungeKuttaCayley", "DormandPrince",

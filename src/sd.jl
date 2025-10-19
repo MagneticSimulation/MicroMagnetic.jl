@@ -53,7 +53,7 @@ end
     end
 end
 
-function compute_tau(driver::EnergyMinimization, m_pre::AbstractArray{T,1},
+function compute_tau(driver::SD, m_pre::AbstractArray{T,1},
                      m::AbstractArray{T,1}, h::AbstractArray{T,1},
                      N::Int64) where {T<:AbstractFloat}
 
@@ -83,7 +83,7 @@ function compute_tau(driver::EnergyMinimization, m_pre::AbstractArray{T,1},
     return nothing
 end
 
-function run_step(sim::AbstractSim, driver::EnergyMinimization)
+function run_step(sim::AbstractSim, driver::SD)
     effective_field(sim, sim.spin, 0.0)
     compute_tau(driver, sim.prespin, sim.spin, sim.field, sim.n_total)
 
