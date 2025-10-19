@@ -1,4 +1,3 @@
-using JLD2
 using KernelAbstractions
 
 export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
@@ -376,7 +375,7 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
 ```
 """
 function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=100,
-               save_m_every=-1, using_time_factor=true, maxsteps=nothing)
+               save_m_every=-1, using_time_factor=true, maxsteps=nothing, output = "ovf")
     if !isnothing(maxsteps)
         @warn "The parameter 'maxsteps' is deprecated. Please use 'max_steps' in relax function."
         max_steps = maxsteps
@@ -387,19 +386,11 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
 
     time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
-    if save_m_every > 0
-        jldopen(@sprintf("%s.jld2", sim.name), "w") do file
-            file["mesh/nx"] = sim.mesh.nx
-            file["mesh/ny"] = sim.mesh.ny
-            file["mesh/nz"] = sim.mesh.nz
-            file["mesh/dx"] = sim.mesh.dx
-            file["mesh/dy"] = sim.mesh.dy
-            file["mesh/dz"] = sim.mesh.dz
 
-            file["steps"] = max_steps
-            return file["save_m_every"] = save_m_every
-        end
-    end
+    output_folder = @sprintf("%s_%s", sim.name, nameof(typeof(sim.driver)))
+    if save_m_every>0
+        mkpath(output_folder)
+    end 
 
     N_spins = sim.n_total
     dm = create_zeros(3 * N_spins)
@@ -435,17 +426,17 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             sim.saver.nsteps += 1
         end
 
-        if save_data_every > 0 && i % save_data_every == 0
+        if save_data_every > 0 && (i - 1) % save_data_every == 0
             compute_system_energy(sim, sim.spin, t)
             sim.saver.t = t
             write_data(sim)
         end
 
-        if save_m_every > 0
-            jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
-                m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
-                index = @sprintf("%d", i)
-                return m_group[index] = Array(sim.spin)
+        if save_m_every > 0 && i%save_m_every == 0
+            if output == "ovf"
+                save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
+            elseif output == "vts" || output == "vtu"
+                save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
             end
         end
 
@@ -458,10 +449,10 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             end
 
             if save_m_every > 0
-                jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
-                    m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
-                    index = @sprintf("%d", i)
-                    return m_group[index] = Array(sim.spin)
+                if output == "ovf"
+                    save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
+                elseif output == "vts" || output == "vtu"
+                    save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
                 end
             end
 
@@ -766,8 +757,8 @@ In this example:
 
 This setup will save the computed guiding center to the simulation output, in addition to the default data like energies and average magnetization.
 """
-function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_every=1,
-                 saver_item=nothing, call_back=nothing)
+function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_every=-1,
+                 saver_item=nothing, call_back=nothing, output="ovf")
     if isa(saver_item, SaverItem)
         push!(sim.saver.items, saver_item)
     end
@@ -778,22 +769,12 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
         end
     end
 
+    output_folder = @sprintf("%s_%s", sim.name, typeof(driver))
     if save_m_every > 0
-        jldopen(@sprintf("%s.jld2", sim.name), "w") do file
-            file["mesh/nx"] = sim.mesh.nx
-            file["mesh/ny"] = sim.mesh.ny
-            file["mesh/nz"] = sim.mesh.nz
-            file["mesh/dx"] = sim.mesh.dx
-            file["mesh/dy"] = sim.mesh.dy
-            file["mesh/dz"] = sim.mesh.dz
-
-            file["steps"] = steps
-            file["dt"] = dt
-            return file["save_m_every"] = save_m_every
-        end
+        mkpath(output_folder)
     end
 
-    for i in 0:steps
+    for i in 1:steps
         run_until(sim, i * dt; save_data=save_data)
 
         !Verbose[] && (steps == i ? println() : print("."))
@@ -801,12 +782,12 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-12, save_data=true, save_m_ev
 
         call_back !== nothing && call_back(sim, i * dt)
 
-        if save_m_every > 0 && i % save_m_every == 0
-            jldopen(@sprintf("%s.jld2", sim.name), "a+") do file
-                m_group = haskey(file, "m") ? file["m"] : JLD2.Group(file, "m")
-                index = @sprintf("%d", i)
-                return m_group[index] = Array(sim.spin)
-            end
+        if save_m_every > 0 && (i - 1) % save_m_every == 0
+             if output == "ovf"
+                 save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
+             elseif output == "vts" || output == "vtu"
+                save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
+             end
         end
     end
 
