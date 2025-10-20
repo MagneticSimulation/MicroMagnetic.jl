@@ -22,11 +22,11 @@ hero:
 
 <!-- FIXME: Need to update /MicroMagnetic.jl/dev/ to /MicroMagnetic.jl/v0.x.x when version upgrades -->
 features:
-  - icon: <img width="64" height="64" src="/MicroMagnetic.jl/dev/skyrmion_phase_diagram.png" />
+  - icon: <img width="64" height="64" src="skyrmion_phase_diagram.png" />
     title: Skyrmion phases
     details: Compute skyrmion phases using stochastic LLG
     link: /atomistic/phase_diagram
-  - icon: <img width="64" height="64" src="/MicroMagnetic.jl/dev/P_mz.png" />
+  - icon: <img width="64" height="64" src="P_mz.png" />
     title: Distribution of magnetization
     details: Compute the distribution of magnetization using stochastic LLG
     link: /atomistic/sllg
