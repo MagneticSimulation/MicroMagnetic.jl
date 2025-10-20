@@ -426,13 +426,13 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             sim.saver.nsteps += 1
         end
 
-        if save_data_every > 0 && (i - 1) % save_data_every == 0
+        if save_data_every > 0 && i % save_data_every == 0
             compute_system_energy(sim, sim.spin, t)
             sim.saver.t = t
             write_data(sim)
         end
 
-        if save_m_every > 0 && i%save_m_every == 0
+        if save_m_every > 0 && i % save_m_every == 0
             if output == "ovf"
                 save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
             elseif output == "vts" || output == "vtu"
@@ -769,12 +769,12 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
         end
     end
 
-    output_folder = @sprintf("%s_%s", sim.name, typeof(driver))
+    output_folder = @sprintf("%s_%s", sim.name, typeof(sim.driver))
     if save_m_every > 0
         mkpath(output_folder)
     end
 
-    for i in 1:steps
+    for i in 0:steps
         run_until(sim, i * dt; save_data=save_data)
 
         !Verbose[] && (steps == i ? println() : print("."))

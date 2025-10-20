@@ -59,7 +59,7 @@ using CairoMakie
 Generate a movie from the simulation results stored in the jld2 file
 
 ```julia
-jld2movie("std4.jld2"; output="std4.mp4", component='x');
+#jld2movie("std4.jld2"; output="std4.mp4", component='x');
 ```
 
 Display the generated movie

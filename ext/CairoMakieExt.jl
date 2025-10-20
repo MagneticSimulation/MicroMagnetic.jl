@@ -4,7 +4,6 @@ module CairoMakieExt
 using MicroMagnetic
 using Printf
 using CairoMakie
-using JLD2
 
 #TODO: find a better sampling method
 function calculate_sampling(nx::Int, step::Int)
@@ -215,46 +214,12 @@ This function forwards all keyword arguments to `MicroMagnetic.plot_m`. Refer to
 
 `output`` is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
 """
-function MicroMagnetic.jld2movie(jld_file; framerate=12, output=nothing, figsize=(500, -1),
+function ovf2gif(folder; framerate=12, output=nothing, figsize=(500, -1),
                                  kwargs...)
     if output === nothing
-        base_name = jld_file[1:(length(jld_file) - 5)]
-        output = @sprintf("%s.mp4", base_name)
+        output = @sprintf("%s/animation.mp4", folder)
     end
-
-    data = JLD2.load(jld_file)
-    steps = data["steps"]
-    save_m_every = data["save_m_every"]
-    nx, ny, nz = data["mesh/nx"], data["mesh/ny"], data["mesh/nz"]
-    if save_m_every < 0
-        @info @sprintf("save_m_every is %d, which is negative, exiting~", save_m_every)
-        return
-    end
-
-    dx, dy, dz = data["mesh/dx"], data["mesh/dy"], data["mesh/dz"]
-
-    size_x = figsize[1]
-    size_y = figsize[2]
-    if (size_y < 0)
-        aspect_ratio = ny * dy / (nx * dx)
-        size_y = Int(ceil(size_x * aspect_ratio))
-    end
-
-    fig = Figure(; size=(size_x, size_y), backgroundcolor=:white)
-
-    ax = Axis(fig[1, 1]; width=size_x, height=size_y)
-    hidedecorations!(ax)
-
-    function update_function(i)
-        index = @sprintf("m/%d", i)
-        m = reshape(data[index], 3, nx, ny, nz)
-        empty!(ax)
-        return plot_m(m; dx=dx, dy=dy, fig=fig, ax=ax, kwargs...)
-    end
-
-    return record(update_function, fig, output, 0:save_m_every:steps; framerate=framerate)
 end
-
 
 function MicroMagnetic.plot_voronoi(grain_ids, points; dx=2, dy=2, output="voronoi.png")
     
