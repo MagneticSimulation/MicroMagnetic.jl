@@ -22,31 +22,32 @@ hero:
 
 <!-- FIXME: Need to update /MicroMagnetic.jl/dev/ to /MicroMagnetic.jl/v0.x.x when version upgrades -->
 features:
-  - icon: <img width="64" height="64" src="skyrmion_phase_diagram.png" />
-    title: Skyrmion phases
-    details: Compute skyrmion phases using stochastic LLG
-    link: /atomistic/phase_diagram
-  - icon: <img width="64" height="64" src="P_mz.png" />
-    title: Distribution of magnetization
-    details: Compute the distribution of magnetization using stochastic LLG
-    link: /atomistic/sllg
-  - icon: <img width="64" height="64" src="/MicroMagnetic.jl/dev/final_m.png" />
-    title: Skyrmion phases
-    details: Compute skyrmion phases using monte carlo
-    link: /monte_carlo/skyrmion
-
-  - icon: <img src="/MicroMagnetic.jl/dev/std4.png" />
+  - icon: <img width="280" src="std4.png" />
     title: Standard Problem 4
     details: Simulate the standard problem 4 using sim_with
     link: /micromagnetics/std4_sim_with
-  - icon: <img src="/MicroMagnetic.jl/dev/sw.png" />
+  - icon: <img width="280" src="std5_center.png" />
+    title: Standard Problem 5
+    details: Vortex dynamics with spin transfer torques
+    link: /micromagnetics/std5.md
+  - icon: <img width="280" src="sw.png" />
     title: Stoner–Wohlfarth model
     details: Compute Stoner–Wohlfarth loop using a particle
     link: /micromagnetics/stoner_wohlfarth
-  - icon: <img src="/MicroMagnetic.jl/dev/skx_lattice.png" />
-    title: Skyrmion lattice
-    details: Relax the system to obtain the skyrmion lattices.
-    link: /atomistic/skyrmion_lattice
+  - icon: <img width="280" src="skyrmion_phase_diagram.png" />
+    title: Skyrmion phases
+    details: Compute skyrmion phases using stochastic LLG
+    link: /atomistic/phase_diagram
+  - icon: <img width="280" src="M_T.png" />
+    title: Monte Carlo
+    details: Compute M-T curve using monte carlo
+    link: /monte_carlo/M_T_curve
+  - icon: <img width="280" src="chi.png" />
+    title: Dynamical susceptibility
+    details: Compute dynamical susceptibility of a naonbar
+    link: /micromagnetics/chi
+
+
 ---
 
 ```

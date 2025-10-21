@@ -119,10 +119,10 @@ function plot_chi()
     freq = data[:, 1]
     ix = data[:, 3]
 
-    fig = Figure(; size=(500, 300), fontsize=16)
-    ax = Axis(fig[1, 1]; xlabel="Frequency (GHz)", ylabel=L"\chi_y")
+    fig = Figure(; size=(400, 280), backgroundcolor=:transparent)
+    ax = Axis(fig[1, 1]; xlabel="Frequency (GHz)", ylabel=L"\chi_y", backgroundcolor=:transparent)
 
-    scatterlines!(ax, freq, ix; markersize=6)
+    scatterlines!(ax, freq, ix; markersize=6, color=:blue, markercolor=:orange)
     xlims!(ax, 0, 15)
     ylims!(ax, -10, 200)
     return fig
@@ -139,6 +139,10 @@ if !isfile("assets/chi.txt")
     writedlm("assets/chi.txt", data)
 end
 
-plot_chi()
+fig = plot_chi()
 ````
+
+```@setup
+save("../public/chi.png", fig)
+```
 

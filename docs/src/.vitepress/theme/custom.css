@@ -12,7 +12,7 @@
 .VPFeature .icon {
   width: var(--vp-feature-icon-size) !important;
   height: var(--vp-feature-icon-size) !important;
-  margin: 0 auto 20px auto !important;
+  margin: 0 auto 6px auto !important;
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;

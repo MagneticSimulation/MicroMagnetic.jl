@@ -76,8 +76,8 @@ function run_and_plot()
     mz = midpoints(hist.edges[1])
     h = normalize(hist; mode=:pdf)
 
-    fig = Figure(; size=(500, 360), fontsize=18)
-    ax = Axis(fig[1, 1]; xlabel=L"$m_z$", ylabel=L"log($P_\mathrm{eq}$)")
+    fig = Figure(; size=(400, 260), backgroundcolor=:transparent)
+    ax = Axis(fig[1, 1]; xlabel=L"$m_z$", ylabel=L"log($P_\mathrm{eq}$)", backgroundcolor=:transparent)
 
     mzs, ps = analytical()
     l1 = lines!(ax, mzs, log.(ps); linestyle=:solid, color=:slateblue1, label="Analytical")

@@ -70,22 +70,20 @@ function plot_phase_diagram()
     Ts = [0.05 * i for i in 0:10]
     Qs = reshape(Qs, (length(Ts), length(Hs)))
 
-    fig = Figure(; figsize=(600, 400), fontsize=20)
-    ax = Axis(fig[1, 1]; title="Skyrmion number", xlabel="T", ylabel="H")
+    fig = Figure(; figsize=(400, 260), fontsize=20, backgroundcolor = :transparent)
+    ax = Axis(fig[1, 1]; title="Skyrmion number", xlabel="T", ylabel="H", backgroundcolor = :transparent)
 
     hm = heatmap!(ax, Ts, Hs, Qs; interpolate=true, colormap=:RdBu)
     Colorbar(fig[:, end + 1], hm)
     text!(ax, 0.25, 0.35; text="FM", fontsize=22)
     text!(ax, 0.05, 0.15; text="SkX", fontsize=22)
-    text!(ax, 0.1, 0.004; text="HL", fontsize=22)
+    text!(ax, 0.1, -0.01; text="HL", fontsize=22)
     return fig
 end
 
 fig = plot_phase_diagram();
-nothing #hide
 ````
 
 ```@setup
-save("../public/skyrmion_phase_diagram.png", fig)
+save("../public/skyrmion_phase_diagram.png", fig, transparent = true)
 ```
-![](../public/skyrmion_phase_diagram.png)

@@ -566,6 +566,9 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
     if sim.driver_name != driver
         sim.driver = create_driver(driver, integrator, sim.n_total)
         sim.driver_name = driver
+        if sim.driver.integrator isa AdaptiveRK
+            set_initial_condition!(sim, sim.driver.integrator)
+        end
 
         saver = sim.saver
         saver.name = @sprintf("%s_%s.txt", sim.name, lowercase(driver))

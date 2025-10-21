@@ -59,6 +59,7 @@ function relax_system()
 end
 
 sim = relax_system();
+nothing #hide
 ````
 
 After obtain the skyrmion, we use the following script to plot the skyrmion

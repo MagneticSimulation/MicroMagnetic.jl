@@ -39,7 +39,7 @@ function init_fun(i, j, k, dx, dy, dz)
     if r < 2
         return (0, 0, 1)
     end
-    return (y / r, -x / r, 0)
+    return (-y / r, x / r, 0)
 end
 ````
 
@@ -73,87 +73,35 @@ plot_m(sim; component='z')
 ````
 
 ## Step 2: Vortex Dynamics
-This function simulates the dynamics of a vortex under an applied current.
+We change the driver back to LLG and add spin transfer torques to the system.
 
 ````@example
-function applied_current(sim, ux, beta)
+set_driver(sim; driver="LLG", alpha=0.1, gamma=2.211e5)
+add_stt(sim, model=:zhang_li, P=1.0, Ms=8e5, xi=0.05, J=(1e12, 0, 0))
 
-    set_driver(sim; driver="LLG_STT", alpha=0.1, gamma=2.211e5, beta=beta)
-    set_ux(sim, ux)
-
-    fname = "std5_center.txt"
-    io = open(fname, "w")
-    write(io, "# time(ns)   X(nm)   Y(nm)\n")
-
-    for i in 0:160
-        t = i * 5e-11
-        run_until(sim, t)
-
-        #Compute the x, y coordinates of the vortex center for layer 1.
-        Rx, Ry = MicroMagnetic.compute_guiding_center(sim; z=1)
-        write(io, @sprintf("%g   %g   %g\n", t, Rx, Ry))
-
-        if i % 100 == 0
-            println("time=", t)
-        end
-    end
-    close(io)
-end
+# we add a SaverItem to save the guiding center each step
+center = SaverItem(("Rx", "Ry"), ("<m>", "<m>"), compute_guiding_center)
+run_sim(sim, steps=100, dt=5e-11, save_data=true, saver_item=center)
 ````
 
-Choose a proper current density and run the second step.
-$u_x=-Pg \mu_B J/(2eM_s)$
-where J=1e12 is the current density, P=1 is the polarization rate,
-$g$ is the Lander factor of free electrons, $e$ is the charge of an electron.
-
-````@example
-if !(isfile("std5_llg_stt.txt") && isfile("std5_center.txt"))
-    ux = -72.438
-    applied_current(sim, ux, 0.05)
-end
-````
-
-Plot the track of vortex center and the three magnetization components.
+We plot the vortex center as a function of time.
 
 ````@example
 function plot_center()
-    data = readdlm("std5_center.txt"; skipstart=1)
-    fig = Figure(; size=(400, 400), fontsize=28)
-    ax = Axis(fig[1, 1]; xlabel="dX (nm)", ylabel="dY (nm)")
-    dX = data[:, 2] .- data[1, 2]
-    dY = data[:, 3] .- data[1, 3]
-    lines!(ax, dX*1e9, dY*1e9)
-    save("assets/std5_center.png", fig)  #Save the plot
-    return fig
-end
-
-plot_center()
-````
-
-Finally, plot the average magnetization as a function of time.
-
-````@example
-function plot_m_ts()
-    data = readdlm("std5_llg_stt.txt"; skipstart=2)
-    ts, mx, my, mz = data[:, 2] * 1e9, data[:, 4], data[:, 5], data[:, 6]
-
-    fig = Figure(; size=(800, 480), fontsize=24)
-    ax = Axis(fig[1, 1]; xlabel="Time (ns)", ylabel="<m>")
-    scatter!(ax, ts, mx; markersize=6, label="MicroMagnetic")
-    scatter!(ax, ts, my; markersize=6)
-    scatter!(ax, ts, mz; markersize=6)
-
-    #Compare with Fidimag data
-    data_fidimag = readdlm("assets/std5_fidimag_data.txt"; skipstart=2)
-    ts, mx, my, mz = data_fidimag[:, 1] * 1e9, data_fidimag[:, 5], data_fidimag[:, 6], data_fidimag[:, 7]
-    lines!(ax, ts, mx; label="mx Fidimag")
-    lines!(ax, ts, my; label="my Fidimag")
-    lines!(ax, ts, mz; label="mz Fidimag")
-
+    data, unit = read_table("std5_llg.txt")
+    fig = Figure(; size=(400, 280), backgroundcolor = :transparent)
+    ax = Axis(fig[1, 1]; xlabel="time (ns)", ylabel="Vortex center (nm)", backgroundcolor = :transparent)
+    ts = data["time"]*1e9
+    Rx, Ry = data["Rx"]*1e9, data["Ry"]*1e9
+    scatterlines!(ax, ts, Rx; markersize=6, label="cx")
+    scatterlines!(ax, ts, Ry; markersize=6, label="cy")
     axislegend()
-    save("assets/std5_m.png", fig)  #Save the plot
     return fig
 end
 
-plot_m_ts()
+fig = plot_center()
 ````
+
+```@setup
+save("../public/std5_center.png", fig)  #Save the plot
+```

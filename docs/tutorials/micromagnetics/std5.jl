@@ -29,7 +29,7 @@ function init_fun(i, j, k, dx, dy, dz)
     if r < 2
         return (0, 0, 1)
     end
-    return (y / r, -x / r, 0)
+    return (-y / r, x / r, 0)
 end
 
 # ## Step 1: Relax the system.
@@ -56,56 +56,16 @@ plot_m(sim; component='z')
 
 # ## Step 2: Vortex Dynamics
 # This function simulates the dynamics of a vortex under an applied current.
-function applied_current(sim, ux, beta)
-    
-    set_driver(sim; driver="LLG_STT", alpha=0.1, gamma=2.211e5, beta=beta)
-    set_ux(sim, ux)
 
-    fname = "std5_center.txt"
-    io = open(fname, "w")
-    write(io, "# time(ns)   X(nm)   Y(nm)\n")
+set_driver(sim; driver="LLG", alpha=0.1, gamma=2.211e5)
+add_stt(sim, model=:zhang_li, P=1.0, Ms=8e5, xi=0.05, J=(1e12, 0, 0))
 
-    for i in 0:160
-        t = i * 5e-11
-        run_until(sim, t)
-
-        #Compute the x, y coordinates of the vortex center for layer 1.
-        Rx, Ry = MicroMagnetic.compute_guiding_center(sim; z=1)
-        write(io, @sprintf("%g   %g   %g\n", t, Rx, Ry))
-
-        if i % 100 == 0
-            println("time=", t)
-        end
-    end
-    close(io)
-end
-
-# Choose a proper current density and run the second step.
-# $u_x=-Pg \mu_B J/(2eM_s)$
-# where J=1e12 is the current density, P=1 is the polarization rate,
-# $g$ is the Lander factor of free electrons, $e$ is the charge of an electron.
-if !(isfile("std5_llg_stt.txt") && isfile("std5_center.txt"))
-    ux = -72.438
-    applied_current(sim, ux, 0.05)
-end
-
-# Plot the track of vortex center and the three magnetization components.
-function plot_center()
-    data = readdlm("std5_center.txt"; skipstart=1)
-    fig = Figure(; size=(400, 400), fontsize=28)
-    ax = Axis(fig[1, 1]; xlabel="dX (nm)", ylabel="dY (nm)")
-    dX = data[:, 2] .- data[1, 2]
-    dY = data[:, 3] .- data[1, 3]
-    lines!(ax, dX*1e9, dY*1e9)
-    save("assets/std5_center.png", fig)  #Save the plot
-    return fig
-end
-
-plot_center()
+center = SaverItem(("Rx", "Ry"), ("<m>", "<m>"), compute_guiding_center)
+run_sim(sim, steps=100, dt=5e-11, save_data=true, saver_item=center)
 
 # Finally, plot the average magnetization as a function of time.
 function plot_m_ts()
-    data = readdlm("std5_llg_stt.txt"; skipstart=2)
+    data = readdlm("std5_llg.txt"; skipstart=2)
     ts, mx, my, mz = data[:, 2] * 1e9, data[:, 4], data[:, 5], data[:, 6]
 
     fig = Figure(; size=(800, 480), fontsize=24)

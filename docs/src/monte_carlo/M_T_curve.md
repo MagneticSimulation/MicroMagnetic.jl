@@ -72,8 +72,8 @@ using DelimitedFiles
 using CairoMakie
 
 function plot_m_H()
-    fig = Figure(; size=(400, 300))
-    ax = Axis(fig[1, 1]; xlabel="T (K)", ylabel="m")
+    fig = Figure(; size=(400, 280), backgroundcolor = :transparent )
+    ax = Axis(fig[1, 1]; xlabel="T (K)", ylabel="m", backgroundcolor = :transparent)
 
     data = readdlm("M_T.txt"; skipstart=1)
     sc1 = scatter!(ax, data[:, 1], data[:, 2]; markersize=10, label="M-T curve")
@@ -90,13 +90,11 @@ function plot_m_H()
 end
 
 fig = plot_m_H();
-nothing #hide
 ````
 
 ```@setup
-save("../public/M-T.png", fig)
+save("../public/M_T.png", fig)
 ```
-![](../public/M-T.png)
 
 [1] Atomistic spin model simulations of magnetic nanomaterials, J. Phys.: Condens. Matter 26 (2014) 103202.
 

@@ -80,8 +80,8 @@ function plot_m_ts()
     oommf = readdlm("assets/std4_oommf.txt")
 
     #Create a figure for the plot
-    fig = Figure(; size=(800, 480))
-    ax = Axis(fig[1, 1]; xlabel="Time (ns)", ylabel="m")
+    fig = Figure(; size=(400, 280), backgroundcolor = :transparent)
+    ax = Axis(fig[1, 1]; xlabel="Time (ns)", ylabel="m", backgroundcolor = :transparent)
 
     #Plot OOMMF results
     lines!(ax, oommf[:, 1] * 1e9, oommf[:, 2]; label="OOMMF")

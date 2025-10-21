@@ -47,17 +47,11 @@ Recall the function `relax_system` to obtain the skyrmion lattice.
 
 ````@example
 sim = relax_system();
+nothing #hide
 ````
 
 After obtain the skyrmion, we use the following script to plot the skyrmion
 
 ````@example
 fig = plot_m(sim)
-nothing #hide
 ````
-
-```@setup
-save("../public/skx_lattice.png", fig)
-```
-
-![](../public/skx_lattice.png)
