@@ -2,12 +2,13 @@
 
 ## Atomistic spin model
 
-The basic assumption of the atomistic spin model is that each lattice site is associated with a magnetic moment $\mu_s$. For metal systems with quenched orbital moments, the magnetic moment is mainly related to its spin angular momentum
+The basic assumption of the atomistic spin model is that each lattice site is associated with a magnetic moment $\mu_s$. 
+For metal systems with quenched orbital moments, the magnetic moment is mainly related to its spin angular momentum
 ```math
 \mathbf{\mu} = - g \mu_B \mathbf{S} = - \hbar  \gamma \mathbf{S}
 ```
 where $\mu_B=e \hbar /(2m)$ is the Bohr magneton, $e(>0)$ is the electron charge, 
-$\gamma=g\mu_B/\hbar (>0) $ is the gyromagnetic ratio, $g=2$ is the g-factor. 
+$\gamma=g\mu_B/\hbar (>0)$ is the gyromagnetic ratio, $g=2$ is the g-factor. 
 The LLG equation governs the dynamics of the magnetic moment, 
 which reads
 
@@ -337,7 +338,7 @@ The Zhang-Li model incorporates STT into the LLG equation. The equation for the 
 
 ```math
 \frac{d \mathbf{m}}{dt} = -\gamma \mathbf{m} \times \mathbf{H}_\mathrm{eff} + \alpha \mathbf{m} \times \frac{d \mathbf{m}}{dt}
-- b \mathbf{m} \times [\mathbf{m} \times (\mathbf{} \cdot \nabla) \mathbf{m}] 
+- b \mathbf{m} \times [\mathbf{m} \times (\mathbf{j} \cdot \nabla) \mathbf{m}] 
 - \xi b \mathbf{m} \times (\mathbf{j} \cdot \nabla) \mathbf{m} 
 ```
 

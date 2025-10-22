@@ -772,7 +772,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
         end
     end
 
-    output_folder = @sprintf("%s_%s", sim.name, typeof(sim.driver))
+    output_folder = @sprintf("%s_%s", sim.name, nameof(typeof(sim.driver)))
     if save_m_every > 0
         mkpath(output_folder)
     end

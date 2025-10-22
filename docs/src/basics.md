@@ -24,25 +24,40 @@ graph LR;
 ```
 
 ## Sim
-In MicroMagnetic, we can create different Sim objects based on the computational system or problem type. MicroMagnetic defines four types of Sims:
 
+MicroMagnetic provides different Sim objects tailored to various computational systems and problem types. The framework defines five main simulation types with the following inheritance structure:
 
 ```mermaid
-graph LR
+graph TD
    AbstractSim --> MicroSim
+   AbstractSim --> MicroSimFE
    AbstractSim --> AtomisticSim
    AbstractSim --> NEB
    AbstractSim --> MonteCarlo
 ```
 
+For [MicroSim](@ref MicroMagnetic.MicroSim), [AtomisticSim](@ref MicroMagnetic.AtomisticSim), you have two creation options: the [`create_sim`](@ref) function or the direct `Sim` constructor. The `create_sim` function provides a streamlined approach for parameter specification.
 
-For [MicroSim](@ref MicroMagnetic.MicroSim) and [AtomisticSim](@ref MicroMagnetic.AtomisticSim), we recommend using the [`create_sim`](@ref) function to create them, as the [`create_sim`](@ref) function 
-can specify some parameters while creating Sim. Of course, these parameters can also be specified later. 
+### Example: Simulation Creation
 
+**Method 1: Using `Sim` constructor**
 ```julia
-sim = create_sim(mesh)
+sim = Sim(mesh; driver="SD", name="std4")
+
+set_Ms(sim, 8e5)           # Set saturation magnetization
+add_exch(sim, 1.3e-11)     # Add exchange interaction
+add_demag(sim)             # Add demagnetization
+init_m0(sim, (1, 0.25, 0.1))  # Initialize magnetization
 ```
-Note: all simulation data can be obtained through sim, especially, we can obtain the magnetization distribution state of the system through `sim.spin` at any time.
+
+**Method 2: Using `create_sim` function**
+```julia
+sim = create_sim(mesh, driver="SD", Ms=8e5, A=1.3e-11, demag=true, m0=(1, 0.25, 0.1))
+```
+
+Both methods produce equivalent simulation configurations. The `create_sim` approach offers a more concise syntax for common parameter combinations.
+
+All simulation data is accessible through the `sim` object, with the magnetization distribution available via `sim.spin` at any time.
 
 !!! note
     By default, the magnetization is stored in a 1D array with the form ``[m_{1,x}, m_{1, y}, m_{1, z}, ..., m_{n,x}, m_{n, y}, m_{n, z}]``, which can be reshaped into a 4D array
@@ -52,7 +67,6 @@ Note: all simulation data can be obtained through sim, especially, we can obtain
     my = m[2, :, :, :]
     mz = m[3, :, :, :]
     ```
-
 
 ## Functions
 
@@ -161,8 +175,7 @@ are equivalent. The advantage of the latter is that when we need exchange intera
 
 MicroMagnetic implements energy terms 
 
-```@raw html
-<div class="mermaid">
+```mermaid
 graph TD;
     MicroEnergy --> Exchange
     Exchange --> UniformExchange
@@ -174,25 +187,20 @@ graph TD;
     MicroEnergy --> Anisotropy
     MicroEnergy --> CubicAnisotropy
     MicroEnergy --> StochasticField    
-</div>
 ```
 
 
 ## Driver
 
-```@raw html
-<div class="mermaid">
+```mermaid
 graph LR;
+    Driver --> SD
     Driver --> LLG
-    Driver --> LLG_STT
-    Driver --> EnergyMinimization
-</div>
+    Driver --> ILLG
 ```
 
 
-
 ## Periodic Boundary conditions
-
 
 
 
