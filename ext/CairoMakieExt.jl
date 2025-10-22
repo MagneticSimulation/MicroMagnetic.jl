@@ -5,20 +5,91 @@ using MicroMagnetic
 using Printf
 using CairoMakie
 
-#TODO: find a better sampling method
-function calculate_sampling(nx::Int, step::Int)
-    start = step > 1 ? (step ÷ 2) : 1
-    num_samples = (nx - start) ÷ step + 1
-    return start, step, num_samples
+function calculate_sampling_parameters(nx::Int, ny::Int, arrows::Tuple{Int,Int})
+    """
+    Calculate sampling parameters with fractional start positions
+    Ensures symmetry and uniform spacing
+    """
+    arrow_nx, arrow_ny = arrows
+    
+    function symmetric_sampling(n_total::Int, n_samples::Int)
+        # Single point case - place at center
+        if n_samples <= 1
+            return (n_total + 1) / 2, 1.0, 1
+        end
+        
+        # Calculate step size for uniform distribution
+        step = (n_total - 1) / (n_samples - 1)
+        
+        # Calculate symmetric start position
+        start = (n_total + 1) / 2 - (n_samples - 1) * step / 2
+        
+        return start, step, n_samples
+    end
+    
+    function adaptive_sampling(n_total::Int, reference_step::Real)
+        # Ensure reasonable step size
+        step = max(1.0, min(reference_step, n_total - 1))
+        
+        # Calculate number of samples
+        n_samples = max(1, floor(Int, (n_total - 1) / step) + 1)
+        
+        # Calculate symmetric start position
+        start = (n_total + 1) / 2 - (n_samples - 1) * step / 2
+        
+        return start, step, n_samples
+    end
+    
+    # Different sampling modes based on arrow configuration
+    if arrows[1] < 0 && arrows[2] > 0
+        # Mode 1: Fixed y samples, adaptive x
+        start_y, step_y, arrow_ny = symmetric_sampling(ny, arrow_ny)
+        start_x, step_x, arrow_nx = adaptive_sampling(nx, step_y)
+        
+    elseif arrows[1] > 0 && arrows[2] < 0
+        # Mode 2: Fixed x samples, adaptive y
+        start_x, step_x, arrow_nx = symmetric_sampling(nx, arrow_nx)
+        start_y, step_y, arrow_ny = adaptive_sampling(ny, step_x)
+        
+    elseif arrows[1] < 0 && arrows[2] < 0
+        # Mode 3: Both directions adaptive, same density
+        max_arrows = max(abs(arrows[1]), abs(arrows[2]))
+        _, step_size, _ = symmetric_sampling(max(nx, ny), max_arrows)
+        start_x, step_x, arrow_nx = adaptive_sampling(nx, step_size)
+        start_y, step_y, arrow_ny = adaptive_sampling(ny, step_size)
+        
+    else
+        # Mode 4: Both directions fixed
+        start_x, step_x, arrow_nx = symmetric_sampling(nx, arrow_nx)
+        start_y, step_y, arrow_ny = symmetric_sampling(ny, arrow_ny)
+    end
+    
+    return start_x, step_x, arrow_nx, start_y, step_y, arrow_ny
 end
 
-function calculate_start_step(nx::Int, n::Int)
-    step = nx > n ? div(nx, n) : 1
-    start = (nx - step * (n - 1)) ÷ 2 + 1
-    if start <= 0
-        start = 1
+function bilinear_interpolation_grid(data::AbstractMatrix, x_coords, y_coords)
+    nx, ny = size(data, 1), size(data, 2)
+    new_nx = length(x_coords)
+    new_ny = length(y_coords)
+    result = zeros(new_nx, new_ny)
+    
+    for j in 1:new_nx
+        x = x_coords[j]
+        ix = clamp(floor(Int, x), 1, nx - 1)
+        tx = x - ix
+        
+        for i in 1:new_ny
+            y = y_coords[i]
+            iy = clamp(floor(Int, y), 1, ny - 1)
+            ty = y - iy
+
+            bottom_val = data[ix, iy] * (1 - tx) + data[ix+1, iy] * tx
+            top_val = data[ix, iy+1] * (1 - tx) + data[ix+1, iy+1] * tx
+            result[j, i] = bottom_val * (1 - ty) + top_val * ty
+        end
     end
-    return start, step
+    
+    return result
 end
 
 """
@@ -94,25 +165,8 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
         arrows = (-1, -1)
         show_arrow = false
     end
-    arrow_nx = arrows[1]
-    arrow_ny = arrows[2]
 
-    if arrows[1] < 0 && arrows[2] > 0
-        start_y, step_y = calculate_start_step(ny, arrow_ny)
-        start_x, step_x, arrow_nx = calculate_sampling(nx, step_y)
-    elseif arrows[1] > 0 && arrows[2] < 0
-        start_x, step_x = calculate_start_step(nx, arrow_nx)
-        start_y, step_y, arrow_ny = calculate_sampling(ny, step_x)
-    elseif arrows[1] < 0 && arrows[2] < 0
-        _, step_size = calculate_start_step(max(nx, ny), max_arrows)
-        start_x, step_x, arrow_nx = calculate_sampling(nx, step_size)
-        start_y, step_y, arrow_ny = calculate_sampling(ny, step_size)
-    else
-        start_y, step_y = calculate_start_step(ny, arrow_ny)
-        start_y, step_y, arrow_ny = calculate_sampling(ny, step_y)
-        start_x, step_x = calculate_start_step(nx, arrow_nx)
-        start_x, step_x, arrow_nx = calculate_sampling(nx, step_x)
-    end
+    start_x, step_x, arrow_nx, start_y, step_y, arrow_ny = calculate_sampling_parameters(nx, ny, arrows)
 
     I = start_x .+ (0:(arrow_nx - 1)) .* step_x
     J = start_y .+ (0:(arrow_ny - 1)) .* step_y
@@ -145,7 +199,9 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
 
     if show_arrow
         lengthscale = 0.3 * sqrt(Dx^2 + Dy^2)
-        arrows!(ax, xs[I], ys[J], mx[I, J], my[I, J]; linewidth=2.0, color=:gray36,
+        mx_interp = bilinear_interpolation_grid(mx, I, J)
+        my_interp = bilinear_interpolation_grid(my, I, J)
+        arrows!(ax, I.*dx, J.*dy, mx_interp, my_interp; linewidth=2.0, color=:gray36,
                lengthscale=lengthscale, align=:center)
     end
     return fig

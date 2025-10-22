@@ -395,10 +395,11 @@ For example:
 After running this function, the effective field is calculated and saved in sim.field.
 """
 function effective_field(sim::AbstractSim, spin, t::Float64=0.0)
+    
     fill!(sim.field, 0.0)
     for interaction in sim.interactions
         if !isa(interaction, Zeeman)
-            effective_field(interaction, sim, spin, t)
+            @timeit timer interaction.name effective_field(interaction, sim, spin, t)
         end
         vector_add(sim.field, interaction.field)
     end

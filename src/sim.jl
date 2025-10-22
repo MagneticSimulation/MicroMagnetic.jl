@@ -632,8 +632,10 @@ function create_sim(mesh, args::Dict)
     name = haskey(args, :name) ? args[:name] : "unnamed"
     shape = haskey(args, :shape) ? args[:shape] : nothing
 
+    integrator = get(args, :integrator, "DormandPrince")
+
     #Create the mesh using given driver and name
-    sim = Sim(mesh; driver=driver, name=name)
+    sim = Sim(mesh; driver=driver, integrator=integrator, name=name)
 
     #If the simulation is the standard micromagnetic simulation.
     if isa(mesh, FDMesh)
