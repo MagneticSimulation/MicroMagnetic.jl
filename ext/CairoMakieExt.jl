@@ -123,6 +123,7 @@ MicroMagnetic.plot_m(spin, colorrange=[-1, 1])
 
 # Creates a plot for the x-component of the second layer with custom settings
 MicroMagnetic.plot_m(spin, dx=0.5, dy=0.5, k=2, component='x', arrows=(5, 5), figsize=(600, 400))
+```
 """
 function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(-1, -1),
                               figsize=(500, -1), fig=nothing, ax=nothing, kwargs...)
@@ -210,13 +211,14 @@ This function forwards all keyword arguments to `MicroMagnetic.plot_m`. Refer to
 - `fig`: The figure containing the plot.
 
 # Examples
- 
+```julia
 sim = MicroMagnetic.create_simulation()  # Example simulation object
 MicroMagnetic.plot_m(sim)
 # Creates a plot with default settings
 
 MicroMagnetic.plot_m(sim, k=2, component='x', arrows=(5, 5), figsize=(600, 400))
 # Creates a plot for the x-component of the second layer with custom settings
+```
 """
 function MicroMagnetic.plot_m(sim::MicroMagnetic.AbstractSim; kwargs...)
     mesh = sim.mesh
@@ -228,12 +230,13 @@ function MicroMagnetic.plot_m(sim::MicroMagnetic.AbstractSim; kwargs...)
 end
 
 """
-  ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1), figsize=(500, -1))
+    ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1), figsize=(500, -1))
 
 Create a png from the given ovf file.
-`k` indicates the layer index (starting from 1) 
-`arrows` is the number of arrows, should be a Tuple of integers. By default, arrows=(-1, -1).
-`figsize` should be a Tuple of integers, for example, figsize=(500, 400) or figsize=(500, -1).
+
+- `k` indicates the layer index (starting from 1) 
+- `arrows` is the number of arrows, should be a Tuple of integers. By default, arrows=(-1, -1).
+- `figsize` should be a Tuple of integers, for example, figsize=(500, 400) or figsize=(500, -1).
 """
 function MicroMagnetic.ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1),
                                figsize=(500, -1))
@@ -256,7 +259,12 @@ Create a moive from the given folder,
 # Keyword Arguments
 This function forwards all keyword arguments to `MicroMagnetic.plot_m`. Refer to `MicroMagnetic.plot_m` for detailed descriptions of the keyword arguments.
 
-`output`` is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
+`output` is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
+
+# Examples
+```julia
+ovf2movie("std4_LLG"; output="std4.gif", component='x');
+```
 """
 function MicroMagnetic.ovf2movie(folder; framerate=12, output=nothing, figsize=(500, -1),
                                  kwargs...)

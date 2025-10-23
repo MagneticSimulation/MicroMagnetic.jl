@@ -1,6 +1,7 @@
 using Documenter
 using MicroMagnetic
 using DocumenterVitepress
+using CairoMakie
 
 Atomistic = ["Magnetic skyrmion" => "atomistic/skyrmion.md",
              "Skyrmion lattice" => "atomistic/skyrmion_lattice.md",
@@ -36,7 +37,8 @@ PAGES = ["Home" => "index.md",
 
 makedocs(; 
     sitename = "MicroMagnetic.jl", 
-    modules = [MicroMagnetic],
+    modules = [MicroMagnetic, 
+              isdefined(Base, :get_extension) ? Base.get_extension(MicroMagnetic, :CairoMakieExt) : MicroMagnetic.CairoMakieExt],
     warnonly = true,
     checkdocs=:all,
     format= MarkdownVitepress(; repo="github.com/MagneticSimulation/MicroMagnetic.jl",

@@ -89,15 +89,15 @@ read_ovf
 ```
 
 
-## Tools / Visualization
+## Tools/Visualization
 
 ```@docs
 ovf2vtk
-#plot_m
-#jld2png
-#jld2movie
+plot_ts
+plot_m
+ovf2png
+ovf2movie
 ```
-
 
 
 ## Others
