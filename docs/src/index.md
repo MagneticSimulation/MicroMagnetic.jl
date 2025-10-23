@@ -71,35 +71,30 @@ features:
   <li>Easily extensible to add new features.</li>
 </ul>
 
-<h2> Quick start </h2>
-Assuming we have a cylindrical FeG sample with a diameter of 100 nm and a height of 40 nm, we want to know its magnetization distribution and the stray field around it. 
-We can use the following script: 
+<h2> Quick start -- Standard Problem 4 </h2>
 
 ```julia
 using MicroMagnetic
+using CairoMakie
+
 @using_gpu() # Import available GPU packages such as CUDA, AMDGPU, oneAPI, or Metal
 
-# Define simulation parameters
-args = (
-    task = "Relax", # Specify the type of simulation task (e.g., relaxation)
-    mesh = FDMesh(nx=80, ny=80, nz=30, dx=2e-9, dy=2e-9, dz=2e-9), # Define the mesh grid for the simulation with 80x80x30 cells and 2 nm cell size
-    shape = Cylinder(radius=50e-9, height=40e-9), # Define the shape of the magnetic structure as a cylinder with 50 nm radius and 40 nm height
-    Ms = 3.87e5, # Set the saturation magnetization (A/m)
-    A = 8.78e-12, # Set the exchange stiffness constant (J/m)
-    D = 1.58e-3, # Set the Dzyaloshinskii-Moriya interaction constant (J/m^2)
-    demag = true, # Enable demagnetization effects in the simulation
-    m0 = (1,1,1), # Set the initial magnetization direction
-    stopping_dmdt = 0.1 # Set the stopping criterion for the simulation based on the rate of change of magnetization dynamics
-);
+mesh = FDMesh(; nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9); # Define the discretization
 
-# Run the simulation with the specified parameters
-sim = sim_with(args); 
+sim = Sim(mesh; driver="SD", name="std4") #Create a simulation instance
+set_Ms(sim, 8e5)        # Set saturation magnetization
+add_exch(sim, 1.3e-11)  # Add exchange interaction
+add_demag(sim)          # Add demagnetization
 
-# Save the magnetization and the stray field into vtk.
-save_vtk(sim, "m_demag", fields=["demag"]) 
+init_m0(sim, (1, 0.25, 0.1))  # Initialize magnetization
+relax(sim; stopping_dmdt=0.01)  # Stage 1 : relax the system to obtain the "S" state
+
+set_driver(sim; driver="LLG", alpha=0.02, gamma=2.211e5)
+add_zeeman(sim, (-24.6mT, 4.3mT, 0))                # Stage 2: Apply external magnetic field
+run_sim(sim; steps=100, dt=1e-11, save_m_every=1)   # Run the simulation for 100 steps
+
+ovf2movie("std4_LLG"; output="std4.gif", component='x'); # Generate a movie
 ```
-The magnetization and the stray field around the cylindrical sample are stored in `m_demag.vts`, which can be opened using Paraview. 
-
 
 <h2> Structure of MicroMagnetic.jl </h2>
 

@@ -12,7 +12,6 @@ Import necessary modules
 ````@example
 using MicroMagnetic
 using CairoMakie
-using DelimitedFiles
 ````
 
 Enable GPU acceleration
