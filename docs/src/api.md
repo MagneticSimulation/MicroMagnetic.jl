@@ -89,7 +89,7 @@ read_ovf
 ```
 
 
-## Tools
+## Tools / Visualization
 
 ```@docs
 ovf2vtk

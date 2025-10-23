@@ -187,12 +187,13 @@ macro using_gpu()
     end
 end
 
-function ovf2png() end
-function plot_m() end
-function jld2movie() end
-function dynamic_matrix() end
+function ovf2png end
+function plot_m end
+function plot_ts end
+function ovf2movie end
+function dynamic_matrix end
 
-export ovf2png, plot_m, jld2movie, dynamic_matrix
+export ovf2png, plot_m, plot_ts, ovf2movie, dynamic_matrix
 
 include("const.jl")
 include("micro/mesh.jl")

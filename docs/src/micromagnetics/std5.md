@@ -69,7 +69,7 @@ nothing #hide
 Plot the magnetization distribution using the plot_m function.
 
 ````@example
-plot_m(sim; component='z')
+plot_m(sim; arrows=(30, 30), component='x')
 ````
 
 ## Step 2: Vortex Dynamics
@@ -80,26 +80,14 @@ set_driver(sim; driver="LLG", alpha=0.1, gamma=2.211e5)
 add_stt(sim, model=:zhang_li, P=1.0, Ms=8e5, xi=0.05, J=(1e12, 0, 0))
 
 # we add a SaverItem to save the guiding center each step
-center = SaverItem(("Rx", "Ry"), ("<m>", "<m>"), compute_guiding_center)
-run_sim(sim, steps=100, dt=5e-11, save_data=true, saver_item=center)
+center = SaverItem(("cx", "cy"), ("<m>", "<m>"), compute_guiding_center)
+run_sim(sim, steps=100, dt=5e-11, saver_item=center)
 ````
 
 We plot the vortex center as a function of time.
 
 ````@example
-function plot_center()
-    data, unit = read_table("std5_llg.txt")
-    fig = Figure(; size=(400, 280), backgroundcolor = :transparent)
-    ax = Axis(fig[1, 1]; xlabel="time (ns)", ylabel="Vortex center (nm)", backgroundcolor = :transparent)
-    ts = data["time"]*1e9
-    Rx, Ry = data["Rx"]*1e9, data["Ry"]*1e9
-    scatterlines!(ax, ts, Rx; markersize=6, label="cx")
-    scatterlines!(ax, ts, Ry; markersize=6, label="cy")
-    axislegend()
-    return fig
-end
-
-fig = plot_center()
+fig = plot_ts("std5_llg.txt", ["cx", "cy"]; xlabel="Time (ns)", ylabel="Vortex center (nm)", y_units=[1e9, 1e9], transparency=true)
 ````
 
 ```@setup

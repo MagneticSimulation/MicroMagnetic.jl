@@ -4,7 +4,7 @@ ShareDefaultModule = true
 
 # Standard Problem 4 (sim_with)
 
-link: <https://www.ctcms.nist.gov/~rdm/mumag.org.html/>
+link: <https://www.ctcms.nist.gov/~rdm/std4/spec4.html/>
 
 
 In this example, we demonstrate how to use **MicroMagnetic.jl** to simulate standard problem 4, which involves a thin film geometry.
@@ -50,65 +50,19 @@ nothing #hide
 With the above code, the simulation for standard problem 4 is complete. Next, we proceed to process the data,
 such as visualizing the magnetization distribution or creating a movie from the simulation results.
 
-Visualize the magnetization dynamics using CairoMakie
-
+We plot the time evolution of the magnetization using CairoMakie
 ````@example
 using CairoMakie
+fig = plot_ts("std4_llg.txt", ["m_x", "m_y", "m_z"];  xlabel="Time (ns)", ylabel="m", transparency=true)
 ````
 
-Generate a movie from the simulation results stored in the jld2 file
-
-```julia
-#jld2movie("std4.jld2"; output="std4.mp4", component='x');
-```
-
-Display the generated movie
-
-
-Finally, we plot the time evolution of the magnetization components to compare the results with OOMMF simulations.
-
-Import necessary functions to plot the time evolution of magnetization
-
+Generate a movie from the simulation ovfs stored in folder `std4_LLG`:
 ````@example
-using DelimitedFiles
-using MicroMagnetic
-using CairoMakie
-
-function plot_m_ts()
-    #Load data
-    data, unit = read_table("std4_llg.txt")
-    oommf = readdlm("assets/std4_oommf.txt")
-
-    #Create a figure for the plot
-    fig = Figure(; size=(400, 280), backgroundcolor = :transparent)
-    ax = Axis(fig[1, 1]; xlabel="Time (ns)", ylabel="m", backgroundcolor = :transparent)
-
-    #Plot OOMMF results
-    lines!(ax, oommf[:, 1] * 1e9, oommf[:, 2]; label="OOMMF")
-    lines!(ax, oommf[:, 1] * 1e9, oommf[:, 3])
-    lines!(ax, oommf[:, 1] * 1e9, oommf[:, 4])
-
-    #Plot MicroMagnetic results
-    scatter!(ax, data["time"] * 1e9, data["m_x"]; markersize=6, label="MicroMagnetic.jl")
-    scatter!(ax, data["time"] * 1e9, data["m_y"]; markersize=6)
-    scatter!(ax, data["time"] * 1e9, data["m_z"]; markersize=6)
-
-    #Add legend to the plot
-    axislegend()
-
-    return fig
-end
-````
-
-Plot the magnetization time series
-
-````@example
-fig = plot_m_ts()
+ovf2movie("std4_LLG"; output="../public/std4.gif", component='x');
 nothing #hide
 ````
+![](../public/std4.gif)
 
 ```@setup
 save("../public/std4.png", fig)
 ```
-
-![](../public/std4.png)

@@ -14,7 +14,7 @@ Micromagnetic = ["Nanobar" => "micromagnetics/nanobar.md",
                  "Standard Problem 4" => "micromagnetics/std4.md",
                  #"Standard Problem 5 (sim_with)" => "micromagnetics/std5_sim_with.md",
                  "Standard Problem 5" => "micromagnetics/std5.md",
-                 "Skyrmion dynamics STT" => "micromagnetics/skyrmion_stt.md",
+                 #"Skyrmion dynamics STT" => "micromagnetics/skyrmion_stt.md",
                  "Stoner-Wohlfarth model" => "micromagnetics/stoner_wohlfarth.md",
                  "Dynamical susceptibility" => "micromagnetics/chi.md"]
 

@@ -19,7 +19,6 @@ using DelimitedFiles
 # Define the system geometry: a film with thickness t = 3 nm, length L = 500 nm, and width d = 125 nm.
 mesh = FDMesh(; nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9);
 
-
 # ## Step 1: Relaxing the System
 # The first step in our simulation is to relax the system to obtain a stable magnetization configuration, often referred to as an "S" state. We encapsulate this process in the `relax_system` function.
 function relax_system(mesh)
@@ -57,21 +56,20 @@ sim = relax_system(mesh);
 # ## Step 2: Applying an External Field
 # After obtaining the stable "S" state, the next step is to apply an external magnetic field and observe the magnetization dynamics.
 # Plot the magnetization distribution using the `plot_m` function
-plot_m(sim; component='x')
+fig = plot_m(sim; component='x')
 
 # Apply an external field starting from the relaxed "S" state
 set_driver(sim; driver="LLG", alpha=0.02, gamma=2.211e5)
 add_zeeman(sim, (-24.6mT, 4.3mT, 0))  # Apply external magnetic field
-if !isfile("std4.jld2")
-   run_sim(sim; steps=100, dt=1e-11)  # Run the simulation for 10 steps
-end
+run_sim(sim; steps=100, dt=1e-11, save_m_every=1)  # Run the simulation for 10 steps
+
 
 
 # ## Step 3: Visualizing the Results
-# By default, `run_sim` generates a `jld2` file, which stores the magnetization data. You can create a movie from this data to visualize the magnetization dynamics.
+# By default, `run_sim` generates a `std4_LLG` folder, which stores the magnetization data. You can create a movie to visualize the magnetization dynamics.
 # Generate a movie based on the simulation results
-jld2movie("std4.jld2"; output="assets/std4.mp4", component='x');
-# ![](./assets/std4.mp4)
+ovf2movie("std4_LLG"; output="std4.gif", component='x');
+# ![](./std4.gif)
 
 # Finally, we plot the time evolution of the magnetization using the plot_m_ts function
 function plot_m_ts()

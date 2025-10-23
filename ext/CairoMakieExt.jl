@@ -1,9 +1,9 @@
 
 module CairoMakieExt
 
-using MicroMagnetic
 using Printf
 using CairoMakie
+using MicroMagnetic
 
 function calculate_sampling_parameters(nx::Int, ny::Int, arrows::Tuple{Int,Int})
     """
@@ -17,26 +17,17 @@ function calculate_sampling_parameters(nx::Int, ny::Int, arrows::Tuple{Int,Int})
         if n_samples <= 1
             return (n_total + 1) / 2, 1.0, 1
         end
-        
-        # Calculate step size for uniform distribution
-        step = (n_total - 1) / (n_samples - 1)
-        
-        # Calculate symmetric start position
-        start = (n_total + 1) / 2 - (n_samples - 1) * step / 2
-        
+
+        step = n_total / n_samples
+        start = step / 2 + 0.5
         return start, step, n_samples
     end
     
-    function adaptive_sampling(n_total::Int, reference_step::Real)
-        # Ensure reasonable step size
-        step = max(1.0, min(reference_step, n_total - 1))
-        
+    function adaptive_sampling(n_total::Int, reference_step::Real)        
         # Calculate number of samples
-        n_samples = max(1, floor(Int, (n_total - 1) / step) + 1)
-        
-        # Calculate symmetric start position
-        start = (n_total + 1) / 2 - (n_samples - 1) * step / 2
-        
+        n_samples = max(1, round(Int, n_total / reference_step))
+        step = n_total / n_samples
+        start = 0.5 + step/2
         return start, step, n_samples
     end
     
@@ -53,7 +44,7 @@ function calculate_sampling_parameters(nx::Int, ny::Int, arrows::Tuple{Int,Int})
         
     elseif arrows[1] < 0 && arrows[2] < 0
         # Mode 3: Both directions adaptive, same density
-        max_arrows = max(abs(arrows[1]), abs(arrows[2]))
+        max_arrows = 40
         _, step_size, _ = symmetric_sampling(max(nx, ny), max_arrows)
         start_x, step_x, arrow_nx = adaptive_sampling(nx, step_size)
         start_y, step_y, arrow_ny = adaptive_sampling(ny, step_size)
@@ -157,10 +148,7 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
         size_y = Int(ceil(size_x * aspect_ratio))
     end
 
-    max_arrows = 40
-
     show_arrow = true
-
     if arrows === nothing
         arrows = (-1, -1)
         show_arrow = false
@@ -178,7 +166,7 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
         fig = Figure(; size=(size_x, size_y), backgroundcolor=:white)
     end
 
-    if ax == nothing
+    if ax === nothing
         ax = Axis(fig[1, 1]; width=size_x, height=size_y)
     end
     hidedecorations!(ax)
@@ -198,10 +186,10 @@ function MicroMagnetic.plot_m(spin; dx=1.0, dy=1.0, k=1, component='z', arrows=(
     heatmap!(ax, xs, ys, mm; filtered_kwargs...)
 
     if show_arrow
-        lengthscale = 0.3 * sqrt(Dx^2 + Dy^2)
+        lengthscale = 0.5 * sqrt(Dx^2 + Dy^2)
         mx_interp = bilinear_interpolation_grid(mx, I, J)
         my_interp = bilinear_interpolation_grid(my, I, J)
-        arrows!(ax, I.*dx, J.*dy, mx_interp, my_interp; linewidth=2.0, color=:gray36,
+        arrows2d!(ax, I.*dx, J.*dy, mx_interp, my_interp; tipwidth=11, shaftwidth=5, color=:gray36,
                lengthscale=lengthscale, align=:center)
     end
     return fig
@@ -235,7 +223,7 @@ function MicroMagnetic.plot_m(sim::MicroMagnetic.AbstractSim; kwargs...)
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     m = Array(sim.spin)
     m = reshape(m, 3, nx, ny, nz)
-    fig = plot_m(m; dx=mesh.dx, dy=mesh.dy, kwargs...)
+    fig = MicroMagnetic.plot_m(m; dx=mesh.dx, dy=mesh.dy, kwargs...)
     return fig
 end
 
@@ -261,20 +249,165 @@ function MicroMagnetic.ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1),
 end
 
 """
-  jld2movie(jld_file; framerate=12, output=nothing, kwargs...)
+   ovf2movie(folder; framerate=12, output=nothing, kwargs...)
 
-Create a moive from the given jld2 file.
+Create a moive from the given folder, 
 
 # Keyword Arguments
 This function forwards all keyword arguments to `MicroMagnetic.plot_m`. Refer to `MicroMagnetic.plot_m` for detailed descriptions of the keyword arguments.
 
 `output`` is the filename of the video and the support formats are 'mp4', 'avi' and 'gif'.
 """
-function ovf2gif(folder; framerate=12, output=nothing, figsize=(500, -1),
+function MicroMagnetic.ovf2movie(folder; framerate=12, output=nothing, figsize=(500, -1),
                                  kwargs...)
+
     if output === nothing
-        output = @sprintf("%s/animation.mp4", folder)
+        output = @sprintf("%s.gif", basename(path))
     end
+
+    files = readdir(folder)
+    ovf_files = filter(f -> startswith(f, "m_") && endswith(f, ".ovf"), files)
+    sorted_files = sort(ovf_files, by = f -> parse(Int, match(r"m_(\d+)\.ovf", f).captures[1]))
+    
+    ovf = read_ovf(folder*"/"*sorted_files[1])
+    dx, dy = ovf.xstepsize, ovf.ystepsize
+    nx, ny = ovf.xnodes, ovf.ynodes
+    
+    size_x = figsize[1]
+    size_y = figsize[2]
+    if (size_y < 0)
+        aspect_ratio = ny * dy / (nx * dx)
+        size_y = Int(ceil(size_x * aspect_ratio))
+    end
+
+    fig = Figure(; size=(size_x, size_y), backgroundcolor=:white)
+
+    ax = Axis(fig[1, 1]; width=size_x, height=size_y)
+    hidedecorations!(ax)
+
+    function update_function(ovf_name)
+        ovf = read_ovf(folder*"/"*ovf_name)
+        spin = reshape(ovf.data, 3, ovf.xnodes, ovf.ynodes, ovf.znodes)
+        empty!(ax)
+        return MicroMagnetic.plot_m(spin; dx=ovf.xstepsize, dy=ovf.ystepsize, fig=fig, ax=ax, kwargs...)
+    end
+
+    record(update_function, fig, output, sorted_files; framerate=framerate)
+    
+    return output
+end
+
+
+"""
+    plot_ts(filename::String, keys::Vector{String}; 
+            x_key::String="time", x_unit::Real=1e9, y_units::Vector=[],
+            size=(400, 280), title="", xlabel="", ylabel="", 
+            plot_type=:scatterlines, markersize=6, legend_position=:rt,
+            colors=nothing, linestyles=nothing, transparency=false)
+
+General time series plotting function
+
+# Arguments
+- `filename`: Data file name
+- `keys`: Data column keys to plot
+- `x_key`: Time column key, default is "time"
+- `x_unit`: Time unit conversion factor, default is 1e9 (seconds to nanoseconds)
+- `y_units`: Y-axis data unit conversion factors for each key, same order as `keys`
+- `plot_type`: Plot type, `:lines`, `:scatter`, `:scatterlines`, `:linesmarkers`
+- `legend_position`: Legend position, `:rt`(top right), `:lt`(top left), `:rb`(bottom right), `:lb`(bottom left)
+- `colors`: Custom color sequence
+- `linestyles`: Custom line style sequence
+- `transparency`: Whether to use transparent background
+
+# Examples
+```julia
+# Plot magnetization components
+plot_ts("std4_llg.txt", ["m_x", "m_y", "m_z"]; 
+        xlabel="Time (ns)", ylabel="m", plot_type=:scatter)
+
+# Plot vortex center with unit conversion
+plot_ts("std5_llg.txt", ["cx", "cy"]; 
+        xlabel="Time (ns)", ylabel="Vortex center (nm)", 
+        y_units=[1e9, 1e9], plot_type=:scatterlines)
+
+# Custom colors and line styles
+plot_ts("data.txt", ["A", "B", "C"]; 
+        colors=[:red, :blue, :green],
+        linestyles=[:solid, :dash, :dot])
+```
+"""
+function MicroMagnetic.plot_ts(filename::String, keys::Vector{String}; 
+                x_key::String="time", x_unit::Real=1e9, y_units::Vector=[],
+                size=(400, 280), title="", xlabel="", ylabel="", 
+                plot_type=:scatterlines, markersize=6, legend_position=:rt,
+                colors=nothing, linestyles=nothing, transparency=false)
+    
+    # Load data
+    data, unit = MicroMagnetic.read_table(filename)
+    
+    # Create figure
+    bg_color = transparency ? :transparent : :white
+    fig = Figure(; size=size, backgroundcolor=bg_color)
+    ax = Axis(fig[1, 1]; xlabel=xlabel, ylabel=ylabel, title=title, backgroundcolor=bg_color)
+    
+    # Time data
+    time_data = data[x_key] .* x_unit
+    
+    # Default colors and line styles
+    default_colors = [:slateblue1, :sienna1, :seagreen2, :tomato1, :gold1,
+                      :darkorchid1, :deepskyblue2, :coral1, :limegreen, :hotpink,
+                      :royalblue1, :darkorange1, :mediumseagreen, :violetred1, :steelblue2,
+                      :chocolate1, :mediumpurple1, :darkturquoise, :orangered, :mediumvioletred]
+    default_linestyles = [:solid, :dash, :dot, :dashdot]
+    
+    colors = isnothing(colors) ? default_colors : colors
+    linestyles = isnothing(linestyles) ? default_linestyles : linestyles
+    
+    # Plot each data series
+    for (i, key) in enumerate(keys)
+        # Get data and apply unit conversion
+        y_data = data[key]
+        if !isempty(y_units) && i <= length(y_units)
+            y_data = y_data .* y_units[i]
+        end
+        
+        # Select color and line style
+        color = colors[mod1(i, length(colors))]
+        linestyle = linestyles[mod1(i, length(linestyles))]
+        
+        # Plot according to plot type
+        if plot_type == :lines
+            lines!(ax, time_data, y_data; color=color, linestyle=linestyle, label=key)
+        elseif plot_type == :scatter
+            scatter!(ax, time_data, y_data; color=color, markersize=markersize, label=key)
+        elseif plot_type == :scatterlines
+            scatterlines!(ax, time_data, y_data; color=color, markersize=markersize, 
+                         linestyle=linestyle, label=key)
+        elseif plot_type == :linesmarkers
+            lines!(ax, time_data, y_data; color=color, linestyle=linestyle, label=key)
+            scatter!(ax, time_data, y_data; color=color, markersize=markersize)
+        else
+            error("Unknown plot_type: $plot_type. Use :lines, :scatter, :scatterlines, or :linesmarkers")
+        end
+    end
+    
+    # Add legend
+    if length(keys) > 1
+        legend_pos = if legend_position == :rt
+            :rt
+        elseif legend_position == :lt
+            :lt
+        elseif legend_position == :rb
+            :rb
+        elseif legend_position == :lb
+            :lb
+        else
+            :rt
+        end
+        axislegend(ax; position=legend_pos)
+    end
+    
+    return fig
 end
 
 function MicroMagnetic.plot_voronoi(grain_ids, points; dx=2, dy=2, output="voronoi.png")

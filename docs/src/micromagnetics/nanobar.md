@@ -38,7 +38,8 @@ nothing #hide
 Initilize the magnetization to (1,1,0) direction,
 
 ````@example
-init_m0(sim, (1, 1, 0))  #Initialize magnetization
+init_m0(sim, (1, 1, 0));  #Initialize magnetization
+nothing #hide
 ````
 
 We can plot the magnetization using `plot_m` function

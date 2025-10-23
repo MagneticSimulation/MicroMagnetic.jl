@@ -83,18 +83,14 @@ Apply an external field starting from the relaxed "S" state
 ```julia
 set_driver(sim; driver="LLG", alpha=0.02, gamma=2.211e5)
 add_zeeman(sim, (-24.6mT, 4.3mT, 0))  # Apply external magnetic field
-if !isfile("std4.jld2")
-   run_sim(sim; steps=100, dt=1e-11)  # Run the simulation for 10 steps
-end
+run_sim(sim; steps=100, dt=1e-11, save_m_every=1)   # Run the simulation for 10 steps
 ```
 
 ## Step 3: Visualizing the Results
-By default, `run_sim` generates a `jld2` file, which stores the magnetization data. You can create a movie from this data to visualize the magnetization dynamics.
+By default, `run_sim` generates a `std4_LLG` folder, which stores the magnetization data. You can create a movie from it to visualize the magnetization dynamics.
 Generate a movie based on the simulation results
 
 ```julia
-jld2movie("std4.jld2"; output="assets/std4.mp4", component='x');
-nothing #hide
+ovf2movie("std4_LLG"; output="../public/std4.gif", component='x');
 ```
-
-TODO: check if gif can be used.
+![](../public/std4.gif)
