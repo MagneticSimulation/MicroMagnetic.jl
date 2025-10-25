@@ -1,7 +1,7 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
        add_exch, add_dmi, add_sahe_torque,
        add_demag, add_dmi_int, add_exch_int, add_thermal_noise,
-       add_df_torque, add_stt
+       add_sot, add_stt
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -781,7 +781,7 @@ function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction, sigm
 end
 
 @doc raw"""
-    add_df_torque(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="sot")
+    add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="sot")
 
 Add damping-like and field-like torque (DFT) to LLG equation, which is useful to model spin-orbit torques (SOT) or Slonczewski torque with constant $\epsilon(\theta)$.
 
@@ -795,7 +795,7 @@ The equivalent effective field is
 \mathbf{H}_\mathrm{stt} = (1/\gamma)(a_J \mathbf{m} \times \mathbf{p} +  b_J \mathbf{p})
 ```
 """
-function add_df_torque(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="sot")
+function add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="sot")
     n_total = sim.n_total
     field = create_zeros(3 * n_total)
 

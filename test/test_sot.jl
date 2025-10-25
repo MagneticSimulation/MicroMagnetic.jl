@@ -25,7 +25,7 @@ function test_df_torque(integrator="DormandPrince")
     p = (0.1, 0.2, 0.3)  # polarization direction
 
     # Add DFT torque
-    t = add_df_torque(sim, aj, bj, p; name="dft_torque")
+    t = add_sot(sim, aj, bj, p; name="dft_torque")
 
     # Initialize magnetization
     init_m0(sim, (-0.3, 0.4, 0.8), norm=false)
@@ -67,7 +67,7 @@ function test_df_torque_atomistic(integrator="DormandPrince")
     bj = 5e8
     p = (0.1, 0.2, 0.3)  # polarization direction
 
-    t = add_df_torque(sim, aj, bj, p; name="dft_torque_atomistic")
+    t = add_sot(sim, aj, bj, p; name="dft_torque_atomistic")
 
     # Initialize magnetization
     init_m0(sim, (-0.3, 0.4, 0.8), norm=false)
@@ -105,7 +105,7 @@ function test_df_torque_functional_aj(integrator="DormandPrince")
     bj = 5e8
     p = (0.1, 0.2, 0.3)
 
-    t = add_df_torque(sim, aj_func, bj, p; name="dft_torque_func")
+    t = add_sot(sim, aj_func, bj, p; name="dft_torque_func")
 
     init_m0(sim, (-0.3, 0.4, 0.8), norm=false)
     
@@ -134,7 +134,7 @@ function test_df_torque_zero_polarization(integrator="DormandPrince")
     p = (0.0, 0.0, 0.0)  # Zero polarization
 
     # This should work without errors
-    t = add_df_torque(sim, aj, bj, p; name="dft_torque_zero_p")
+    t = add_sot(sim, aj, bj, p; name="dft_torque_zero_p")
 
     init_m0(sim, (-0.3, 0.4, 0.8), norm=false)
     

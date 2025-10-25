@@ -212,12 +212,7 @@ This function forwards all keyword arguments to `MicroMagnetic.plot_m`. Refer to
 
 # Examples
 ```julia
-sim = MicroMagnetic.create_simulation()  # Example simulation object
-MicroMagnetic.plot_m(sim)
-# Creates a plot with default settings
-
-MicroMagnetic.plot_m(sim, k=2, component='x', arrows=(5, 5), figsize=(600, 400))
-# Creates a plot for the x-component of the second layer with custom settings
+plot_m(sim, k=2, component='x', arrows=(20, 20), figsize=(600, 400))
 ```
 """
 function MicroMagnetic.plot_m(sim::MicroMagnetic.AbstractSim; kwargs...)
@@ -252,9 +247,9 @@ function MicroMagnetic.ovf2png(ovf_name, output=nothing; k=1, arrows=(-1, -1),
 end
 
 """
-   ovf2movie(folder; framerate=12, output=nothing, kwargs...)
+    ovf2movie(folder; framerate=12, output=nothing, kwargs...)
 
-Create a moive from the given folder, 
+Create a moive from the given folder.
 
 # Keyword Arguments
 This function forwards all keyword arguments to `MicroMagnetic.plot_m`. Refer to `MicroMagnetic.plot_m` for detailed descriptions of the keyword arguments.

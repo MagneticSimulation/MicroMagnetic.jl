@@ -75,7 +75,7 @@ plot_m(sim; component='x')
 ````@example
 function time_fun(t)
     w = 2*pi*2.0e9
-    return (0, sinc(w*t), 0)
+    return sinc(w*t)
 end
 
 function run_dynamics(sim)
