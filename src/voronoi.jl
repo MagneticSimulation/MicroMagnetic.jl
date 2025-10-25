@@ -6,7 +6,7 @@ using PoissonDiskSampling
 export voronoi, plot_voronoi
 
 """
-    voronoi(mesh; min_dist=10, seed=123456) -> grain_ids, gb_mask, points
+    voronoi(mesh; min_dist=20, seed=123456) -> grain_ids, gb_mask, points
 
 Generate a Voronoi tessellation on a 2D grid with grain boundaries detection.
 

@@ -40,10 +40,11 @@ add_zeeman
 add_anis
 add_cubic_anis
 add_hex_anis
-add_df_torque
 update_zeeman
 update_anis
 add_stt
+add_sot
+add_torque
 add_sahe_torque
 add_thermal_noise
 create_sim
@@ -92,6 +93,7 @@ read_ovf
 ## Tools/Visualization
 
 ```@docs
+voronoi
 ovf2vtk
 plot_ts
 plot_m
