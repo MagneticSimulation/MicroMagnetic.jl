@@ -513,6 +513,24 @@ The kernel df_torque_kernel! compute the effective field defined as
 end
 
 """
+The kernel torque_kernel! compute the effective field defined as 
+        H = (1/gamma) m x h
+"""
+@kernel function torque_kernel!(@Const(m), h, gamma::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    a ::T = 1/gamma
+
+    @inbounds mx, my, mz = m[j+1], m[j+2], m[j+3]
+    @inbounds hx, hy, hz = h[j+1], h[j+2], h[j+3]
+
+    @inbounds h[j + 1] = a * cross_x(mx, my, mz, hx, hy, hz) 
+    @inbounds h[j + 2] = a * cross_y(mx, my, mz, hx, hy, hz)
+    @inbounds h[j + 3] = a * cross_z(mx, my, mz, hx, hy, hz)
+end
+
+"""
 The kernel slonczewski_torque_kernel! compute the effective field defined as 
         H = (beta*J)(epsilon* m x m_p +  xi*m_p)
 """

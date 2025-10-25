@@ -1,7 +1,7 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
        add_exch, add_dmi, add_sahe_torque,
        add_demag, add_dmi_int, add_exch_int, add_thermal_noise,
-       add_sot, add_stt
+       add_sot, add_stt, add_torque
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -783,7 +783,7 @@ end
 @doc raw"""
     add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="sot")
 
-Add damping-like and field-like torque (DFT) to LLG equation, which is useful to model spin-orbit torques (SOT) or Slonczewski torque with constant $\epsilon(\theta)$.
+Add damping-like and field-like torque to LLG equation, which is useful to model spin-orbit torques (SOT) or Slonczewski torque with constant $\epsilon(\theta)$.
 
 ```math
 \frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H}_\text{eff} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t}
@@ -810,6 +810,48 @@ function add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::T
 
     return torque
 end
+
+
+@doc raw"""
+    add_torque(sim::AbstractSim, fun::Function; name="torque")
+
+Add a torque $\mathbf{T}$ to the Landau-Lifshitz-Gilbert (LLG) equation.
+
+The modified LLG equation becomes:
+
+```math
+\frac{\partial \mathbf{m}}{\partial t} = - \gamma \mathbf{m} \times \mathbf{H}_\text{eff} + \alpha \mathbf{m} \times  \frac{\partial \mathbf{m}}{\partial t} + \mathbf{T}
+```
+
+where $\mathbf{T} = \mathbf{T}(\mathbf{m}, t)$ is the additional torque term.
+
+# Arguments
+- `sim::AbstractSim`: The simulation object to which the torque will be added.
+- `fun::Function`: A function that defines the torque term. The function should have the signature `fun(y, m, t)` where:
+  - `y`: The torque
+  - `m`: The magnetization vector m
+  - `t`: The current simulation time
+
+# Examples
+```julia
+function torque_fun(y, m, t)
+    y .= 0 
+    y[1:3:end] .= m[1:3:end] .* sin(t) # x-component
+    y[2:3:end] .= 0.2 * cos(t) # y-component
+end
+add_torque(sim, torque_fun, name="test")
+```
+"""
+function add_torque(sim::AbstractSim, fun::Function; name="torque")
+    n_total = sim.n_total
+    field = create_zeros(3 * n_total)
+
+    torque = TorqueField(fun, field, name)
+
+    push!(sim.interactions, torque)
+    return torque
+end
+
 
 
 @doc raw"""

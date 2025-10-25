@@ -274,6 +274,11 @@ mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy
     scaling_factor::T
 end
 
+mutable struct TorqueField{T<:AbstractFloat} <: MicroEnergy
+    torque_fun::Function
+    field::AbstractArray{T,1}
+    name::String
+end
 
 mutable struct DFTorqueField{T<:AbstractFloat} <: MicroEnergy
     px::T

@@ -14,6 +14,18 @@ end
     return -x2*y1 + x1*y2
 end
 
+macro cross_x(u1, u2, u3, v1, v2, v3)
+    :($(esc(u2)) * $(esc(v3)) - $(esc(u3)) * $(esc(v2)))
+end
+
+macro cross_y(u1, u2, u3, v1, v2, v3)
+    :($(esc(u3)) * $(esc(v1)) - $(esc(u1)) * $(esc(v3)))
+end
+
+macro cross_z(u1, u2, u3, v1, v2, v3)
+    :($(esc(u1)) * $(esc(v2)) - $(esc(u2)) * $(esc(v1)))
+end
+
 @inline function cross_product(x1::T, x2::T, x3::T, y1::T, y2::T, y3::T) where {T<:AbstractFloat}
     return (-x3*y2 + x2*y3, x3*y1 - x1*y3, -x2*y1 + x1*y2)
 end
