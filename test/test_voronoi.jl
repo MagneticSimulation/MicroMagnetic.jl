@@ -1,15 +1,14 @@
 using MicroMagnetic
 using Test
 
-
 if !isdefined(Main, :test_functions)
     include("test_utils.jl")
 end
 
-function test_voronoi()
+function test_voronoi(;threshold=0.2)
     mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=100, ny=100, nz=2)
 
-    grain_ids, gb_mask, points = voronoi(mesh, min_dist=30, seed=10000)
+    grain_ids, gb_mask, points = voronoi(mesh, min_dist=30, seed=10000, threshold=threshold)
     
     #println(length(points))
     #println(grain_ids)
@@ -28,6 +27,10 @@ function test_plot_voronoi()
     plot_voronoi(grain_ids, points, dx=2, dy=2)
 end
 
+function test_voronoi()
+    test_voronoi(threshold=nothing)
+    test_voronoi(threshold=0.2)
+end
 
 test_functions("Voronoi", test_voronoi)
 
