@@ -1,0 +1,10 @@
+pages:
+  stage: deploy
+  script:
+    - mkdir -p public
+    - find . -maxdepth 1 ! -name 'public' ! -name '.git' ! -name '.' -exec cp -r {} public/ \;
+  artifacts:
+    paths:
+      - public
+  only:
+    - gh-pages

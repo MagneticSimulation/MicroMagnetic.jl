@@ -1,0 +1,3 @@
+#               step             E_total                 m_x                 m_y                 m_z              E_exch             E_demag 
+#         <unitless>                 <J>          <unitless>          <unitless>          <unitless>                 <J>                 <J> 
+                88 +6.003576149316e-20 +9.985030323452e-01 +1.204537463954e-06 +5.112263094771e-17 +1.664080965589e-21 +5.837168052757e-20 
