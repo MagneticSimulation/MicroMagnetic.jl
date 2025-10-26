@@ -413,13 +413,17 @@ function MicroMagnetic.plot_ts(filename::String, keys::Vector{String};
     return fig
 end
 
-function MicroMagnetic.plot_voronoi(grain_ids, points; dx=2, dy=2, output="voronoi.png")
+function MicroMagnetic.plot_voronoi(grain_ids, points; dx=2, dy=2, output=nothing, gb=nothing)
     
     nx, ny = size(grain_ids)
     Lx, Ly = nx*dx, ny*dy
 
     fig = Figure()
     ax = Axis(fig[1, 1])
+
+    if gb != nothing
+        grain_ids[gb] .= -10
+    end
     heatmap!(ax, 0:Lx, 0:Ly, grain_ids, colormap=Reverse(:viridis))
     
     for i in 1:length(points)
@@ -430,8 +434,11 @@ function MicroMagnetic.plot_voronoi(grain_ids, points; dx=2, dy=2, output="voron
             fontsize = 14
         )
     end
-    
-    save(output, fig)
+    if output != nothing
+        save(output, fig)
+    end
+
+    return fig
 end
 
 end

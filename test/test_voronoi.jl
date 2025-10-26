@@ -15,7 +15,7 @@ function test_voronoi()
     #println(grain_ids)
     @test size(grain_ids) == (100, 100)
     @test size(gb_mask) == (100, 100)
-    @test all(grain_ids .> 0)  
+    @test all(grain_ids .>= 1)  
     @test all(grain_ids .<= 35)  
     @test length(points) == 35
 end
