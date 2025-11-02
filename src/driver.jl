@@ -110,9 +110,11 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         call_back_fun = contains(integrator, "Cayley") ? llg_cayley_call_back :
                         llg_call_back
     elseif driver == "LLG_STT"
+        @warn "The driver 'LLG_STT' is deprecated. Please use 'add_stt' function. The 'LLG_STT' will be removed in v0.5.0"
         call_back_fun = contains(integrator, "Cayley") ? llg_stt_cayley_call_back :
                         llg_stt_call_back
     elseif driver == "LLG_CPP"
+        @warn "The driver 'LLG_CPP' is deprecated. Please use 'add_sot' function. The 'LLG_CPP' will be removed in v0.5.0"
         call_back_fun = llg_cpp_call_back
     elseif driver == "SpatialLLG"
         call_back_fun = spatial_llg_call_back

@@ -1,4 +1,5 @@
 using KernelAbstractions
+using Printf
 
 export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
        set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with, advance_step, set_alpha
@@ -89,7 +90,13 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.driver = create_driver(driver, integrator, n_total)
     sim.interactions = []
     sim.save_data = save_data
-    sim.saver = create_saver(string(name, "_", lowercase(driver), ".txt"), driver)
+    saver_name = @sprintf("%s_%s.txt", name, lowercase(driver))
+    if driver === "InertialLLG"
+        saver_name = @sprintf("%s_illg.txt", name)
+    elseif driver === "SpatialLLG"
+        saver_name = @sprintf("%s_llg.txt", name)
+    end
+    sim.saver = create_saver(saver_name, driver)
 
     if isa(mesh, FDMesh)
         @info "MicroSim (FD) has been created."
