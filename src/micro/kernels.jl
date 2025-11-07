@@ -1,5 +1,13 @@
 @inline safe_div(a, b) = b == 0 ? 0.0 : a / b
 
+@kernel function spatiotemporal_kernel!(output, dx::T, dy::T, dz::T, x0::T, y0::T, z0::T,
+                                        t::T, f::Function) where {T<:AbstractFloat}
+    i, j, k = @index(Global, NTuple)
+    x::T = x0 + (i-0.5)*dx
+    y::T = y0 + (j-0.5)*dy
+    z::T = z0 + (k-0.5)*dz
+    @inbounds output[i, j, k] = f(x, y, z, t)
+end
 
 """
     The kernel for the Zeeman interaction, works for both the micromagnetic and atomistic model,
@@ -17,10 +25,12 @@ end
     The kernel for the Zeeman interaction, works for both the FE micromagnetic model.
 """
 @kernel function zeeman_fe_kernel!(@Const(m), @Const(h), energy, @Const(L_mu),
-                                factor::T) where {T<:AbstractFloat}
+                                   factor::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
-    @inbounds mh = m[j + 1] * h[j + 1] * L_mu[j+1] + m[j + 2] * h[j + 2] * L_mu[j+2] + m[j + 3] * h[j + 3] * L_mu[j+3]
+    @inbounds mh = m[j + 1] * h[j + 1] * L_mu[j+1] +
+                   m[j + 2] * h[j + 2] * L_mu[j+2] +
+                   m[j + 3] * h[j + 3] * L_mu[j+3]
     @inbounds energy[id] = -factor * mh
 end
 
@@ -131,8 +141,9 @@ end
 """
 The kernel hexagonal_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
 """
-@kernel function hexagonal_anisotropy_kernel!(@Const(m), h, energy, K1::T, K2::T, K3::T, 
-                                            @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
+@kernel function hexagonal_anisotropy_kernel!(@Const(m), h, energy, K1::T, K2::T, K3::T,
+                                              @Const(mu0_Ms),
+                                              volume::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
@@ -151,7 +162,9 @@ The kernel hexagonal_anisotropy_kernel! works for both the micromagnetic and ato
         @inbounds h[j + 1] = -6*K3*Ms_inv*(mx^5-10*mx^3*my^2+5*mx*my^4)
         @inbounds h[j + 2] = -6*K3*Ms_inv*(-5*mx^4*my+10*mx^2*my^3-my^5)
         @inbounds h[j + 3] = 2*mz*Ms_inv*(K1 + 2*K2*(1-mz*mz))
-        @inbounds energy[id] = (K1*(1-mz*mz) + K2*(1-mz*mz)^2 + K3*(mx^6-15*mx^4*my^2+15*mx^2*my^4-my^6)) * volume
+        @inbounds energy[id] = (K1*(1-mz*mz) +
+                                K2*(1-mz*mz)^2 +
+                                K3*(mx^6-15*mx^4*my^2+15*mx^2*my^4-my^6)) * volume
     end
 end
 
@@ -463,14 +476,14 @@ end
     end
 end
 
-
 """
 The kernel sahe_torque_kernel! compute the effective field defined as 
         (1/gamma)*(beta*sigma + m x sigma)
 and sigma = c1 - (m.c2)^2 c3
 """
-@kernel function sahe_torque_kernel!(@Const(m), h, @Const(mu0_Ms), gamma::T, beta::T, @Const(c1), 
-                                    c2x::T, c2y::T, c2z::T, @Const(c3)) where {T<:AbstractFloat}
+@kernel function sahe_torque_kernel!(@Const(m), h, @Const(mu0_Ms), gamma::T, beta::T,
+                                     @Const(c1), c2x::T, c2y::T, c2z::T,
+                                     @Const(c3)) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
@@ -482,22 +495,21 @@ and sigma = c1 - (m.c2)^2 c3
         @inbounds h[j + 3] = 0
     else
         @inbounds sa = m[j + 1] * c2x + m[j + 2] * c2y + m[j + 3] * c2z
-        @inbounds sx = (c1[j + 1] - sa*sa * c3[j + 1]) / gamma
-        @inbounds sy = (c1[j + 2] - sa*sa * c3[j + 2]) / gamma
-        @inbounds sz = (c1[j + 3] - sa*sa * c3[j + 3]) / gamma
+        @inbounds sx = (c1[j + 1] - sa * sa * c3[j + 1]) / gamma
+        @inbounds sy = (c1[j + 2] - sa * sa * c3[j + 2]) / gamma
+        @inbounds sz = (c1[j + 3] - sa * sa * c3[j + 3]) / gamma
         @inbounds h[j + 1] = beta*sx + cross_x(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
         @inbounds h[j + 2] = beta*sy + cross_y(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
         @inbounds h[j + 3] = beta*sz + cross_z(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
     end
 end
 
-
 """
 The kernel df_torque_kernel! compute the effective field defined as 
         H = (1/gamma)(a_J m x p +  b_J p)
 """
-@kernel function df_torque_kernel!(@Const(m), h, gamma::T, @Const(aj), bj::T,
-                                    px::T, py::T, pz::T) where {T<:AbstractFloat}
+@kernel function df_torque_kernel!(@Const(m), h, gamma::T, @Const(aj), bj::T, px::T, py::T,
+                                   pz::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
@@ -520,12 +532,12 @@ The kernel torque_kernel! compute the effective field defined as
     id = @index(Global)
     j = 3 * (id - 1)
 
-    a ::T = 1/gamma
+    a::T = 1/gamma
 
     @inbounds mx, my, mz = m[j+1], m[j+2], m[j+3]
     @inbounds hx, hy, hz = h[j+1], h[j+2], h[j+3]
 
-    @inbounds h[j + 1] = a * cross_x(mx, my, mz, hx, hy, hz) 
+    @inbounds h[j + 1] = a * cross_x(mx, my, mz, hx, hy, hz)
     @inbounds h[j + 2] = a * cross_y(mx, my, mz, hx, hy, hz)
     @inbounds h[j + 3] = a * cross_z(mx, my, mz, hx, hy, hz)
 end
@@ -534,9 +546,9 @@ end
 The kernel slonczewski_torque_kernel! compute the effective field defined as 
         H = (beta*J)(epsilon* m x m_p +  xi*m_p)
 """
-@kernel function slonczewski_torque_kernel!(@Const(m), h, @Const(J), lambda_sq::T, 
-                                            P::T, xi::T, ft::T,
-                                            px::T, py::T, pz::T) where {T<:AbstractFloat}
+@kernel function slonczewski_torque_kernel!(@Const(m), h, @Const(J), lambda_sq::T, P::T,
+                                            xi::T, ft::T, px::T, py::T,
+                                            pz::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
@@ -557,8 +569,8 @@ end
 The kernel zhangli_torque_kernel! compute the effective field defined as 
    H = (b/gamma)*[m x (J.nabla) m + xi (J.nabla) m]
 """
-@kernel function zhangli_torque_kernel!(@Const(m), h, @Const(bJ), @Const(ngbs), 
-                                   xi::T, ut::T, dx::T, dy::T, dz::T) where {T<:AbstractFloat}
+@kernel function zhangli_torque_kernel!(@Const(m), h, @Const(bJ), @Const(ngbs), xi::T,
+                                        ut::T, dx::T, dy::T, dz::T) where {T<:AbstractFloat}
     I = @index(Global)
     j = 3 * I - 2
 
@@ -604,9 +616,9 @@ The kernel zhangli_torque_kernel! compute the effective field defined as
     @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
     @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
 
-    fx = ut * fx 
-    fy = ut * fy 
-    fz = ut * fz 
+    fx = ut * fx
+    fy = ut * fy
+    fz = ut * fz
 
     # the above part is h = (b/gamma)*ut*(J.nabla) m, note we have divided ut by gamma.
 

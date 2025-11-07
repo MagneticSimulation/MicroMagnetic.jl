@@ -14,20 +14,20 @@ function effective_field(zee::TimeZeeman, sim::MicroSim, spin::AbstractArray{T,1
     N = sim.n_total
     factor = sim.mesh.volume
     if zee.is_scalar
-       tx = zee.time_fun(t)
-       zee.time_fx = tx
-       zee.time_fy = tx
-       zee.time_fz = tx
+        tx = zee.time_fun(t)
+        zee.time_fx = tx
+        zee.time_fy = tx
+        zee.time_fz = tx
     else
-       tx, ty, tz = zee.time_fun(t)
-       zee.time_fx = tx
-       zee.time_fy = ty
-       zee.time_fz = tz
+        tx, ty, tz = zee.time_fun(t)
+        zee.time_fx = tx
+        zee.time_fy = ty
+        zee.time_fz = tz
     end
 
     kernel = time_zeeman_kernel!(default_backend[], groupsize[])
-    kernel(spin, zee.field, zee.init_field, zee.energy, sim.mu0_Ms, T(factor), T(zee.time_fx), T(zee.time_fy), T(zee.time_fz);
-            ndrange=N)
+    kernel(spin, zee.field, zee.init_field, zee.energy, sim.mu0_Ms, T(factor),
+           T(zee.time_fx), T(zee.time_fy), T(zee.time_fz); ndrange=N)
     return nothing
 end
 
@@ -50,7 +50,8 @@ function effective_field(anis::SpatialAnisotropy, sim::MicroSim, spin::AbstractA
     volume = T(sim.mesh.volume)
 
     back = default_backend[]
-    spatial_anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku, anis.axes, sim.mu0_Ms, volume; ndrange=N)
+    spatial_anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku,
+                                                  anis.axes, sim.mu0_Ms, volume; ndrange=N)
 
     return nothing
 end
@@ -64,21 +65,22 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArr
     a2x, a2y, a2z = anis.axis2
     a3x, a3y, a3z = anis.axis3
     heff = output === nothing ? anis.field : output
-    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc,
-                                                T(a1x), T(a1y), T(a1z), T(a2x), T(a2y),
-                                                T(a2z), T(a3x), T(a3y), T(a3z), sim.mu0_Ms,
-                                                volume; ndrange=N)
+    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc, T(a1x),
+                                                T(a1y), T(a1z), T(a2x), T(a2y), T(a2z),
+                                                T(a3x), T(a3y), T(a3z), sim.mu0_Ms, volume;
+                                                ndrange=N)
 
     return nothing
 end
 
 function effective_field(anis::HexagonalAnisotropy, sim::MicroSim, spin::AbstractArray{T,1},
-            t::Float64) where {T<:AbstractFloat}
+                         t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     volume = T(sim.mesh.volume)
 
-    hexagonal_anisotropy_kernel!(default_backend[])(spin, anis.field, anis.energy, anis.K1, 
-            anis.K2, anis.K3, sim.mu0_Ms, volume; ndrange=N)
+    hexagonal_anisotropy_kernel!(default_backend[])(spin, anis.field, anis.energy, anis.K1,
+                                                    anis.K2, anis.K3, sim.mu0_Ms, volume;
+                                                    ndrange=N)
 
     return nothing
 end
@@ -93,7 +95,7 @@ function effective_field(exch::SpatialExchange, sim::MicroSim, spin::AbstractArr
     back = default_backend[]
     exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms, exch.A,
                                         dx, dy, dz, mesh.ngbs, volume; ndrange=n_total)
-    
+
     return nothing
 end
 
@@ -108,7 +110,7 @@ function effective_field(exch::UniformExchange, sim::MicroSim, spin::AbstractArr
     uniform_exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
                                                 exch.Ax, exch.Ay, exch.Az, dx, dy, dz,
                                                 mesh.ngbs, volume; ndrange=N)
-    
+
     return nothing
 end
 
@@ -139,7 +141,6 @@ function effective_field(dmi::SpatialBulkDMI, sim::MicroSim, spin::AbstractArray
                                                dmi.D, dx, dy, dz, mesh.ngbs, volume;
                                                ndrange=N)
 
-    
     return nothing
 end
 
@@ -191,60 +192,71 @@ function effective_field(exch::InterlayerExchange, sim::MicroSim, spin::Abstract
     return nothing
 end
 
-function effective_field(stochastic::StochasticField, sim::MicroSim,
-                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(st::StochasticField, sim::MicroSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     volume = sim.mesh.volume
     integrator = sim.driver.integrator
 
-    if integrator.nsteps > stochastic.nsteps
-        randn!(stochastic.eta)
-        stochastic.nsteps = integrator.nsteps
+    if integrator.nsteps > st.nsteps
+        randn!(st.eta)
+        st.nsteps = integrator.nsteps
     end
 
     dt = integrator.step
     gamma = sim.driver.gamma
     alpha = sim.driver.alpha
-    k_B = stochastic.k_B
-    scaling_factor = stochastic.scaling_fun(t)
-    factor = 2 * alpha * k_B / (volume * gamma * dt) * scaling_factor
-
-    stochastic.scaling_factor = scaling_factor
+    k_B = st.k_B
 
     back = default_backend[]
-    stochastic_field_kernel!(back, groupsize[])(spin, stochastic.field, stochastic.energy,
-                                                sim.mu0_Ms, stochastic.eta,
-                                                stochastic.temperature, stochastic.T0, factor, T(volume);
-                                                ndrange=N)
+    factor = 2 * alpha * k_B / (volume * gamma * dt)
+    if st.spatiotemporal_mode
+        mesh = sim.mesh
+        Nx, Ny, Nz = mesh.nx, mesh.ny, mesh.nz
+        temp = reshape(st.temperature, Nx, Ny, Nz)
+        spatiotemporal_kernel!(back, groupsize[])(temp, mesh.dx, mesh.dy, mesh.dz, mesh.x0,
+                                                  mesh.y0, mesh.z0, T(t), st.scaling_fun;
+                                                  ndrange=(Nx, Ny, Nz))
+    else
+        scaling_factor = st.scaling_fun(t)
+        factor = factor * scaling_factor
+        st.scaling_factor = scaling_factor
+    end
 
+    stochastic_field_kernel!(back, groupsize[])(spin, st.field, st.energy, sim.mu0_Ms,
+                                                st.eta, st.temperature, st.offset_temp,
+                                                T(factor), T(volume); ndrange=N)
 
     return nothing
 end
 
-function effective_field(torque::TorqueField, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(torque::TorqueField, sim::AbstractSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     gamma = sim.driver.gamma
 
     torque.torque_fun(torque.field, spin, t)
-    
+
     back = default_backend[]
     torque_kernel!(back, groupsize[])(spin, torque.field, gamma; ndrange=N)
 
     return nothing
 end
 
-function effective_field(torque::DFTorqueField, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(torque::DFTorqueField, sim::AbstractSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     gamma = sim.driver.gamma
-    
+
     back = default_backend[]
-    df_torque_kernel!(back, groupsize[])(spin, torque.field, gamma, torque.aj, 
-                      torque.bj, torque.px, torque.py, torque.pz; ndrange=N)
+    df_torque_kernel!(back, groupsize[])(spin, torque.field, gamma, torque.aj, torque.bj,
+                                         torque.px, torque.py, torque.pz; ndrange=N)
 
     return nothing
 end
 
-function effective_field(torque::ZhangLiTorque, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(torque::ZhangLiTorque, sim::AbstractSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     gamma = sim.driver.gamma
     mesh = sim.mesh
@@ -252,35 +264,39 @@ function effective_field(torque::ZhangLiTorque, sim::AbstractSim, spin::Abstract
     ut = T(torque.ufun(t)/gamma)
 
     back = default_backend[]
-    zhangli_torque_kernel!(back, groupsize[])(spin, torque.field, torque.bJ, mesh.ngbs, torque.xi, 
-                           ut, T(mesh.dx), T(mesh.dy), T(mesh.dz); ndrange=N)
+    zhangli_torque_kernel!(back, groupsize[])(spin, torque.field, torque.bJ, mesh.ngbs,
+                                              torque.xi, ut, T(mesh.dx), T(mesh.dy),
+                                              T(mesh.dz); ndrange=N)
 
     return nothing
 end
 
-function effective_field(torque::SlonczewskiTorque, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(torque::SlonczewskiTorque, sim::AbstractSim,
+                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
-    
+
     lambda_sq = T(torque.Lambda^2)
     ft = T(torque.ufun(t)*torque.beta)
 
     back = default_backend[]
     slonczewski_torque_kernel!(back, groupsize[])(spin, torque.field, torque.J, lambda_sq,
-                              torque.P, torque.xi, ft, torque.px, torque.py, torque.pz; ndrange=N)
+                                                  torque.P, torque.xi, ft, torque.px,
+                                                  torque.py, torque.pz; ndrange=N)
 
     return nothing
 end
 
-
-function effective_field(torque::SAHETorqueField, sim::AbstractSim, spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+function effective_field(torque::SAHETorqueField, sim::AbstractSim,
+                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     gamma = sim.driver.gamma
-    
+
     back = default_backend[]
     c2x, c2y, c2z = torque.c2[1], torque.c2[2], torque.c2[3]
     ms = isa(sim, MicroSim) ? sim.mu0_Ms : sim.mu_s
-    sahe_torque_kernel!(back, groupsize[])(spin, torque.field, ms, gamma, torque.beta, 
-                      torque.c1, T(c2x), T(c2y), T(c2z), torque.c3; ndrange=N)
+    sahe_torque_kernel!(back, groupsize[])(spin, torque.field, ms, gamma, torque.beta,
+                                           torque.c1, T(c2x), T(c2y), T(c2z), torque.c3;
+                                           ndrange=N)
 
     return nothing
 end
@@ -407,7 +423,6 @@ For example:
 After running this function, the effective field is calculated and saved in sim.field.
 """
 function effective_field(sim::AbstractSim, spin, t::Float64=0.0)
-    
     fill!(sim.field, 0.0)
     for interaction in sim.interactions
         if !isa(interaction, Zeeman)

@@ -12,20 +12,20 @@ function effective_field(zee::TimeZeeman, sim::AtomisticSim, spin::AbstractArray
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     if zee.is_scalar
-       tx = zee.time_fun(t)
-       zee.time_fx = tx
-       zee.time_fy = tx
-       zee.time_fz = tx
+        tx = zee.time_fun(t)
+        zee.time_fx = tx
+        zee.time_fy = tx
+        zee.time_fz = tx
     else
-       tx, ty, tz = zee.time_fun(t)
-       zee.time_fx = tx
-       zee.time_fy = ty
-       zee.time_fz = tz
+        tx, ty, tz = zee.time_fun(t)
+        zee.time_fx = tx
+        zee.time_fy = ty
+        zee.time_fz = tz
     end
 
     kernel = time_zeeman_kernel!(default_backend[], groupsize[])
-    kernel(spin, zee.field, zee.init_field, zee.energy, sim.mu_s, T(1), T(zee.time_fx), T(zee.time_fy), T(zee.time_fz);
-           ndrange=N)
+    kernel(spin, zee.field, zee.init_field, zee.energy, sim.mu_s, T(1), T(zee.time_fx),
+           T(zee.time_fy), T(zee.time_fz); ndrange=N)
 
     return nothing
 end
@@ -37,36 +37,37 @@ function effective_field(anis::Anisotropy, sim::AtomisticSim, spin::AbstractArra
 
     heff = output === nothing ? anis.field : output
     kernal = anisotropy_kernel!(default_backend[])
-    kernal(spin, heff, anis.energy, anis.Ku, axis[1], axis[2], axis[3], sim.mu_s,
-           T(1); ndrange=N)
+    kernal(spin, heff, anis.energy, anis.Ku, axis[1], axis[2], axis[3], sim.mu_s, T(1);
+           ndrange=N)
 
     return nothing
 end
 
-function effective_field(anis::HexagonalAnisotropy, sim::AtomisticSim, spin::AbstractArray{T,1},
-                        t::Float64) where {T<:AbstractFloat}
+function effective_field(anis::HexagonalAnisotropy, sim::AtomisticSim,
+                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
 
-    hexagonal_anisotropy_kernel!(default_backend[])(spin, anis.field, anis.energy, anis.K1, 
-              anis.K2, anis.K3, sim.mu_s, T(1); ndrange=N)
+    hexagonal_anisotropy_kernel!(default_backend[])(spin, anis.field, anis.energy, anis.K1,
+                                                    anis.K2, anis.K3, sim.mu_s, T(1);
+                                                    ndrange=N)
 
     return nothing
 end
 
 function effective_field(anis::CubicAnisotropy, sim::AtomisticSim, spin::AbstractArray{T,1},
-                        t::Float64; output=nothing) where {T<:AbstractFloat}
+                         t::Float64; output=nothing) where {T<:AbstractFloat}
     N = sim.n_total
-    
+
     a1x, a1y, a1z = anis.axis1
     a2x, a2y, a2z = anis.axis2
     a3x, a3y, a3z = anis.axis3
     heff = output === nothing ? anis.field : output
-    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc,
-                              T(a1x), T(a1y), T(a1z), T(a2x), T(a2y),
-                              T(a2z), T(a3x), T(a3y), T(a3z), sim.mu_s,
-                              T(1); ndrange=N)
+    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc, T(a1x),
+                                                T(a1y), T(a1z), T(a2x), T(a2y), T(a2z),
+                                                T(a3x), T(a3y), T(a3z), sim.mu_s, T(1);
+                                                ndrange=N)
 
-   return nothing
+    return nothing
 end
 
 function effective_field(anis::TubeAnisotropy, sim::AtomisticSim, spin::AbstractArray{T,1},
@@ -79,7 +80,8 @@ function effective_field(anis::TubeAnisotropy, sim::AtomisticSim, spin::Abstract
 end
 
 function effective_field(exch::HeisenbergExchange, sim::AtomisticSim,
-                         spin::AbstractArray{T,1}, t::Float64; output=nothing) where {T<:AbstractFloat}
+                         spin::AbstractArray{T,1}, t::Float64;
+                         output=nothing) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
 
@@ -92,20 +94,20 @@ function effective_field(exch::HeisenbergExchange, sim::AtomisticSim,
 
     # The exchange interaction for next-nearest neighbours
     if hasproperty(mesh, :n_ngbs2) && length(exch.Js2) == mesh.n_ngbs2
-        kernal(heff, exch.energy, exch.Js2, spin, sim.mu_s, mesh.ngbs2, mesh.n_ngbs2,
-               T(1); ndrange=N)
+        kernal(heff, exch.energy, exch.Js2, spin, sim.mu_s, mesh.ngbs2, mesh.n_ngbs2, T(1);
+               ndrange=N)
     end
 
     # The exchange interaction for next-next-nearest neighbours
     if hasproperty(mesh, :n_ngbs3) && length(exch.Js3) == mesh.n_ngbs3
-        kernal(heff, exch.energy, exch.Js3, spin, sim.mu_s, mesh.ngbs3, mesh.n_ngbs3,
-               T(1); ndrange=N)
+        kernal(heff, exch.energy, exch.Js3, spin, sim.mu_s, mesh.ngbs3, mesh.n_ngbs3, T(1);
+               ndrange=N)
     end
 
     # The exchange interaction for next-next-next-nearest neighbours
     if hasproperty(mesh, :n_ngbs4) && length(exch.Js4) == mesh.n_ngbs4
-        kernal(heff, exch.energy, exch.Js4, spin, sim.mu_s, mesh.ngbs4, mesh.n_ngbs4,
-               T(1); ndrange=N)
+        kernal(heff, exch.energy, exch.Js4, spin, sim.mu_s, mesh.ngbs4, mesh.n_ngbs4, T(1);
+               ndrange=N)
     end
 
     return nothing
@@ -203,8 +205,8 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
     stochastic_field_kernel!(default_backend[], groupsize[])(spin, stochastic.field,
                                                              stochastic.energy, sim.mu_s,
                                                              stochastic.eta,
-                                                             stochastic.temperature, 
-                                                             stochastic.T0, factor,
+                                                             stochastic.temperature,
+                                                             stochastic.offset_temp, factor,
                                                              T(1); ndrange=N)
 
     return nothing

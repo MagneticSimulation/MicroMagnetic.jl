@@ -147,7 +147,6 @@ mutable struct MicroSimFE{T<:AbstractFloat} <: AbstractSim
     MicroSimFE{T}() where {T<:AbstractFloat} = new()
 end
 
-
 mutable struct Zeeman{T<:AbstractFloat} <: MicroEnergy
     H0::Tuple
     field::AbstractArray{T,1}
@@ -177,7 +176,7 @@ end
 
 mutable struct SpatialAnisotropy{T<:AbstractFloat} <: MicroEnergy
     Ku::AbstractArray{T,1}
-    axes::AbstractArray{T, 1}
+    axes::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
@@ -195,7 +194,7 @@ end
 
 mutable struct HexagonalAnisotropy{T<:AbstractFloat} <: MicroEnergy
     K1::T
-    K2::T 
+    K2::T
     K3::T
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
@@ -263,7 +262,7 @@ end
 
 mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy
     temperature::AbstractArray{T,1}
-    T0::T
+    offset_temp::T
     eta::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
@@ -271,8 +270,9 @@ mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy
     name::String
     k_B::Float64
     scaling_fun::Function
-    average_temperature::T
+    mean_temperature::T
     scaling_factor::T
+    spatiotemporal_mode::Bool
 end
 
 mutable struct TorqueField{T<:AbstractFloat} <: MicroEnergy

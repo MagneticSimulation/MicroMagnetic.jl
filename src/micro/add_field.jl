@@ -1,7 +1,6 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
-       add_exch, add_dmi, add_sahe_torque,
-       add_demag, add_dmi_int, add_exch_int, add_thermal_noise,
-       add_sot, add_stt, add_torque
+       add_exch, add_dmi, add_sahe_torque, add_demag, add_dmi_int, add_exch_int,
+       add_thermal_noise, add_sot, add_stt, add_torque
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -30,7 +29,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
         if isa(H0, Tuple) && length(H0) == 3
             field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
                                     string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
-                                    o::AbstractSim -> o.interactions[id].H0)
+                                   o::AbstractSim -> o.interactions[id].H0)
             push!(sim.saver.items, field_item)
         end
         push!(sim.saver.items,
@@ -70,7 +69,6 @@ function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeema
     end
     return nothing
 end
-
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
@@ -179,7 +177,8 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
         if isa(H0, Tuple) && length(H0) == 3
             field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
                                     string(name, "_Hz")), (unit, unit, unit),
-                                   o::AbstractSim -> (H0[1]*zee.time_fx, H0[2]*zee.time_fy, H0[3]*zee.time_fz))
+                                   o::AbstractSim -> (H0[1]*zee.time_fx, H0[2]*zee.time_fy,
+                                                      H0[3]*zee.time_fz))
             push!(sim.saver.items, field_item)
         end
         push!(sim.saver.items,
@@ -393,8 +392,8 @@ Add Anisotropy to the system, where the energy density is given by
     E_\\mathrm{anis} =  K_{u} (1 - \\vec{m} \\cdot \\hat{u})^2
 ```
 """
-function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis::TupleOrArrayOrFunction=(0,0,1),
-                  name="anis")
+function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction;
+                  axis::TupleOrArrayOrFunction=(0, 0, 1), name="anis")
     n_total = sim.n_total
     T = Float[]
     Kus = zeros(T, n_total)
@@ -429,7 +428,6 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction; axis::TupleOrAr
     @info "Uniaxial Anisotropy has been added."
     return anis
 end
-
 
 """
     add_anis(sim::AbstractSim, geo::Shape, Ku::Number; axis=(0,0,1), name="anis")
@@ -571,17 +569,28 @@ function add_hex_anis(sim::AbstractSim; K1=0, K2=0, K3=0, name="hex")
     return anis
 end
 
-
-
 @doc raw"""
     add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", T0=0, scaling=t -> 1.0, k_B=k_B)
 
-Add thermal noise fields to the simulation based on specified temperature profile.
+Add thermal noise fields to the simulation based on specified temperature profile. 
 
-The effective spatial temperature distribution is defined as:
+The effective temperature is defined differently based on the temperature specification:
+
+### Case 1: Spatially Defined Temperature (Constant, Array, or 3-parameter Function)
+For temperature specifications that depend only on space:
 ```math
-T(i,j,k)  = \text{Temp}(i,j,k) * \text{scaling}(t) + \text{T0}
+T_{\text{eff}}(x,y,z,t) = \text{Temp}(x,y,z) \times \text{scaling}(t) + \text{T0}
 ```
+- `Temp(x,y,z)` defines the spatial distribution
+- `scaling(t)` provides time modulation
+- `T0` adds a constant offset
+
+### Case 2: Spatiotemporally Defined Temperature (4-parameter Function)
+For functions with explicit space and time dependence `f(x,y,z,t)`:
+```math
+T_{\text{eff}}(x,y,z,t) = \text{Temp}(x,y,z,t)
+```
+In this case, `scaling` and `T0` parameters are ignored.
 
 For micromagnetic model, the thermal noise is defined as
 
@@ -599,52 +608,58 @@ For the atomistic model, the thermal noise is defined as
 where $\eta \sim \mathcal{N}(0,1)$ is a standard normal random variable, $\gamma=1.76\times 10^{11}$ rad/(T·s),
 and $\mu_s$ is the effective magnetic moment.
 
-### Arguments
-- `sim::AbstractSim`: The simulation object.
-- `Temp::NumberOrArrayOrFunction`: Temperature value (can be a constant, array, or function).
-- `name::String`: Name for the noise field (default: `"thermal"`).
-- `scaling::Function`: A function to scale the noise over time (default: `t -> 1.0`).
-- `k_B::Float64`: Boltzmann constant (default: `k_B`).
-
 ## Arguments
 - `sim::AbstractSim`: Simulation object to which thermal noise will be added
 - `Temp::NumberOrArrayOrFunction`: Temperature specification. Can be:
   - Constant number (uniform temperature)
   - Array (spatially varying temperature)
-  - Function `f(i, j, k, dx, dy, dz)` or `f(x, y, z)`
+  - 3-parameter function `f(x,y,z)` for spatial control
+  - 4-parameter function `f(x,y,z,t)` for spatiotemporal control
 - `name::String`: Identifier for the noise field (default: `"thermal"`)
 - `T0::Number`: Base temperature offset (default: `0`)
 - `scaling::Function`: Time-dependent scaling function `f(t)` (default: `t -> 1.0`)
 - `k_B::Float64`: Boltzmann constant (default: global `k_B`)
 
-### Example
-```julia
-# Constant temperature
-add_thermal_noise(sim, 300.0)  # 300 K uniform temperature
+## Examples
 
-# Time-dependent temperature with exponential decay
+```julia
+# 300 K everywhere
+add_thermal_noise(sim, 300.0) 
+
+# Constant temperature with time modulation
 add_thermal_noise(sim, 100.0, scaling=t -> exp(-t/1e-9))
 
-function temp_profile(x, y, z)
-    return 200 * exp(-(x^2 + y^2)/1e-18)
-end
-add_thermal_noise(sim, temp_profile, T0=50, scaling=t -> 0.5*sin(2π*t/1e-9))
+# Spatially varying temperature with time modulation
+gaussian_profile = (x, y, z) -> 200 * exp(-(x^2 + y^2)/1e-18)
+add_thermal_noise(sim, gaussian_profile, T0=50, scaling=t -> 0.5*sin(2π*t/1e-9) + 0.5)
+
+# Fully spatiotemporal temperature (scaling and T0 ignored)
+dynamic_temp = (x, y, z, t) -> 300 + 20*sin(2π*t/1e-9 + 0.1*x)*exp(-t/2e-9)
+add_thermal_noise(sim, dynamic_temp)
 ```
 """
-function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", T0=0,
-                           scaling=t -> 1.0, k_B=k_B)
+function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal",
+                           T0=0, scaling=t -> 1.0, k_B=k_B)
     N = sim.n_total
     T = Float[]
-    field = KernelAbstractions.zeros(default_backend[], T, 3 * N)
-    energy = KernelAbstractions.zeros(default_backend[], T, N)
+    field = create_zeros(3 * N)
+    energy = create_zeros(N)
 
-    Spatial_T = KernelAbstractions.zeros(default_backend[], T, N)
-    eta = KernelAbstractions.zeros(default_backend[], T, 3 * N)
+    Spatial_T = create_zeros(N)
+    eta = create_zeros(3 * N)
 
-    init_scalar!(Spatial_T, sim.mesh, Temp)
-    thermal = StochasticField(Spatial_T, T(T0), eta, field, energy, -1, name, k_B, scaling,
-                              average(Spatial_T), T(1))
+    if isa(Temp, Function) && methods(Temp)[1].nargs - 1 == 4 #four parameters (x,y,z,t)
+        @info("Fully spatiotemporal temperature profile is provided, scaling and T0 are ignored.")
+        spatiotemporal_mode = true
+        scaling_fun = Temp
+    else
+        spatiotemporal_mode = false
+        init_scalar!(Spatial_T, sim.mesh, Temp)
+        scaling_fun = scaling
+    end
 
+    thermal = StochasticField(Spatial_T, T(T0), eta, field, energy, -1, name, k_B,
+                              scaling_fun, average(Spatial_T), T(1), spatiotemporal_mode)
     push!(sim.interactions, thermal)
 
     if sim.save_data
@@ -655,7 +670,7 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
 
         push!(sim.saver.items,
               SaverItem(string("T_", name), "<K>",
-                        o::AbstractSim -> o.interactions[id].average_temperature *
+                        o::AbstractSim -> o.interactions[id].mean_temperature *
                                           o.interactions[id].scaling_factor))
     end
     return thermal
@@ -677,12 +692,13 @@ The effective field is given then as
 \mathbf{H}_i = \frac{1}{\mu_0 M_s}  \frac{J_\mathrm{rkky}}{\Delta_z} \mathbf{m}_{j} 
 ```
 """
-function add_exch_int(sim::MicroSim, J::NumberOrArrayOrFunction; k1=1, k2=-1, name="exch_int")
+function add_exch_int(sim::MicroSim, J::NumberOrArrayOrFunction; k1=1, k2=-1,
+                      name="exch_int")
     n_total = sim.n_total
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)
 
-    mesh = sim.mesh 
+    mesh = sim.mesh
 
     mesh_tmp = FDMesh(nx=mesh.nx, ny=mesh.ny, nz=1, dx=mesh.dx, dy=mesh.dy, dz=mesh.dz)
 
@@ -771,7 +787,9 @@ where
 ```
 
 """
-function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction, sigma_sa::TupleOrArrayOrFunction; a1=(1,0,0), a2=(0,1,0), beta=0, name="she")
+function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction,
+                         sigma_sa::TupleOrArrayOrFunction; a1=(1, 0, 0), a2=(0, 1, 0),
+                         beta=0, name="she")
     n_total = sim.n_total
     mesh = sim.mesh
 
@@ -801,7 +819,8 @@ function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction, sigm
     end
 
     c2 = cross_product(a2, a1)
-    torque = SAHETorqueField(kernel_array(sigma_s3), c2, kernel_array(sigma_sa3), T(beta), field, name)
+    torque = SAHETorqueField(kernel_array(sigma_s3), c2, kernel_array(sigma_sa3), T(beta),
+                             field, name)
 
     push!(sim.interactions, torque)
 
@@ -823,7 +842,8 @@ The equivalent effective field is
 \mathbf{H}_\mathrm{stt} = (1/\gamma)(a_J \mathbf{m} \times \mathbf{p} +  b_J \mathbf{p})
 ```
 """
-function add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="sot")
+function add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number,
+                 p::Tuple{Real,Real,Real}; name="sot")
     n_total = sim.n_total
     field = create_zeros(3 * n_total)
 
@@ -838,7 +858,6 @@ function add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::T
 
     return torque
 end
-
 
 @doc raw"""
     add_torque(sim::AbstractSim, fun::Function; name="torque")
@@ -879,8 +898,6 @@ function add_torque(sim::AbstractSim, fun::Function; name="torque")
     push!(sim.interactions, torque)
     return torque
 end
-
-
 
 @doc raw"""
     add_stt(sim::AbstractSim; model::Symbol=:slonczewski, name="stt", kwargs...)
@@ -1007,7 +1024,6 @@ add_stt(sim, model=:slonczewski, J=gaussian_current, tf=2e-9, Ms=8e5, p=(0,0,1),
 ```
 """
 function add_stt(sim::AbstractSim; model::Symbol=:slonczewski, kwargs...)
-
     params = Dict(kwargs)
     if !haskey(params, :J)
         throw(ArgumentError("Current density parameter `J` is required."))
@@ -1023,7 +1039,6 @@ function add_stt(sim::AbstractSim; model::Symbol=:slonczewski, kwargs...)
     end
 end
 
-
 function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
     has_b = haskey(params, :b)
     has_P = haskey(params, :P) && haskey(params, :Ms)
@@ -1031,9 +1046,9 @@ function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
     if has_b && has_P
         @warn("Parameters `(P, Ms)`` will be ignored since `b` is provided.")
     end
-    
-    xi = get(params, :xi, 0) 
-    b = if has_b 
+
+    xi = get(params, :xi, 0)
+    b = if has_b
         params[:b]
     elseif has_P
         P = params[:P]
@@ -1062,23 +1077,21 @@ function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
     return torque
 end
 
-
 function add_slonczewski_torque(sim::AbstractSim, name, params::Dict)
-
     for k in [:tf, :Ms, :p, :P]
         if !haskey(params, k)
             throw(ArgumentError("Parameter $k is not provided"))
         end
     end
-    
-    xi = get(params, :xi, 0) 
-    Lambda = get(params, :Lambda, 2.0) 
+
+    xi = get(params, :xi, 0)
+    Lambda = get(params, :Lambda, 2.0)
     tf = params[:tf]
     Ms = params[:Ms]
     P = params[:P]
     p = params[:p]
 
-    beta = h_bar/(mu_0*Ms*c_e*tf)  
+    beta = h_bar/(mu_0*Ms*c_e*tf)
 
     T = Float[]
     n_total = sim.n_total
@@ -1091,7 +1104,8 @@ function add_slonczewski_torque(sim::AbstractSim, name, params::Dict)
 
     ft = haskey(params, :ft) ? params[:ft] : t -> 1.0
 
-    torque = SlonczewskiTorque(T(p[1]), T(p[2]), T(p[3]), T(beta), T(Lambda), T(xi), T(P), J, field, ft, name)
+    torque = SlonczewskiTorque(T(p[1]), T(p[2]), T(p[3]), T(beta), T(Lambda), T(xi), T(P),
+                               J, field, ft, name)
 
     push!(sim.interactions, torque)
 
