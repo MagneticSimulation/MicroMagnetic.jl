@@ -6,6 +6,9 @@ struct FDMesh{T} <: Mesh
     dx::T
     dy::T
     dz::T
+    x0::T
+    y0::T
+    z0::T
     nx::Int64
     ny::Int64
     nz::Int64
@@ -52,7 +55,8 @@ This constructor initializes a finite difference mesh with the specified paramet
 - `nx::Int`: Number of grid points in the x-direction (default: `1`).
 - `ny::Int`: Number of grid points in the y-direction (default: `1`).
 - `nz::Int`: Number of grid points in the z-direction (default: `1`).
-- `pbc::String`: Periodic boundary conditions, which could be any combination of `"x"`, `"y"`, and `"z"` (default: `"open"`).
+- `pbc::String`: Periodic boundary conditions, which could be any combination of `'x'`, `'y'`, and `'z'` (default: `"open"`).
+- `x0`, `y0`, `z0`: Starting coordinates (default: center at origin)
 
 **Examples:**
 ```julia
@@ -60,7 +64,7 @@ mesh = FDMesh(dx=1e-8, dy=1e-8, dz=1e-8, nx=10, ny=10, nz=10, pbc="xyz")
 ```
 This creates a FDMesh with 10 grid points in each direction and periodic boundary conditions in all three axes. 
 """
-function FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
+function FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open", x0=-nx*dx/2, y0=-ny*dy/2, z0=-nz*dz/2)
     ngbs = zeros(Int32, 6, nx * ny * nz)
 
     xperiodic = 'x' in pbc ? true : false
@@ -78,14 +82,11 @@ function FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
     end
     volume = dx * dy * dz
     n_total = nx * ny * nz
-    if default_backend[] == CPU()
-        return FDMesh(dx, dy, dz, nx, ny, nz, xperiodic, yperiodic, zperiodic, n_total,
-                      volume, ngbs)
-    end
 
-    ngbs_kb = kernel_array(ngbs)
-    return FDMesh(dx, dy, dz, nx, ny, nz, xperiodic, yperiodic, zperiodic, n_total, volume,
-                  ngbs_kb)
+    ngbs_kb = default_backend[] == CPU() ? ngbs : kernel_array(ngbs)
+
+    return FDMesh(dx, dy, dz, x0, y0, z0, nx, ny, nz, xperiodic, yperiodic, zperiodic, 
+                 n_total, volume, ngbs_kb)
 end
 
 @inline function _x_plus_one(i::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64,
