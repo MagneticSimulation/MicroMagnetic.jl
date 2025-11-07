@@ -263,6 +263,7 @@ end
 
 mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy
     temperature::AbstractArray{T,1}
+    T0::T
     eta::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}

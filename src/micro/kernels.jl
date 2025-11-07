@@ -357,13 +357,13 @@ end
 end
 
 @kernel function stochastic_field_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(eta),
-                                          @Const(Temp), factor::T,
+                                          @Const(Temp), base_T::T, factor::T,
                                           volume::T) where {T<:AbstractFloat}
     I = @index(Global)
 
     j = 3 * (I - 1)
     @inbounds Ms_local = mu0_Ms[I]
-    @inbounds T_local = Temp[I]
+    @inbounds T_local = Temp[I] + base_T
 
     if Ms_local > 0
         @inbounds scale = sqrt(factor * T_local / Ms_local)

@@ -191,7 +191,6 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
         stochastic.nsteps = integrator.nsteps
     end
 
-    mu0 = 4 * pi * 1e-7
     dt = integrator.step
     gamma = sim.driver.gamma
     alpha = sim.driver.alpha
@@ -204,7 +203,8 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
     stochastic_field_kernel!(default_backend[], groupsize[])(spin, stochastic.field,
                                                              stochastic.energy, sim.mu_s,
                                                              stochastic.eta,
-                                                             stochastic.temperature, factor,
+                                                             stochastic.temperature, 
+                                                             stochastic.T0, factor,
                                                              T(1); ndrange=N)
 
     return nothing

@@ -574,21 +574,30 @@ end
 
 
 @doc raw"""
-    add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", scaling=t -> 1.0, k_B=k_B)
+    add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", T0=0, scaling=t -> 1.0, k_B=k_B)
 
-Adds thermal noise fields to the simulation. For micromagnetic model, the thermal noise is defined as
+Add thermal noise fields to the simulation based on specified temperature profile.
+
+The effective spatial temperature distribution is defined as:
+```math
+T(i,j,k)  = \text{Temp}(i,j,k) * \text{scaling}(t) + \text{T0}
+```
+
+For micromagnetic model, the thermal noise is defined as
 
 ```math
-\mathbf{b}^u = \eta \sqrt \frac{2 \alpha k_B T}{\mu_0 M_s \gamma \Delta V dt}
+\mathbf{b}^u = \eta \sqrt \frac{2 \alpha k_B T}{\mu_0 M_s \gamma \Delta V \Delta t}
 ```
-and $\eta$ is a random number follows the normal distribution where $\gamma=2.211\times 10^5$ m/(A·s) is the gyromagnetic ratio.
+and $\eta \sim \mathcal{N}(0,1)$ is a standard normal random variable, $\gamma=2.211\times 10^5$ m/(A·s) is the gyromagnetic ratio,
+$\Delta V$ is the cell volume and $\Delta t$ is the time step.
 
 For the atomistic model, the thermal noise is defined as
 
 ```math
-\mathbf{b}^u = \eta \sqrt \frac{2 \alpha k_B T}{\gamma \mu_s dt}.
+\mathbf{b}^u = \eta \sqrt \frac{2 \alpha k_B T}{\gamma \mu_s \Delta t}.
 ```
-where $\eta$ is a random number follows the normal distribution and $\gamma=1.76\times 10^{11}$ rad/(T·s). 
+where $\eta \sim \mathcal{N}(0,1)$ is a standard normal random variable, $\gamma=1.76\times 10^{11}$ rad/(T·s),
+and $\mu_s$ is the effective magnetic moment.
 
 ### Arguments
 - `sim::AbstractSim`: The simulation object.
@@ -597,13 +606,32 @@ where $\eta$ is a random number follows the normal distribution and $\gamma=1.76
 - `scaling::Function`: A function to scale the noise over time (default: `t -> 1.0`).
 - `k_B::Float64`: Boltzmann constant (default: `k_B`).
 
+## Arguments
+- `sim::AbstractSim`: Simulation object to which thermal noise will be added
+- `Temp::NumberOrArrayOrFunction`: Temperature specification. Can be:
+  - Constant number (uniform temperature)
+  - Array (spatially varying temperature)
+  - Function `f(i, j, k, dx, dy, dz)` or `f(x, y, z)`
+- `name::String`: Identifier for the noise field (default: `"thermal"`)
+- `T0::Number`: Base temperature offset (default: `0`)
+- `scaling::Function`: Time-dependent scaling function `f(t)` (default: `t -> 1.0`)
+- `k_B::Float64`: Boltzmann constant (default: global `k_B`)
+
 ### Example
 ```julia
-# Add thermal noise with a constant temperature of 100 K and a scaling function
-add_thermal_noise(sim, 100.0, scaling = t -> exp(-t/1e-9))
+# Constant temperature
+add_thermal_noise(sim, 300.0)  # 300 K uniform temperature
+
+# Time-dependent temperature with exponential decay
+add_thermal_noise(sim, 100.0, scaling=t -> exp(-t/1e-9))
+
+function temp_profile(x, y, z)
+    return 200 * exp(-(x^2 + y^2)/1e-18)
+end
+add_thermal_noise(sim, temp_profile, T0=50, scaling=t -> 0.5*sin(2π*t/1e-9))
 ```
 """
-function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal",
+function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal", T0=0,
                            scaling=t -> 1.0, k_B=k_B)
     N = sim.n_total
     T = Float[]
@@ -614,7 +642,7 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
     eta = KernelAbstractions.zeros(default_backend[], T, 3 * N)
 
     init_scalar!(Spatial_T, sim.mesh, Temp)
-    thermal = StochasticField(Spatial_T, eta, field, energy, -1, name, k_B, scaling,
+    thermal = StochasticField(Spatial_T, T(T0), eta, field, energy, -1, name, k_B, scaling,
                               average(Spatial_T), T(1))
 
     push!(sim.interactions, thermal)

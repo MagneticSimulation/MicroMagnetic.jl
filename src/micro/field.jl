@@ -214,7 +214,7 @@ function effective_field(stochastic::StochasticField, sim::MicroSim,
     back = default_backend[]
     stochastic_field_kernel!(back, groupsize[])(spin, stochastic.field, stochastic.energy,
                                                 sim.mu0_Ms, stochastic.eta,
-                                                stochastic.temperature, factor, T(volume);
+                                                stochastic.temperature, stochastic.T0, factor, T(volume);
                                                 ndrange=N)
 
 
