@@ -53,10 +53,8 @@ end
     end
 end
 
-function compute_tau(driver::SD, m_pre::AbstractArray{T,1},
-                     m::AbstractArray{T,1}, h::AbstractArray{T,1},
-                     N::Int64) where {T<:AbstractFloat}
-
+function compute_tau(driver::SD, m_pre::AbstractArray{T,1}, m::AbstractArray{T,1},
+                     h::AbstractArray{T,1}, N::Int64) where {T<:AbstractFloat}
     if driver.steps == 0
         kernel! = compute_gk_kernel_1!(default_backend[], groupsize[])
         kernel!(driver.gk, m, h; ndrange=N)

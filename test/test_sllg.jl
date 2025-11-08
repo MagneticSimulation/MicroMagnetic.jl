@@ -51,6 +51,9 @@ function test_noise(; dt=1e-14)
     dynamic_temp = (x, y, z, t) -> 300 + 20*sin(2π*t/1e-9 + 0.1*x*1e9)*exp(-t/2e-9)
     t4 = add_thermal_noise(sim, dynamic_temp; name="t4")
 
+    dynamic_temp2 = (x, y, z) -> 300 + 20*sin(0.1*x*1e9)*exp(-0.5)
+    t5 = add_thermal_noise(sim, dynamic_temp2; T0=50)
+
     MicroMagnetic.effective_field(sim, sim.spin, 1e-9)
 
     @test maximum(t1.temperature) == 300
@@ -62,6 +65,8 @@ function test_noise(; dt=1e-14)
 
     t4_temp = Array(t4.temperature)
     @test isapprox(t4_temp[1], 300 + 20*sin(-0.15)*exp(-0.5))
+
+    @test isapprox(t4_temp, Array(t5.temperature))
 
     @test t4.name == "t4"
 end

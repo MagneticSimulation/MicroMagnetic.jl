@@ -176,7 +176,6 @@ function set_pinning(sim::AbstractSim, ids::ArrayOrFunction)
     return true
 end
 
-
 """
     set_alpha(sim::AbstractSim, alpha::ArrayOrFunction)
 
@@ -382,7 +381,7 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
 ```
 """
 function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=100,
-               save_m_every=-1, using_time_factor=true, maxsteps=nothing, output = "ovf")
+               save_m_every=-1, using_time_factor=true, maxsteps=nothing, output="ovf")
     if !isnothing(maxsteps)
         @warn "The parameter 'maxsteps' is deprecated. Please use 'max_steps' in relax function."
         max_steps = maxsteps
@@ -397,7 +396,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
     output_folder = @sprintf("%s_%s", sim.name, nameof(typeof(sim.driver)))
     if save_m_every>0
         mkpath(output_folder)
-    end 
+    end
 
     N_spins = sim.n_total
     dm = create_zeros(3 * N_spins)
@@ -795,11 +794,11 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
         call_back !== nothing && call_back(sim, i * dt)
 
         if save_m_every > 0 && (i - 1) % save_m_every == 0
-             if output == "ovf"
-                 save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
-             elseif output == "vts" || output == "vtu"
+            if output == "ovf"
+                save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
+            elseif output == "vts" || output == "vtu"
                 save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
-             end
+            end
         end
     end
 

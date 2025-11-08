@@ -1,6 +1,6 @@
 using NearestNeighbors
 using Random
-using StaticArrays 
+using StaticArrays
 using PoissonDiskSampling
 
 export voronoi, plot_voronoi
@@ -41,21 +41,18 @@ function voronoi(mesh; min_dist=20, seed=123456, threshold=nothing)
     rng = Xoshiro(seed)
 
     # Generate Poisson disk sampled seed points
-    points = PoissonDiskSampling.generate(
-        rng, min_dist, 
-        (0.0, Lx), (0.0, Ly)
-    )
-    
+    points = PoissonDiskSampling.generate(rng, min_dist, (0.0, Lx), (0.0, Ly))
+
     # Convert points to matrix format for KDTree
     points_matrix = hcat([collect(p) for p in points]...)
 
     # Build KDTree for efficient nearest neighbor queries
     kdtree = KDTree(points_matrix)
-    
+
     # Create grid coordinates (cell centers)
     xs = [dx/2 + (i-1)*dx for i in 1:nx]
     ys = [dy/2 + (j-1)*dy for j in 1:ny]
-     
+
     # Initialize output arrays
     grain_ids = zeros(Int, (nx, ny))
     gb_mask = falses((nx, ny))
@@ -66,44 +63,42 @@ function voronoi(mesh; min_dist=20, seed=123456, threshold=nothing)
         D = sqrt(dx^2 + dy^2)
         for j in 1:ny, i in 1:nx
             pos = SVector(xs[i], ys[j])
-            
+
             idxs, dists = NearestNeighbors.knn(kdtree, pos, 2)
-            
+
             d1, d2 = dists[1], dists[2]
-            grain_ids[i,j] = d1 < d2 ? idxs[1] : idxs[2]
-                
+            grain_ids[i, j] = d1 < d2 ? idxs[1] : idxs[2]
+
             # Calculate boundary strength using exponential decay
             # The boundary is strongest when d1 ≈ d2
-            boundary_strength[i,j] = exp(-abs(d2 - d1) / D)
-            gb_mask[i,j] = boundary_strength[i,j] > threshold
-           
+            boundary_strength[i, j] = exp(-abs(d2 - d1) / D)
+            gb_mask[i, j] = boundary_strength[i, j] > threshold
         end
     else
         # Using neighbor comparison
-        
+
         for j in 1:ny, i in 1:nx
             pos = SVector(xs[i], ys[j])
             idx, _ = NearestNeighbors.nn(kdtree, pos)
-            grain_ids[i,j] = idx
+            grain_ids[i, j] = idx
         end
 
         for j in 1:ny, i in 1:nx
-            if gb_mask[i,j] 
+            if gb_mask[i, j]
                 continue
             end
 
-            if j<ny && grain_ids[i,j] != grain_ids[i, j+1] 
-                gb_mask[i,j] = true
+            if j<ny && grain_ids[i, j] != grain_ids[i, j+1]
+                gb_mask[i, j] = true
             end
 
-            if i<nx && grain_ids[i,j] != grain_ids[i+1, j] 
-                gb_mask[i,j] = true
+            if i<nx && grain_ids[i, j] != grain_ids[i+1, j]
+                gb_mask[i, j] = true
             end
 
-            if i<nx && j<ny && grain_ids[i,j] != grain_ids[i+1, j+1]
-                gb_mask[i,j] = true
+            if i<nx && j<ny && grain_ids[i, j] != grain_ids[i+1, j+1]
+                gb_mask[i, j] = true
             end
-
         end
     end
 

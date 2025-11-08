@@ -99,8 +99,8 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     return demag
 end
 
-function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64; output=nothing) where {T<:AbstractFloat}
+function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1}, t::Float64;
+                         output=nothing) where {T<:AbstractFloat}
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, sim.mesh.ny, sim.mesh.nz
 
@@ -124,8 +124,8 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1},
 
     heff = output == nothing ? demag.field : output
 
-    collect_h_energy(heff, demag.energy, spin, demag.mx, demag.my, demag.mz,
-                     sim.mu0_Ms, T(mesh.volume), nx, ny, nz)
+    collect_h_energy(heff, demag.energy, spin, demag.mx, demag.my, demag.mz, sim.mu0_Ms,
+                     T(mesh.volume), nx, ny, nz)
 
     return nothing
 end
