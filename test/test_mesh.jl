@@ -6,8 +6,9 @@ if !isdefined(Main, :test_functions)
 end
 
 function test_FDMesh()
+    T = MicroMagnetic.Float[]
     mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=3, ny=4, nz=2, pbc="xz")
-    @test mesh.volume == mesh.dx * mesh.dy * mesh.dz
+    @test isapprox(mesh.volume, 8e-27, rtol=1e-7)
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     ngbs = Array(mesh.ngbs)
     for k in [1, nz], j in [1, ny], i in 1:nx
@@ -22,7 +23,7 @@ function test_FDMesh()
 
     Nx = 50
     mesh = FDMesh(; dx=2e-9, nx=Nx, ny=1, nz=1, pbc="x")
-    @test mesh.dx == 2e-9
+    @test mesh.dx == T(2e-9)
     @test mesh.nx == Nx
     @test mesh.x0 + 50e-9 < eps()
     ngbs = Array(mesh.ngbs)

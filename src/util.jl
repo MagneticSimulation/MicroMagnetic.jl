@@ -47,7 +47,7 @@ end
     tx = Sx * (-Siz * Sjy + Siy * Sjz);
     ty = Sy * (Siz * Sjx - Six * Sjz);
     tz = Sz * (-Siy * Sjx + Six * Sjy);
-    return tx + ty + tzreturn ;
+    return tx + ty + tz;
 end
 
 #compute the angle defined in equation (1) in paper [PRB 93, 174403 (2016)] or equation (3) in [New J. Phys. 20 (2018) 103014]

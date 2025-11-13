@@ -21,6 +21,11 @@ function test_sim()
     @test isapprox(spin[1], 0.5 * 2^0.5)
     @test isapprox(spin[2], 0.5 * 2^0.5)
 
+
+    m0 = Float32[i for i = 1:60]
+    init_m0(sim, m0, norm=false)
+    @test isapprox(Array(sim.spin), m0)
+
     set_Ms(sim, 8.6e5)
     sim.driver.alpha = 0.5
     sim.driver.gamma = 2.21e5

@@ -577,7 +577,15 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
         end
 
         saver = sim.saver
-        saver.name = @sprintf("%s_%s.txt", sim.name, lowercase(driver))
+
+        saver_name = @sprintf("%s_%s.txt", sim.name, lowercase(driver))
+        if driver === "InertialLLG"
+            saver_name = @sprintf("%s_illg.txt", sim.name)
+        elseif driver === "SpatialLLG"
+            saver_name = @sprintf("%s_llg.txt", sim.name)
+        end
+
+        saver.name = saver_name
         saver.t = 0
         saver.nsteps = 0
         saver.header_saved = false
@@ -587,7 +595,7 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
                 contains_time = true
             end
         end
-        if driver in ("LLG", "LLG_STT", "LLG_STT_CPP") && !contains_time
+        if driver != "SD" && !contains_time
             time = SaverItem("time", "<s>", o::AbstractSim -> o.saver.t)
             insert!(saver.items, 2, time)
             #push!(saver.items, time)

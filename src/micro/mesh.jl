@@ -42,7 +42,8 @@ function indexpbc(i::Int64, j::Int64, k::Int64, nx::Int64, ny::Int64, nz::Int64,
 end
 
 """
-    FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
+    FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open", x0=-nx*dx/2,
+                y0=-ny*dy/2, z0=-nz*dz/2)
 
 Create a finite difference mesh (`FDMesh`) for simulations. This method is designed for the [Micromagnetic model](@ref).
 
