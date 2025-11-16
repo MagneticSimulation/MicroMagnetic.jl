@@ -32,7 +32,7 @@ grain_ids, boundaries, seeds = voronoi(mesh; min_dist=20, seed=1000)
 grain_ids, boundaries, seeds = voronoi(mesh; min_dist=20, seed=1000, threshold=0.2)
 ```
 """
-function voronoi(mesh; min_dist=20, seed=123456, threshold=nothing)
+function voronoi2d(mesh; min_dist=20, seed=123456, threshold=nothing)
     nx, ny = mesh.nx, mesh.ny
     dx, dy = mesh.dx * 1e9, mesh.dy * 1e9  # Convert to nanometers
     Lx, Ly = nx * dx, ny * dy
@@ -98,6 +98,87 @@ function voronoi(mesh; min_dist=20, seed=123456, threshold=nothing)
 
             if i<nx && j<ny && grain_ids[i, j] != grain_ids[i+1, j+1]
                 gb_mask[i, j] = true
+            end
+        end
+    end
+
+    return grain_ids, gb_mask, points
+end
+
+function voronoi(mesh; min_dist=20, seed=123456, threshold=nothing)
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy, dz = mesh.dx * 1e9, mesh.dy * 1e9, mesh.dz * 1e9  # Convert to nanometers
+    Lx, Ly, Lz = nx * dx, ny * dy, nz * dz
+
+    # Initialize random number generator
+    rng = Xoshiro(seed)
+
+    # Generate Poisson disk sampled seed points
+    points = PoissonDiskSampling.generate(rng, min_dist, (0.0, Lx), (0.0, Ly), (0.0, Lz))
+
+    # Convert points to matrix format for KDTree
+    points_matrix = hcat([collect(p) for p in points]...)
+
+    # Build KDTree for efficient nearest neighbor queries
+    kdtree = KDTree(points_matrix)
+
+    # Create grid coordinates (cell centers)
+    xs = [dx/2 + (i-1)*dx for i in 1:nx]
+    ys = [dy/2 + (j-1)*dy for j in 1:ny]
+    zs = [dz/2 + (k-1)*dz for k in 1:nz]
+
+    # Initialize output arrays
+    grain_ids = zeros(Int, (nx, ny, nz))
+    gb_mask = falses((nx, ny, nz))
+
+    if threshold !== nothing
+        # Distance-based approach
+        boundary_strength = zeros(Float64, (nx, ny, nz))
+        D = sqrt(dx^2 + dy^2 + dz^2)
+        for k in 1:nz, j in 1:ny, i in 1:nx
+            pos = SVector(xs[i], ys[j], zs[k])
+
+            idxs, dists = NearestNeighbors.knn(kdtree, pos, 2)
+
+            d1, d2 = dists[1], dists[2]
+            grain_ids[i, j, k] = d1 < d2 ? idxs[1] : idxs[2]
+
+            # Calculate boundary strength using exponential decay
+            # The boundary is strongest when d1 ≈ d2
+            boundary_strength[i, j, k] = exp(-abs(d2 - d1) / D)
+            gb_mask[i, j, k] = boundary_strength[i, j, k] > threshold
+        end
+    else
+        # Using neighbor comparison
+        for k in 1:nz, j in 1:ny, i in 1:nx
+            pos = SVector(xs[i], ys[j], zs[k])
+            idx, _ = NearestNeighbors.nn(kdtree, pos)
+            grain_ids[i, j, k] = idx
+        end
+
+        for k in 1:nz, j in 1:ny, i in 1:nx
+            if gb_mask[i, j, k]
+                continue
+            end
+
+            if k<nz && grain_ids[i, j, k] != grain_ids[i, j, k+1]
+                gb_mask[i, j, k] = true
+            end
+
+            if j<ny && grain_ids[i, j, k] != grain_ids[i, j+1, k]
+                gb_mask[i, j, k] = true
+            end
+
+            if i<nx && grain_ids[i, j, k] != grain_ids[i+1, j, k]
+                gb_mask[i, j, k] = true
+            end
+
+            if i<nx && j<ny && grain_ids[i, j, k] != grain_ids[i+1, j+1, k]
+                gb_mask[i, j, k] = true
+            end
+
+            if i<nx && j<ny && k<nz && grain_ids[i, j, k] != grain_ids[i+1, j+1, k+1]
+                gb_mask[i, j, k] = true
             end
         end
     end

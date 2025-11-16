@@ -17,7 +17,6 @@ Create a simulation instance for the given mesh with specified driver and integr
 
 # Keyword Arguments
 - `driver::String="LLG"`: The simulation driver type. Options:
-  - `"None"`: No driver (static simulation)
   - `"SD"`: Energy minimization (Steepest Descent)
   - `"LLG"`: Landau-Lifshitz-Gilbert equation
   - `"InertialLLG"` : Inertial LLG Equation
@@ -43,10 +42,7 @@ mesh = FDMesh(nx=100, ny=100, nz=1)
 sim = Sim(mesh, driver="LLG", integrator="DormandPrince")
 
 # Create energy minimization simulation  
-sim_sd = Sim(mesh, driver="SD")
-
-# Create STT simulation with adaptive stepping
-sim_stt = Sim(mesh, driver="LLG_STT", integrator="BS23")
+sim = Sim(mesh, driver="SD")
 ```
 """
 function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
