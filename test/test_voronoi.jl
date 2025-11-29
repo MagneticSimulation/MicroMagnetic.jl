@@ -8,7 +8,7 @@ end
 function test_voronoi(;threshold=0.2)
     mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=100, ny=100, nz=2)
 
-    grain_ids, gb_mask, points = voronoi(mesh, min_dist=30, seed=10000, threshold=threshold)
+    grain_ids, gb_mask, points = voronoi(mesh, min_dist=30, seed=10000, threshold=threshold, dims=2)
     
     #println(length(points))
     #println(grain_ids)
