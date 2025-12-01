@@ -292,7 +292,7 @@ mutable struct DFTorqueField{T<:AbstractFloat} <: MicroEnergy
 end
 
 mutable struct ZhangLiTorque{T<:AbstractFloat} <: MicroEnergy
-    xi::T
+    xi::AbstractArray{T,1}
     bJ::AbstractArray{T,1} # bJ = b*J
     field::AbstractArray{T,1}
     ufun::Function

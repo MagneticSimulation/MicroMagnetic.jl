@@ -995,7 +995,7 @@ $P$ is the spin polarization, $\Lambda$ is the Slonczewski parameter.
   - `P::Real`: Spin polarization (0 ≤ P ≤ 1)
 
 - **Optional:**
-  - `xi::Real=0.0`: Secondary spin-torque parameter (default: 0.0)
+  - `xi::NumberOrArrayOrFunction`: Secondary spin-torque parameter (default: 0.0)
   - `Lambda::Real=2.0`: Slonczewski parameter (default: 2.0)
   - `ft::Function`: Time-dependent function modulating current density amplitude
 
@@ -1047,30 +1047,36 @@ function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
         @warn("Parameters `(P, Ms)`` will be ignored since `b` is provided.")
     end
 
-    xi = get(params, :xi, 0)
+    xi_init = get(params, :xi, 0)
     b = if has_b
         params[:b]
     elseif has_P
         P = params[:P]
         Ms = params[:Ms]
-        P*mu_B/(c_e*Ms)/(1+xi^2)
+        P*mu_B/(c_e*Ms)
     else
         throw(ArgumentError("Zhang-Li model requires either `b` or `(P, Ms)` parameters"))
     end
 
     T = Float[]
     n_total = sim.n_total
+    xi = zeros(T, n_total)
+    init_scalar!(xi, sim.mesh, xi_init)
+    xi_kb = kernel_array(xi)
 
     bJ_cpu = zeros(T, 3 * n_total)
     init_vector!(bJ_cpu, sim.mesh, params[:J])
     bJ_cpu .*= b
+    if has_P && !has_b
+        factor = 1 ./ (1 .+ xi .^ 2)
+        result = reshape(bJ_cpu, 3, n_total) .* factor'
+        bJ_cpu = reshape(result, 3*n_total)
+    end
     bJ = kernel_array(bJ_cpu)
 
     field = create_zeros(3 * n_total)
-
     ft = haskey(params, :ft) ? params[:ft] : t -> 1.0
-
-    torque = ZhangLiTorque(T(xi), bJ, field, ft, name)
+    torque = ZhangLiTorque(xi_kb, bJ, field, ft, name)
 
     push!(sim.interactions, torque)
 
