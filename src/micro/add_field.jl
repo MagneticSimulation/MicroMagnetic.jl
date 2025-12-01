@@ -1,6 +1,6 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
        add_exch, add_dmi, add_sahe_torque, add_demag, add_dmi_int, add_exch_int,
-       add_thermal_noise, add_sot, add_stt, add_torque
+       add_thermal_noise, add_sot, add_stt, add_torque, rm_demag_charges
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -1110,4 +1110,78 @@ function add_slonczewski_torque(sim::AbstractSim, name, params::Dict)
     push!(sim.interactions, torque)
 
     return torque
+end
+
+"""
+    rm_demag_charges(sim::MicroSim, Ms; x::Tuple=(0, 0), y::Tuple=(0, 0), z::Tuple=(0, 0), name = "demagc")
+
+Remove demagnetization charges on specified boundaries to eliminate demagnetization effects.
+
+# Arguments
+- `Ms`: Saturation magnetization
+- `x`: Tuple for x-direction boundaries (xminus, xplus), e.g., (-1, 1) for uniform +x magnetization
+- `y`: Tuple for y-direction boundaries (yminus, yplus), e.g., (0, 0.5) for partial removal  
+- `z`: Tuple for z-direction boundaries (zminus, zplus).
+
+# Physical Background
+The demagnetization charge density σ on a surface is given by σ = **M**·**n**, where **M** is the magnetization vector 
+and **n** is the outward normal vector. Therefore, the sign of the charge to be removed depends on both the magnetization 
+direction and the surface orientation.
+
+# Special Cases and Domain Walls
+
+## Uniform Magnetization
+For uniform magnetization **m** = (1, 0, 0):
+- On the -x surface: σ = -1 → xminus = -1
+- On the +x surface: σ = +1 → xplus = 1
+- Configuration: `x = (-1, 1)`
+
+## Head-to-Head Domain Wall
+For a head-to-head domain wall along x-direction:
+- Left region: **m** = (1, 0, 0), right region: **m** = (-1, 0, 0)
+- On the -x surface: σ = -1 → xminus = -1
+- On the +x surface: σ = -1 → xplus = -1
+- Configuration: `x = (-1, -1)`
+
+# Example
+```julia
+# For uniform +x magnetization
+rm_demag_charges(sim, 8e5, x=(-1, 1))
+
+# For head-to-head domain wall along x (both surfaces negative)
+rm_demag_charges(sim, 8e5, x=(-1, -1))
+
+# For tail-to-tail domain wall along x (both surfaces positive)  
+rm_demag_charges(sim, 8e5, x=(1, 1))
+
+# Partial removal with fractional values
+rm_demag_charges(sim, 8e5, x=(0, 0.5), y=(0.3, -0.2))
+```
+"""
+function rm_demag_charges(sim::MicroSim, Ms; x::Tuple=(0, 0), y::Tuple=(0, 0), z::Tuple=(0, 0), name = "demagc")
+    # Validate tuple lengths
+    length(x) == 2 || throw(ArgumentError("x must be a 2-element tuple"))
+    length(y) == 2 || throw(ArgumentError("y must be a 2-element tuple"))
+    length(z) == 2 || throw(ArgumentError("z must be a 2-element tuple"))
+
+    n_total = sim.n_total
+    field = create_zeros(3 * n_total)
+    energy = create_zeros(n_total)
+
+    xminus, xplus = x
+    yminus, yplus = y
+    zminus, zplus = z
+    f = compute_demag_charge_field(sim, sim.mesh, Ms, xminus, xplus, yminus, yplus, zminus, zplus)
+
+    copyto!(field, f)
+
+    zeeman = Zeeman((0, 0, 0), field, energy, name)
+    push!(sim.interactions, zeeman)
+
+    if sim.save_data
+        id = length(sim.interactions)
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "<J>",
+                        o::AbstractSim -> sum(o.interactions[id].energy)))
+    end
 end

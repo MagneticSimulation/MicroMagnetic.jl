@@ -340,3 +340,4 @@ mutable struct AnisotropyFE{T<:AbstractFloat} <: MicroEnergy
     K_matrix::AbstractSparseMatrix
     name::String
 end
+
