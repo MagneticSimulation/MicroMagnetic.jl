@@ -1,28 +1,30 @@
 {
-  "name": "micromagnetic-gui",
+  "name": "micromagnetics-js",
   "version": "1.0.0",
-  "description": "GUI for MicroMagnetic.jl using three.js",
-  "type": "module",
+  "description": "JavaScript visualization library for MicroMagnetic.jl",
   "main": "dist/bundle.js",
-  "module": "dist/bundle.esm.js",
+  "type": "module",
   "scripts": {
     "build": "rollup -c",
-    "watch": "rollup -c -w"
+    "watch": "rollup -c -w",
+    "dev": "python -m http.server 8000"
   },
   "keywords": [
-    "micromagnetic",
-    "three.js",
-    "gui"
+    "micromagnetics",
+    "visualization",
+    "threejs",
+    "julia"
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "three": "^0.160.0"
-  },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
     "rollup": "^4.9.6"
+  },
+  "dependencies": {
+    "lil-gui": "^0.18.2",
+    "three": "^0.160.0"
   }
 }

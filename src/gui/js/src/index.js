@@ -1,26 +1,5 @@
-// Import only used THREE modules
-import { 
-    Scene, 
-    PerspectiveCamera, 
-    WebGLRenderer, 
-    BoxGeometry, 
-    MeshStandardMaterial, 
-    Mesh, 
-    GridHelper, 
-    AxesHelper, 
-    AmbientLight, 
-    DirectionalLight, 
-    Group, 
-    ConeGeometry, 
-    CylinderGeometry, 
-    InstancedMesh, 
-    Matrix4, 
-    Vector3, 
-    Quaternion, 
-    Color 
-} from 'three';
+import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
 
 /**
  * MagneticVisualization class for visualizing magnetization distributions
@@ -36,8 +15,9 @@ class MagneticVisualization {
         this.arrows = [];
         this.gridSize = [10, 10, 10];
         this.dimensions = [10, 10, 10];
-        this.arrowGroup = new Group();
+        this.arrowGroup = new THREE.Group();
         this.arrowPositions = null;
+        this.codeEditor = null;
     }
 
     /**
@@ -47,41 +27,41 @@ class MagneticVisualization {
      */
     init(container, data = null) {
         // Create scene
-        this.scene = new Scene();
-        this.scene.background = new Color(0xf0f0f0);
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0xf0f0f0);
 
         // Create camera
         const width = container.clientWidth;
         const height = container.clientHeight;
-        this.camera = new PerspectiveCamera(75, width / height, 0.1, 1000);
+        this.camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
         this.camera.position.z = 5;
 
         // Create renderer
-        this.renderer = new WebGLRenderer({ antialias: true });
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(width, height);
         container.innerHTML = '';
         container.appendChild(this.renderer.domElement);
 
         // Add helpers
-        this.scene.add(new GridHelper(10, 10));
-        this.scene.add(new AxesHelper(5));
+        this.scene.add(new THREE.GridHelper(10, 10));
+        this.scene.add(new THREE.AxesHelper(5));
 
         // Create cube
-        const geometry = new BoxGeometry();
-        const material = new MeshStandardMaterial({ 
+        const geometry = new THREE.BoxGeometry();
+        const material = new THREE.MeshStandardMaterial({ 
             color: 0x0077ff,
             metalness: 0.3,
             roughness: 0.4,
             transparent: true,
             opacity: 0.3
         });
-        this.cube = new Mesh(geometry, material);
+        this.cube = new THREE.Mesh(geometry, material);
         this.scene.add(this.cube);
 
         // Add lights
-        this.scene.add(new AmbientLight(0xffffff, 0.5));
+        this.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
         
-        const directionalLight = new DirectionalLight(0xffffff, 0.8);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(5, 5, 5);
         this.scene.add(directionalLight);
 
@@ -92,6 +72,9 @@ class MagneticVisualization {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
+
+        // Initialize code editor
+        this.initCodeEditor();
 
         // Initialize magnetization if data provided
         if (data) {
@@ -105,16 +88,83 @@ class MagneticVisualization {
     }
 
     /**
+     * Initialize code editor
+     */
+    initCodeEditor() {
+        const editorElement = document.getElementById('code-editor');
+        if (editorElement) {
+            this.codeEditor = ace.edit(editorElement);
+            
+            // Set editor options
+            this.codeEditor.setOptions({
+                mode: 'ace/mode/julia',
+                theme: 'ace/theme/github',
+                fontSize: '14px',
+                tabSize: 4,
+                useSoftTabs: true,
+                enableBasicAutocompletion: true,
+                enableSnippets: true,
+                enableLiveAutocompletion: true,
+                wrapBehavioursEnabled: true,
+                wrap: true,
+                showPrintMargin: false,
+                showGutter: true,
+                highlightActiveLine: true,
+                autoScrollEditorIntoView: true
+            });
+            
+            // Set default Julia code
+            this.codeEditor.setValue(`# MicroMagnetic.jl Simulation
+using MicroMagnetic
+
+# Create mesh
+mesh = BoxMesh([10, 10, 10], [2, 2, 2])
+
+# Set material parameters
+set_material_parameters(mesh, 
+    Ms=8e5,
+    A=1e-11,
+    K=0.0,
+    u=[0, 0, 1]
+)
+
+# Set initial magnetization
+set_magnetization(mesh, [1, 0, 0])
+
+# Create driver
+driver = LLGDriver(alpha=0.1)
+
+# Run simulation
+run_simulation(mesh, driver, 1e-9, 100)
+
+# Visualize results
+visualize(mesh)
+`, 1); // 1 means set cursor at the beginning
+            
+            // Add event listener for code changes
+            this.codeEditor.on('change', () => {
+                const code = this.codeEditor.getValue();
+                console.log('Code changed:', code);
+            });
+            
+            console.log('Code editor initialized successfully!');
+        } else {
+            console.warn('Code editor container not found');
+        }
+    }
+
+    /**
      * Animation loop
      */
     animate() {
         this.animationId = requestAnimationFrame(() => this.animate());
 
-        if (this.controls) {
-            this.controls.update();
-        }
-
         if (this.renderer && this.scene && this.camera) {
+            // Update controls
+            if (this.controls) {
+                this.controls.update();
+            }
+            
             this.renderer.render(this.scene, this.camera);
         }
     }
@@ -241,36 +291,36 @@ class MagneticVisualization {
      */
     createArrowInstances(arrowData, arrowScale) {
         // Create geometries
-        const coneGeometry = new ConeGeometry(0.05, 0.2, 32);
+        const coneGeometry = new THREE.ConeGeometry(0.05, 0.2, 32);
         coneGeometry.translate(0, -0.2, 0);
         
-        const cylinderGeometry = new CylinderGeometry(0.01, 0.01, 0.2, 32);
+        const cylinderGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.2, 32);
         cylinderGeometry.translate(0, -0.2, 0);
     
         // Create material
-        const material = new MeshStandardMaterial({ 
+        const material = new THREE.MeshStandardMaterial({ 
             color: 0x0077ff,
             metalness: 0.3,
             roughness: 0.4
         });
     
         // Create instanced meshes
-        const coneMesh = new InstancedMesh(coneGeometry, material, arrowData.length);
-        const cylinderMesh = new InstancedMesh(cylinderGeometry, material, arrowData.length);
+        const coneMesh = new THREE.InstancedMesh(coneGeometry, material, arrowData.length);
+        const cylinderMesh = new THREE.InstancedMesh(cylinderGeometry, material, arrowData.length);
     
         // Set up matrices and colors
-        const coneMatrix = new Matrix4();
-        const cylinderMatrix = new Matrix4();
-        const color = new Color();
-        const up = new Vector3(0, 1, 0);
+        const coneMatrix = new THREE.Matrix4();
+        const cylinderMatrix = new THREE.Matrix4();
+        const color = new THREE.Color();
+        const up = new THREE.Vector3(0, 1, 0);
     
         for (let i = 0; i < arrowData.length; i++) {
             const data = arrowData[i];
-            const position = new Vector3(...data.position);
-            const direction = new Vector3(...data.direction).normalize();
+            const position = new THREE.Vector3(...data.position);
+            const direction = new THREE.Vector3(...data.direction).normalize();
 
             // Calculate rotation
-            const quaternion = new Quaternion();
+            const quaternion = new THREE.Quaternion();
             quaternion.setFromUnitVectors(up, direction);
 
             // Calculate positioning
@@ -281,13 +331,13 @@ class MagneticVisualization {
             // Position cylinder
             const cylinderPosition = position.clone().sub(offset)
                 .add(arrowDirection.clone().multiplyScalar(0.2 * arrowScale));
-            cylinderMatrix.compose(cylinderPosition, quaternion, new Vector3(arrowScale, arrowScale, arrowScale));
+            cylinderMatrix.compose(cylinderPosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             cylinderMesh.setMatrixAt(i, cylinderMatrix);
 
             // Position cone
             const conePosition = position.clone().sub(offset)
                 .add(arrowDirection.clone().multiplyScalar(0.4 * arrowScale));
-            coneMatrix.compose(conePosition, quaternion, new Vector3(arrowScale, arrowScale, arrowScale));
+            coneMatrix.compose(conePosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             coneMesh.setMatrixAt(i, coneMatrix);
 
             // Set color based on direction
@@ -317,18 +367,18 @@ class MagneticVisualization {
     
         const coneMesh = this.arrows[0];
         const cylinderMesh = this.arrows[1];
-        const coneMatrix = new Matrix4();
-        const cylinderMatrix = new Matrix4();
-        const color = new Color();
-        const up = new Vector3(0, 1, 0);
+        const coneMatrix = new THREE.Matrix4();
+        const cylinderMatrix = new THREE.Matrix4();
+        const color = new THREE.Color();
+        const up = new THREE.Vector3(0, 1, 0);
     
         for (let i = 0; i < arrowData.length; i++) {
             const data = arrowData[i];
-            const position = new Vector3(...data.position);
-            const direction = new Vector3(...data.direction).normalize();
+            const position = new THREE.Vector3(...data.position);
+            const direction = new THREE.Vector3(...data.direction).normalize();
 
             // Calculate rotation
-            const quaternion = new Quaternion();
+            const quaternion = new THREE.Quaternion();
             quaternion.setFromUnitVectors(up, direction);
 
             // Calculate positioning
@@ -339,13 +389,13 @@ class MagneticVisualization {
             // Update cylinder
             const cylinderPosition = position.clone().sub(offset)
                 .add(arrowDirection.clone().multiplyScalar(0.2 * arrowScale));
-            cylinderMatrix.compose(cylinderPosition, quaternion, new Vector3(arrowScale, arrowScale, arrowScale));
+            cylinderMatrix.compose(cylinderPosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             cylinderMesh.setMatrixAt(i, cylinderMatrix);
 
             // Update cone
             const conePosition = position.clone().sub(offset)
                 .add(arrowDirection.clone().multiplyScalar(0.4 * arrowScale));
-            coneMatrix.compose(conePosition, quaternion, new Vector3(arrowScale, arrowScale, arrowScale));
+            coneMatrix.compose(conePosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             coneMesh.setMatrixAt(i, coneMatrix);
 
             // Update color
@@ -449,5 +499,44 @@ class MagneticVisualization {
 // Export to global scope
 window.MagneticVisualization = MagneticVisualization;
 
-// Export as ES module
-export default MagneticVisualization;
+// Initialize GUI when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Initializing MicroMagneticGUI...');
+    
+    // Create and initialize visualization
+    const container = document.getElementById('visualization-container');
+    if (container) {
+        const visualization = new MagneticVisualization();
+        visualization.init(container);
+        
+        // Add sample data for testing
+        const sampleData = {
+            cells: [10, 10, 10],
+            dimensions: [10, 10, 10],
+            magnetization: []
+        };
+        
+        // Generate sample magnetization data
+        for (let i = 0; i < 10; i++) {
+            for (let j = 0; j < 10; j++) {
+                for (let k = 0; k < 10; k++) {
+                    // Create some interesting pattern
+                    const x = Math.sin(i * 0.5) * Math.cos(k * 0.3);
+                    const y = Math.cos(j * 0.5) * Math.sin(i * 0.3);
+                    const z = Math.sin(k * 0.5) * Math.cos(j * 0.3);
+                    
+                    // Normalize
+                    const norm = Math.sqrt(x*x + y*y + z*z);
+                    sampleData.magnetization.push([x/norm, y/norm, z/norm]);
+                }
+            }
+        }
+        
+        // Update visualization with sample data
+        visualization.updateMagnetization(sampleData);
+        
+        console.log('MicroMagneticGUI initialized successfully!');
+    } else {
+        console.error('Visualization container not found');
+    }
+});
