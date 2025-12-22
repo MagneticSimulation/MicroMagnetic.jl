@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import WebSocketClient from './client.js';
 
 /**
  * MagneticVisualization class for visualizing magnetization distributions
@@ -18,6 +19,7 @@ class MagneticVisualization {
         this.arrowGroup = new THREE.Group();
         this.arrowPositions = null;
         this.codeEditor = null;
+        this.webSocketClient = null;
     }
 
     /**
@@ -73,6 +75,9 @@ class MagneticVisualization {
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
 
+        // Initialize Julia communicator
+        this.initWebSocketClient();
+
         // Initialize code editor
         this.initCodeEditor();
 
@@ -85,6 +90,139 @@ class MagneticVisualization {
         this.animate();
 
         console.log('MagneticVisualization initialized successfully!');
+    }
+
+    /**
+     * Initialize WebSocket client for communicating with Julia server
+     */
+    initWebSocketClient() {
+        try {
+            // Initialize WebSocket client
+            this.webSocketClient = new WebSocketClient();
+            
+            // Set up event listeners
+            this.webSocketClient.on('connect', () => {
+                console.log('Connected to WebSocket server');
+            });
+            
+            this.webSocketClient.on('disconnect', () => {
+                console.log('Disconnected from WebSocket server');
+            });
+            
+            this.webSocketClient.on('error', (error) => {
+                console.error('WebSocket error:', error);
+            });
+            
+            // Set up message listeners for specific message types
+            this.webSocketClient.on('simulation_status', (data) => {
+                this.handleJuliaMessage({ type: 'simulation_status', status: data });
+            });
+            
+            this.webSocketClient.on('magnetization_data', (data) => {
+                this.handleJuliaMessage({ type: 'magnetization_data', data: data });
+            });
+            
+            this.webSocketClient.on('command_response', (data) => {
+                this.handleJuliaMessage({ type: 'command_response', ...data });
+            });
+            
+            this.webSocketClient.on('error', (data) => {
+                this.handleJuliaMessage({ type: 'error', ...data });
+            });
+            
+        } catch (error) {
+            console.error('Failed to initialize WebSocket client:', error);
+        }
+    }
+
+    /**
+     * Handle message from Julia server
+     * @param {Object} message - Message from Julia server
+     */
+    handleJuliaMessage(message) {
+        console.log('Received message from Julia:', message);
+        
+        switch (message.type) {
+            case 'simulation_status':
+                this.updateSimulationStatus(message.status);
+                break;
+            case 'magnetization_data':
+                this.updateMagnetization(message.data);
+                break;
+            case 'command_response':
+                this.handleCommandResponse(message);
+                break;
+            case 'error':
+                this.handleError(message);
+                break;
+            default:
+                console.log('Unknown message type:', message.type);
+        }
+    }
+
+    /**
+     * Update simulation status display
+     * @param {Object} status - Simulation status
+     */
+    updateSimulationStatus(status) {
+        console.log('Simulation status:', status);
+        
+        // Update status message
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            if (status.has_sim) {
+                statusElement.textContent = `Status: ${status.status}\nRunning: ${status.is_running}`;
+            } else {
+                statusElement.textContent = 'Status: No simulation created';
+            }
+        }
+    }
+
+    /**
+     * Handle command response from Julia server
+     * @param {Object} response - Command response
+     */
+    handleCommandResponse(response) {
+        console.log('Command response:', response);
+        
+        // Update status message
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            if (response.success) {
+                statusElement.textContent = `Command "${response.command}" executed successfully\nResult: ${JSON.stringify(response.result)}`;
+            } else {
+                statusElement.textContent = `Error executing command "${response.command}":\n${response.error}`;
+            }
+        }
+    }
+
+    /**
+     * Handle error from Julia server
+     * @param {Object} error - Error message
+     */
+    handleError(error) {
+        console.error('Julia error:', error);
+        
+        // Update status message
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            statusElement.textContent = `Error: ${error.message}`;
+        }
+    }
+
+    /**
+     * Send command to Julia server
+     * @param {string} command - Command to execute
+     * @param {Object} params - Command parameters
+     */
+    sendCommand(command, params = {}) {
+        console.log(`Sending command to Julia: ${command}`, params);
+        
+        if (this.webSocketClient) {
+            this.webSocketClient.sendCommand(command, params).then(response => {
+                this.handleCommandResponse(response);
+            });
+        }
     }
 
     /**
@@ -481,6 +619,26 @@ visualize(mesh)
     /**
      * Clean up resources
      */
+    /**
+     * Run Julia code
+     * @param {string} code - Julia code to execute
+     */
+    runCode(code) {
+        console.log('Running Julia code:', code);
+        
+        // Update status message
+        const statusElement = document.getElementById('status-message');
+        if (statusElement) {
+            statusElement.textContent = 'Running Julia code...';
+        }
+        
+        // Send code to Julia server
+        this.sendCommand('run_code', { code });
+    }
+
+    /**
+     * Dispose resources
+     */
     dispose() {
         if (this.animationId) {
             cancelAnimationFrame(this.animationId);
@@ -490,6 +648,10 @@ visualize(mesh)
 
         if (this.renderer) {
             this.renderer.dispose();
+        }
+
+        if (this.webSocketClient) {
+            this.webSocketClient.disconnect();
         }
 
         console.log('MagneticVisualization disposed');
@@ -508,6 +670,101 @@ document.addEventListener('DOMContentLoaded', () => {
     if (container) {
         const visualization = new MagneticVisualization();
         visualization.init(container);
+        
+        // Add event listener for run-code button
+        const runButton = document.getElementById('run-code');
+        if (runButton) {
+            runButton.addEventListener('click', () => {
+                console.log('Run button clicked');
+                
+                if (visualization.codeEditor) {
+                    const code = visualization.codeEditor.getValue();
+                    visualization.runCode(code);
+                }
+            });
+        }
+        
+        // Add event listener for run-simulation-btn button
+        const runSimulationButton = document.getElementById('run-simulation-btn');
+        if (runSimulationButton) {
+            runSimulationButton.addEventListener('click', () => {
+                console.log('Run simulation button clicked');
+                
+                if (visualization.codeEditor) {
+                    const code = visualization.codeEditor.getValue();
+                    visualization.runCode(code);
+                }
+            });
+        }
+        
+        // Add event listeners for test buttons
+        const testConnectionButton = document.getElementById('test-connection-btn');
+        if (testConnectionButton) {
+            testConnectionButton.addEventListener('click', () => {
+                console.log('Test connection button clicked');
+                
+                // Update status message
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.textContent = 'Testing connection to Julia server...';
+                }
+                
+                // Send test command
+                visualization.sendCommand('test_connection', {});
+            });
+        }
+        
+        const sendCommandButton = document.getElementById('send-command-btn');
+        if (sendCommandButton) {
+            sendCommandButton.addEventListener('click', () => {
+                console.log('Send test command button clicked');
+                
+                // Update status message
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.textContent = 'Sending test command to Julia server...';
+                }
+                
+                // Send test command with parameters
+                visualization.sendCommand('test_command', {
+                    message: 'Hello from JavaScript!',
+                    timestamp: Date.now(),
+                    numbers: [1, 2, 3, 4, 5]
+                });
+            });
+        }
+        
+        const getStatusButton = document.getElementById('get-status-btn');
+        if (getStatusButton) {
+            getStatusButton.addEventListener('click', () => {
+                console.log('Get Julia status button clicked');
+                
+                // Update status message
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.textContent = 'Getting Julia server status...';
+                }
+                
+                // Send status command
+                visualization.sendCommand('get_status', {});
+            });
+        }
+        
+        const stopServerButton = document.getElementById('stop-server-btn');
+        if (stopServerButton) {
+            stopServerButton.addEventListener('click', () => {
+                console.log('Close connection button clicked');
+                
+                // Update status message
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.textContent = 'Closing connection...';
+                }
+                
+                // Send stop command
+                visualization.sendCommand('stop_server', {});
+            });
+        }
         
         // Add sample data for testing
         const sampleData = {

@@ -4,6 +4,7 @@ authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>", "Boyao Lv <lvboyao@mail.ustc.e
 version = "0.5.0"
 
 [deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
@@ -16,17 +17,21 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 ReadVTK = "dc215faf-f008-4882-a9f7-a79a826fadc3"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 
 [compat]
 julia = "1.11"
 FFTW = "1"
-KernelAbstractions = "0.9.30"
+KernelAbstractions = "0.9"
 TimerOutputs = "0.5"
 ReadVTK = "0.2"
 WriteVTK = "1.18"
 NearestNeighbors = "0.4"
 StaticArrays = "1.9"
 PoissonDiskSampling = "0.11"
+HTTP = "1.10"
+JSON = "1"
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
