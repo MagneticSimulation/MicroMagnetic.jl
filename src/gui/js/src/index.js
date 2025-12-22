@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GUI } from 'lil-gui';
-import { WebSocketClient } from './client.js';
+import WebSocketClient from './client.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /**
@@ -98,66 +98,96 @@ class MagneticVisualization {
      */
     initWebSocketClient() {
         try {
-            // Initialize WebSocket client
-            this.webSocketClient = new WebSocketClient();
+            console.log('Initializing WebSocket client');
+            
+            // Create WebSocket client instance
+            this.webSocketClient = new WebSocketClient({});
             
             // Set up event listeners
             this.webSocketClient.on('connect', () => {
-                console.log('Connected to WebSocket server');
+                console.log('WebSocket connected to Julia server');
+                
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.textContent = 'Connected to Julia server';
+                    statusElement.className = 'status-connected';
+                }
             });
             
             this.webSocketClient.on('disconnect', () => {
-                console.log('Disconnected from WebSocket server');
+                console.log('WebSocket disconnected from Julia server');
+                
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.textContent = 'Disconnected from Julia server';
+                    statusElement.className = 'status-disconnected';
+                }
             });
             
             this.webSocketClient.on('error', (error) => {
                 console.error('WebSocket error:', error);
+                
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.textContent = `Error: ${error.message}`;
+                    statusElement.className = 'status-error';
+                }
             });
             
-            // Set up message listeners for specific message types
+            // Set up message handlers
             this.webSocketClient.on('simulation_status', (data) => {
-                this.handleJuliaMessage({ type: 'simulation_status', status: data });
+                this.handleJuliaMessage('simulation_status', data);
             });
             
             this.webSocketClient.on('magnetization_data', (data) => {
-                this.handleJuliaMessage({ type: 'magnetization_data', data: data });
+                this.handleJuliaMessage('magnetization_data', data);
             });
             
             this.webSocketClient.on('command_response', (data) => {
-                this.handleJuliaMessage({ type: 'command_response', ...data });
+                this.handleJuliaMessage('command_response', data);
             });
             
             this.webSocketClient.on('error', (data) => {
-                this.handleJuliaMessage({ type: 'error', ...data });
+                this.handleJuliaMessage('error', data);
             });
+            
+            // Connect to server
+            this.webSocketClient.connect();
             
         } catch (error) {
             console.error('Failed to initialize WebSocket client:', error);
+            
+            const statusElement = document.getElementById('status-message');
+            if (statusElement) {
+                statusElement.textContent = `Error: ${error.message}`;
+                statusElement.className = 'status-error';
+            }
         }
     }
 
     /**
      * Handle message from Julia server
-     * @param {Object} message - Message from Julia server
+     * @param {string} type - Message type
+     * @param {Object} data - Message data
      */
-    handleJuliaMessage(message) {
-        console.log('Received message from Julia:', message);
+    handleJuliaMessage(type, data) {
+        console.log('Received message from Julia:', { type, data });
         
-        switch (message.type) {
+        switch (type) {
             case 'simulation_status':
-                this.updateSimulationStatus(message.status);
+                this.updateSimulationStatus(data);
                 break;
             case 'magnetization_data':
-                this.updateMagnetization(message.data);
+                this.updateMagnetization(data);
                 break;
             case 'command_response':
-                this.handleCommandResponse(message);
+                this.handleCommandResponse(data);
                 break;
             case 'error':
-                this.handleError(message);
+                this.handleError(data);
                 break;
             default:
-                console.log('Unknown message type:', message.type);
+                console.warn('Unknown message type:', type);
         }
     }
 

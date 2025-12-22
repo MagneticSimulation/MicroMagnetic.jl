@@ -13,7 +13,7 @@ export default {
     commonjs(),
     terser({
       compress: {
-        drop_console: true,
+        drop_console: false,
         drop_debugger: true
       },
       mangle: true,

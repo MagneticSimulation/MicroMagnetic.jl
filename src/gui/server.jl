@@ -98,6 +98,7 @@ function init_default_handlers()
         
         log_message("Received command: $command (ID: $command_id)")
         response = Dict(
+            "id" => command_id,
             "command" => command,
             "success" => true,
             "result" => Dict("status" => "processed", "server_time" => now())

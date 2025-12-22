@@ -11,7 +11,6 @@ class WebSocketClient {
      * @param {string} [options.sessionId] - Session ID for client identification
      */
     constructor(options = {}) {
-        // 自动根据当前页面协议选择 WebSocket 协议
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         this.config = {
             serverUrl: options.serverUrl || `${protocol}//${window.location.host}`,
@@ -226,9 +225,8 @@ class WebSocketClient {
             this.commandCallbacks.delete(commandId);
         } else {
             this.log('warn', `No callback found for command ID: ${commandId}`);
+            this.emit('command_response', data);
         }
-        
-        this.emit('command_response', data);
     }
     
     /**
@@ -442,7 +440,9 @@ if (typeof module !== 'undefined' && module.exports) {
     define([], function() {
         return WebSocketClient;
     });
-} else {
+} else if (typeof window !== 'undefined') {
     // Browser global
     window.WebSocketClient = WebSocketClient;
 }
+
+export default WebSocketClient;
