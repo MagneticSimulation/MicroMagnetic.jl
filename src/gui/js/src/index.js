@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { GUI } from 'lil-gui';
+import { WebSocketClient } from './client.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import WebSocketClient from './client.js';
 
 /**
  * MagneticVisualization class for visualizing magnetization distributions
@@ -230,65 +231,45 @@ class MagneticVisualization {
      */
     initCodeEditor() {
         const editorElement = document.getElementById('code-editor');
-        if (editorElement) {
-            this.codeEditor = ace.edit(editorElement);
-            
-            // Set editor options
-            this.codeEditor.setOptions({
-                mode: 'ace/mode/julia',
-                theme: 'ace/theme/github',
-                fontSize: '14px',
-                tabSize: 4,
-                useSoftTabs: true,
-                enableBasicAutocompletion: true,
-                enableSnippets: true,
-                enableLiveAutocompletion: true,
-                wrapBehavioursEnabled: true,
-                wrap: true,
-                showPrintMargin: false,
-                showGutter: true,
-                highlightActiveLine: true,
-                autoScrollEditorIntoView: true
-            });
-            
-            // Set default Julia code
-            this.codeEditor.setValue(`# MicroMagnetic.jl Simulation
-using MicroMagnetic
-
-# Create mesh
-mesh = BoxMesh([10, 10, 10], [2, 2, 2])
-
-# Set material parameters
-set_material_parameters(mesh, 
-    Ms=8e5,
-    A=1e-11,
-    K=0.0,
-    u=[0, 0, 1]
-)
-
-# Set initial magnetization
-set_magnetization(mesh, [1, 0, 0])
-
-# Create driver
-driver = LLGDriver(alpha=0.1)
-
-# Run simulation
-run_simulation(mesh, driver, 1e-9, 100)
-
-# Visualize results
-visualize(mesh)
-`, 1); // 1 means set cursor at the beginning
-            
-            // Add event listener for code changes
-            this.codeEditor.on('change', () => {
-                const code = this.codeEditor.getValue();
-                console.log('Code changed:', code);
-            });
-            
-            console.log('Code editor initialized successfully!');
-        } else {
-            console.warn('Code editor container not found');
+        if (!editorElement) {
+            console.error('Code editor element not found');
+            return;
         }
+
+        // Create ACE editor instance
+        this.codeEditor = ace.edit(editorElement, {
+            mode: 'ace/mode/julia',
+            theme: 'ace/theme/cloud_editor_dark',
+            fontSize: '16px'
+        });
+
+        // Set default code
+        this.codeEditor.setValue(`using MicroMagnetic
+@using_gpu()
+
+mesh = FDMesh(; nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9);
+#Create a simulation instance
+sim = Sim(mesh; driver="SD", name="std4")
+
+# Set saturation magnetization
+set_Ms(sim, 8e5)   
+
+add_exch(sim, 1.3e-11) # exchange interaction
+add_demag(sim) # demagnetization
+
+init_m0(sim, (1, 0.25, 0.1))
+
+# Relax the system
+relax(sim; stopping_dmdt=0.01)  
+`);
+
+        // Set focus
+        this.codeEditor.focus();
+
+        // Add change event listener
+        this.codeEditor.on('change', () => {
+            console.log('Code changed');
+        });
     }
 
     /**
