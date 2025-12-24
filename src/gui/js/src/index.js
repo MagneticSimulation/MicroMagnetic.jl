@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GUI } from 'lil-gui';
 import WebSocketClient from './client.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CellManager } from './cell.js';
 
 /**
  * MagneticVisualization class for visualizing magnetization distributions
@@ -21,6 +22,10 @@ class MagneticVisualization {
         this.arrowPositions = null;
         this.codeEditor = null;
         this.webSocketClient = null;
+        this.wsClient = null;
+        this.isConnected = false;
+        this.connectionAttempts = 0;
+        this.maxConnectionAttempts = 5;
     }
 
     /**
@@ -81,6 +86,7 @@ class MagneticVisualization {
 
         // Initialize code editor
         this.initCodeEditor();
+
 
         // Initialize magnetization if data provided
         if (data) {
@@ -260,17 +266,33 @@ class MagneticVisualization {
      * Initialize code editor
      */
     initCodeEditor() {
-        const editorElement = document.getElementById('code-editor');
-        if (!editorElement) {
-            console.error('Code editor element not found');
+        const editorContainer = document.getElementById('code-editor');
+        if (!editorContainer) {
+            console.error('Code editor container not found');
             return;
         }
 
-        // Create ACE editor instance
-        this.codeEditor = ace.edit(editorElement, {
-            mode: 'ace/mode/julia',
-            theme: 'ace/theme/cloud_editor_dark',
-            fontSize: '16px'
+        // Create a textarea element for CodeMirror
+        const textarea = document.createElement('textarea');
+        editorContainer.appendChild(textarea);
+
+        // Create CodeMirror editor instance
+        this.codeEditor = CodeMirror.fromTextArea(textarea, {
+            mode: { name: 'julia' },
+            theme: 'material',
+            lineNumbers: true,
+            smartIndent: true,
+            matchBrackets: true,
+            autofocus: false,
+            readOnly: false,
+            tabSize: 4,
+            indentUnit: 4,
+            indentWithTabs: false,
+            extraKeys: {
+                'Shift-Enter': () => this.runSimulation()
+            },
+            height: '100%',
+            width: '100%'
         });
 
         // Set default code
@@ -282,24 +304,42 @@ mesh = FDMesh(; nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9);
 sim = Sim(mesh; driver="SD", name="std4")
 
 # Set saturation magnetization
-set_Ms(sim, 8e5)   
+Ms = 8.6e5; # A/m
+set_Ms!(sim, Ms)
 
-add_exch(sim, 1.3e-11) # exchange interaction
-add_demag(sim) # demagnetization
+# Add exchange interaction
+A = 1.3e-11; # J/m
+add_exch!(sim, A)
 
-init_m0(sim, (1, 0.25, 0.1))
+# Add Dzyaloshinskii-Moriya interaction
+D = 4e-3; # J/m^2
+add_dmi!(sim, D, mode="interfacial")
 
-# Relax the system
-relax(sim; stopping_dmdt=0.01)  
-`);
+# Add Zeeman field
+H = [0, 0, 0]; # A/m
+add_zeeman!(sim, H)
 
-        // Set focus
-        this.codeEditor.focus();
+# Add demagnetization
+add_demag!(sim)
 
-        // Add change event listener
-        this.codeEditor.on('change', () => {
-            console.log('Code changed');
-        });
+# Initialize magnetization
+init_m0!(sim, [1, 0, 1])
+
+# Set stopping criteria
+set_maxsteps!(sim, 10000)
+set_stoptol!(sim, 1e-6)
+
+# Run simulation
+run_sim!(sim)
+
+# Save final magnetization
+save_m(sim, "final_m")`);
+
+        // Set editor size
+        this.codeEditor.setSize('100%', '100%');
+        this.codeEditor.refresh();
+
+        console.log('CodeMirror editor initialized successfully');
     }
 
     /**

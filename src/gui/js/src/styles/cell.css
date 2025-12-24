@@ -1,0 +1,113 @@
+.cell {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.cell-header {
+    background: #f5f5f5;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.cell-description {
+    font-weight: normal;
+    color: #333333;
+    font-size: 14px;
+}
+
+.cell-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.cell-content {
+    padding: 0;
+}
+
+.cell-editor {
+    position: relative;
+}
+
+.cell-editor .CodeMirror {
+    background: #ffffff;
+    border: none;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+
+.cell-output {
+    padding: 10px;
+    border-top: 1px solid #e0e0e0;
+    background: #f9f9f9;
+    font-family: monospace;
+    font-size: 13px;
+}
+
+.cell-output.success {
+    background: #e8f5e8;
+    border-color: #c8e6c9;
+}
+
+.cell-output.error {
+    background: #ffebee;
+    border-color: #ffcdd2;
+}
+
+.output-success {
+    color: #2e7d32;
+}
+
+.output-error {
+    color: #c62828;
+}
+
+.cell-output pre {
+    margin: 5px 0 0 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.cell-manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.cell-manager-title {
+    font-size: 16px;
+    font-weight: normal;
+    flex: 1;
+    text-align: center;
+}
+
+.cell-manager-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.cell-manager-btn {
+    padding: 4px 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.cell-manager-content {
+    padding: 0 4px;
+}
+
+.cell.collapsed .cell-content,
+.cell.collapsed .cell-output {
+    display: none;
+}

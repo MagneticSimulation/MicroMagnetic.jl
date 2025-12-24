@@ -12,95 +12,151 @@
         }
     </script>
     
-    <script src="dist/ace.js"></script>
-    <script src="dist/mode-julia.js"></script>
-    <script src="dist/theme-cloud_editor_dark.js"></script>
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material.min.css">
+    <link rel="stylesheet" href="src/styles/cell.css">
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f0f0; }
-        #visualization-container { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            z-index: 1; 
+        body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f0f0; overflow: hidden; }
+        
+        /* Main container for left-right layout */
+        .main-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
         }
-        #controls-panel { 
-            position: fixed; 
-            top: 20px; 
-            right: 20px; 
-            width: 450px; 
-            max-height: 80vh; 
-            background-color: rgba(255, 255, 255, 0.9); 
-            border-radius: 8px; 
-            padding: 20px; 
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
-            overflow-y: auto; 
-            z-index: 10; 
+        
+        /* Left section: Three.js visualization */
+        .visualization-section {
+            flex: 1;
+            position: relative;
+            background-color: #ffffff;
         }
-        #controls-panel h2 { margin-top: 0; font-size: 18px; color: #333; }
-        #controls-panel button { 
-            width: 100%; 
-            padding: 10px; 
-            margin: 10px 0; 
-            background-color: #4CAF50; 
-            color: white; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 16px; 
+        
+        #visualization-container {
+            width: 100%;
+            height: 100%;
         }
-        #controls-panel button:hover { background-color: #45a049; }
+        
+        /* Right section: Controls panel */
+        .controls-section {
+            width: 500px;
+            background-color: #ffffff;
+            border-left: 1px solid #e0e0e0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #controls-panel {
+            padding: 20px;
+            flex: 1;
+        }
+        
+        #controls-panel h2 { margin-top: 0; font-size: 18px; color: #333333; font-weight: normal; }
         #controls-panel input[type="range"] { width: 100%; margin: 10px 0; }
-        #controls-panel label { display: block; margin: 10px 0 5px; font-weight: bold; }
-        #simulation-status { margin-top: 20px; padding: 10px; background-color: #f9f9f9; border-radius: 4px; }
-        #simulation-status h3 { margin-top: 0; font-size: 16px; }
-        #status-message { font-family: monospace; background-color: #f0f0f0; padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+        #controls-panel label { display: block; margin: 10px 0 5px; font-weight: normal; color: #333333; }
+        #simulation-status { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border: 1px solid #e0e0e0; }
+        #simulation-status h3 { margin-top: 0; font-size: 16px; color: #333333; }
+        #status-message { 
+            font-family: monospace; 
+            background-color: #f0f0f0; 
+            padding: 10px; 
+            white-space: pre-wrap; 
+            color: #333333;
+            border: 1px solid #e0e0e0;
+        }
         
         /* Code Editor Styles */
         .code-editor-wrapper {
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
             margin: 10px 0;
+            overflow: hidden;
+            background-color: #ffffff;
         }
         #code-editor {
             height: 300px;
-            font-size: 14px;
+        }
+        
+        /* Control Section Styles */
+        .control-section {
+            margin-bottom: 20px;
+        }
+        
+        .control-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333333;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 5px;
+            font-weight: normal;
         }
     </style>
+    
+    <!-- CodeMirror JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/julia/julia.min.js"></script>
 </head>
 <body>
-    <div id="visualization-container"></div>
-    <div id="controls-panel">
-        <h2>MicroMagnetic.jl Control Panel</h2>
+    <div class="main-container">
+        <!-- Left section: Three.js visualization -->
+        <div class="visualization-section">
+            <div id="visualization-container"></div>
+        </div>
         
-        <!-- Code Editor Section -->
-        <div class="control-section">
-            <h3>Simulation Code</h3>
-            <div class="code-editor-wrapper">
-                <div id="code-editor"></div>
+        <!-- Right section: Controls panel -->
+        <div class="controls-section">
+            <div id="controls-panel">
+                <h2>MicroMagnetic.jl Control Panel</h2>
+                
+                <!-- Cell Section -->
+                <div class="control-section">
+                    <h3>Cell Management</h3>
+                    <button id="add-cell-btn">Add New Cell</button>
+                    <div id="cells-container"></div>
+                </div>
+                
+                <!-- Code Editor Section -->
+                <div class="control-section">
+                    <h3>Simulation Code</h3>
+                    <div class="code-editor-wrapper">
+                        <div id="code-editor"></div>
+                    </div>
+                    <button id="run-simulation-btn">Run Simulation</button>
+                </div>
+                
+                <!-- Test Buttons Section -->
+                <div class="control-section">
+                    <h3>Test Julia Connection</h3>
+                </div>
+                
+                <!-- Status Section -->
+                <div id="simulation-status">
+                    <h3>Simulation Status</h3>
+                    <div id="status-message">Ready to run simulation</div>
+                </div>
             </div>
-            <button id="run-simulation-btn">Run Simulation</button>
-        </div>
-        
-        <!-- Test Buttons Section -->
-        <div class="control-section">
-            <h3>Test Julia Connection</h3>
-            <button id="test-connection-btn">Test Connection</button>
-            <button id="send-command-btn">Send Test Command</button>
-            <button id="get-status-btn">Get Julia Status</button>
-            <button id="stop-server-btn">Close Connection</button>
-        </div>
-        
-        <!-- Status Section -->
-        <div id="simulation-status">
-            <h3>Simulation Status</h3>
-            <div id="status-message">Ready to run simulation</div>
         </div>
     </div>
-    
+      
     <!-- Import the bundle.js file (built by Rollup) -->
-    <script type="module" src="dist/bundle.js"></script>
+    <script type="module">
+        // Import Cell and CellManager
+        import { Cell, CellManager } from './src/cell.js';
+        
+        // Initialize CellManager
+        const cellManager = new CellManager('#cells-container');
+        
+        // Add event listener for adding new cells
+        document.getElementById('add-cell-btn').addEventListener('click', () => {
+            cellManager.addCell();
+        });
+        
+        // Import and initialize the main application
+        import './dist/bundle.js';
+        
+        console.log('CodeMirror-based Cell.js integration initialized');
+        console.log('Default cells created:', cellManager.getAllCells().length);
+    </script>
 </body>
 </html>
