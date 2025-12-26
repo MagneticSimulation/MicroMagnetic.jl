@@ -9,14 +9,15 @@ class Cell {
      * @param {string} description - Cell description
      */
     constructor(content = '', description = 'Code Cell') {
-        this.id = `cell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        this.id = `cell-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         this.content = content;
+        this.defaultContent = content;
         this.description = description;
         this.element = null;
         this.editor = null;
         this.outputElement = null;
         this.output = '';
-        this.collapsed = false; // Default expanded state
+        this.collapsed = true; // Default expanded state
     }
 
     /**
@@ -57,6 +58,16 @@ class Cell {
             this.run();
         });
 
+        // Reset button
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'cell-btn reset-btn';
+        resetBtn.textContent = '↻';
+        resetBtn.title = 'Reset to default code';
+        resetBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.reset();
+        });
+
         // Delete button
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'cell-btn delete-btn';
@@ -68,6 +79,7 @@ class Cell {
         });
 
         actions.appendChild(runBtn);
+        actions.appendChild(resetBtn);
         actions.appendChild(deleteBtn);
         header.appendChild(description);
         header.appendChild(actions);
@@ -80,11 +92,6 @@ class Cell {
         const editorContainer = document.createElement('div');
         editorContainer.className = 'cell-editor';
 
-        // Create textarea for CodeMirror
-        const textarea = document.createElement('textarea');
-        textarea.value = this.content;
-        editorContainer.appendChild(textarea);
-
         content.appendChild(editorContainer);
 
         // Create output area
@@ -96,8 +103,16 @@ class Cell {
         this.element.appendChild(content);
         this.element.appendChild(this.outputElement);
 
-        // Initialize CodeMirror editor
-        this.initEditor(textarea);
+        // Initialize CodeMirror editor directly on the container
+        this.initEditor(editorContainer);
+
+        // Apply initial collapse state
+        if (this.collapsed) {
+            const content = this.element.querySelector('.cell-content');
+            const output = this.outputElement;
+            content.style.display = 'none';
+            output.style.display = 'none';
+        }
 
         return this.element;
     }
@@ -105,8 +120,8 @@ class Cell {
     /**
      * Initialize CodeMirror editor
      */
-    initEditor(textarea) {
-        this.editor = CodeMirror.fromTextArea(textarea, {
+    initEditor(container) {
+        this.editor = CodeMirror(container, {
             mode: 'julia',
             theme: 'material',
             lineNumbers: false,
@@ -114,22 +129,51 @@ class Cell {
             viewportMargin: Infinity,
             indentUnit: 4,
             smartIndent: true,
+            value: this.content, // Set initial content directly
             extraKeys: {
                 'Shift-Enter': () => this.run(),
                 'Ctrl-Enter': () => {
                     this.run();
                     // Can add logic to create new cell here
                 }
-            }
+            },
+            // Add these options to ensure proper initialization
+            //autoFocus: true,
+            //readOnly: false,
+            placeholder: 'Enter code here...'
         });
+
+        // Force editor to render content immediately
+        this.editor.refresh();
+        
+        // Ensure the editor has the correct dimensions
+        this.editor.setSize('100%', '100%');
+        
+        // Explicitly set the value again to ensure it's displayed
+        this.editor.setValue(this.content);
+        
+        // Force another refresh to make sure everything is rendered
+        this.editor.refresh();
 
         // Listen for content changes
         this.editor.on('change', () => {
             this.content = this.editor.getValue();
         });
 
-        // Set appropriate font size
+        // Set appropriate font size and height
         this.editor.setSize('100%', 'auto');
+        this.editor.refresh();
+    }
+
+    /**
+     * Reset cell to default content
+     */
+    reset() {
+        this.setValue(this.defaultContent);
+        // Clear output when resetting
+        this.outputElement.style.display = 'none';
+        this.outputElement.innerHTML = '';
+        this.output = '';
     }
 
     /**
@@ -185,6 +229,16 @@ class Cell {
             if (this.output) {
                 output.style.display = 'block';
             }
+            
+            // Critical fix: Refresh CodeMirror when expanding
+            setTimeout(() => {
+                if (this.editor) {
+                    this.editor.refresh();
+                    // Ensure the editor has the correct dimensions
+                    this.editor.setSize('100%', 'auto');
+                    this.editor.refresh();
+                }
+            }, 10); // Small delay to ensure DOM is updated
         }
     }
 
@@ -222,6 +276,7 @@ class CellManager {
         this.collapsed = false; // Default expanded state
         
         if (this.container) {
+            this.container.classList.add('cell-manager');
             this.init();
         }
     }
@@ -267,36 +322,8 @@ class CellManager {
         titleText.className = 'cell-manager-title';
         titleText.textContent = this.title;
         
-        // Create action buttons container
-        const headerActions = document.createElement('div');
-        headerActions.className = 'cell-manager-actions';
-        
-        // Run all button
-        const runAllBtn = document.createElement('button');
-        runAllBtn.className = 'cell-manager-btn run-all-btn';
-        runAllBtn.textContent = 'Run All';
-        runAllBtn.title = 'Run All Cells';
-        runAllBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent bubble, avoid triggering header click event
-            this.runAll();
-        });
-
-        // Clear all outputs button
-        const clearAllBtn = document.createElement('button');
-        clearAllBtn.className = 'cell-manager-btn clear-all-btn';
-        clearAllBtn.textContent = 'Clear All';
-        clearAllBtn.title = 'Clear All Outputs';
-        clearAllBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.clearAllOutputs();
-        });
-
-        headerActions.appendChild(runAllBtn);
-        headerActions.appendChild(clearAllBtn);
-        
-        // Add title and buttons to header
+        // Add title to header
         header.appendChild(titleText);
-        header.appendChild(headerActions);
         
         // Create content container
         this.contentArea = document.createElement('div');

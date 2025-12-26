@@ -1,3 +1,33 @@
+/* CellManager styles */
+.cell-manager {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.cell-manager-header {
+    background: #f0f0f0;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.cell-manager-title {
+    font-size: 16px;
+    font-weight: normal;
+    color: #333333;
+}
+
+.cell-manager-content {
+    padding: 16px;
+    background-color: #fafafa;
+}
+
 .cell {
     background: #ffffff;
     border: 1px solid #e0e0e0;
@@ -24,6 +54,21 @@
 .cell-actions {
     display: flex;
     gap: 4px;
+}
+
+/* Button styles */
+.cell-btn {
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #ccc;
+    background-color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .cell-content {
@@ -72,39 +117,6 @@
     margin: 5px 0 0 0;
     white-space: pre-wrap;
     word-wrap: break-word;
-}
-
-.cell-manager-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    margin-bottom: 10px;
-    cursor: pointer;
-}
-
-.cell-manager-title {
-    font-size: 16px;
-    font-weight: normal;
-    flex: 1;
-    text-align: center;
-}
-
-.cell-manager-actions {
-    display: flex;
-    gap: 4px;
-}
-
-.cell-manager-btn {
-    padding: 4px 8px;
-    background-color: rgba(255, 255, 255, 0.2);
-    border: none;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.cell-manager-content {
-    padding: 0 4px;
 }
 
 .cell.collapsed .cell-content,
