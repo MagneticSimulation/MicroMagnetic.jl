@@ -107,11 +107,17 @@ class MagneticVisualization {
             console.log('Initializing WebSocket client');
             
             // Create WebSocket client instance
-            this.webSocketClient = new WebSocketClient({});
+            this.webSocketClient = new WebSocketClient({
+                autoConnect: false // Disable auto-connect to allow manual control
+            });
+            
+            // Initialize WebSocket UI elements
+            this.initWebSocketUI();
             
             // Set up event listeners
             this.webSocketClient.on('connect', () => {
                 console.log('WebSocket connected to Julia server');
+                this.updateWebSocketStatus(true);
                 
                 const statusElement = document.getElementById('status-message');
                 if (statusElement) {
@@ -122,6 +128,7 @@ class MagneticVisualization {
             
             this.webSocketClient.on('disconnect', () => {
                 console.log('WebSocket disconnected from Julia server');
+                this.updateWebSocketStatus(false);
                 
                 const statusElement = document.getElementById('status-message');
                 if (statusElement) {
@@ -157,9 +164,6 @@ class MagneticVisualization {
                 this.handleJuliaMessage('error', data);
             });
             
-            // Connect to server
-            this.webSocketClient.connect();
-            
         } catch (error) {
             console.error('Failed to initialize WebSocket client:', error);
             
@@ -169,6 +173,111 @@ class MagneticVisualization {
                 statusElement.className = 'status-error';
             }
         }
+    }
+
+    /**
+     * Initialize WebSocket UI elements and event listeners
+     */
+    initWebSocketUI() {
+        // Get UI elements
+        const statusIndicator = document.getElementById('ws-status-indicator');
+        const statusText = document.getElementById('ws-status-text');
+        const connectBtn = document.getElementById('ws-connect-btn');
+        
+        if (!statusIndicator || !statusText || !connectBtn) {
+            console.error('WebSocket UI elements not found');
+            return;
+        }
+        
+        // Initialize status
+        this.updateWebSocketStatus(false);
+        
+        // Add connect button event listener
+        connectBtn.addEventListener('click', async () => {
+            try {
+                if (this.webSocketClient && this.webSocketClient.isConnected()) {
+                    // Disconnect
+                    this.webSocketClient.disconnect();
+                } else {
+                    // Connect
+                    await this.webSocketClient.connect();
+                }
+            } catch (error) {
+                console.error('WebSocket connection error:', error);
+                this.updateWebSocketStatus(false);
+                
+                const statusElement = document.getElementById('status-message');
+                if (statusElement) {
+                    statusElement.textContent = `Connection error: ${error.message}`;
+                    statusElement.className = 'status-error';
+                }
+            }
+        });
+        
+        // Initialize simulation type and task type selections
+        this.initSimulationTypeSelection();
+        this.initTaskTypeSelection();
+    }
+
+    /**
+     * Update WebSocket status display
+     * @param {boolean} isConnected - Connection status
+     */
+    updateWebSocketStatus(isConnected) {
+        const statusIndicator = document.getElementById('ws-status-indicator');
+        const statusText = document.getElementById('ws-status-text');
+        const connectBtn = document.getElementById('ws-connect-btn');
+        
+        if (!statusIndicator || !statusText || !connectBtn) {
+            return;
+        }
+        
+        // Update status indicator
+        if (isConnected) {
+            statusIndicator.className = 'status-indicator connected';
+            statusText.textContent = 'Connected';
+            connectBtn.className = 'connect-btn connected';
+            connectBtn.textContent = 'Disconnect';
+        } else {
+            statusIndicator.className = 'status-indicator disconnected';
+            statusText.textContent = 'Disconnected';
+            connectBtn.className = 'connect-btn disconnected';
+            connectBtn.textContent = 'Connect';
+        }
+    }
+
+    /**
+     * Initialize simulation type selection
+     */
+    initSimulationTypeSelection() {
+        const selectElement = document.getElementById('simulation-type');
+        
+        selectElement.addEventListener('change', (event) => {
+            const selectedType = event.target.value;
+            console.log('Selected simulation type:', selectedType);
+            // Store selected simulation type
+            this.simulationType = selectedType;
+        });
+        
+        // Set default simulation type
+        this.simulationType = 'fd';
+    }
+
+    /**
+     * Initialize task type selection
+     */
+    initTaskTypeSelection() {
+        const selectElement = document.getElementById('task-type');
+        
+        selectElement.addEventListener('change', (event) => {
+            const selectedType = event.target.value;
+            console.log('Selected task type:', selectedType);
+            // Store selected task type
+            this.taskType = selectedType;
+        });
+        
+        // Set default task type
+        this.taskType = 'relax';
     }
 
     /**

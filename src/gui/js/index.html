@@ -12,88 +12,13 @@
         }
     </script>
     
-    <!-- CodeMirror CSS -->
+    <!-- CSS Files -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material.min.css">
     <link rel="stylesheet" href="src/styles/cell.css">
-    <style>
-        body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f0f0; overflow: hidden; }
-        
-        /* Main container for left-right layout */
-        .main-container {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-        }
-        
-        /* Left section: Three.js visualization */
-        .visualization-section {
-            flex: 1;
-            position: relative;
-            background-color: #ffffff;
-        }
-        
-        #visualization-container {
-            width: 100%;
-            height: 100%;
-        }
-        
-        /* Right section: Controls panel */
-        .controls-section {
-            width: 500px;
-            background-color: #ffffff;
-            border-left: 1px solid #e0e0e0;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        #controls-panel {
-            padding: 20px;
-            flex: 1;
-        }
-        
-        #controls-panel h2 { margin-top: 0; font-size: 18px; color: #333333; font-weight: normal; }
-        #controls-panel input[type="range"] { width: 100%; margin: 10px 0; }
-        #controls-panel label { display: block; margin: 10px 0 5px; font-weight: normal; color: #333333; }
-        #simulation-status { margin-top: 20px; padding: 15px; background-color: #f9f9f9; border: 1px solid #e0e0e0; }
-        #simulation-status h3 { margin-top: 0; font-size: 16px; color: #333333; }
-        #status-message { 
-            font-family: monospace; 
-            background-color: #f0f0f0; 
-            padding: 10px; 
-            white-space: pre-wrap; 
-            color: #333333;
-            border: 1px solid #e0e0e0;
-        }
-        
-        /* Code Editor Styles */
-        .code-editor-wrapper {
-            border: 1px solid #e0e0e0;
-            margin: 10px 0;
-            overflow: hidden;
-            background-color: #ffffff;
-        }
-        #code-editor {
-            height: 300px;
-        }
-        
-        /* Control Section Styles */
-        .control-section {
-            margin-bottom: 20px;
-        }
-        
-        .control-section h3 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
-            color: #333333;
-            border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 5px;
-            font-weight: normal;
-        }
-    </style>
+    <link rel="stylesheet" href="src/styles/main.css">
     
-    <!-- CodeMirror JavaScript -->
+    <!-- JavaScript Files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/julia/julia.min.js"></script>
 </head>
@@ -106,8 +31,48 @@
         
         <!-- Right section: Controls panel -->
         <div class="controls-section">
-            <div id="controls-panel">
-                <h2>MicroMagnetic.jl Control Panel</h2>
+            <div id="controls-panel">             
+               <div style="font-size: 20px; font-weight: 600; color: #333333; margin-bottom: 20px;"> 
+                MicroMagnetic.jl 
+               </div>
+                <!-- WebSocket Connection Section -->
+                <div class="control-section">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                        <div style="margin: 0; font-weight: 500; color: #333333;">Server:</div>
+                        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div id="ws-status-indicator" class="status-indicator disconnected"></div>
+                                <span id="ws-status-text">Disconnected</span>
+                            </div>
+                            <button id="ws-connect-btn" class="connect-btn disconnected">Connect</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Simulation Type Section -->
+                <div class="control-section">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="margin: 0; font-weight: 500; color: #333333; width: 120px;">Simulation Type:</div>
+                        <select id="simulation-type" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff;">
+                            <option value="fd" selected>Finite Difference (FD)</option>
+                            <option value="fe">Finite Element (FE)</option>
+                            <option value="atomistic">Atomistic</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Task Type Section -->
+                <div class="control-section">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="margin: 0; font-weight: 500; color: #333333; width: 120px;">Task Type:</div>
+                        <select id="task-type" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff;">
+                            <option value="relax" selected>Relax</option>
+                            <option value="dynamics">Dynamics</option>
+                            <option value="relax+dynamics">Relax + Dynamics</option>
+                            <option value="hysteresis">Hysteresis Loop</option>
+                        </select>
+                    </div>
+                </div>
                 
                 <!-- Cell Section -->
                 <div class="control-section">
