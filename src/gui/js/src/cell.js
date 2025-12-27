@@ -7,17 +7,20 @@ class Cell {
      * Constructor
      * @param {string} content - Cell content
      * @param {string} description - Cell description
+     * @param {CellManager} cellManager - Associated CellManager instance
      */
-    constructor(content = '', description = 'Code Cell') {
+    constructor(content = '', description = 'Code Cell', cellManager = null) {
         this.id = `cell-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         this.content = content;
         this.defaultContent = content;
         this.description = description;
+        this.cellManager = cellManager;
         this.element = null;
         this.editor = null;
         this.outputElement = null;
         this.output = '';
         this.collapsed = true; // Default expanded state
+        this.selected = false; // Track selection state
     }
 
     /**
@@ -34,9 +37,13 @@ class Cell {
         const header = document.createElement('div');
         header.className = 'cell-header';
         
-        // Add click event for collapse/expand
+        // Add click event for collapse/expand and selection
         header.addEventListener('click', () => {
             this.toggleCollapse();
+            // Add selection when clicking header
+            if (this.cellManager) {
+                this.cellManager.selectCellById(this.id);
+            }
         });
 
         // Create description
@@ -103,6 +110,17 @@ class Cell {
         this.element.appendChild(content);
         this.element.appendChild(this.outputElement);
 
+        // Add click event for cell selection
+        // Simplified version - only add to the cell element
+        this.element.addEventListener('click', (e) => {
+            // Check if click is on header or its children
+            const isHeaderClick = e.target.closest('.cell-header');
+            
+            if (!isHeaderClick && !this.selected) {
+                this.select();
+            }
+        });
+
         // Initialize CodeMirror editor directly on the container
         this.initEditor(editorContainer);
 
@@ -123,7 +141,7 @@ class Cell {
     initEditor(container) {
         this.editor = CodeMirror(container, {
             mode: 'julia',
-            theme: 'material',
+            theme: 'default',
             lineNumbers: false,
             lineWrapping: true,
             viewportMargin: Infinity,
@@ -257,6 +275,20 @@ class Cell {
         if (this.editor) {
             this.editor.setValue(content);
         }
+    }
+
+    /**
+     * Select this cell
+     */
+    select() {
+            console.log('Cell.select() called for cell:', this.id);
+            if (this.cellManager) {
+                console.log('Calling cellManager.selectCellById:', this.id);
+                this.cellManager.selectCellById(this.id);
+            } else {
+                console.log('Cell has no cellManager reference');
+            }
+        
     }
 }
 

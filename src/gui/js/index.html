@@ -14,7 +14,7 @@
     
     <!-- CSS Files -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material.min.css">
+    <!-- Removed monokai theme -->
     <link rel="stylesheet" href="src/styles/cell.css">
     <link rel="stylesheet" href="src/styles/main.css">
     
@@ -76,30 +76,20 @@
                 
                 <!-- Cell Section -->
                 <div class="control-section">
-                    <button id="add-cell-btn">Add New Cell</button>
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <button id="add-cell-btn">Add New Cell</button>
+                        <button id="update-cell-btn">Update Cell</button>
+                        <select id="cell-selector" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff;">
+                            <option value="">-- Select Cell --</option>
+                        </select>
+                    </div>
                     <div id="cells-container"></div>
-                </div>
-                
-                <!-- Test Buttons Section -->
-                <div class="control-section">
-                    <h3>Test Julia Connection</h3>
-                </div>
-                
-                <!-- Status Section -->
-                <div id="simulation-status">
-                    <h3>Simulation Status</h3>
-                    <div id="status-message">Ready to run simulation</div>
                 </div>
             </div>
         </div>
     </div>
       
     <!-- Import the bundle.js file (built by Rollup) -->
-    <script type="module">
-        // Import and initialize the main application
-        import './dist/bundle.js';
-        
-        console.log('MicroMagneticGUI initialized with RelaxTask');
-    </script>
+    <script type="module" src="./dist/bundle.js"></script>
 </body>
 </html>

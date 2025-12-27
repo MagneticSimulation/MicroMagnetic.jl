@@ -35,9 +35,20 @@
     overflow: hidden;
 }
 
+/* Selected cell styles */
+.cell.selected {
+    border: 3px solid #2196F3 !important;
+    box-shadow: 0 0 10px rgba(33, 150, 243, 0.5) !important;
+}
+
+.cell.selected .cell-header {
+    background-color: rgba(33, 150, 243, 0.2) !important;
+    border-bottom: 1px solid #90caf9;
+}
+
 .cell-header {
     background: #f5f5f5;
-    padding: 8px 12px;
+    padding: 4px 12px; /* Reduced padding from 8px to 4px */
     border-bottom: 1px solid #e0e0e0;
     display: flex;
     justify-content: space-between;
@@ -48,7 +59,21 @@
 .cell-description {
     font-weight: normal;
     color: #333333;
-    font-size: 14px;
+    font-size: 13px; /* Reduced font size from 14px to 13px */
+}
+
+.cell-btn {
+    width: 24px; /* Reduced width from 28px to 24px */
+    height: 24px; /* Reduced height from 28px to 24px */
+    margin: 0;
+    padding: 0;
+    border: 1px solid #ccc;
+    background-color: white;
+    font-size: 12px; /* Reduced font size from 14px to 12px */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .cell-actions {
@@ -56,20 +81,7 @@
     gap: 4px;
 }
 
-/* Button styles */
-.cell-btn {
-    width: 28px;
-    height: 28px;
-    margin: 0;
-    padding: 0;
-    border: 1px solid #ccc;
-    background-color: white;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+/* Button styles - removed duplicate definition */
 
 .cell-content {
     padding: 0;

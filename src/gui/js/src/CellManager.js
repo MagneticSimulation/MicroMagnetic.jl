@@ -1,5 +1,3 @@
-import { CellSelectorManager } from './CellSelectorManager.js';
-
 /**
  * CellManager class - Manage multiple cells
  */
@@ -14,6 +12,7 @@ class CellManager {
         this.cells = [];
         this.title = 'Code Cells';
         this.collapsed = false; // Default expanded state
+        this.selectedCell = null; // Track selected cell
         
         if (this.container) {
             this.container.classList.add('cell-manager');
@@ -29,15 +28,16 @@ class CellManager {
         this.createHeader();
         
         // Create default cells
-        this.createDefaultCells();
+        // this.createDefaultCells();
         
         // Set add cell button event
         const addBtn = document.getElementById('add-cell-btn');
         if (addBtn) {
             addBtn.addEventListener('click', () => this.addCell());
         }
+        
     }
-
+     
     /**
      * Create header
      */
@@ -96,8 +96,12 @@ class CellManager {
             // Create new cell
             cell = new Cell(
                 '# New code cell\nprintln("Hello from new cell!")',
-                'New Cell'
+                'New Cell',
+                this // Pass CellManager instance
             );
+        } else {
+            // Ensure existing cell has reference to CellManager
+            cell.cellManager = this;
         }
         
         const cellElement = cell.render();
@@ -113,6 +117,48 @@ class CellManager {
      */
     getAllCells() {
         return this.cells;
+    }
+
+    /**
+     * Get a cell by its ID
+     * @param {string} id - The ID of the cell to get
+     * @returns {Cell|null} - The cell with the specified ID, or null if not found
+     */
+    getCellById(id) {
+        return this.cells.find(cell => cell.id === id);
+    }
+
+    /**
+     * Get selected cell
+     */
+    getSelectedCell() {
+        return this.selectedCell;
+    }
+
+    /**
+     * Select a cell by its ID
+     * @param {string} id - The ID of the cell to select
+     */
+    selectCellById(id) {
+        // Update selected cell reference
+        this.selectedCell = this.cells.find(cell => cell && cell.id === id);
+        
+        // Update UI to reflect selection
+        this.updateSelectionUI();
+    }
+
+    /**
+     * Update UI to reflect current selection state
+     */
+    updateSelectionUI() {
+        // Update all cells to reflect their selection state
+        this.cells.forEach((cell) => {
+            if (cell && cell.element) {
+                const isSelected = cell === this.selectedCell;
+                cell.selected = isSelected; // Update cell's selected property
+                cell.element.classList.toggle('selected', isSelected);
+            }
+        });
     }
 
     /**

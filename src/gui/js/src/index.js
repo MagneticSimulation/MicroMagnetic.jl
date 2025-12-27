@@ -3,6 +3,7 @@ import { GUI } from 'lil-gui';
 import WebSocketClient from './client.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CellManager } from './CellManager.js';
+import { CellSelectorManager } from './CellSelectorManager.js';
 import { createRelaxTaskManager, initTaskTemplates } from './tasks.js';
 
 /**
@@ -847,31 +848,39 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create relax task manager and populate cells-container with relax task steps
         const relaxTaskManager = createRelaxTaskManager('#cells-container');
         
-        // Add sample data for testing
-        const sampleData = {
-            cells: [10, 10, 10],
-            dimensions: [10, 10, 10],
-            magnetization: []
-        };
+        // Initialize CellSelectorManager
+        const cellSelectorManager = new CellSelectorManager(relaxTaskManager);
         
-        // Generate sample magnetization data
-        for (let i = 0; i < 10; i++) {
-            for (let j = 0; j < 10; j++) {
-                for (let k = 0; k < 10; k++) {
-                    // Create some interesting pattern
-                    const x = Math.sin(i * 0.5) * Math.cos(k * 0.3);
-                    const y = Math.cos(j * 0.5) * Math.sin(i * 0.3);
-                    const z = Math.sin(k * 0.5) * Math.cos(j * 0.3);
-                    
-                    // Normalize
-                    const norm = Math.sqrt(x*x + y*y + z*z);
-                    sampleData.magnetization.push([x/norm, y/norm, z/norm]);
-                }
-            }
+        // Update cell selector options initially
+        cellSelectorManager.updateOptions();
+        
+        // Add event listener for add-cell-btn
+        const addCellButton = document.getElementById('add-cell-btn');
+        if (addCellButton) {
+            addCellButton.addEventListener('click', () => {
+                console.log('Add new cell button clicked');
+                const newCell = new Cell('');
+                relaxTaskManager.addCell(newCell);
+                cellSelectorManager.updateOptions();
+            });
         }
         
-        // Update visualization with sample data
-        visualization.updateMagnetization(sampleData);
+        // Add event listener for update-cell-btn
+        const updateCellButton = document.getElementById('update-cell-btn');
+        if (updateCellButton) {
+            updateCellButton.addEventListener('click', () => {
+                console.log('Update cell button clicked');
+                const selectedCell = relaxTaskManager.getSelectedCell();
+                if (selectedCell) {
+                    // Here you can implement the update logic
+                    console.log('Updating cell:', selectedCell.id);
+                    // For example, you could refresh the cell's content or update its properties
+                    // Remove the refresh() call as it doesn't exist
+                } else {
+                    console.log('No cell selected for update');
+                }
+            });
+        }
         
         console.log('MicroMagneticGUI initialized successfully!');
     } else {
