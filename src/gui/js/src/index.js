@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { GUI } from 'lil-gui';
 import WebSocketClient from './client.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CellManager } from './cell.js';
+import { CellManager } from './CellManager.js';
+import { createRelaxTaskManager, initTaskTemplates } from './tasks.js';
 
 /**
  * MagneticVisualization class for visualizing magnetization distributions
@@ -20,7 +21,6 @@ class MagneticVisualization {
         this.dimensions = [10, 10, 10];
         this.arrowGroup = new THREE.Group();
         this.arrowPositions = null;
-        this.codeEditor = null;
         this.webSocketClient = null;
         this.wsClient = null;
         this.isConnected = false;
@@ -83,10 +83,6 @@ class MagneticVisualization {
 
         // Initialize Julia communicator
         this.initWebSocketClient();
-
-        // Initialize code editor
-        this.initCodeEditor();
-
 
         // Initialize magnetization if data provided
         if (data) {
@@ -370,87 +366,6 @@ class MagneticVisualization {
             });
         }
     }
-
-    /**
-     * Initialize code editor
-     */
-    initCodeEditor() {
-        const editorContainer = document.getElementById('code-editor');
-        if (!editorContainer) {
-            console.error('Code editor container not found');
-            return;
-        }
-
-        // Create a textarea element for CodeMirror
-        const textarea = document.createElement('textarea');
-        editorContainer.appendChild(textarea);
-
-        // Create CodeMirror editor instance
-        this.codeEditor = CodeMirror.fromTextArea(textarea, {
-            mode: { name: 'julia' },
-            theme: 'material',
-            lineNumbers: true,
-            smartIndent: true,
-            matchBrackets: true,
-            autofocus: false,
-            readOnly: false,
-            tabSize: 4,
-            indentUnit: 4,
-            indentWithTabs: false,
-            extraKeys: {
-                'Shift-Enter': () => this.runSimulation()
-            },
-            height: '100%',
-            width: '100%'
-        });
-
-        // Set default code
-        this.codeEditor.setValue(`using MicroMagnetic
-@using_gpu()
-
-mesh = FDMesh(; nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9);
-#Create a simulation instance
-sim = Sim(mesh; driver="SD", name="std4")
-
-# Set saturation magnetization
-Ms = 8.6e5; # A/m
-set_Ms!(sim, Ms)
-
-# Add exchange interaction
-A = 1.3e-11; # J/m
-add_exch!(sim, A)
-
-# Add Dzyaloshinskii-Moriya interaction
-D = 4e-3; # J/m^2
-add_dmi!(sim, D, mode="interfacial")
-
-# Add Zeeman field
-H = [0, 0, 0]; # A/m
-add_zeeman!(sim, H)
-
-# Add demagnetization
-add_demag!(sim)
-
-# Initialize magnetization
-init_m0!(sim, [1, 0, 1])
-
-# Set stopping criteria
-set_maxsteps!(sim, 10000)
-set_stoptol!(sim, 1e-6)
-
-# Run simulation
-run_sim!(sim)
-
-# Save final magnetization
-save_m(sim, "final_m")`);
-
-        // Set editor size
-        this.codeEditor.setSize('100%', '100%');
-        this.codeEditor.refresh();
-
-        console.log('CodeMirror editor initialized successfully');
-    }
-
     /**
      * Animation loop
      */
@@ -925,6 +840,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 visualization.sendCommand('stop_server', {});
             });
         }
+        
+        // Initialize task templates
+        initTaskTemplates();
+        
+        // Create relax task manager and populate cells-container with relax task steps
+        const relaxTaskManager = createRelaxTaskManager('#cells-container');
         
         // Add sample data for testing
         const sampleData = {

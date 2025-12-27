@@ -76,18 +76,8 @@
                 
                 <!-- Cell Section -->
                 <div class="control-section">
-                    <h3>Cell Management</h3>
                     <button id="add-cell-btn">Add New Cell</button>
                     <div id="cells-container"></div>
-                </div>
-                
-                <!-- Code Editor Section -->
-                <div class="control-section">
-                    <h3>Simulation Code</h3>
-                    <div class="code-editor-wrapper">
-                        <div id="code-editor"></div>
-                    </div>
-                    <button id="run-simulation-btn">Run Simulation</button>
                 </div>
                 
                 <!-- Test Buttons Section -->
@@ -106,22 +96,10 @@
       
     <!-- Import the bundle.js file (built by Rollup) -->
     <script type="module">
-        // Import Cell and CellManager
-        import { Cell, CellManager } from './src/cell.js';
-        
-        // Initialize CellManager
-        const cellManager = new CellManager('#cells-container');
-        
-        // Add event listener for adding new cells
-        document.getElementById('add-cell-btn').addEventListener('click', () => {
-            cellManager.addCell();
-        });
-        
         // Import and initialize the main application
         import './dist/bundle.js';
         
-        console.log('CodeMirror-based Cell.js integration initialized');
-        console.log('Default cells created:', cellManager.getAllCells().length);
+        console.log('MicroMagneticGUI initialized with RelaxTask');
     </script>
 </body>
 </html>
