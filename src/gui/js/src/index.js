@@ -853,7 +853,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Add selection change listener to update cell selector options
         relaxTaskManager.addSelectionChangeListener((selectedCell) => {
-            console.log('Selection changed, updating cell selector options:', selectedCell);
+            console.log('Selection changed, updating cell selector options:', selectedCell.name);
             cellSelectorManager.updateOptions();
         });
         
@@ -865,26 +865,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (addCellButton) {
             addCellButton.addEventListener('click', () => {
                 console.log('Add new cell button clicked');
-                const newCell = new Cell('');
-                relaxTaskManager.addCell(newCell);
-                cellSelectorManager.updateOptions();
-            });
-        }
-        
-        // Add event listener for update-cell-btn
-        const updateCellButton = document.getElementById('update-cell-btn');
-        if (updateCellButton) {
-            updateCellButton.addEventListener('click', () => {
-                console.log('Update cell button clicked');
                 const selectedCell = relaxTaskManager.getSelectedCell();
                 if (selectedCell) {
-                    // Here you can implement the update logic
-                    console.log('Updating cell:', selectedCell.id);
-                    // For example, you could refresh the cell's content or update its properties
-                    // Remove the refresh() call as it doesn't exist
+                    // Insert new cell below the selected cell
+                    const newCell = new Cell('');
+                    relaxTaskManager.insertCellBelowSelected(newCell);
                 } else {
-                    console.log('No cell selected for update');
+                    // If no cell is selected, just add it to the end
+                    const newCell = new Cell('');
+                    relaxTaskManager.addCell(newCell);
                 }
+                cellSelectorManager.updateOptions();
             });
         }
         

@@ -111,6 +111,46 @@ class CellManager {
     }
 
     /**
+     * Insert a new cell below the currently selected cell
+     * @param {Cell} cell - Cell instance to insert
+     */
+    insertCellBelowSelected(cell) {
+        if (!cell) {
+            // Create new cell
+            cell = new Cell(
+                '# New code cell\nprintln("Hello from new cell!")',
+                'New Cell',
+                this // Pass CellManager instance
+            );
+        } else {
+            // Ensure existing cell has reference to CellManager
+            cell.cellManager = this;
+        }
+        
+        const cellElement = cell.render();
+        
+        if (this.contentArea && this.selectedCell) {
+            // Find the index of the selected cell
+            const selectedIndex = this.cells.findIndex(c => c.id === this.selectedCell.id);
+            
+            if (selectedIndex !== -1) {
+                // Insert the new cell after the selected cell in the array
+                this.cells.splice(selectedIndex + 1, 0, cell);
+                
+                // Insert the new cell element after the selected cell element in the DOM
+                const selectedElement = this.contentArea.querySelector(`[data-cell-id="${this.selectedCell.id}"]`);
+                if (selectedElement) {
+                    selectedElement.parentNode.insertBefore(cellElement, selectedElement.nextSibling);
+                }
+            }
+        } else if (this.contentArea) {
+            // If no cell is selected, just add it to the end
+            this.contentArea.appendChild(cellElement);
+            this.cells.push(cell);
+        }
+    }
+
+    /**
      * Get all cells
      */
     getAllCells() {

@@ -9,15 +9,15 @@ class Cell {
      * @param {string} description - Cell description
      * @param {CellManager} cellManager - Associated CellManager instance
      * @param {string} id - Optional cell ID
-     * @param {string} name - Optional short description
+     * @param {string} cellType - Optional short description
      * @param {boolean} isInteraction - Whether this cell is an interaction
      */
-    constructor(content = '', description = 'Code Cell', cellManager = null, id = null, name = '', isInteraction = false) {
+    constructor(content = '', description = 'Code Cell', cellManager = null, id = null, cellType = '', isInteraction = false) {
         this.id = id || this.generateId();
         this.content = content;
         this.defaultContent = content;
         this.description = description;
-        this.name = name;
+        this.cellType = cellType;
         this.isInteraction = isInteraction;
         this.cellManager = cellManager;
         this.element = null;
