@@ -851,6 +851,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize CellSelectorManager
         const cellSelectorManager = new CellSelectorManager(relaxTaskManager);
         
+        // Add selection change listener to update cell selector options
+        relaxTaskManager.addSelectionChangeListener((selectedCell) => {
+            console.log('Selection changed, updating cell selector options:', selectedCell);
+            cellSelectorManager.updateOptions();
+        });
+        
         // Update cell selector options initially
         cellSelectorManager.updateOptions();
         

@@ -13,6 +13,7 @@ class CellManager {
         this.title = 'Code Cells';
         this.collapsed = false; // Default expanded state
         this.selectedCell = null; // Track selected cell
+        this.selectionChangeListeners = []; // Listeners for selection changes
         
         if (this.container) {
             this.container.classList.add('cell-manager');
@@ -26,9 +27,6 @@ class CellManager {
     init() {
         // Create header
         this.createHeader();
-        
-        // Create default cells
-        // this.createDefaultCells();
         
         // Set add cell button event
         const addBtn = document.getElementById('add-cell-btn');
@@ -136,6 +134,37 @@ class CellManager {
     }
 
     /**
+     * Add a listener for selection changes
+     * @param {Function} listener - The listener function to call when selection changes
+     */
+    addSelectionChangeListener(listener) {
+        if (typeof listener === 'function') {
+            this.selectionChangeListeners.push(listener);
+        }
+    }
+
+    /**
+     * Remove a selection change listener
+     * @param {Function} listener - The listener function to remove
+     */
+    removeSelectionChangeListener(listener) {
+        this.selectionChangeListeners = this.selectionChangeListeners.filter(l => l !== listener);
+    }
+
+    /**
+     * Notify all selection change listeners
+     */
+    notifySelectionChange() {
+        this.selectionChangeListeners.forEach(listener => {
+            try {
+                listener(this.selectedCell);
+            } catch (error) {
+                console.error('Error in selection change listener:', error);
+            }
+        });
+    }
+
+    /**
      * Select a cell by its ID
      * @param {string} id - The ID of the cell to select
      */
@@ -145,6 +174,9 @@ class CellManager {
         
         // Update UI to reflect selection
         this.updateSelectionUI();
+        
+        // Notify listeners of selection change
+        this.notifySelectionChange();
     }
 
     /**
@@ -153,6 +185,7 @@ class CellManager {
     updateSelectionUI() {
         // Update all cells to reflect their selection state
         this.cells.forEach((cell) => {
+            console.log('Updating cell:', cell.description);
             if (cell && cell.element) {
                 const isSelected = cell === this.selectedCell;
                 cell.selected = isSelected; // Update cell's selected property
@@ -196,6 +229,24 @@ class CellManager {
             } else {
                 this.contentArea.style.display = 'block';
             }
+        }
+    }
+    /**
+     * Remove a cell from the manager
+     * @param {Cell} cell - The cell to remove
+     */
+    removeCell(cell) {
+        if (cell) {
+            // Remove from cells array
+            this.cells = this.cells.filter(c => c && c.id !== cell.id);
+            
+            // If the removed cell was selected, clear selection
+            if (this.selectedCell === cell) {
+                this.selectedCell = null;
+            }
+            
+            // Update selection UI
+            this.updateSelectionUI();
         }
     }
 }

@@ -8,12 +8,17 @@ class Cell {
      * @param {string} content - Cell content
      * @param {string} description - Cell description
      * @param {CellManager} cellManager - Associated CellManager instance
+     * @param {string} id - Optional cell ID
+     * @param {string} name - Optional short description
+     * @param {boolean} isInteraction - Whether this cell is an interaction
      */
-    constructor(content = '', description = 'Code Cell', cellManager = null) {
-        this.id = `cell-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    constructor(content = '', description = 'Code Cell', cellManager = null, id = null, name = '', isInteraction = false) {
+        this.id = id || this.generateId();
         this.content = content;
         this.defaultContent = content;
         this.description = description;
+        this.name = name;
+        this.isInteraction = isInteraction;
         this.cellManager = cellManager;
         this.element = null;
         this.editor = null;
@@ -21,6 +26,17 @@ class Cell {
         this.output = '';
         this.collapsed = true; // Default expanded state
         this.selected = false; // Track selection state
+    }
+
+    /**
+     * Generate a unique cell ID
+     * @returns {string} Unique cell ID
+     */
+    generateId() {
+        // Use timestamp + 8 random base36 characters
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).substring(2, 10); // 8 characters
+        return `cell-${timestamp}-${random}`;
     }
 
     /**
@@ -226,6 +242,12 @@ class Cell {
      * Delete cell
      */
     delete() {
+        // First notify CellManager to remove this cell from its management
+        if (this.cellManager) {
+            this.cellManager.removeCell(this);
+        }
+        
+        // Then remove the element from DOM
         if (this.element && this.element.parentNode) {
             this.element.parentNode.removeChild(this.element);
         }
