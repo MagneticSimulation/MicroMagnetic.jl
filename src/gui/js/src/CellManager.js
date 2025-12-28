@@ -292,6 +292,82 @@ class CellManager {
             this.updateSelectionUI();
         }
     }
+    /**
+     * Run a specific cell
+     * @param {Cell} cell - The cell to run
+     */
+    runCell(cell) {
+        if (!cell) return;
+        
+        const code = cell.getValue();
+        
+        try {
+            // Check if wsClient is available
+            if (this.wsClient) {
+                // Update UI to indicate running
+                this.updateExecutionUI('running', 'Executing code...', '');
+                
+                // Send code to Julia server
+                this.wsClient.sendCommand('run_code', { code: code })
+                    .then(response => {
+                        // Combine stdout and stderr for display
+                        let output = response.stdout;
+                        
+                        // Update UI with successful result
+                        this.updateExecutionUI('success', 'Execution completed', output || 'No output');
+                        
+                        cell.output = output;
+                    })
+                    .catch(error => {
+                        // Update UI with error
+                        this.updateExecutionUI('error', 'Execution failed', error.message || 'Unknown error occurred');
+                        
+                        cell.output = error.message;
+                    });
+            } 
+        } catch (error) {
+            // Update UI with error
+            this.updateExecutionUI('error', 'Execution failed', error.message);
+            
+            cell.output = error.message;
+        }
+    }
+    
+    /**
+     * Update execution UI (status bar and unified output)
+     * @param {string} status - Status type: 'running', 'success', 'error'
+     * @param {string} statusMessage - Status bar message
+     * @param {string} outputMessage - Output area message
+     */
+    updateExecutionUI(status, statusMessage, outputMessage) {
+        // Update status bar
+        const executionStatusElement = document.getElementById('execution-status');
+        if (executionStatusElement) {
+            executionStatusElement.className = 'status-value';
+            executionStatusElement.classList.add(status);
+            executionStatusElement.textContent = statusMessage;
+        }
+        
+        // Update unified output only if not in running status
+        if (status !== 'running') {
+            const unifiedOutput = document.getElementById('unified-output');
+            if (unifiedOutput) {
+                const outputClasses = {
+                    success: 'output-success',
+                    error: 'output-error'
+                };
+                
+                const outputClass = outputClasses[status] || '';
+                const messageElement = `<pre>${outputMessage}</pre>`;
+                
+                unifiedOutput.innerHTML = `
+                    <div class="${outputClass}">
+                        ${messageElement}
+                    </div>
+                `;
+            }
+        }
+    }
 }
 
 

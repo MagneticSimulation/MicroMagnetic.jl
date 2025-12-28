@@ -171,7 +171,7 @@ class WebSocketClient {
         
         if (callback) {
             if (data.success) {
-                callback.resolve(data.result);
+                callback.resolve(data);
             } else {
                 callback.reject(new Error(data.error || 'Command failed'));
             }
@@ -285,7 +285,7 @@ class WebSocketClient {
         });
         this.commandCallbacks.clear();
         
-        this.emit('disconnected');
+        this.emit('disconnect');
     }
     
     /**

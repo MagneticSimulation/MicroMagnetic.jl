@@ -34,7 +34,6 @@
                <div style="font-size: 20px; font-weight: 600; color: #333333; margin-bottom: 20px;"> 
                 MicroMagnetic.jl 
                </div>
-                <!-- WebSocket Connection Section -->
                 <div class="control-section">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                         <div style="margin: 0; font-weight: 500; color: #333333;">Server:</div>
@@ -82,6 +81,20 @@
                         </select>
                     </div>
                     <div id="cells-container"></div>
+                </div>
+                
+                <!-- Execution Panel Section (Combined Status Bar and Output) -->
+                <div class="control-section">
+                    <div style="font-weight: 500; color: #333333; margin-bottom: 10px;">Execution Panel</div>
+                    <div id="execution-panel" class="execution-panel">
+                        <div class="execution-status">
+                            <span class="status-label">Status:</span>
+                            <span id="execution-status" class="status-value">Not Run</span>
+                        </div>
+                        <div id="unified-output" class="unified-output">
+                            <div class="output-placeholder">Execute code to see output here</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

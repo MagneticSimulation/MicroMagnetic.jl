@@ -211,68 +211,7 @@ class Cell {
      * Run cell code
      */
     run() {
-        const code = this.editor.getValue();
-        this.outputElement.style.display = 'block';
-        
-        try {
-            // Check if wsClient is available through cellManager
-            if (this.cellManager && this.cellManager.wsClient) {
-                // Send code to Julia server for execution
-                this.outputElement.innerHTML = `
-                    <div class="output-processing">
-                        <strong>Processing...</strong>
-                        <p>Executing code on Julia server...</p>
-                    </div>
-                `;
-                this.outputElement.className = 'cell-output processing';
-                
-                // Send code to Julia server
-                this.cellManager.wsClient.sendCommand('run_code', { code: code })
-                    .then(response => {
-                        // Display successful output
-                        this.outputElement.innerHTML = `
-                            <div class="output-success">
-                                <strong>Output:</strong>
-                                <pre>${response.data.output || 'Execution completed successfully'}</pre>
-                            </div>
-                        `;
-                        this.outputElement.className = 'cell-output success';
-                        this.output = response.data.output;
-                    })
-                    .catch(error => {
-                        // Display error output
-                        this.outputElement.innerHTML = `
-                            <div class="output-error">
-                                <strong>Error:</strong>
-                                <pre>${error.message || 'Unknown error occurred'}</pre>
-                            </div>
-                        `;
-                        this.outputElement.className = 'cell-output error';
-                        this.output = error.message;
-                    });
-            } else {
-                // Fallback to simulated execution if wsClient is not available
-                this.outputElement.innerHTML = `
-                    <div class="output-success">
-                        <strong>Output:</strong>
-                        <pre>Executed code (${code.length} characters)</pre>
-                        <p>Note: Running in offline mode (no server connection)</p>
-                    </div>
-                `;
-                this.outputElement.className = 'cell-output success';
-                this.output = `Executed code (${code.length} characters)`;
-            }
-        } catch (error) {
-            // Display error output
-            this.outputElement.innerHTML = `
-                <div class="output-error">
-                    <strong>Error:</strong>
-                    <pre>${error.message}</pre>
-                </div>
-            `;
-            this.outputElement.className = 'cell-output error';
-            this.output = error.message;
-        }
+        this.cellManager.runCell(this);
     }
 
     /**

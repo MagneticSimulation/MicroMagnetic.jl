@@ -30,6 +30,11 @@ function run_code(code::String)
     
     close(stdout_pipe.out)
     close(stderr_pipe.out)
+    
+    if success && !isempty(stderr_str)
+        stdout_str = stdout_str * (isempty(stdout_str) ? "" : "\n") * stderr_str
+        stderr_str = ""
+    end
         
     return success, stdout_str, stderr_str
 end
