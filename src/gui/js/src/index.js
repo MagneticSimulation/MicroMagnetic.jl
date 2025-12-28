@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GUI } from 'lil-gui';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CellManager } from './CellManager.js';
-import { CellSelectorManager } from './CellSelectorManager.js';
+import { CellSelector } from './CellSelector.js';
 import { createRelaxTaskManager, initTaskTemplates } from './tasks.js';
 import GUIManager from './GUIManager.js';
 import Visualization from './Visualization.js';
@@ -127,17 +127,38 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create relax task manager and populate cells-container with relax task steps
         const relaxTaskManager = createRelaxTaskManager('#cells-container');
         
-        // Initialize CellSelectorManager
-        const cellSelectorManager = new CellSelectorManager(relaxTaskManager);
+        // Initialize CellSelector
+        const cellSelector = new CellSelector(relaxTaskManager);
+        
+        // Initialize task templates
+        initTaskTemplates();
+        
+        // Update cell selector options when cell type changes
+        const cellTypeElement = document.getElementById('cell-type');
+        if (cellTypeElement) {
+            cellTypeElement.addEventListener('change', () => {
+                cellSelector.updateOptions();
+            });
+        }
+        
+        // Update cell selector options when cell is selected
+        const relaxCellsContainerElement = document.getElementById('relax-cells-container');
+        if (relaxCellsContainerElement) {
+            relaxCellsContainerElement.addEventListener('click', (event) => {
+                if (event.target.closest('.cell')) {
+                    cellSelector.updateOptions();
+                }
+            });
+        }
         
         // Add selection change listener to update cell selector options
         relaxTaskManager.addSelectionChangeListener((selectedCell) => {
             console.log('Selection changed, updating cell selector options:', selectedCell.name);
-            cellSelectorManager.updateOptions();
+            cellSelector.updateOptions();
         });
         
         // Update cell selector options initially
-        cellSelectorManager.updateOptions();
+        cellSelector.updateOptions();
         
         // Add event listener for add-cell-btn
         const addCellButton = document.getElementById('add-cell-btn');
@@ -154,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newCell = new Cell('');
                     relaxTaskManager.addCell(newCell);
                 }
-                cellSelectorManager.updateOptions();
+                cellSelector.updateOptions();
             });
         }
         
