@@ -31,14 +31,8 @@ class RelaxTask {
      */
     createTaskManager(containerSelector) {
         // Create a new CellManager instance for this task
-        const taskManager = new CellManager(containerSelector);
-        
-        // The CellManager constructor already calls init() if container exists
-        // So we don't need to call it again
-        
-        // Set the title to "relax"
-        taskManager.title = "relax";
-        
+        const taskManager = new CellManager(containerSelector, 'Relax');
+                
         // Clear any existing cells (including the test cell)
         taskManager.cells = [];
         if (taskManager.contentArea) {

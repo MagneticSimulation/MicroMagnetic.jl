@@ -6,11 +6,12 @@ class CellManager {
     /**
      * Constructor
      * @param {string} containerSelector - Container selector
+     * @param {string} title - Cell manager title
      */
-    constructor(containerSelector) {
+    constructor(containerSelector, title = 'Code Cells') {
         this.container = document.querySelector(containerSelector);
         this.cells = [];
-        this.title = 'Code Cells';
+        this.title = title;
         this.collapsed = false; // Default expanded state
         this.selectedCell = null; // Track selected cell
         this.selectionChangeListeners = []; // Listeners for selection changes
