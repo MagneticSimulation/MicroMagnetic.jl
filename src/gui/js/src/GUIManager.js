@@ -1,4 +1,5 @@
 import WebSocketClient from './client.js';
+import { createRelaxTaskManager } from './tasks.js';
 
 /**
  * GUIManager class for handling user interactions and WebSocket communication
@@ -6,13 +7,13 @@ import WebSocketClient from './client.js';
 class GUIManager {
     constructor(visualization) {
         this.visualization = visualization;
-        this.webSocketClient = null;
         this.wsClient = null;
         this.isConnected = false;
         this.connectionAttempts = 0;
         this.maxConnectionAttempts = 5;
         this.simulationType = 'fd';
         this.taskType = 'relax';
+        this.relaxTaskManager = null;
     }
 
     /**
@@ -22,14 +23,13 @@ class GUIManager {
         try {
             console.log('Initializing WebSocket client');
             
-            this.webSocketClient = new WebSocketClient();
+            this.wsClient = new WebSocketClient();
             
             // Initialize WebSocket UI elements
             this.initWebSocketUI();
             
             // Set up event listeners
-            this.webSocketClient.on('connect', () => {
-                console.log('WebSocket connected to Julia server');
+            this.wsClient.on('connect', () => {
                 this.updateWebSocketStatus(true);
                 
                 const statusElement = document.getElementById('status-message');
@@ -39,7 +39,7 @@ class GUIManager {
                 }
             });
             
-            this.webSocketClient.on('disconnect', () => {
+            this.wsClient.on('disconnect', () => {
                 console.log('WebSocket disconnected from Julia server');
                 this.updateWebSocketStatus(false);
                 
@@ -50,7 +50,7 @@ class GUIManager {
                 }
             });
             
-            this.webSocketClient.on('error', (error) => {
+            this.wsClient.on('error', (error) => {
                 console.error('WebSocket error:', error);
                 
                 const statusElement = document.getElementById('status-message');
@@ -61,19 +61,19 @@ class GUIManager {
             });
             
             // Set up message handlers
-            this.webSocketClient.on('simulation_status', (data) => {
+            this.wsClient.on('simulation_status', (data) => {
                 this.handleJuliaMessage('simulation_status', data);
             });
             
-            this.webSocketClient.on('magnetization_data', (data) => {
+            this.wsClient.on('magnetization_data', (data) => {
                 this.handleJuliaMessage('magnetization_data', data);
             });
             
-            this.webSocketClient.on('command_response', (data) => {
+            this.wsClient.on('command_response', (data) => {
                 this.handleJuliaMessage('command_response', data);
             });
             
-            this.webSocketClient.on('error', (data) => {
+            this.wsClient.on('error', (data) => {
                 this.handleJuliaMessage('error', data);
             });
             
@@ -86,6 +86,21 @@ class GUIManager {
                 statusElement.className = 'status-error';
             }
         }
+    }
+
+    /**
+     * Initialize relax task manager
+     * @param {string} containerSelector - CSS selector for the container element
+     */
+    initRelaxTaskManager(containerSelector) {
+        this.relaxTaskManager = createRelaxTaskManager(containerSelector);
+        
+        // Pass wsClient to relaxTaskManager if needed
+        if (this.relaxTaskManager && this.wsClient) {
+            this.relaxTaskManager.wsClient = this.wsClient;
+        }
+        
+        return this.relaxTaskManager;
     }
 
     /**
@@ -108,12 +123,12 @@ class GUIManager {
         // Add connect button event listener
         connectBtn.addEventListener('click', async () => {
             try {
-                if (this.webSocketClient && this.webSocketClient.isConnected()) {
+                if (this.wsClient && this.wsClient.isConnected()) {
                     // Disconnect
-                    this.webSocketClient.disconnect();
+                    this.wsClient.disconnect();
                 } else {
                     // Connect
-                    await this.webSocketClient.connect();
+                    await this.wsClient.connect();
                 }
             } catch (error) {
                 console.error('WebSocket connection error:', error);
@@ -279,8 +294,8 @@ class GUIManager {
     sendCommand(command, params = {}) {
         console.log(`Sending command to Julia: ${command}`, params);
         
-        if (this.webSocketClient) {
-            this.webSocketClient.sendCommand(command, params).then(response => {
+        if (this.wsClient) {
+            this.wsClient.sendCommand(command, params).then(response => {
                 this.handleCommandResponse(response);
             });
         }
@@ -307,8 +322,8 @@ class GUIManager {
      * Dispose resources
      */
     dispose() {
-        if (this.webSocketClient) {
-            this.webSocketClient.disconnect();
+        if (this.wsClient) {
+            this.wsClient.disconnect();
         }
 
         console.log('GUIManager disposed');

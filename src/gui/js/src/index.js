@@ -1,5 +1,4 @@
 import { CellSelector } from './CellSelector.js';
-import { createRelaxTaskManager, initTaskTemplates } from './tasks.js';
 import GUIManager from './GUIManager.js';
 import Visualization from './Visualization.js';
 
@@ -22,14 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const guiManager = new GUIManager(visualization);
         guiManager.initWebSocketClient();
         
-        // Create relax task manager and populate cells-container with relax task steps
-        const relaxTaskManager = createRelaxTaskManager('#cells-container');
+        // Create relax task manager using GUIManager
+        const relaxTaskManager = guiManager.initRelaxTaskManager('#cells-container');
         
         // Initialize CellSelector
         const cellSelector = new CellSelector(relaxTaskManager);
-        
-        // Initialize task templates
-        initTaskTemplates();
         
         // Update cell selector options when cell type changes
         const cellSelectorElement = document.getElementById('cell-selector');

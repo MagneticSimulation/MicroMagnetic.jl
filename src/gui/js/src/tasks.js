@@ -59,10 +59,3 @@ export function createRelaxTaskManager(containerSelector) {
     const relaxTask = new RelaxTask();
     return relaxTask.createTaskManager(containerSelector);
 }
-
-/**
- * Initialize task templates system
- */
-export function initTaskTemplates() {
-    console.log('Task templates system initialized');
-}

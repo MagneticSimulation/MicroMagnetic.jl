@@ -7,14 +7,16 @@ class CellManager {
      * Constructor
      * @param {string} containerSelector - Container selector
      * @param {string} title - Cell manager title
+     * @param {WebSocketClient} wsClient - WebSocket client instance
      */
-    constructor(containerSelector, title = 'Code Cells') {
+    constructor(containerSelector, title = 'Code Cells', wsClient = null) {
         this.container = document.querySelector(containerSelector);
         this.cells = [];
         this.title = title;
         this.collapsed = false; // Default expanded state
         this.selectedCell = null; // Track selected cell
         this.selectionChangeListeners = []; // Listeners for selection changes
+        this.wsClient = wsClient; // Add wsClient reference
         
         if (this.container) {
             this.container.classList.add('cell-manager');
@@ -293,15 +295,12 @@ class CellManager {
 }
 
 
-// 导出 CellManager 类（ES 模块）
 export { CellManager };
 
-// 导出 CellManager 类（CommonJS）
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { CellManager };
 }
 
-// 如果在浏览器环境中，挂载到全局对象
 if (typeof window !== 'undefined') {
     window.CellManager = CellManager;
 }

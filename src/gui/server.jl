@@ -8,6 +8,32 @@ const DEFAULT_HOST = "0.0.0.0"
 const DEFAULT_PORT = 10056
 global current_port = DEFAULT_PORT
 
+function run_code(code::String)    
+    stdout_pipe = Pipe()
+    stderr_pipe = Pipe()
+    
+    success = true
+    try
+        redirect_stdio(stdout=stdout_pipe, stderr=stderr_pipe) do
+            eval(Meta.parseall(code))
+        end
+    catch e
+        success = false
+        print(stderr_pipe.in, sprint(showerror, e))
+    finally
+        close(stdout_pipe.in)
+        close(stderr_pipe.in)
+    end
+    
+    stdout_str = read(stdout_pipe.out, String)
+    stderr_str = read(stderr_pipe.out, String)
+    
+    close(stdout_pipe.out)
+    close(stderr_pipe.out)
+        
+    return success, stdout_str, stderr_str
+end
+
 """
 Decode URI component
 """
@@ -32,14 +58,6 @@ function log_message(message::String)
     @info "[$timestamp] $message"
 end
 
-"""
-Message handler type
-"""
-struct MessageHandler
-    message_type::String
-    handler::Function
-end
-
 function register_handler(handler::Function, message_type::String)
     message_handlers[message_type] = handler
 end
@@ -48,66 +66,26 @@ end
 Initialize default message handlers
 """
 function init_default_handlers()
-    # Register default handlers
-    register_handler("ping") do ws, data
-        send_message(ws, "pong", Dict("timestamp" => now()))
-    end
-    
-    register_handler("echo") do ws, data
-        send_message(ws, "echo_response", Dict("message" => get(data, "message", "")))
-    end
-    
-    register_handler("get_status") do ws, data
-        status = Dict( 
-            "server_time" => now(), 
-            "connections" => length(active_connections), 
-            "status" => "running" 
-        ) 
-        send_message(ws, "status", status) 
-    end
-    
-    register_handler("simulation_start") do ws, data
-        # Integration with Micromagnetic.jl simulation logic can be added here
-        println("Starting simulation: ", data)
-        send_message(ws, "simulation_started", Dict(
-            "simulation_id" => randstring(10),
-            "start_time" => now()
-        ))
-    end
-    
-    register_handler("simulation_stop") do ws, data
-        println("Stopping simulation: ", data)
-        send_message(ws, "simulation_stopped", Dict("stop_time" => now()))
-    end
-    
-    register_handler("get_data") do ws, data
-        # Sample data return - replace with Micromagnetic.jl data in actual use
-        sample_data = Dict(
-            "time_points" => collect(0:0.1:10),
-            "magnetization" => rand(101, 3),
-            "energy" => rand(101),
-            "parameters" => data
-        )
-        send_message(ws, "data_response", sample_data)
-    end
-    
-    # Maintain backward compatibility
-    register_handler("command") do ws, data
-        command = get(data, "command", "")
-        command_id = get(data, "id", "")
         
-        log_message("Received command: $command (ID: $command_id)")
-        response = Dict(
-            "id" => command_id,
-            "command" => command,
-            "success" => true,
-            "result" => Dict("status" => "processed", "server_time" => now())
-        )
-        send_message(ws, "command_response", response)
-    end
-    
     register_handler("heartbeat") do ws, data
         send_message(ws, "heartbeat_response", Dict("timestamp" => now()))
+    end
+    
+    register_handler("run_code") do ws, data
+        code = get(data, "code", "")
+        command_id = get(data, "id", "")
+        
+        log_message("Received run_code command (ID: $command_id)")
+        
+        success, stdout_str, stderr_str = run_code(code)
+        response = Dict(
+            "id" => command_id,
+            "success" => success,
+            "stdout" => stdout_str,       
+            "stderr" => stderr_str,
+            "timestamp" => now()
+        )
+        send_message(ws, "command_response", response)
     end
     
     register_handler("stop_server") do ws, data
@@ -220,14 +198,7 @@ WebSocket connection handler
 function handle_websocket(ws, client_id::String)
     log_message("WebSocket client connected: $client_id")
     
-    try
-        # Send connection confirmation
-        send_message(ws, "connected", Dict(
-            "client_id" => client_id,
-            "server_info" => "Micromagnetic.jl WebSocket Server",
-            "timestamp" => now()
-        ))
-        
+    try     
         # Listen for messages
         for msg in ws
             handle_message(ws, client_id, msg)

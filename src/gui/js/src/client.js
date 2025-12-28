@@ -19,7 +19,6 @@ class WebSocketClient {
 
         // Connection state
         this.ws = null;
-        this.clientId = null;
         this.connected = false;
         this.heartbeatTimer = null;
         
@@ -30,9 +29,6 @@ class WebSocketClient {
         this.commandCallbacks = new Map();
         this.commandIdCounter = 1;
         
-        // Logging
-        this.logLevel = options.logLevel || 'info';
-        
         this.connect();
     }
     
@@ -42,32 +38,6 @@ class WebSocketClient {
      */
     generateSessionId() {
         return 'session_' + Math.random().toString(36).substring(2, 11);
-    }
-    
-    /**
-     * Log a message with timestamp
-     * @param {string} level - Log level
-     * @param {string} message - Message to log
-     * @param {...any} args - Additional arguments
-     */
-    log(level, message, ...args) {
-        const timestamp = new Date().toISOString();
-        const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
-        
-        // Filter by log level
-        const levels = ['debug', 'info', 'warn', 'error'];
-        const currentLevel = levels.indexOf(this.logLevel);
-        const messageLevel = levels.indexOf(level);
-        
-        if (messageLevel >= currentLevel) {
-            if (level === 'error') {
-                console.error(logMessage, ...args);
-            } else if (level === 'warn') {
-                console.warn(logMessage, ...args);
-            } else {
-                console.log(logMessage, ...args);
-            }
-        }
     }
     
     /**
@@ -85,13 +55,13 @@ class WebSocketClient {
             const url = new URL(this.config.serverUrl);
             url.searchParams.append('session_id', this.config.sessionId);
             
-            this.log('info', `Connecting to ${url.toString()}`);
+            console.log(`Connecting to ${url.toString()}`);
             
             try {
                 this.ws = new WebSocket(url.toString());
                 
                 this.ws.onopen = (event) => {
-                    this.log('info', 'WebSocket connection established');
+                    console.log('WebSocket connection established');
                     this.connected = true;
                     this.emit('connect', event);
                     this.startHeartbeat();
@@ -102,33 +72,25 @@ class WebSocketClient {
                 };
                 
                 this.ws.onerror = (event) => {
-                    this.log('error', 'WebSocket error', event);
+                    console.error('WebSocket error', event);
                     this.emit('error', event);
                     reject(event);
                 };
                 
                 this.ws.onclose = (event) => {
-                    this.log('info', `WebSocket connection closed: ${event.code} ${event.reason}`);
+                    console.log(`WebSocket connection closed: ${event.code} ${event.reason}`);
                     this.connected = false;
-                    this.clientId = null;
                     this.stopHeartbeat();
                     this.emit('disconnect', event);
                 };
                 
             } catch (error) {
-                this.log('error', 'Failed to create WebSocket connection', error);
+                console.error('Failed to create WebSocket connection', error);
                 reject(error);
             }
         });
     }
     
-    /**
-     * Attempt to reconnect to the server
-     */
-    attemptReconnect() {
-        // Removed automatic reconnection logic
-        this.log('info', 'Reconnection attempt disabled');
-    }
     
     /**
      * Start heartbeat mechanism
@@ -165,7 +127,7 @@ class WebSocketClient {
         };
         
         this.send(heartbeatMsg).catch(error => {
-            this.log('warn', 'Heartbeat failed', error);
+            console.warn('Heartbeat failed', error);
         });
     }
     
@@ -176,22 +138,17 @@ class WebSocketClient {
     handleMessage(data) {
         try {
             const message = JSON.parse(data);
-            this.log('debug', 'Received message', message);
+            console.log('Received message', message);
             
             // Handle different message types based on server implementation
             const type = message.type;
             
-            if (type === 'connected') {
-                // Handle connection confirmation
-                this.clientId = message.data.client_id;
-                this.log('info', `Connected with client ID: ${this.clientId}`);
-                this.emit('connection', message.data);
-            } else if (type === 'command_response') {
+            if (type === 'command_response') {
                 this.handleCommandResponse(message);
             } else if (type === 'heartbeat_response') {
                 this.emit('heartbeat', message.data);
             } else if (type === 'error') {
-                this.log('error', `Server error: ${message.data.message || 'Unknown error'}`);
+                console.error(`Server error: ${message.data.message || 'Unknown error'}`);
                 this.emit('error', message.data);
             } else {
                 // Emit all other message types
@@ -199,7 +156,7 @@ class WebSocketClient {
             }
             
         } catch (error) {
-            this.log('error', 'Failed to parse message', error, data);
+            console.error('Failed to parse message', error, data);
         }
     }
     
@@ -220,7 +177,7 @@ class WebSocketClient {
             }
             this.commandCallbacks.delete(commandId);
         } else {
-            this.log('warn', `No callback found for command ID: ${commandId}`);
+            console.warn(`No callback found for command ID: ${commandId}`);
             this.emit('command_response', data);
         }
     }
@@ -240,10 +197,10 @@ class WebSocketClient {
             try {
                 const jsonStr = JSON.stringify(message);
                 this.ws.send(jsonStr);
-                this.log('debug', 'Sent message', message);
+                console.log('Sent message', message);
                 resolve();
             } catch (error) {
-                this.log('error', 'Failed to send message', error);
+                console.error('Failed to send message', error);
                 reject(error);
             }
         });
@@ -260,10 +217,9 @@ class WebSocketClient {
             const commandId = this.commandIdCounter++;
             
             const message = {
-                type: 'command',
+                type: command,
                 data: {
                     id: commandId.toString(),
-                    command: command,
                     ...data
                 }
             };
@@ -292,31 +248,6 @@ class WebSocketClient {
     }
     
     /**
-     * Test connection to server
-     * @returns {Promise} Promise that resolves with connection status
-     */
-    testConnection() {
-        return this.sendMessage('ping').then(() => ({ status: 'connected' }));
-    }
-    
-    /**
-     * Get server status
-     * @returns {Promise} Promise that resolves with server status
-     */
-    getStatus() {
-        return this.sendMessage('get_status');
-    }
-    
-    /**
-     * Start a simulation
-     * @param {Object} simulationData - Simulation parameters
-     * @returns {Promise} Promise that resolves with simulation info
-     */
-    startSimulation(simulationData = {}) {
-        return this.sendMessage('simulation_start', simulationData);
-    }
-    
-    /**
      * Stop a simulation
      * @param {Object} simulationData - Simulation data
      * @returns {Promise} Promise that resolves when simulation is stopped
@@ -338,7 +269,7 @@ class WebSocketClient {
      * Disconnect from server
      */
     disconnect() {
-        this.log('info', 'Disconnecting from server');
+        console.log('Disconnecting from server');
         
         this.stopHeartbeat();
         
@@ -347,7 +278,6 @@ class WebSocketClient {
         }
         
         this.connected = false;
-        this.clientId = null;
         
         // Clear command callbacks
         this.commandCallbacks.forEach((callback) => {
@@ -396,7 +326,7 @@ class WebSocketClient {
                 try {
                     callback(...args);
                 } catch (error) {
-                    this.log('error', `Error in event listener for '${event}'`, error);
+                    console.error(`Error in event listener for '${event}'`, error);
                 }
             });
         }
@@ -408,14 +338,6 @@ class WebSocketClient {
      */
     isConnected() {
         return this.connected;
-    }
-    
-    /**
-     * Get client ID
-     * @returns {string|null} Client ID
-     */
-    getClientId() {
-        return this.clientId;
     }
     
     /**
