@@ -22,10 +22,7 @@ class GUIManager {
         try {
             console.log('Initializing WebSocket client');
             
-            // Create WebSocket client instance
-            this.webSocketClient = new WebSocketClient({
-                autoConnect: false // Disable auto-connect to allow manual control
-            });
+            this.webSocketClient = new WebSocketClient();
             
             // Initialize WebSocket UI elements
             this.initWebSocketUI();

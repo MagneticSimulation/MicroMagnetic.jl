@@ -7,7 +7,6 @@ class WebSocketClient {
      * @param {Object} options - Configuration options
      * @param {string} [options.serverUrl] - WebSocket server URL (auto-detected by default)
      * @param {number} [options.heartbeatInterval=30000] - Heartbeat interval in ms
-     * @param {boolean} [options.autoConnect=true] - Automatically connect on creation
      * @param {string} [options.sessionId] - Session ID for client identification
      */
     constructor(options = {}) {
@@ -15,7 +14,7 @@ class WebSocketClient {
         this.config = {
             serverUrl: options.serverUrl || `${protocol}//${window.location.host}`,
             heartbeatInterval: options.heartbeatInterval || 30000,
-            sessionId: options.sessionId || this.generateSessionId()
+            sessionId: options.sessionId || this.generateSessionId(),
         };
 
         // Connection state
@@ -34,10 +33,7 @@ class WebSocketClient {
         // Logging
         this.logLevel = options.logLevel || 'info';
         
-        // Auto-connect if enabled       
-        if (this.config.autoConnect) {
-            this.connect();
-        }
+        this.connect();
     }
     
     /**
