@@ -24,10 +24,7 @@ class WebSocketClient {
         
         // Event listeners
         this.listeners = new Map();
-        
-        // Command callbacks
-        this.commandCallbacks = new Map();
-        this.commandIdCounter = 1;
+        this.commandIdCounter = 0;
         
         this.connect();
     }
@@ -140,12 +137,8 @@ class WebSocketClient {
             const message = JSON.parse(data);
             console.log('Received message', message);
             
-            // Handle different message types based on server implementation
             const type = message.type;
-            
-            if (type === 'command_response') {
-                this.handleCommandResponse(message);
-            } else if (type === 'heartbeat_response') {
+            if (type === 'heartbeat_response') {
                 this.emit('heartbeat', message.data);
             } else if (type === 'error') {
                 console.error(`Server error: ${message.data.message || 'Unknown error'}`);
@@ -157,28 +150,6 @@ class WebSocketClient {
             
         } catch (error) {
             console.error('Failed to parse message', error, data);
-        }
-    }
-    
-    /**
-     * Handle command response from server
-     * @param {Object} message - Command response message
-     */
-    handleCommandResponse(message) {
-        const data = message.data;
-        const commandId = data.id;
-        const callback = this.commandCallbacks.get(commandId);
-        
-        if (callback) {
-            if (data.success) {
-                callback.resolve(data);
-            } else {
-                callback.reject(new Error(data.error || 'Command failed'));
-            }
-            this.commandCallbacks.delete(commandId);
-        } else {
-            console.warn(`No callback found for command ID: ${commandId}`);
-            this.emit('command_response', data);
         }
     }
     
@@ -205,35 +176,25 @@ class WebSocketClient {
             }
         });
     }
-    
+
     /**
      * Send a command to the server
-     * @param {string} command - Command name
+     * @param {string} type - Command type
      * @param {Object} data - Command data
-     * @returns {Promise} Promise that resolves with command result
+     * @returns {Promise} Promise that resolves when message is sent
      */
-    sendCommand(command, data = {}) {
-        return new Promise((resolve, reject) => {
-            const commandId = this.commandIdCounter++;
-            
-            const message = {
-                type: command,
-                data: {
-                    id: commandId.toString(),
-                    ...data
-                }
-            };
-            
-            // Store callback
-            this.commandCallbacks.set(commandId.toString(), { resolve, reject });
-            
-            // Send message
-            this.send(message).catch(reject);
-        });
+    sendCommand(type, data = {}) {
+        const commandId = this.commandIdCounter++;
+        data.id = commandId.toString();
+        const message = {
+            type: type,
+            data: data
+        };
+        return this.send(message);
     }
     
     /**
-     * Send a custom message to the server
+     * Send a message to the server
      * @param {string} type - Message type
      * @param {Object} data - Message data
      * @returns {Promise} Promise that resolves when message is sent
@@ -259,7 +220,7 @@ class WebSocketClient {
     /**
      * Get simulation data
      * @param {Object} params - Parameters for data retrieval
-     * @returns {Promise} Promise that resolves with simulation data
+     * @returns {Promise} Promise that resolves when message is sent
      */
     getData(params = {}) {
         return this.sendMessage('get_data', params);
@@ -278,12 +239,6 @@ class WebSocketClient {
         }
         
         this.connected = false;
-        
-        // Clear command callbacks
-        this.commandCallbacks.forEach((callback) => {
-            callback.reject(new Error('Disconnected'));
-        });
-        this.commandCallbacks.clear();
         
         this.emit('disconnect');
     }

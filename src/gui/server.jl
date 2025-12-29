@@ -90,7 +90,7 @@ function init_default_handlers()
             "stderr" => stderr_str,
             "timestamp" => now()
         )
-        send_message(ws, "command_response", response)
+        send_message(ws, "run_code_response", response)
     end
     
     register_handler("stop_server") do ws, data
