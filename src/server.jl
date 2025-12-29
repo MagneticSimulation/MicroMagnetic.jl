@@ -383,7 +383,7 @@ function handle_get_request(http, req, active_connections, message_handlers)
             file_path = "index.html"
         end
         
-        full_path = joinpath(dirname(@__FILE__), "js", file_path)
+        full_path = joinpath(@__DIR__, "../gui", file_path)
         
         if isfile(full_path)
             # Determine MIME type

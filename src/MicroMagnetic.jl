@@ -229,7 +229,7 @@ include("init_m.jl")
 include("ovf2.jl")
 include("vtk.jl")
 include("voronoi.jl")
-include("gui/server.jl")
+include("server.jl")
 
 include("atomistic/mesh.jl")
 include("atomistic/head.jl")

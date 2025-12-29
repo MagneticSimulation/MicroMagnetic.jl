@@ -4,7 +4,7 @@
  * Task template definitions and management for MicroMagnetic.jl GUI
  */
 
-import { Cell } from './cell.js';
+import { Cell } from './Cell.js';
 import { CellManager } from './CellManager.js';
 
 /**
