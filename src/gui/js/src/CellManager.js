@@ -7,16 +7,16 @@ class CellManager {
      * Constructor
      * @param {string} containerSelector - Container selector
      * @param {string} title - Cell manager title
-     * @param {WebSocketClient} wsClient - WebSocket client instance
+     * @param {GUIManager} guiManager - GUI manager instance
      */
-    constructor(containerSelector, title = 'Code Cells', wsClient = null) {
+    constructor(containerSelector, title = 'Code Cells', guiManager = null) {
         this.container = document.querySelector(containerSelector);
         this.cells = [];
         this.title = title;
         this.collapsed = false; // Default expanded state
         this.selectedCell = null; // Track selected cell
         this.selectionChangeListeners = []; // Listeners for selection changes
-        this.wsClient = wsClient; // Add wsClient reference
+        this.guiManager = guiManager; // Add guiManager reference
         
         if (this.container) {
             this.container.classList.add('cell-manager');
@@ -300,56 +300,8 @@ class CellManager {
         if (!cell) return;
         
         const code = cell.getValue();
-        
-        this.updateExecutionUI('running', 'Executing code...', '');
-        
-        this.wsClient.sendCommand('run_code', { 
-            code: code 
-        }).then(response => {
-            let output = response.stdout;
-            this.updateExecutionUI('success', 'Execution completed', output || 'No output');
-            cell.output = output;
-        }).catch(error => {
-            this.updateExecutionUI('error', 'Execution failed', error.message || 'Unknown error occurred');
-            cell.output = error.message;
-        }); 
 
-    }
-    
-    /**
-     * Update execution UI (status bar and unified output)
-     * @param {string} status - Status type: 'running', 'success', 'error'
-     * @param {string} statusMessage - Status bar message
-     * @param {string} outputMessage - Output area message
-     */
-    updateExecutionUI(status, statusMessage, outputMessage) {
-        // Update status bar
-        const executionStatusElement = document.getElementById('execution-status');
-        if (executionStatusElement) {
-            executionStatusElement.className = 'status-value';
-            executionStatusElement.classList.add(status);
-            executionStatusElement.textContent = statusMessage;
-        }
-        
-        // Update unified output only if not in running status
-        if (status !== 'running') {
-            const unifiedOutput = document.getElementById('unified-output');
-            if (unifiedOutput) {
-                const outputClasses = {
-                    success: 'output-success',
-                    error: 'output-error'
-                };
-                
-                const outputClass = outputClasses[status] || '';
-                const messageElement = `<pre>${outputMessage}</pre>`;
-                
-                unifiedOutput.innerHTML = `
-                    <div class="${outputClass}">
-                        ${messageElement}
-                    </div>
-                `;
-            }
-        }
+        this.guiManager.runCode(code);
     }
 }
 

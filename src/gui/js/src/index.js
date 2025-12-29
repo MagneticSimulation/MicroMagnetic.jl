@@ -11,11 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Initializing MicroMagneticGUI...');
     
     // Create and initialize visualization
-    const container = document.getElementById('visualization-container');
-    if (container) {
-        // Create visualization instance
-        const visualization = new Visualization();
-        visualization.init(document.getElementById('visualization-container'));
+    const containerId = 'visualization-container';
+    if (document.getElementById(containerId)) {
+        // Create visualization instance with container ID
+        const visualization = new Visualization(containerId);
         
         // Create GUI manager instance
         const guiManager = new GUIManager(visualization);

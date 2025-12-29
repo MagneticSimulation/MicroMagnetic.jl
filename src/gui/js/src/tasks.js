@@ -27,11 +27,12 @@ class RelaxTask {
     /**
      * Create a CellManager instance for relax task
      * @param {string} containerSelector - CSS selector for the container element
+     * @param {GUIManager} guiManager - GUI manager instance
      * @returns {CellManager} - CellManager instance containing relax task steps
      */
-    createTaskManager(containerSelector) {
+    createTaskManager(containerSelector, guiManager) {
         // Create a new CellManager instance for this task
-        const taskManager = new CellManager(containerSelector, 'Relax');
+        const taskManager = new CellManager(containerSelector, 'Relax', guiManager);
                 
         // Clear any existing cells (including the test cell)
         taskManager.cells = [];
@@ -53,9 +54,10 @@ class RelaxTask {
 /**
  * Create a relax task manager
  * @param {string} containerSelector - CSS selector for the container element
+ * @param {GUIManager} guiManager - GUI manager instance
  * @returns {CellManager} - CellManager instance for relax task
  */
-export function createRelaxTaskManager(containerSelector) {
+export function createRelaxTaskManager(containerSelector, guiManager) {
     const relaxTask = new RelaxTask();
-    return relaxTask.createTaskManager(containerSelector);
+    return relaxTask.createTaskManager(containerSelector, guiManager);
 }

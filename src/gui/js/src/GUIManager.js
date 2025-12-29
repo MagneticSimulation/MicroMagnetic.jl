@@ -29,53 +29,7 @@ class GUIManager {
             this.initWebSocketUI();
             
             // Set up event listeners
-            this.wsClient.on('connect', () => {
-                this.updateWebSocketStatus(true);
-                
-                const statusElement = document.getElementById('status-message');
-                if (statusElement) {
-                    statusElement.textContent = 'Connected to Julia server';
-                    statusElement.className = 'status-connected';
-                }
-            });
-            
-            this.wsClient.on('disconnect', () => {
-                console.log('WebSocket disconnected from Julia server');
-                this.updateWebSocketStatus(false);
-                
-                const statusElement = document.getElementById('status-message');
-                if (statusElement) {
-                    statusElement.textContent = 'Disconnected from Julia server';
-                    statusElement.className = 'status-disconnected';
-                }
-            });
-            
-            this.wsClient.on('error', (error) => {
-                console.error('WebSocket error:', error);
-                
-                const statusElement = document.getElementById('status-message');
-                if (statusElement) {
-                    statusElement.textContent = `Error: ${error.message}`;
-                    statusElement.className = 'status-error';
-                }
-            });
-            
-            // Set up message handlers
-            this.wsClient.on('simulation_status', (data) => {
-                this.handleJuliaMessage('simulation_status', data);
-            });
-            
-            this.wsClient.on('magnetization_data', (data) => {
-                this.handleJuliaMessage('magnetization_data', data);
-            });
-            
-            this.wsClient.on('command_response', (data) => {
-                this.handleJuliaMessage('command_response', data);
-            });
-            
-            this.wsClient.on('error', (data) => {
-                this.handleJuliaMessage('error', data);
-            });
+            this.setupEventListeners();
             
         } catch (error) {
             console.error('Failed to initialize WebSocket client:', error);
@@ -89,11 +43,51 @@ class GUIManager {
     }
 
     /**
+     * Set up WebSocket event listeners
+     */
+    setupEventListeners() {
+        // WebSocket connection events
+        this.wsClient.on('connect', () => {
+            console.log('WebSocket connected');
+            this.isConnected = true;
+            this.updateWebSocketStatus(true);
+        });
+        
+        this.wsClient.on('disconnect', () => {
+            console.log('WebSocket disconnected');
+            this.isConnected = false;
+            this.updateWebSocketStatus(false);
+        });
+        
+        this.wsClient.on('error', (error) => {
+            console.error('WebSocket error:', error);
+            this.isConnected = false;
+            this.updateWebSocketStatus(false);
+        });
+        
+        // Data events
+        this.wsClient.on('magnetization_data', this.handleMagnetizationData.bind(this));
+        this.wsClient.on('run_code_response', this.handleCommandResponse.bind(this));
+    }
+
+    /**
+     * Handle magnetization data message
+     * @param {Object} data - Magnetization data
+     */
+    handleMagnetizationData(data) {
+        console.log('Received magnetization data:', data);
+        
+        if (this.visualization) {
+            this.visualization.updateMagnetization(data);
+        }
+    }
+
+    /**
      * Initialize relax task manager
      * @param {string} containerSelector - CSS selector for the container element
      */
     initRelaxTaskManager(containerSelector) {
-        this.relaxTaskManager = createRelaxTaskManager(containerSelector);
+        this.relaxTaskManager = createRelaxTaskManager(containerSelector, this);
         
         // Pass wsClient to relaxTaskManager if needed
         if (this.relaxTaskManager && this.wsClient) {
@@ -209,113 +203,67 @@ class GUIManager {
     }
 
     /**
-     * Handle message from Julia server
-     * @param {string} type - Message type
-     * @param {Object} data - Message data
-     */
-    handleJuliaMessage(type, data) {
-        console.log('Received message from Julia:', { type, data });
-        
-        switch (type) {
-            case 'simulation_status':
-                this.updateSimulationStatus(data);
-                break;
-            case 'magnetization_data':
-                if (this.visualization) {
-                    this.visualization.updateMagnetization(data);
-                }
-                break;
-            case 'command_response':
-                this.handleCommandResponse(data);
-                break;
-            case 'error':
-                this.handleError(data);
-                break;
-            default:
-                console.warn('Unknown message type:', type);
-        }
-    }
-
-    /**
-     * Update simulation status display
-     * @param {Object} status - Simulation status
-     */
-    updateSimulationStatus(status) {
-        console.log('Simulation status:', status);
-        
-        // Update status message
-        const statusElement = document.getElementById('status-message');
-        if (statusElement) {
-            if (status.has_sim) {
-                statusElement.textContent = `Status: ${status.status}\nRunning: ${status.is_running}`;
-            } else {
-                statusElement.textContent = 'Status: No simulation created';
-            }
-        }
-    }
-
-    /**
      * Handle command response from Julia server
      * @param {Object} response - Command response
      */
     handleCommandResponse(response) {
         console.log('Command response:', response);
         
-        // Update status message
-        const statusElement = document.getElementById('status-message');
-        if (statusElement) {
+        // Update execution status UI
+        if (this.updateExecutionUI) {
             if (response.success) {
-                statusElement.textContent = `Command "${response.command}" executed successfully\nResult: ${JSON.stringify(response.result)}`;
+                this.updateExecutionUI('success', 'Execution completed', response.stdout || 'No output');
             } else {
-                statusElement.textContent = `Error executing command "${response.command}":\n${response.error}`;
+                this.updateExecutionUI('error', 'Execution failed', response.error || 'Unknown error occurred');
             }
-        }
-    }
-
-    /**
-     * Handle error from Julia server
-     * @param {Object} error - Error message
-     */
-    handleError(error) {
-        console.error('Julia error:', error);
-        
-        // Update status message
-        const statusElement = document.getElementById('status-message');
-        if (statusElement) {
-            statusElement.textContent = `Error: ${error.message}`;
-        }
-    }
-
-    /**
-     * Send command to Julia server
-     * @param {string} command - Command to execute
-     * @param {Object} params - Command parameters
-     */
-    sendCommand(command, params = {}) {
-        console.log(`Sending command to Julia: ${command}`, params);
-        
-        if (this.wsClient) {
-            this.wsClient.sendCommand(command, params).then(response => {
-                this.handleCommandResponse(response);
-            });
         }
     }
 
     /**
      * Run Julia code
      * @param {string} code - Julia code to execute
+     * @returns {Promise} - Promise that resolves when code execution message is sent
      */
-    runCode(code) {
-        console.log('Running Julia code:', code);
-        
-        // Update status message
-        const statusElement = document.getElementById('status-message');
-        if (statusElement) {
-            statusElement.textContent = 'Running Julia code...';
+    runCode(code) {        
+        this.updateExecutionUI('running', 'Executing code...', '');
+        // Send code to Julia server and return the promise
+        return this.wsClient.sendCommand('run_code', { code });
+    }
+
+    /**
+     * Update execution UI (status bar and unified output)
+     * @param {string} status - Status type: 'running', 'success', 'error'
+     * @param {string} statusMessage - Status bar message
+     * @param {string} outputMessage - Output area message
+     */
+    updateExecutionUI(status, statusMessage, outputMessage) {
+        // Update status bar
+        const executionStatusElement = document.getElementById('execution-status');
+        if (executionStatusElement) {
+            executionStatusElement.className = 'status-value';
+            executionStatusElement.classList.add(status);
+            executionStatusElement.textContent = statusMessage;
         }
         
-        // Send code to Julia server
-        this.sendCommand('run_code', { code });
+        // Update unified output only if not in running status
+        if (status !== 'running') {
+            const unifiedOutput = document.getElementById('unified-output');
+            if (unifiedOutput) {
+                const outputClasses = {
+                    success: 'output-success',
+                    error: 'output-error'
+                };
+                
+                const outputClass = outputClasses[status] || '';
+                const messageElement = `<pre>${outputMessage}</pre>`;
+                
+                unifiedOutput.innerHTML = `
+                    <div class="${outputClass}">
+                        ${messageElement}
+                    </div>
+                `;
+            }
+        }
     }
 
     /**
