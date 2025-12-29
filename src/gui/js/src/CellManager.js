@@ -301,36 +301,19 @@ class CellManager {
         
         const code = cell.getValue();
         
-        try {
-            // Check if wsClient is available
-            if (this.wsClient) {
-                // Update UI to indicate running
-                this.updateExecutionUI('running', 'Executing code...', '');
-                
-                // Send code to Julia server
-                this.wsClient.sendCommand('run_code', { code: code })
-                    .then(response => {
-                        // Combine stdout and stderr for display
-                        let output = response.stdout;
-                        
-                        // Update UI with successful result
-                        this.updateExecutionUI('success', 'Execution completed', output || 'No output');
-                        
-                        cell.output = output;
-                    })
-                    .catch(error => {
-                        // Update UI with error
-                        this.updateExecutionUI('error', 'Execution failed', error.message || 'Unknown error occurred');
-                        
-                        cell.output = error.message;
-                    });
-            } 
-        } catch (error) {
-            // Update UI with error
-            this.updateExecutionUI('error', 'Execution failed', error.message);
-            
+        this.updateExecutionUI('running', 'Executing code...', '');
+        
+        this.wsClient.sendCommand('run_code', { 
+            code: code 
+        }).then(response => {
+            let output = response.stdout;
+            this.updateExecutionUI('success', 'Execution completed', output || 'No output');
+            cell.output = output;
+        }).catch(error => {
+            this.updateExecutionUI('error', 'Execution failed', error.message || 'Unknown error occurred');
             cell.output = error.message;
-        }
+        }); 
+
     }
     
     /**
