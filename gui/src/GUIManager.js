@@ -217,6 +217,13 @@ class GUIManager {
                 this.updateExecutionUI('error', 'Execution failed', response.error || 'Unknown error occurred');
             }
         }
+
+        if (response.type === 'fd_mesh_data') {
+           console.log('FD Mesh Data:', response.fd_mesh_data);
+           if (this.visualization && response.fd_mesh_data) {
+               this.visualization.displayFDMesh(response.fd_mesh_data);
+           }
+        }
     }
 
     /**

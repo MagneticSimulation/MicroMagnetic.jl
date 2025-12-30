@@ -13,8 +13,9 @@ function run_code(code::String)
     stderr_pipe = Pipe()
     
     success = true
+    result = nothing
     try
-        redirect_stdio(stdout=stdout_pipe, stderr=stderr_pipe) do
+        result = redirect_stdio(stdout=stdout_pipe, stderr=stderr_pipe) do
             eval(Meta.parseall(code))
         end
     catch e
@@ -36,7 +37,7 @@ function run_code(code::String)
         stderr_str = ""
     end
         
-    return success, stdout_str, stderr_str
+    return result, success, stdout_str, stderr_str
 end
 
 """
@@ -82,14 +83,27 @@ function init_default_handlers()
         
         log_message("Received run_code command (ID: $command_id)")
         
-        success, stdout_str, stderr_str = run_code(code)
+        result, success, stdout_str, stderr_str = run_code(code)
         response = Dict(
             "id" => command_id,
             "success" => success,
             "stdout" => stdout_str,       
             "stderr" => stderr_str,
-            "timestamp" => now()
+            "type" => ""
         )
+
+        if isa(result, FDMesh)
+            response["type"] = "fd_mesh_data"
+            response["fd_mesh_data"] = Dict(
+                "nx" => result.nx,
+                "ny" => result.ny,
+                "nz" => result.nz,
+                "dx" => result.dx*1e9,
+                "dy" => result.dy*1e9,
+                "dz" => result.dz*1e9,
+            )
+        end
+
         send_message(ws, "run_code_response", response)
     end
     
