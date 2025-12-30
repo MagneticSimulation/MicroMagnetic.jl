@@ -218,11 +218,22 @@ class GUIManager {
             }
         }
 
+        // Handle different response types with validation
         if (response.type === 'fd_mesh_data') {
            console.log('FD Mesh Data:', response.fd_mesh_data);
            if (this.visualization && response.fd_mesh_data) {
                this.visualization.displayFDMesh(response.fd_mesh_data);
            }
+        } else if (response.type === 'Ms_data') {
+            console.log('Ms Data:', response.Ms_data);
+            if (this.visualization && response.Ms_data) {
+                this.visualization.displayCustomSurface(response.Ms_data);
+            }
+        } else if (response.type === 'm_data') {
+            console.log('m Data:', response.m_data);
+            if (this.visualization && response.m_data) {
+                this.visualization.updateMagnetization(response.m_data);
+            }
         }
     }
 
@@ -231,10 +242,10 @@ class GUIManager {
      * @param {string} code - Julia code to execute
      * @returns {Promise} - Promise that resolves when code execution message is sent
      */
-    runCode(code) {        
+    runCode(code, desc = '') {        
         this.updateExecutionUI('running', 'Executing code...', '');
         // Send code to Julia server and return the promise
-        return this.wsClient.sendCommand('run_code', { code });
+        return this.wsClient.sendCommand('run_code', { code, desc });
     }
 
     /**

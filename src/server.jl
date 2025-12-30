@@ -7,6 +7,7 @@ export start_server, serve, gui
 const DEFAULT_HOST = "0.0.0.0"
 const DEFAULT_PORT = 10056
 global current_port = DEFAULT_PORT
+global sim = nothing
 
 function run_code(code::String)    
     stdout_pipe = Pipe()
@@ -80,8 +81,9 @@ function init_default_handlers()
     register_handler("run_code") do ws, data
         code = get(data, "code", "")
         command_id = get(data, "id", "")
+        description = get(data, "desc", "")
         
-        log_message("Received run_code command (ID: $command_id)")
+        log_message("Received run_code command (ID: $command_id, Desc: $description)")
         
         result, success, stdout_str, stderr_str = run_code(code)
         response = Dict(
@@ -89,7 +91,7 @@ function init_default_handlers()
             "success" => success,
             "stdout" => stdout_str,       
             "stderr" => stderr_str,
-            "type" => ""
+            "type" => description
         )
 
         if isa(result, FDMesh)
@@ -102,6 +104,16 @@ function init_default_handlers()
                 "dy" => result.dy*1e9,
                 "dz" => result.dz*1e9,
             )
+        elseif isa(result, MicroSim)
+           global sim = result
+        end
+
+        if description == "ms"
+            response["type"] = "Ms_data"
+            response["Ms_data"] = sim.mu0_Ms
+        elseif description == "m0" || description == "relax"
+            response["type"] = "m_data"
+            response["m_data"] = Array(sim.spin)
         end
 
         send_message(ws, "run_code_response", response)

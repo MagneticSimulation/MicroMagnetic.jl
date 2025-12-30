@@ -301,7 +301,7 @@ class CellManager {
         
         const code = cell.getValue();
 
-        this.guiManager.runCode(code);
+        this.guiManager.runCode(code, cell.cellType);
     }
 }
 
