@@ -66,7 +66,7 @@ class GUIManager {
         });
         
         // Data events
-        this.wsClient.on('magnetization_data', this.handleMagnetizationData.bind(this));
+        this.wsClient.on('m_data', this.handleMagnetizationData.bind(this));
         this.wsClient.on('run_code_response', this.handleCommandResponse.bind(this));
     }
 
