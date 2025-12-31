@@ -357,8 +357,8 @@ function set_driver_arguments(sim::AbstractSim, args::Dict)
 end
 
 """
-    relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=100, 
-           save_m_every=-1, using_time_factor=true)
+    relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=0, 
+           save_m_every=0, using_time_factor=true, output="ovf", update_time=1.0)
 
 Relaxes the system using either the `LLG` or `SD` driver. This function is compatible with both [Micromagnetic model](@ref) and [Atomistic spin model](@ref).
 
@@ -366,9 +366,10 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
 
 - `max_steps::Int`: Maximum number of steps to run the simulation. Default is `10000`.
 - `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
-- `save_data_every::Int`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving (e.g., `save_data_every=-1` saves data only at the end of the relaxation).
-- `save_m_every::Int`: Interval for saving magnetization data. A negative value disables magnetization saving.
+- `save_data_every::Int`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving while `save_data_every=0` saves data only at the end of the relaxation.
+- `save_m_every::Int`: Interval for saving magnetization data. A negative value disables magnetization saving while `save_m_every=0` saves magnetization only at the end of the relaxation.
 - `using_time_factor::Bool`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
+- `update_time::Float64`: Time interval (in seconds) for updating visualization data. Default is `1.0`.
 
 **Examples:**
 
@@ -376,8 +377,8 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
     relax(sim, max_steps=10000, stopping_dmdt=0.1)
 ```
 """
-function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=100,
-               save_m_every=-1, using_time_factor=true, maxsteps=nothing, output="ovf")
+function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=0,
+               save_m_every=0, using_time_factor=true, maxsteps=nothing, output="ovf", update_time=1.0)
     if !isnothing(maxsteps)
         @warn "The parameter 'maxsteps' is deprecated. Please use 'max_steps' in relax function."
         max_steps = maxsteps
@@ -396,6 +397,8 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
 
     N_spins = sim.n_total
     dm = create_zeros(3 * N_spins)
+    
+    last_update_time = time()
 
     driver = sim.driver
     @info @sprintf("Running Driver : %s.", typeof(driver))
@@ -413,6 +416,8 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         compute_dm!(dm, sim.prespin, sim.spin, N_spins)
         max_dmdt = maximum(dm) / step_size
 
+        stop_flag = max_dmdt < stopping_dmdt * dmdt_factor
+
         t = llg_driver ? sim.driver.integrator.t : 0.0
         if llg_driver
             Verbose[] &&
@@ -428,13 +433,13 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             sim.saver.nsteps += 1
         end
 
-        if save_data_every > 0 && i % save_data_every == 0
+        if (save_data_every > 0 && i % save_data_every == 0) || (stop_flag && save_data_every == 0)
             compute_system_energy(sim, sim.spin, t)
             sim.saver.t = t
             write_data(sim)
         end
 
-        if save_m_every > 0 && i % save_m_every == 0
+        if (save_m_every > 0 && i % save_m_every == 0) || (stop_flag && save_m_every == 0)
             if output == "ovf"
                 save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
             elseif output == "vts" || output == "vtu"
@@ -442,24 +447,24 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             end
         end
 
-        if max_dmdt < stopping_dmdt * dmdt_factor
+        current_time = time()
+        if update_time > 0 && (current_time - last_update_time >= update_time || stop_flag)
+            if global_client != nothing
+                response = Dict(
+                    "type" => "m_data",
+                    "m_data" => Array(sim.spin),
+                )
+                send_message(global_client, "m_data", response)
+                last_update_time = current_time
+            end
+        end
+
+        if stop_flag
             @info @sprintf("max_dmdt is less than stopping_dmdt=%g @steps=%g, Done!",
                            stopping_dmdt, i)
-            if save_data_every > 0 || save_data_every == -1
-                compute_system_energy(sim, sim.spin, t)
-                write_data(sim)
-            end
-
-            if save_m_every > 0
-                if output == "ovf"
-                    save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
-                elseif output == "vts" || output == "vtu"
-                    save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
-                end
-            end
-
             break
         end
+
     end
 
     return nothing
@@ -627,8 +632,8 @@ Create a micromagnetic simulation instance with given arguments.
 - `axis1`: the cubic anisotropy axis1, should be a tuple, such as (1,0,0)
 - `axis2`: the cubic anisotropy axis2, should be a tuple, such as (0,1,0)
 - `demag` : include demagnetization or not, should be a boolean, i.e., true or false. By default,  demag=false.
-- `H`: the external field, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
-- `m0` : the initial magnetization, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). 
+- `H`: the external field, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref).
+- `m0` : the initial magnetization, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref).
 - `T` : the temperature, should be should be [`NumberOrArrayOrFunction`](@ref).
 - `shape` : the shape defines the geometry of the sample, where parameters are configured.
 """
@@ -647,7 +652,7 @@ function create_sim(mesh, args::Dict)
     #Create the mesh using given driver and name
     sim = Sim(mesh; driver=driver, integrator=integrator, name=name)
 
-    #If the simulation is the standard micromagnetic simulation.
+    #If the simulation is the standard micromagnetics simulation.
     if isa(mesh, FDMesh)
 
         # we set the Ms anyway
@@ -1043,3 +1048,8 @@ end
 function advance_step(sim::AbstractSim)
     return advance_step(sim, sim.driver.integrator)
 end
+
+
+
+
+

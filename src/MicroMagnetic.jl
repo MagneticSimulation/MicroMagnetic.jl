@@ -195,6 +195,7 @@ function dynamic_matrix end
 
 export ovf2png, plot_m, plot_ts, ovf2movie, dynamic_matrix
 
+include("server.jl")
 include("const.jl")
 include("micro/mesh.jl")
 include("fem/mesh.jl")
@@ -229,7 +230,6 @@ include("init_m.jl")
 include("ovf2.jl")
 include("vtk.jl")
 include("voronoi.jl")
-include("server.jl")
 
 include("atomistic/mesh.jl")
 include("atomistic/head.jl")
