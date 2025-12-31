@@ -7,9 +7,13 @@ export start_server, serve, gui
 const DEFAULT_HOST = "0.0.0.0"
 const DEFAULT_PORT = 10056
 global current_port = DEFAULT_PORT
-global sim = nothing
+# global variables for managing single connection
+global_sim = nothing
+global_client = nothing
+# Message handlers
+message_handlers = Dict{String, Function}()
 
-function run_code(code::String)    
+function run_code(code::String)
     stdout_pipe = Pipe()
     stderr_pipe = Pipe()
     
@@ -52,10 +56,6 @@ function decodeURIComponent(uri::AbstractString)
     return uri
 end
 
-# Global variables
-global current_port = 0
-global active_connections = Dict{String, HTTP.WebSockets.WebSocket}()
-global message_handlers = Dict{String, Function}()
 
 """
 Log a message with timestamp
@@ -105,34 +105,22 @@ function init_default_handlers()
                 "dz" => result.dz*1e9,
             )
         elseif isa(result, MicroSim)
-           global sim = result
+           global global_sim = result
         end
 
-        if description == "ms"
+        if description == "ms" && global_sim !== nothing
             response["type"] = "Ms_data"
-            response["Ms_data"] = sim.mu0_Ms
-        elseif description == "m0" || description == "relax"
+            response["Ms_data"] = global_sim.mu0_Ms
+        elseif (description == "m0" || description == "relax") && global_sim !== nothing
             response["type"] = "m_data"
-            response["m_data"] = Array(sim.spin)
+            response["m_data"] = Array(global_sim.spin)
         end
 
         send_message(ws, "run_code_response", response)
     end
     
-    register_handler("stop_server") do ws, data
-        # Get client_id from the active_connections (find the key for this ws)
-        client_id = "unknown"
-        for (id, connection) in active_connections
-            if connection === ws
-                client_id = id
-                break
-            end
-        end
-        
+    register_handler("stop_server") do ws, client_id, data
         log_message("Received stop_server command from client $client_id")
-        
-        # Instead of stopping the entire server, just close the client's connection
-        # This way, other clients are not affected
         
         try
             # Send confirmation message to the client
@@ -173,15 +161,16 @@ end
 Broadcast message to all connected clients
 """
 function broadcast(message_type::String, data::Dict=Dict())
-    for (client_id, ws) in active_connections
-        send_message(ws, message_type, data)
+    # Since we only allow one connection, simplify broadcasting
+    if global_client !== nothing
+        send_message(global_client, message_type, data)
     end
 end
 
 """
 Handle WebSocket message
 """
-function handle_message(ws, client_id::String, message::String)
+function handle_message(ws, message::String)
     try
         # Parse JSON message
         msg = JSON.parse(message)
@@ -227,12 +216,28 @@ end
 WebSocket connection handler
 """
 function handle_websocket(ws, client_id::String)
+    # Check if there's already an active connection
+    if global_client !== nothing
+        log_message("Connection rejected: server already has an active client connection")
+        # Send error message and close connection
+        try
+            send_message(ws, "error", Dict(
+                "message" => "Server already has an active client connection. Only one connection is allowed at a time."
+            ))
+            close(ws)
+        catch e
+            @warn "Error sending rejection message: $e"
+        end
+        return
+    end
+    
+    global global_client = ws
     log_message("WebSocket client connected: $client_id")
     
     try     
         # Listen for messages
         for msg in ws
-            handle_message(ws, client_id, msg)
+            handle_message(ws, msg)
         end
         
     catch e
@@ -242,8 +247,8 @@ function handle_websocket(ws, client_id::String)
             log_message("WebSocket error: $e")
         end
     finally
-        # Clean up connection
-        delete!(active_connections, client_id)
+        global global_client = nothing
+        global global_sim = nothing
         log_message("Connection closed: $client_id")
     end
 end
@@ -261,11 +266,7 @@ HTTP request handler
 function handle_http_request(http::HTTP.Stream)
     req = http.message
     
-    if HTTP.WebSockets.isupgrade(req)
-        # WebSocket upgrade request
-        # Try to get session ID from headers or query parameters
-        session_id = nothing
-        
+    if HTTP.WebSockets.isupgrade(req)  
         # Check headers for session ID
         # Find session ID in headers vector
         session_id = nothing
@@ -302,13 +303,13 @@ function handle_http_request(http::HTTP.Stream)
         end
         
         HTTP.WebSockets.upgrade(http) do ws
-            active_connections[client_id] = ws
+            # active_connections[client_id] = ws
             handle_websocket(ws, client_id)
         end
         
     elseif req.method == "GET"
         # HTTP GET request
-        handle_get_request(http, req, active_connections, message_handlers)
+        handle_get_request(http, req, message_handlers)
     else
         # Method not allowed
         HTTP.setstatus(http, 405)
@@ -383,13 +384,13 @@ end
 """
 Handle HTTP GET requests
 """
-function handle_get_request(http, req, active_connections, message_handlers)
+function handle_get_request(http, req, message_handlers)
     if req.target == "/status"
         # Return JSON status
         status = Dict(
             "status" => "running",
             "port" => current_port,
-            "active_connections" => length(active_connections),
+            "active_connections" => global_client !== nothing ? 1 : 0,
             "server_time" => string(now()),
             "message_handlers" => collect(keys(message_handlers))
         )
@@ -433,9 +434,10 @@ function handle_get_request(http, req, active_connections, message_handlers)
                 HTTP.startwrite(http)
                 HTTP.write(http, content)
             catch e
-                
+                # Client closed connection
             end
         else
+            # File not found
             HTTP.setstatus(http, 404)
             HTTP.setheader(http, "Content-Type" => "text/plain")
             HTTP.startwrite(http)
