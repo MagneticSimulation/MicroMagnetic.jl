@@ -1,0 +1,168 @@
+/* FDMesh panel container - popup style */
+#fdmesh-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    width: 320px;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+#fdmesh-panel.expanded {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* FDMesh panel header */
+#fdmesh-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+/* FDMesh panel title */
+#fdmesh-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+/* FDMesh panel close button */
+#fdmesh-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+#fdmesh-close:hover {
+    background-color: #e9ecef;
+    color: #666;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #fdmesh-panel {
+        width: 95vw;
+    }
+    
+    .fdmesh-input-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .fdmesh-pbc-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .fdmesh-checkbox-group {
+        flex-direction: column;
+        gap: 6px;
+    }
+}
+
+/* FDMesh panel content */
+#fdmesh-content {
+    padding: 12px;
+}
+
+/* FDMesh panel section */
+.fdmesh-section {
+    margin-bottom: 10px;
+}
+
+/* FDMesh label */
+.fdmesh-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #555;
+    line-height: 1.2;
+}
+
+/* FDMesh input grid */
+.fdmesh-input-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+/* FDMesh input */
+.fdmesh-input {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.fdmesh-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* FDMesh PBC row */
+.fdmesh-pbc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+/* FDMesh PBC label - special case */
+.fdmesh-pbc-row .fdmesh-label {
+    display: inline-block;
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+
+/* FDMesh checkbox group */
+.fdmesh-checkbox-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+/* FDMesh checkbox label */
+.fdmesh-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #333;
+    cursor: pointer;
+    line-height: 1.2;
+}
+
+/* FDMesh checkbox */
+.fdmesh-checkbox-label input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}

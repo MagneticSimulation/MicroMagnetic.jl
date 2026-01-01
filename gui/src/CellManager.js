@@ -1,7 +1,3 @@
-/**
- * CellManager class - Manage multiple cells
- */
-
 class CellManager {
     /**
      * Constructor
@@ -30,13 +26,6 @@ class CellManager {
     init() {
         // Create header
         this.createHeader();
-        
-        // Set add cell button event
-        const addBtn = document.getElementById('add-cell-btn');
-        if (addBtn) {
-            addBtn.addEventListener('click', () => this.addCell());
-        }
-        
     }
      
     /**
@@ -226,9 +215,7 @@ class CellManager {
      * Update UI to reflect current selection state
      */
     updateSelectionUI() {
-        // Update all cells to reflect their selection state
         this.cells.forEach((cell) => {
-            console.log('Updating cell:', cell.description);
             if (cell && cell.element) {
                 const isSelected = cell === this.selectedCell;
                 cell.selected = isSelected; // Update cell's selected property

@@ -1,4 +1,5 @@
 // CellSelector.js
+import { FDMeshPanel } from './FDMeshPanel.js';
 
 // Cell templates dictionary - moved outside the class for better scalability
 const cellTemplates = {
@@ -79,12 +80,59 @@ class CellSelector {
     constructor(cellManager) {
         this.cellManager = cellManager;
         this.selectorElement = document.getElementById('cell-selector');
+        this.fdMeshPanel = null;
+        this.showPanelBtn = null;
+        this.lastSelectedCell = null; 
+        
+        // Initialize features
+        this.initializeCellSelector();
+        this.initializeFDMeshPanel();
+        this.setupCellListeners();
+        
+        console.log('CellSelector initialized');
+    }
+    
+    /**
+     * Initialize Cell selector functionality
+     */
+    initializeCellSelector() {
+        if (!this.selectorElement) {
+            console.warn('Cell selector element not found');
+            return;
+        }
         
         // Add event listener for selector changes
         this.selectorElement.addEventListener('change', () => this.handleSelectorChange());
         
+        // Add event listener for show panel button
+        this.showPanelBtn = document.getElementById('show-panel-btn');
+        if (this.showPanelBtn) {
+            this.showPanelBtn.addEventListener('click', () => {
+                this.showPanel();
+            });
+        }
+        
         // Initialize with default options
         this.updateOptions();
+    }
+    
+    /**
+     * Initialize FDMesh panel
+     */
+    initializeFDMeshPanel() {
+        this.fdMeshPanel = new FDMeshPanel(this.cellManager);
+        this.fdMeshPanel.init();
+    }
+    
+    /**
+     * Set up cell listeners
+     */
+    setupCellListeners() {
+        // Add selection change listener to update cell selector options
+        this.cellManager.addSelectionChangeListener((cell) => {
+            this.updateOptions();
+            this.onCellSelected(cell);
+        });
     }
     
     updateOptions() {
@@ -149,26 +197,31 @@ class CellSelector {
     updateCellContent(templateKey) {
         const selectedCell = this.cellManager.getSelectedCell();
         if (!selectedCell) {
-            console.error('No cell selected to update');
             return;
         }
         
-        // Get template from the cellTemplates dictionary
         const template = cellTemplates[templateKey];
         if (!template) {
-            console.error('Template not found:', templateKey);
             return;
         }
         
-        // Update cell content
+        // Update cell content with template
         selectedCell.content = template.content;
-        selectedCell.defaultContent = template.content;
-        //selectedCell.description = template.description;
         selectedCell.cellType = template.cellType;
         
-        // Update the cell's editor content
         if (selectedCell.editor) {
             selectedCell.editor.setValue(template.content);
+        }
+        
+        // Refresh the cell selector options and update selected option
+        this.updateOptions();
+        this.updateSelectedOption();
+        
+        this.lastSelectedCell = selectedCell;
+        
+        // Refresh panel data if it's already visible
+        if (this.fdMeshPanel && this.fdMeshPanel.container) {
+            this.fdMeshPanel.refreshFromCellCode(selectedCell);
         }
         
         console.log('Cell content updated with template:', templateKey);
@@ -187,7 +240,38 @@ class CellSelector {
         // Update button states after setting the selected option
         this.updateButtonStates();
     }
+    
+    /**
+     * Show panel for the current selected cell
+     */
+    showPanel() {
+        const selectedCell = this.cellManager.getSelectedCell() || this.lastSelectedCell;
+        if (!selectedCell) {
+            console.warn('No cell selected to show panel for');
+            return;
+        }
+        
+        // Show appropriate panel based on cell type
+        if (selectedCell.cellType === 'mesh') {
+            if (this.fdMeshPanel) {
+                this.fdMeshPanel.showPanel(selectedCell);
+            }
+        } else {
+            console.log('No panel available for cell type:', selectedCell.cellType);
+        }
+    }
+    
+    /**
+     * Handle cell selection changes
+     */
+    onCellSelected(cell) {
+        this.lastSelectedCell = cell;
+        
+        // Refresh panel data if it's already visible
+        if (cell && this.fdMeshPanel) {
+            this.fdMeshPanel.refreshFromCellCode(cell);
+        }
+    }
 }
 
-// Export the CellSelector class and cellTemplates dictionary
 export { CellSelector, cellTemplates };

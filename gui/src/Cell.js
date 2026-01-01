@@ -11,8 +11,9 @@ class Cell {
      * @param {string} id - Optional cell ID
      * @param {string} cellType - Optional short description
      * @param {boolean} isInteraction - Whether this cell is an interaction
+     * @param {boolean} allowClose - Whether this cell can be closed/deleted
      */
-    constructor(content = '', description = 'Code Cell', cellManager = null, id = null, cellType = '', isInteraction = false) {
+    constructor(content = '', description = 'Code Cell', cellManager = null, id = null, cellType = '', isInteraction = false, allowClose = true) {
         this.id = id || this.generateId();
         this.content = content;
         this.defaultContent = content;
@@ -26,6 +27,8 @@ class Cell {
         this.output = '';
         this.collapsed = true; // Default expanded state
         this.selected = false; // Track selection state
+        this.allowClose = allowClose;
+        this.runBtn = null; // Reference to run button element
     }
 
     /**
@@ -53,12 +56,11 @@ class Cell {
         const header = document.createElement('div');
         header.className = 'cell-header';
         
-        // Add click event for collapse/expand and selection
-        header.addEventListener('click', () => {
+        header.addEventListener('click', (e) => {
+            e.stopPropagation(); 
             this.toggleCollapse();
-            // Add selection when clicking header
-            if (this.cellManager) {
-                this.cellManager.selectCellById(this.id);
+            if (!this.selected) {
+                this.select();
             }
         });
 
@@ -71,13 +73,12 @@ class Cell {
         const actions = document.createElement('div');
         actions.className = 'cell-actions';
 
-        // Run button
-        const runBtn = document.createElement('button');
-        runBtn.className = 'cell-btn run-btn';
-        runBtn.textContent = '▶';
-        runBtn.title = 'Run';
-        runBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent bubble, avoid triggering header click event
+        this.runBtn = document.createElement('button');
+        this.runBtn.className = 'cell-btn run-btn';
+        this.runBtn.textContent = '▶';
+        this.runBtn.title = 'Run';
+        this.runBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             this.run();
         });
 
@@ -91,19 +92,21 @@ class Cell {
             this.reset();
         });
 
-        // Delete button
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'cell-btn delete-btn';
-        deleteBtn.textContent = '✕';
-        deleteBtn.title = 'Delete';
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.delete();
-        });
-
-        actions.appendChild(runBtn);
+        actions.appendChild(this.runBtn);
         actions.appendChild(resetBtn);
-        actions.appendChild(deleteBtn);
+
+        if (this.allowClose) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'cell-btn delete-btn';
+            deleteBtn.textContent = '✕';
+            deleteBtn.title = 'Delete';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.delete();
+            });
+            actions.appendChild(deleteBtn);
+        }
+
         header.appendChild(description);
         header.appendChild(actions);
 
@@ -129,10 +132,7 @@ class Cell {
         // Add click event for cell selection
         // Simplified version - only add to the cell element
         this.element.addEventListener('click', (e) => {
-            // Check if click is on header or its children
-            const isHeaderClick = e.target.closest('.cell-header');
-            
-            if (!isHeaderClick && !this.selected) {
+            if (!this.selected) {
                 this.select();
             }
         });
@@ -189,6 +189,10 @@ class Cell {
         // Listen for content changes
         this.editor.on('change', () => {
             this.content = this.editor.getValue();
+            // Enable run button when content changes
+            if (this.runBtn) {
+                this.runBtn.disabled = false;
+            }
         });
 
         // Set appropriate font size and height
@@ -205,12 +209,20 @@ class Cell {
         this.outputElement.style.display = 'none';
         this.outputElement.innerHTML = '';
         this.output = '';
+        // Enable run button when resetting
+        if (this.runBtn) {
+            this.runBtn.disabled = false;
+        }
     }
 
     /**
      * Run cell code
      */
     run() {
+        // Disable run button when running
+        if (this.runBtn) {
+            this.runBtn.disabled = true;
+        }
         this.cellManager.runCell(this);
     }
 
@@ -246,7 +258,7 @@ class Cell {
                 output.style.display = 'block';
             }
             
-            // Critical fix: Refresh CodeMirror when expanding
+            // Refresh CodeMirror when expanding
             setTimeout(() => {
                 if (this.editor) {
                     this.editor.refresh();
@@ -290,8 +302,6 @@ class Cell {
     }
 }
 
-
-// Export classes - Support ES modules, CommonJS and browser globals
 export { Cell };
 
 if (typeof module !== 'undefined' && module.exports) {

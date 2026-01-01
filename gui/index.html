@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
     <link rel="stylesheet" href="src/styles/cell.css">
     <link rel="stylesheet" href="src/styles/main.css">
+    <link rel="stylesheet" href="src/styles/panel.css">
     
     <!-- JavaScript Files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
@@ -77,10 +78,13 @@
                 <!-- Cell Section -->
                 <div class="control-section">
                     <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                        <button id="add-cell-btn">Add New Cell</button>
+                        <button id="add-cell-btn">Add Cell</button>
                         <select id="cell-selector" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff;">
                             <option value="">-- Select Cell --</option>
                         </select>
+                        <button id="show-panel-btn" style="padding: 6px 10px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff; cursor: pointer;">
+                            Show Panel
+                        </button>
                     </div>
                     <div id="cells-container"></div>
                 </div>
