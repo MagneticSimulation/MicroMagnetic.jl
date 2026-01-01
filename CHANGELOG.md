@@ -2,6 +2,24 @@
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+
+
+## Version [v0.5.0]
+
+### Added
+
+- Web based GUI
+
+### Changed
+
+- change relax_m_interval to relax_m_every in sim_with function
+- change dynamic_m_interval to dynamic_m_every in sim_with function
+- change relax_data_interval to relax_data_every in sim_with function
+
+### Removed
+
+- 
+
 ## Version [v0.4.0]
 
 ### Added

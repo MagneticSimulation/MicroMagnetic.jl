@@ -57,6 +57,7 @@ function save_ovf(sim::AbstractSim, fname::String; type::DataType = Float64)
     ovf.data = zeros(Float64,3*n_total)
     copyto!(ovf.data, sim.spin)
 
+    mkpath(dirname(fname))
     save_ovf(ovf, fname)
 end
 

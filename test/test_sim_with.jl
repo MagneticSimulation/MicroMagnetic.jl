@@ -17,7 +17,8 @@ end
 
 function test_sim_with()
     mesh = FDMesh(; nx=2, ny=2, nz=2)
-    args = (task="Relax", mesh=mesh, m0=(1, 2, 3), Ms=8e5, A=1e-11, H=(0, 0, 1e5),
+    args = (task="Relax", mesh=mesh, m0=(1, 2, 3), Ms=8e5, A=1e-11, H=(0, 0, 1e5), 
+            relax_m_every=-1,
             name="test_relax", stopping_dmdt=0.01)
 
     sim = sim_with(args)
@@ -43,6 +44,7 @@ function test_sim_with()
     @test isapprox(m[1:3], analytical)
 
     args = (name="test_read", task="relax", mesh=mesh, m0=(1, 2, 3), Ms=8e5, A=1e-11, stopping_dmdt=0.01,
+            relax_m_every =-1,
             H_s=[(1e5, 0, 0), (0, 0, -1e5)])
 
     sim = sim_with(args)

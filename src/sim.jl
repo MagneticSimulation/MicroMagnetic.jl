@@ -851,10 +851,10 @@ end
 - `saver_item`: A `SaverItem` instance or a list of `SaverItem` instances. These are custom data-saving utilities that can be used to store additional quantities during the simulation (e.g., guiding centers or other derived values). If `nothing`, no additional data is saved beyond the default.
 - `call_back`: A user-defined function or `nothing`. If provided, this function will be called at every step, allowing for real-time inspection or manipulation of the simulation state.
 - `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
-- `relax_data_interval::Int`: Interval for saving overall data such as energies and average magnetization during a `Relax` task. A negative value disables data saving (e.g., `relax_data_interval = -1` saves data only at the end of the relaxation).
+- `relax_data_every::Int`: Interval for saving overall data such as energies and average magnetization during a `Relax` task. A negative value disables data saving (e.g., `relax_data_every = -1` saves data only at the end of the relaxation).
 - `dynamic_data_save::Bool`: Boolean flag to enable or disable saving overall data such as energies and average magnetization during the `Dynamics` task. Set to `true` to enable, or `false` to disable.
-- `relax_m_interval::Int`: Interval for saving magnetization data during a `Relax` task. A negative value disables magnetization saving.
-- `dynamic_m_interval::Int`: Interval for saving magnetization data during a `Dynamics` task. A negative value disables magnetization saving.
+- `relax_m_every::Int`: Interval for saving magnetization data during a `Relax` task. A negative value disables magnetization saving while `relax_m_every=0` saves magnetization only at the end of the relaxation.
+- `dynamic_m_every ::Int`: Interval for saving magnetization data during a `Dynamics` task. A negative value disables magnetization saving while `dynamic_m_every =0` saves magnetization only at the end of the dynamics.
 - `using_time_factor::Bool`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
 - `save_vtk::Bool`: Boolean flag to save the magnetization to vtk files after finishing each task. Default is `false`.
 
@@ -868,7 +868,7 @@ See examples at [High-Level Interface](@ref).
 - **Argument Types**: The `args` parameter can be either a `NamedTuple` or a `Dict`, providing flexibility in how you organize and pass the simulation parameters.
 - **Driver Selection**: The `driver` parameter (or `driver_s` for multiple drivers) specifies the simulation type. Options include `"SD"` for the steepest-descent method, `"LLG"` for the Landau-Lifshitz-Gilbert equation, and `"LLG_STT"` for simulations involving spin-transfer torques.
 - **Stopping Criterion**: The `stopping_dmdt` parameter is critical for determining when to stop a simulation, particularly in relaxation tasks. It measures the rate of change in magnetization, with typical values ranging from `0.01` to `1`. For atomistic models, the `using_time_factor` flag can be set to `false` to disable time scaling.
-- **Data Saving**: The `relax_m_interval` and `dynamic_m_interval` parameters control how frequently magnetization data is saved during `Relax` and `Dynamics` tasks, respectively. Use negative values to disable data saving for these tasks.
+- **Data Saving**: The `relax_m_every` and `dynamic_m_every ` parameters control how frequently magnetization data is saved during `Relax` and `Dynamics` tasks, respectively. Use negative values to disable data saving for these tasks.
 
 """
 function sim_with(args::Union{NamedTuple,Dict})
@@ -881,13 +881,13 @@ function sim_with(args::Union{NamedTuple,Dict})
     driver = get(args, :driver, "SD")
     stopping_dmdt = get(args, :stopping_dmdt, 0.1)
     max_steps = get(args, :max_steps, 10000)
-    relax_data_interval = get(args, :relax_data_interval, -1)
-    relax_m_interval = get(args, :relax_m_interval, -1)
+    relax_data_every = get(args, :relax_data_every, 0)
+    relax_m_every = get(args, :relax_m_every, 0)
     using_time_factor = get(args, :using_time_factor, true)
     steps = get(args, :steps, 100)
     dt = get(args, :dt, 1e-11)
     dynamic_data_save = get(args, :dynamic_data_save, true)
-    dynamic_m_interval = get(args, :dynamic_m_interval, -1)
+    dynamic_m_every  = get(args, :dynamic_m_every , -1)
     call_back = get(args, :call_back, nothing)
     saver_item = get(args, :saver_item, nothing)
     vtk_saving = get(args, :save_vtk, false)
@@ -919,13 +919,13 @@ function sim_with(args::Union{NamedTuple,Dict})
         end
 
         if startswith(lowercase(task), "rel") # task == relax 
-            for key in [:stopping_dmdt, :max_steps, :relax_data_interval, :relax_m_interval,
+            for key in [:stopping_dmdt, :max_steps, :relax_data_every, :relax_m_every,
                         :using_time_factor]
                 haskey(args, key) && delete!(args, key)
             end
 
             relax(sim; max_steps=max_steps, stopping_dmdt=stopping_dmdt,
-                  save_data_every=relax_data_interval, save_m_every=relax_m_interval,
+                  save_data_every=relax_data_every, save_m_every=relax_m_every,
                   using_time_factor=using_time_factor)
 
         elseif startswith(lowercase(task), "dyn") # task == "dynamics"
@@ -935,13 +935,13 @@ function sim_with(args::Union{NamedTuple,Dict})
                 set_initial_condition!(sim, sim.driver.integrator)
             end
 
-            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back,
+            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_every , :call_back,
                         :saver_item, :save_vtk]
                 haskey(args, key) && delete!(args, key)
             end
 
             run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
-                    save_m_every=dynamic_m_interval, call_back=call_back)
+                    save_m_every=dynamic_m_every , call_back=call_back)
         end
 
         for key in args
@@ -998,12 +998,12 @@ function sim_with(args::Union{NamedTuple,Dict})
         # TODO: we can add more ...
 
         if startswith(lowercase(task_), "rel")
-            for key in [:stopping_dmdt, :max_steps, :relax_data_interval, :relax_m_interval,
+            for key in [:stopping_dmdt, :max_steps, :relax_data_every, :relax_m_every,
                         :using_time_factor]
                 haskey(args, key) && delete!(args, key)
             end
             relax(sim; max_steps=max_steps, stopping_dmdt=stopping_dmdt,
-                  save_data_every=relax_data_interval, save_m_every=relax_m_interval,
+                  save_data_every=relax_data_every, save_m_every=relax_m_every,
                   using_time_factor=using_time_factor)
 
         elseif startswith(lowercase(task_), "dyn")
@@ -1015,13 +1015,13 @@ function sim_with(args::Union{NamedTuple,Dict})
             set_driver_arguments(sim, args)
             set_initial_condition!(sim, sim.driver.integrator)
 
-            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_interval, :call_back,
+            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_every , :call_back,
                         :saver_item, :save_vtk]
                 haskey(args, key) && delete!(args, key)
             end
 
             run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
-                    save_m_every=dynamic_m_interval, call_back=call_back)
+                    save_m_every=dynamic_m_every , call_back=call_back)
 
         else
             error("Only support two types of task: 'Relax' and 'Dynamics'.")
