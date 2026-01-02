@@ -32,7 +32,7 @@ function init_scalar!(v::AbstractArray{T,1}, mesh::FDMesh, init_fun::Function) w
             a[id] = init_fun(x, y, z)
         end
     elseif nargs == 1
-        # Function takes region ID as input
+        # Function takes region ID as input.
         for i in 1:nx, j in 1:ny, k in 1:nz
             id = index(i, j, k, nx, ny, nz)
             region_id = mesh.regions[id]
@@ -49,10 +49,10 @@ function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::CSGShape,
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     for k in 1:nz, j in 1:ny, i in 1:nx
-        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
-        x = (i - 0.5 - nx / 2) * dx
-        y = (j - 0.5 - ny / 2) * dy
-        z = (k - 0.5 - nz / 2) * dz
+        id = index(i, j, k, nx, ny, nz)
+        x = mesh.x0 + (i - 0.5)*dx
+        y = mesh.y0 + (j - 0.5)*dy
+        z = mesh.z0 + (k - 0.5)*dz
         if inside(shape, (x, y, z))
             a[id] = init
         end
@@ -176,8 +176,8 @@ function region_map(mapping::Pair{Int,<:Number}...; default=0.0)
     for (region_id, value) in mapping
         dict[region_id] = Float64(value)
     end
-    return function (id::Integer)
-        return get(dict, id, default)
+    return function (region_id::Integer)
+        return get(dict, region_id, default)
     end
 end
 

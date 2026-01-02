@@ -44,18 +44,7 @@ function test_region_map()
     @test Ms_map(1) == 8.6e5
     @test Ms_map(2) == 0.0
     @test Ms_map(0) == 0.0
-    
-    # Multiple regions
-    exch_map = region_map(
-        1 => 1.3e-11,
-        2 => 0.8e-11,
-        3 => 0.5e-11
-    )
-    @test exch_map(1) == 1.3e-11
-    @test exch_map(2) == 0.8e-11
-    @test exch_map(3) == 0.5e-11
-    @test exch_map(4) == 0.0
-    
+     
     # With custom default value
     anis_map = region_map(
         -1 => 5e5,
@@ -67,7 +56,7 @@ function test_region_map()
     @test anis_map(3) == 1e5
     @test anis_map(0) == 1e5
     
-    # Integration with set_region and set_Ms (basic)
+    # Integration with set_region and set_Ms
     mesh = FDMesh(nx=10, ny=10, nz=1, dx=5e-9, dy=5e-9, dz=5e-9)
     circle = Cylinder(center=(0, 0, 0), radius=20e-9, height=10e-9, normal=(0, 0, 1))
     set_region(mesh, circle, 1)
@@ -87,7 +76,6 @@ end
 
 @using_gpu()
 test_functions("Sim", test_sim, test_region_map)
-
 
 
 

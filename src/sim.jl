@@ -5,7 +5,8 @@ export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, r
        set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with, advance_step, set_alpha
 
 """
-    Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince", save_data=true)
+    Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
+             save_data=true)
 
 Create a simulation instance for the given mesh with specified driver and integrator.
 
@@ -114,6 +115,7 @@ Set the saturation magnetization Ms of the studied system. For example,
    set_Ms(sim, 8.6e5)
 ```
 or
+
 ```julia
 function circular_Ms(i,j,k,dx,dy,dz)
     if (i-50.5)^2 + (j-50.5)^2 <= 50^2
@@ -134,8 +136,17 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     end
 
     Ms_a .*= mu_0  #we convert A/m to Tesla
-
     copyto!(sim.mu0_Ms, Ms_a)
+    return true
+end
+
+"""
+    set_Ms(sim::AbstractSim, shape::CSGShape, Ms::Number)
+
+Set the saturation magnetization Ms within the Shape.
+"""
+function set_Ms(sim::AbstractSim, shape::CSGShape, Ms::Number)
+    init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms * mu_0)
     return true
 end
 
@@ -609,7 +620,7 @@ Create a micromagnetic simulation instance with given arguments.
 - `beta` : the nonadiabatic strength in the LLG equation with spin transfer torques (zhang-li model), should be a number.
 - `gamma` : the gyromagnetic ratio, default value = 2.21e5.
 - `ux`, `uy` or `uz`: the strengths of the spin transfer torque.
-- `ufun` : the time-dependent function for `u`. 
+- `ufun` : the time-dependent function for `u`.
 - `Ms`: the saturation magnetization, should be [`NumberOrArrayOrFunction`](@ref). By default, Ms=8e5
 - `mu_s`: the magnetic moment, should be [`NumberOrArrayOrFunction`](@ref). By default, mu_s=2*mu_B
 - `A` or `J`: the exchange constant, should be [`NumberOrArrayOrFunction`](@ref).
@@ -1037,6 +1048,10 @@ end
 function advance_step(sim::AbstractSim)
     return advance_step(sim, sim.driver.integrator)
 end
+
+
+
+
 
 
 
