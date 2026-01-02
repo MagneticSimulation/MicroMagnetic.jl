@@ -1,5 +1,5 @@
 import WebSocketClient from './client.js';
-import { createRelaxTaskManager } from './tasks.js';
+import { createExampleTaskManager, examples } from './tasks.js';
 
 /**
  * GUIManager class for handling user interactions and WebSocket communication
@@ -13,7 +13,8 @@ class GUIManager {
         this.maxConnectionAttempts = 5;
         this.simulationType = 'fd';
         this.taskType = 'relax';
-        this.relaxTaskManager = null;
+        this.example = '';
+        this.taskManager = null;
     }
 
     /**
@@ -87,14 +88,14 @@ class GUIManager {
      * @param {string} containerSelector - CSS selector for the container element
      */
     initRelaxTaskManager(containerSelector) {
-        this.relaxTaskManager = createRelaxTaskManager(containerSelector, this);
+        this.taskManager = createExampleTaskManager(containerSelector, 'std4', this);
         
-        // Pass wsClient to relaxTaskManager if needed
-        if (this.relaxTaskManager && this.wsClient) {
-            this.relaxTaskManager.wsClient = this.wsClient;
+        // Pass wsClient to taskManager if needed
+        if (this.taskManager && this.wsClient) {
+            this.taskManager.wsClient = this.wsClient;
         }
         
-        return this.relaxTaskManager;
+        return this.taskManager;
     }
 
     /**
@@ -139,6 +140,7 @@ class GUIManager {
         // Initialize simulation type and task type selections
         this.initSimulationTypeSelection();
         this.initTaskTypeSelection();
+        this.initExampleSelection();
     }
 
     /**
@@ -200,6 +202,33 @@ class GUIManager {
         
         // Set default task type
         this.taskType = 'relax';
+    }
+
+    /**
+     * Initialize example selection
+     */
+    initExampleSelection() {
+        const selectElement = document.getElementById('example-selector');
+        
+        selectElement.addEventListener('change', (event) => {
+            const selectedExample = event.target.value;
+            console.log('Selected example:', selectedExample);
+            // Store selected example
+            this.example = selectedExample;
+            
+            // If a valid example is selected, create a task manager for it
+            if (selectedExample && examples[selectedExample]) {
+                this.taskManager = createExampleTaskManager('#cells-container', selectedExample, this);
+                
+                // Pass wsClient to taskManager if needed
+                if (this.taskManager && this.wsClient) {
+                    this.taskManager.wsClient = this.wsClient;
+                }
+            }
+        });
+        
+        // Set default example
+        this.example = '';
     }
 
     /**

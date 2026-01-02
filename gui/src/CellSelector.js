@@ -135,20 +135,34 @@ class CellSelector {
         });
     }
     
+    /**
+     * Update the cellManager reference
+     * @param {CellManager} newCellManager - New CellManager instance
+     */
+    updateCellManager(newCellManager) {
+        this.cellManager = newCellManager;
+        this.setupCellListeners();
+        this.updateOptions();
+    }
+    
+    /**
+     * Update options in the cell selector dropdown
+     */
     updateOptions() {
         const selector = this.selectorElement;
-        const selectedCell = this.cellManager.getSelectedCell();
+        if (!selector) return;
         
         // Clear existing options
         selector.innerHTML = '';
         
         // Add default option
         const defaultOption = document.createElement('option');
-        defaultOption.value = 'empty_cell';
-        defaultOption.textContent = 'Empty Cell';
+        defaultOption.value = '';
+        defaultOption.textContent = '-- Select Cell --';
         selector.appendChild(defaultOption);
         
         // Add template options based on cell type
+        const selectedCell = this.cellManager.getSelectedCell();
         if (selectedCell && selectedCell.cellType) {
             Object.entries(cellTemplates).forEach(([key, template]) => {
                 if (template.cellType === selectedCell.cellType) {
@@ -228,13 +242,9 @@ class CellSelector {
     }
     
     updateSelectedOption() {
-        // Set the default selected option to empty_cell if available
-        const selector = this.selectorElement;
-        for (let i = 0; i < selector.options.length; i++) {
-            if (selector.options[i].value === 'empty_cell') {
-                selector.selectedIndex = i;
-                break;
-            }
+        // Set the default selected option to the first option (which is "-- Select Cell --")
+        if (this.selectorElement && this.selectorElement.options.length > 0) {
+            this.selectorElement.selectedIndex = 0;
         }
         
         // Update button states after setting the selected option

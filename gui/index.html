@@ -50,27 +50,34 @@
                     </div>
                 </div>
                 
-                <!-- Simulation Type Section -->
+                <!-- Simulation Type and Task Type Section -->
                 <div class="control-section">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="margin: 0; font-weight: 500; color: #333333; width: 120px;">Simulation Type:</div>
-                        <select id="simulation-type" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <select id="simulation-type" style="padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff; flex: 1; min-width: 120px;">
                             <option value="fd" selected>Finite Difference (FD)</option>
                             <option value="fe">Finite Element (FE)</option>
                             <option value="atomistic">Atomistic</option>
                         </select>
-                    </div>
-                </div>
-                
-                <!-- Task Type Section -->
-                <div class="control-section">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="margin: 0; font-weight: 500; color: #333333; width: 120px;">Task Type:</div>
-                        <select id="task-type" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff;">
+                        
+                        <div style="margin: 0; font-weight: 500; color: #333333; width: 80px;">Task Type:</div>
+                        <select id="task-type" style="padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff; flex: 1; min-width: 120px;">
                             <option value="relax" selected>Relax</option>
                             <option value="dynamics">Dynamics</option>
                             <option value="relax+dynamics">Relax + Dynamics</option>
                             <option value="hysteresis">Hysteresis Loop</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Example Selection Section -->
+                <div class="control-section">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="margin: 0; font-weight: 500; color: #333333; width: 100px;">Example:</div>
+                        <select id="example-selector" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff;">
+                            <option value="" selected>-- Select Example --</option>
+                            <option value="vortex">Vortex</option>
+                            <option value="std4">Standard 4</option>
+                            <option value="std5">Standard 5</option>
                         </select>
                     </div>
                 </div>

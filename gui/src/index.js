@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const guiManager = new GUIManager(visualization);
         guiManager.initWebSocketClient();
         
-        // Create relax task manager using GUIManager
+        // Create relax task manager using GUIManager (default)
         const relaxTaskManager = guiManager.initRelaxTaskManager('#cells-container');
         
         // Initialize CellSelector
@@ -32,17 +32,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (addCellButton) {
             addCellButton.addEventListener('click', () => {
                 console.log('Add new cell button clicked');
-                const selectedCell = relaxTaskManager.getSelectedCell();
+                const selectedCell = guiManager.taskManager.getSelectedCell();
                 if (selectedCell) {
                     // Insert new cell below the selected cell
                     const newCell = new Cell('');
-                    relaxTaskManager.insertCellBelowSelected(newCell);
+                    guiManager.taskManager.insertCellBelowSelected(newCell);
                 } else {
                     // If no cell is selected, just add it to the end
                     const newCell = new Cell('');
-                    relaxTaskManager.addCell(newCell);
+                    guiManager.taskManager.addCell(newCell);
                 }
                 cellSelector.updateOptions();
+            });
+        }
+        
+        // Add event listener for example selection to update CellSelector
+        const exampleSelector = document.getElementById('example-selector');
+        if (exampleSelector) {
+            exampleSelector.addEventListener('change', () => {
+                // Update CellSelector with the current taskManager
+                if (guiManager.taskManager) {
+                    cellSelector.updateCellManager(guiManager.taskManager);
+                }
             });
         }
         
