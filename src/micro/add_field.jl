@@ -326,39 +326,6 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
     return dmi
 end
 
-""" 
-    add_exch(sim::AbstractSim, geo::Shape, A::Number; name="exch")
-
-Add exchange interaction within the Shape, or update corresponding A if other exch is added.
-"""
-function add_exch(sim::MicroSim, geo::Shape, A::Number; name="exch")
-    for interaction in sim.interactions
-        if interaction.name == name
-            update_scalar_Shape(interaction.A, geo, A)
-            return nothing
-        end
-    end
-    n_total = sim.n_total
-    field = zeros(Float64, 3 * n_total)
-    energy = zeros(Float64, n_total)
-    Spatial_A = zeros(Float64, n_total)
-    update_scalar_Shape(Spatial_A, geo, A)
-    if isa(sim, MicroSim)
-        exch = Exchange(Spatial_A, field, energy, name)
-    else
-        exch = HeisenbergExchange(A, field, energy, name)
-    end
-    push!(sim.interactions, exch)
-
-    if sim.save_data
-        id = length(sim.interactions)
-        push!(sim.saver.ite,
-              SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
-    end
-    return exch
-end
-
 """
     add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true)
 

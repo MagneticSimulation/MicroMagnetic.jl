@@ -123,7 +123,6 @@ function circular_Ms(i,j,k,dx,dy,dz)
 end
 set_Ms(sim, circular_Ms)
 ```
-
 """
 function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     T = Float[]
@@ -137,16 +136,6 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     Ms_a .*= mu_0  #we convert A/m to Tesla
 
     copyto!(sim.mu0_Ms, Ms_a)
-    return true
-end
-
-"""
-    set_Ms(sim::AbstractSim, shape::Union{CSGNode,Shape}, Ms::Number)
-
-Set the saturation magnetization Ms within the Shape.
-"""
-function set_Ms(sim::AbstractSim, shape::Union{CSGNode,Shape}, Ms::Number)
-    init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms * mu_0)
     return true
 end
 
