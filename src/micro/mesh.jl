@@ -18,6 +18,7 @@ struct FDMesh{T} <: Mesh
     n_total::Int64
     volume::T
     ngbs::AbstractArray{Int32,2}
+    regions::AbstractArray{Int32,1}
 end
 
 @inline function index(i::Int64, j::Int64, k::Int64, nx::Int64, ny::Int64, nz::Int64)
@@ -86,10 +87,11 @@ function FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open", x0=-n
     n_total = nx * ny * nz
 
     ngbs_kb = default_backend[] == CPU() ? ngbs : kernel_array(ngbs)
+    regions = zeros(Int32, n_total)
 
     T = Float[]
     return FDMesh(T(dx), T(dy), T(dz), T(x0), T(y0), T(z0), nx, ny, nz, xperiodic,
-                  yperiodic, zperiodic, n_total, T(volume), ngbs_kb)
+                  yperiodic, zperiodic, n_total, T(volume), ngbs_kb, regions)
 end
 
 @inline function _x_plus_one(i::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64,

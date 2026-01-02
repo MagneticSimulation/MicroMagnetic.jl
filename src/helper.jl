@@ -1,5 +1,6 @@
 
 export compute_skyrmion_number, compute_guiding_center
+export set_region
 
 function init_scalar!(v::AbstractArray, mesh::Mesh, init::Number)
     v .= init
@@ -98,6 +99,48 @@ function init_vector!(v::Array{T,1}, mesh::Mesh, init::Function) where {T<:Abstr
         error("NaN is given by the input function.")
     end
     return nothing
+end
+
+"""
+    function set_region(mesh::Mesh, shape::CSGShape, region_id::Int)
+
+Set the region ID for cells inside the specified shape.
+Parameters:
+    - mesh: The mesh to set regions for
+    - shape: The shape defining the region
+    - region_id: The ID to assign to cells inside the shape
+
+# Example
+```julia
+# Create a finite difference mesh
+mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=10, ny=10, nz=10)
+
+# Create a spherical shape centered at (10e-9, 10e-9, 0) with radius 10e-9
+sphere = Sphere(radius=10e-9, center=(10e-9, 10e-9, 0))
+
+# Set all cells inside the sphere to region ID 1
+set_region(mesh, sphere, 1)
+```
+"""
+function set_region(mesh::Mesh, shape::CSGShape, region_id::Int)
+
+    a = isa(mesh.regions, Array) ? mesh.regions : Array(mesh.regions)
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    
+    for k in 1:nz, j in 1:ny, i in 1:nx
+        id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
+        x = mesh.x0 + (i - 0.5)*dx
+        y = mesh.y0 + (j - 0.5)*dy
+        z = mesh.z0 + (k - 0.5)*dz
+        
+        if inside(shape, (x, y, z))
+            a[id] = region_id
+        end
+    end
+    
+    isa(mesh.regions, Array) || copyto!(mesh.regions, a)
+    return true
 end
 
 function init_vector!(v::Array{T,1}, mesh::Mesh,

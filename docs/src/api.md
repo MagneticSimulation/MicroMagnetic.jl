@@ -25,6 +25,7 @@ Torus
 
 ## Interfaces 
 ```@docs
+set_region
 sim_with
 set_backend
 set_precision

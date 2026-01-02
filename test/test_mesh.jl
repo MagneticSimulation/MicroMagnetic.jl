@@ -38,5 +38,31 @@ function test_FDMesh()
     @test isapprox(mesh.volume * 1.0, 1.1e-27, rtol=1e-7)
 end
 
+function test_set_region()
+    mesh = FDMesh(; dx=2e-9, dy=2e-9, dz=2e-9, nx=10, ny=10, nz=1)
+
+    sphere = Sphere(radius=10e-9, center=(10e-9, 10e-9, 0))
+    
+    set_region(mesh, sphere, 1)
+    
+    regions = Array(mesh.regions)
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    
+    for k in 1:nz, j in 1:ny, i in 1:nx
+        id = MicroMagnetic.index(i, j, k, nx, ny, nz)
+        x = mesh.x0 + (i - 0.5)*dx
+        y = mesh.y0 + (j - 0.5)*dy
+        z = mesh.z0 + (k - 0.5)*dz
+        
+        if MicroMagnetic.inside(sphere, (x, y, z))
+            @test regions[id] == 1
+        else
+            @test regions[id] == 0
+        end
+    end
+    
+end
+
 @using_gpu()
-test_functions("Mesh", test_FDMesh)
+test_functions("Mesh", test_FDMesh, test_set_region)
