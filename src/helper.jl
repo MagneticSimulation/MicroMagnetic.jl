@@ -1,6 +1,6 @@
 
 export compute_skyrmion_number, compute_guiding_center
-export set_region
+export set_region, region_map
 
 function init_scalar!(v::AbstractArray, mesh::Mesh, init::Number)
     v .= init
@@ -141,6 +141,44 @@ function set_region(mesh::Mesh, shape::CSGShape, region_id::Int)
     
     isa(mesh.regions, Array) || copyto!(mesh.regions, a)
     return true
+end
+
+"""
+    region_map(mapping...; default=0.0)
+
+Create a region mapping function that maps region IDs to values
+
+Parameters
+- `mapping::Pair{Int,<:Number}`: Mapping pairs from region_id to value
+- `default::Number`: Default value (when region_id is not in the mapping)
+
+Return Value
+A function `f(region_id)` that returns the corresponding value according to the mapping
+
+Examples
+```julia
+# Simple mapping for two regions
+Ms_func = region_map(1 => 8.6e5)  # region 1: 8.6e5, others: 0.0
+
+# Mapping for multiple regions
+exch_func = region_map(
+    1 => 1.3e-11,
+    2 => 0.8e-11,
+    3 => 0.5e-11
+)
+
+# Direct usage
+set_Ms(sim, region_map(1 => 8.6e5))
+```
+"""
+function region_map(mapping::Pair{Int,<:Number}...; default=0.0)
+    dict = Dict{Int,Float64}()
+    for (region_id, value) in mapping
+        dict[region_id] = Float64(value)
+    end
+    return function (id::Integer)
+        return get(dict, id, default)
+    end
 end
 
 function init_vector!(v::Array{T,1}, mesh::Mesh,
