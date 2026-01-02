@@ -30,12 +30,19 @@ function init_scalar!(v::AbstractArray{T,1}, mesh::FDMesh, init_fun::Function) w
             z = mesh.z0 + (k - 0.5)*dz
             a[id] = init_fun(x, y, z)
         end
+    elseif nargs == 1
+        # Function takes region ID as input
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            region_id = mesh.regions[id]
+            a[id] = init_fun(region_id)
+        end
     end
     isa(v, Array) || copyto!(v, a)
     return true
 end
 
-function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::Union{CSGNode,Shape},
+function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::CSGShape,
                       init::Number) where {T}
     a = isa(v, Array) ? v : Array(v)
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
@@ -45,7 +52,7 @@ function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::Union{CSGNode,Sh
         x = (i - 0.5 - nx / 2) * dx
         y = (j - 0.5 - ny / 2) * dy
         z = (k - 0.5 - nz / 2) * dz
-        if point_inside_shape((x, y, z), shape)
+        if inside(shape, (x, y, z))
             a[id] = init
         end
     end
@@ -297,7 +304,7 @@ function compute_skyrmion_number(v::Array{T,1}, m::Array{T,1},
 end
 
 function compute_skyrmion_number(v::Array{T,1}, m::Array{T,1}, mesh::Mesh,
-                                 shape::Union{CSGNode,Shape}) where {T<:AbstractFloat}
+                                 shape::CSGShape) where {T<:AbstractFloat}
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
     for k in 1:nz, j in 1:ny, i in 1:nx
@@ -311,7 +318,7 @@ function compute_skyrmion_number(v::Array{T,1}, m::Array{T,1}, mesh::Mesh,
         x = (i - 0.5 - nx / 2) * dx
         y = (j - 0.5 - ny / 2) * dy
         z = (k - 0.5 - nz / 2) * dz
-        if id1 > 0 && id2 > 0 && point_inside_shape((x, y, z), shape)
+        if id1 > 0 && id2 > 0 && inside(shape, (x, y, z))
             sx1, sy1, sz1 = m[id1 - 2], m[id1 - 1], m[id1]
             sx2, sy2, sz2 = m[id2 - 2], m[id2 - 1], m[id2]
             v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
@@ -319,7 +326,7 @@ function compute_skyrmion_number(v::Array{T,1}, m::Array{T,1}, mesh::Mesh,
 
         id1 = 3 * _x_plus_one(i, id, nx, ny, nz, mesh.xperiodic)
         id2 = 3 * _y_plus_one(j, id, nx, ny, nz, mesh.yperiodic)
-        if id1 > 0 && id2 > 0 && point_inside_shape((x, y, z), shape)
+        if id1 > 0 && id2 > 0 && inside(shape, (x, y, z))
             sx1, sy1, sz1 = m[id1 - 2], m[id1 - 1], m[id1]
             sx2, sy2, sz2 = m[id2 - 2], m[id2 - 1], m[id2]
             v[id] += Berg_Omega(sx2, sy2, sz2, mx, my, mz, sx1, sy1, sz1)
@@ -539,7 +546,7 @@ function compute_skyrmion_number(m::Array{T,1}, mesh::Mesh) where {T<:AbstractFl
 end
 
 function compute_skyrmion_number(m::Array{T,1}, mesh::Mesh,
-                                 shape::Union{CSGNode,Shape}) where {T<:AbstractFloat}
+                                 shape::CSGShape) where {T<:AbstractFloat}
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     v = zeros(T, nx * ny * nz)
     compute_skyrmion_number(v, m, mesh, shape)

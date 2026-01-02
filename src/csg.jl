@@ -6,18 +6,32 @@ using LinearAlgebra
 import Base: +, -, *
 
 export +, -, *, Plane, Sphere, Cylinder, Box, Torus
+export CSGShape
 
-abstract type Shape end
-const UnionOp = :Union
-const IntersectionOp = :Intersection
-const DifferenceOp = :Difference
+abstract type CSGShape end
+const Shape = CSGShape
+
+struct UnionShape <: CSGShape
+    left::CSGShape
+    right::CSGShape
+end
+
+struct IntersectionShape <: CSGShape
+    left::CSGShape
+    right::CSGShape
+end
+
+struct DifferenceShape <: CSGShape
+    left::CSGShape
+    right::CSGShape
+end
 
 function normalize(x::Tuple{Real,Real,Real})
     length = sqrt(x[1]^2 + x[2]^2 + x[3]^2)
     return x ./ length
 end
 
-struct Plane <: Shape
+struct Plane <: CSGShape
     point::Tuple{Real,Real,Real} # A point in the plane
     normal::Tuple{Real,Real,Real} # the normal of the plane
 
@@ -26,7 +40,7 @@ struct Plane <: Shape
     end
 end
 
-struct Sphere <: Shape # A sphere
+struct Sphere <: CSGShape # A sphere
     center::Tuple{Real,Real,Real}
     radius::Float64
 
@@ -58,7 +72,7 @@ end
 
 Create a Box shape.
 """
-struct Box <: Shape
+struct Box <: CSGShape
     center::Tuple{Real,Real,Real}
     sides::Tuple{Real,Real,Real}
     theta::Float64 # the rotated angle
@@ -72,7 +86,7 @@ end
 
 Create a Torus shape.
 """
-struct Torus <: Shape
+struct Torus <: CSGShape
     center::Tuple{Real,Real,Real} # Center of the torus
     R::Float64 # Major radius
     r::Float64 # Minor radius
@@ -83,29 +97,12 @@ struct Torus <: Shape
     end
 end
 
-struct CSGNode
-    operation::Symbol
-    left::Union{CSGNode,Shape}
-    right::Union{CSGNode,Shape}
-end
-
-# compute the union of two shapes
-function +(shape1::Union{CSGNode,Shape}, shape2::Union{CSGNode,Shape})
-    return CSGNode(UnionOp, shape1, shape2)
-end
-
-# compute the intersection of two shapes
-function *(shape1::Union{CSGNode,Shape}, shape2::Union{CSGNode,Shape})
-    return CSGNode(IntersectionOp, shape1, shape2)
-end
-
-# compute the difference of two shapes, return shape1 - shape2
-function -(shape1::Union{CSGNode,Shape}, shape2::Union{CSGNode,Shape})
-    return CSGNode(DifferenceOp, shape1, shape2)
-end
++(a::CSGShape, b::CSGShape) = UnionShape(a, b)
+*(a::CSGShape, b::CSGShape) = IntersectionShape(a, b)
+-(a::CSGShape, b::CSGShape) = DifferenceShape(a, b)
 
 # Check if the given point is inside the halfspace
-function point_in_halfspace(point::Tuple{Real,Real,Real}, plane::Plane)
+function point_inside_halfspace(point::Tuple{Real,Real,Real}, plane::Plane)
     dot_product = dot(point .- plane.point, plane.normal)
     return dot_product >= 0
 end
@@ -163,40 +160,31 @@ function point_inside_torus(point::Tuple{Real,Real,Real}, torus::Torus)
     return (torus.R - sqrt(p[1]^2 + p[2]^2))^2 + p[3]^2 <= torus.r^2
 end
 
-function point_inside_shape(point::Tuple{Real,Real,Real}, node::CSGNode)
-    left_inside = point_inside_shape(point, node.left)
 
-    right_inside = point_inside_shape(point, node.right)
-
-    if node.operation == UnionOp
-        return left_inside || right_inside
-    elseif node.operation == IntersectionOp
-        return left_inside && right_inside
-    elseif node.operation == DifferenceOp
-        return left_inside && !right_inside
-    else
-        error("Unsupported boolean operation")
-    end
-end
-
-function point_inside_shape(point::Tuple{Real,Real,Real}, shape::Shape)
-    if isa(shape, Plane)
-        return point_in_halfspace(point, shape)
-    elseif isa(shape, Sphere)
+function inside(shape::CSGShape, point::Tuple{Real,Real,Real})
+    if shape isa Plane
+        return point_inside_halfspace(point, shape)
+    elseif shape isa Sphere
         return point_inside_sphere(point, shape)
-    elseif isa(shape, Cylinder)
+    elseif shape isa Cylinder
         return point_inside_cylinder(point, shape)
-    elseif isa(shape, Box)
+    elseif shape isa Box
         return point_inside_box(point, shape)
-    elseif isa(shape, Torus)
+    elseif shape isa Torus
         return point_inside_torus(point, shape)
+    elseif shape isa UnionShape
+        return inside(shape.left, point) || inside(shape.right, point)
+    elseif shape isa IntersectionShape
+        return inside(shape.left, point) && inside(shape.right, point)
+    elseif shape isa DifferenceShape
+        return inside(shape.left, point) && !inside(shape.right, point)
     else
-        error("Unsupported shape type")
+        error("Unsupported CSGShape type: $(typeof(shape))")
     end
 end
 
 """
-    save_vtk(mesh::Mesh, shape::Union{CSGNode,Shape}, fname::String)
+    save_vtk(mesh::Mesh, shape::CSGShape, fname::String)
 
 Save the shape to vtk. 
 
@@ -206,7 +194,7 @@ Save the shape to vtk.
     save_vtk(mesh, t1, "torus")
 ```
 """
-function save_vtk(mesh::Mesh, shape::Union{CSGNode,Shape}, fname::String)
+function save_vtk(mesh::Mesh, shape::CSGShape, fname::String)
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     xyz = zeros(Float32, 3, nx + 1, ny + 1, nz + 1)
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
@@ -225,7 +213,7 @@ function save_vtk(mesh::Mesh, shape::Union{CSGNode,Shape}, fname::String)
         x = (i - 0.5 - nx / 2) * dx
         y = (j - 0.5 - ny / 2) * dy
         z = (k - 0.5 - nz / 2) * dz
-        if point_inside_shape((x, y, z), shape)
+        if inside(shape, (x, y, z))
             data[i, j, k] = 1
         end
     end
