@@ -49,7 +49,7 @@ args = (name="std5", task_s=["relax", "dynamics"],          # List of tasks to p
         dt=0.05ns,                            # Time step size
         stopping_dmdt=0.01,                   # Stopping criterion for relaxation
         saver_item=SaverItem(("Rx", "Ry"), ("<m>", "<m>"), compute_guiding_center),    #vortex center tracking
-        dynamic_m_interval=1);
+        dynamic_m_every=1);
 ```
 
 Run the simulation using `sim_with` function.
