@@ -6,14 +6,14 @@ using PoissonDiskSampling
 export voronoi, plot_voronoi
 
 """
-    voronoi(mesh; min_dist=20, seed=123456, threshold=nothing, dims=3) -> grain_ids, gb_mask, points
+    voronoi(mesh; min_dist=20, seed=nothing, threshold=nothing, dims=3) -> grain_ids, gb_mask, points
 
 Generate a Voronoi tessellation on a 2D/3D grid with grain boundaries detection using Poisson disk sampling.
 
 # Arguments
 - `mesh`: `FDMesh` object containing grid information
 - `min_dist`: Minimum distance between Voronoi seeds in nanometers (default: 20)
-- `seed`: Random number generator seed for reproducible results (default: 123456)
+- `seed`: Random number generator seed for reproducible results (default: nothing)
 - `threshold`: Optional threshold for continuous boundary detection. If provided, uses distance-based boundary detection instead of discrete neighbor comparison.
 - `dims`: Dimensionality of the tessellation (2 for 2D, 3 for 3D, default: 3)
 
@@ -36,22 +36,20 @@ grain_ids, boundaries, seeds = voronoi(mesh; min_dist=20, seed=1000, dims=2)
 grain_ids, boundaries, seeds = voronoi(mesh; min_dist=20, seed=1000, threshold=0.2, dims=3)
 ```
 """
-function voronoi(mesh; min_dist=20, seed=123456, threshold=nothing, dims=3)
+function voronoi(mesh; min_dist=20, seed=nothing, threshold=nothing, dims=3)
     if dims == 2
         return voronoi2d(mesh; min_dist=min_dist, seed=seed, threshold=threshold)
     else
-        return voronoi2d(mesh; min_dist=min_dist, seed=seed, threshold=threshold)
+        return voronoi3d(mesh; min_dist=min_dist, seed=seed, threshold=threshold)
     end
 end
 
-function voronoi2d(mesh; min_dist=20, seed=123456, threshold=nothing)
+function voronoi2d(mesh; min_dist=20, seed=nothing, threshold=nothing)
     nx, ny = mesh.nx, mesh.ny
     dx, dy = mesh.dx * 1e9, mesh.dy * 1e9  # Convert to nanometers
     Lx, Ly = nx * dx, ny * dy
 
-    # Initialize random number generator
-    rng = Xoshiro(seed)
-
+    rng = seed === nothing ? Random.default_rng() : Random.Xoshiro(seed)
     # Generate Poisson disk sampled seed points
     points = PoissonDiskSampling.generate(rng, min_dist, (0.0, Lx), (0.0, Ly))
 
@@ -117,14 +115,12 @@ function voronoi2d(mesh; min_dist=20, seed=123456, threshold=nothing)
     return grain_ids, gb_mask, points
 end
 
-function voronoi3d(mesh; min_dist=20, seed=123456, threshold=nothing)
+function voronoi3d(mesh; min_dist=20, seed=nothing, threshold=nothing)
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy, dz = mesh.dx * 1e9, mesh.dy * 1e9, mesh.dz * 1e9  # Convert to nanometers
     Lx, Ly, Lz = nx * dx, ny * dy, nz * dz
 
-    # Initialize random number generator
-    rng = Xoshiro(seed)
-
+    rng = seed === nothing ? Random.default_rng() : Random.Xoshiro(seed)
     # Generate Poisson disk sampled seed points
     points = PoissonDiskSampling.generate(rng, min_dist, (0.0, Lx), (0.0, Ly), (0.0, Lz))
 

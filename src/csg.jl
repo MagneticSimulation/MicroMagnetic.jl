@@ -68,16 +68,16 @@ struct Cylinder <: Shape
 end
 
 """
-    Box(;center::Tuple=(0.0, 0.0, 0.0), sides::Tuple=(1.0,1.0,1.0), theta=0.0)
+    Box(;center::Tuple=(0.0, 0.0, 0.0), size::Tuple=(1.0,1.0,1.0), theta=0.0)
 
 Create a Box shape.
 """
 struct Box <: CSGShape
     center::Tuple{Real,Real,Real}
-    sides::Tuple{Real,Real,Real}
+    size::Tuple{Real,Real,Real}
     theta::Float64 # the rotated angle
-    function Box(; center::Tuple=(0.0, 0.0, 0.0), sides::Tuple=(1.0, 1.0, 1.0), theta=0.0)
-        return new(center, sides, theta)
+    function Box(; center::Tuple=(0.0, 0.0, 0.0), size::Tuple=(1.0, 1.0, 1.0), theta=0.0)
+        return new(center, size, theta)
     end
 end
 
@@ -140,9 +140,9 @@ function point_inside_box(point::Tuple{Real,Real,Real}, box::Box)
     rotated_point = (rotated_x, rotated_y, local_point[3])
 
     # Check if the rotated point is inside the Box
-    half_width = box.sides[1] / 2
-    half_height = box.sides[2] / 2
-    half_depth = box.sides[3] / 2
+    half_width = box.size[1] / 2
+    half_height = box.size[2] / 2
+    half_depth = box.size[3] / 2
 
     if -half_width <= rotated_point[1] <= half_width &&
        -half_height <= rotated_point[2] <= half_height &&
