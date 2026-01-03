@@ -1,222 +1,218 @@
+using Random
 
-export init_m0_random, init_m0_skyrmion
+export init_m0_random, vortex, skyrmion, bubble2d, skyrmion_lattice
 
 """
-    init_m0_random(sim::MicroSim)
+    init_m0_random(sim::MicroSim; seed=nothing)
 
 Set the initial magnetization with random direction.
-"""
-function init_m0_random(sim::AbstractSim)
-    function random_m(i,j,k,dx,dy,dz)
-        return 2*rand(3).-1
-    end
-    init_m0(sim, random_m)
-end
 
-function init_m0_skyrmion(sim::AbstractSim)
-    mesh = sim.mesh
-    nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
-    dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
-    xc, yc = dx*(nx+1)/2, dy*(ny+1)/2
-    R = 1/2 * min(nx*dx, ny*dy)
-    init_m0_skyrmion(sim, (xc,yc), R)
+# Keyword Arguments
+- `seed::Union{Integer, Nothing}=nothing`: Random seed for reproducible results.
+  If `nothing` (default), uses the global random number generator.
+"""
+function init_m0_random(sim::AbstractSim; seed=nothing)
+    n_total = sim.n_total
+
+    rng = seed === nothing ? Random.default_rng() : Random.MersenneTwister(seed)
+    
+    m_data = 2 .* rand(rng, 3 * n_total) .- 1
+    
+    init_m0(sim, m_data)
 end
 
 """
-    init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7, p=-1, c=1, type="B")
+    vortex(;center=(0,0), R=10e-9, p=1, c=1)
 
-Set the magnetization with skyrmions. Note that this function can be called mulitple times to add more skyrmons.
+Create a vortex function that can be invoked from `init_m0`.
 
-center :  the skyrmion center, should be a Tuple. For example, center = (50e-9,50e-9)
+Parameters:
+- center: Vortex center coordinates
+- R: Vortex radius (default: 10e-9)
+- p: Polarity (+1 for up, -1 for down)
+- c: Chirality (+1 for counterclockwise, -1 for clockwise)
 
-R : the skyrmion radius.
-
-ratio : ratio=w/R where w is the width of domain wall. By default ratio = 0.7
-
-p : polarity, +1 --> core up; -1 --> core down
-
-c : chirality, +1 --> lefthand,for positive D; -1 --> righthand,for negative D
-
-type : "B" or "N", representing Bloch or Neel skyrmions.
-
-For example:
+Example:
 ```julia
-    init_m0_skyrmion(sim, (50e-9,50e-9), 2e-8, ratio=0.5, p=-1, c=1, type="B")
+init_m0(sim, vortex(p=1, c=1))
 ```
 """
-function init_m0_skyrmion(sim::AbstractSim, center::Tuple, R::Float64; ratio=0.7, p=-1, c=1, type="B")
-    if type!="N" && type!="B"
-        @info("add_skyrmion: type should be \"N\" or \"B\" ")
-        return nothing
-    end
-    x0,y0 = center[1],center[2]
-    w = ratio*R
-    mesh = sim.mesh
-    nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
-    dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
-    m = Array(sim.spin)
-    b = reshape(m, (3,nx,ny,nz))
-    Ms= Array(sim.mu0_Ms)
-
-    eps = 1e-6
-    for i=1:nx, j=1:ny
-        x = (i+eps)*dx-x0
-        y = (j+eps)*dy-y0
-        r = sqrt(x^2+y^2)
-        if x^2+y^2 <= 2*R^2
-            theta = 2*atan(sinh(R/w)/sinh(r/w))
-            if p == 1
-                theta = theta + pi
-            end
-            if c == 1
-                theta = -theta
-            end
-            if type == "N"
-                mx = -sin(theta)*x/r
-                my = -sin(theta)*y/r
-                mz = cos(theta)
-            elseif type == "B"
-                mx = sin(theta)*y/r
-                my = -sin(theta)*x/r
-                mz = cos(theta)
-            end
-
-            for k=1:nz
-                id = index(i,j,k,nx,ny,nz)
-                if Ms[id] == 0
-                    continue
-                end
-
-                b[1,i,j,k] = mx
-                b[2,i,j,k] = my
-                b[3,i,j,k] = mz
-            end
+function vortex(;center=(0,0), R=10e-9, p=1, c=1)
+    cx, cy = center[1], center[2] 
+    function vortex_fun(x, y, z)
+        dx = x - cx
+        dy = y - cy
+        r = sqrt(dx^2 + dy^2)
+    
+        if r < R
+            return (0,0,p)
         end
+
+        theta = atan(dy, dx)
+        return (-c * sin(theta),c * cos(theta),0)
     end
-    #normalise(sim.spin, sim.n_total)
-    copyto!(sim.prespin, m)
-    copyto!(sim.spin, m)
-    return nothing
+    return vortex_fun
 end
 
-function rotation_2d(theta::Float64, v::Array{Float64,1})
-    ct, st = cos(deg2rad(theta)), sin(deg2rad(theta))
-    vnew = zeros(2)
-    vnew[1] = ct*v[1] - st*v[2]
-    vnew[2] = st*v[1] + ct*v[2]
-    return vnew
-end
 
 """
-  init_m0_skyrmion_lattice(sim::AbstractSim, k::Tuple, lambda::Float64; p=-1, c=1, type="B")
+    bubble2d(; center=(0,0), R=10e-9, w=5e-9, p=1, v=1, phi=0.0)
 
-Use 3-Q approximation to approach skyrmion lattice.
+Generate a bubble profile function for topological magnetic textures (skyrmions, bubbles, etc.).
 
-lambda: period
+Mathematical formulation:
+    m(r,ϕ) = (sinΘ(r) * cosΦ(ϕ), sinΘ(r) * sinΦ(ϕ), p * cosΘ(r))
+    
+    where:
+    - Θ(r) = 2 * atan(exp((r - R) / w))  (polar angle profile)
+    - Φ(ϕ) = v * ϕ + phi             (azimuthal angle profile)
+    
+    Topological charge: Q = p * v
 
-p: polarity. 1(up) or -1(down)
-c: chirality. "r" (left-handed) or "l"(left-handed)
-type: "B"(Bloch) or "N"(Neel)
+Parameters:
+    center      :: Tuple{Float64,Float64}  - (x,y) center position of the texture
+    R           :: Float64                 - Bubble radius (distance where Θ = π/2)
+    width       :: Float64                 - Domain wall width (controls transition sharpness)
+    p           :: Int                     - Polarity (+1: up at center, -1: down at center)
+    v           :: Int                     - Vorticity/winding number (S in literature)
+    phi         :: Float64                 - Helicity angle (radians) - phase offset
+
+Returns:
+    A function f(x,y,z) -> (m_x, m_y, m_z) that returns normalized magnetization vector at position (x,y,z)
+
+Examples:
+```julia
+    bubble = bubble2d(p=1, v=1, phi=0, w=5e-9, R=40e-9)
+    init_m0(sim, bubble)
+```
 """
-
-function init_m0_skyrmion_lattice(sim::MicroMagnetic.AbstractSim, lambda::Float64; p=-1, c="l", type="B")
-    mesh = sim.mesh
-    nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
-    dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
-    spin = zeros(3*nx*ny*nz)
-    b = reshape(spin,(3,nx,ny,nz))
-
-    #normalize
-    k=(1,0)
-    kx, ky = k[1]/hypot(k[1], k[2]), k[2]/hypot(k[1], k[2])
-    #wave vector
-    Q1 = [2*pi*kx/lambda, 2*pi*ky/lambda]
-    Q2 = rotation_2d(120., Q1)
-    Q3 = rotation_2d(120., Q2)
-
-    xc, yc = nx/2*dx, ny/2*dy
-    for i=1:nx, j=1:ny
-        x, y = i*dx-xc, j*dy-yc
-        phase1 = Q1[1]*x + Q1[2]*y
-        phase2 = Q2[1]*x + Q2[2]*y 
-        phase3 = Q3[1]*x + Q3[2]*y 
-        mx = sin(phase1)*cos(0) + sin(phase2)*cos(2*pi/3) + sin(phase3)*cos(4*pi/3)
-        my = sin(phase1)*sin(0) + sin(phase2)*sin(2*pi/3) + sin(phase3)*sin(4*pi/3)
-        if c=="l"
-            mx,my = MicroMagnetic.rotation_2d(180., [mx, my])
+function bubble2d(; center=(0.0,0.0), R=10e-9, w=5e-9, p=1, v=1, phi=0.0)
+    
+    # Extract center coordinates    
+    cx, cy = center[1], center[2]
+    
+    function texture_function(x, y, z)
+        # Calculate relative position
+        dx = x - cx
+        dy = y - cy
+        r = sqrt(dx^2 + dy^2)      # Radial distance from center
+        ϕ = atan(dy, dx)           # Azimuthal angle
+        
+        # Calculate polar angle Θ(r) using domain wall profile
+        # This gives a smooth transition from Θ=0 at r=0 to Θ=π at r→∞
+        if w > 0.0
+            u = p * (r - R) / w
+            Θ = 2.0 * atan(exp(u))
+        else
+            Θ = (r < R) ? 0.0 : π
         end
-
-        if type == "B"
-          mx , my = MicroMagnetic.rotation_2d(90., [mx, my])
-          b[1,i,j,:] .= mx
-          b[2,i,j,:] .= my
-          b[3,i,j,:] .= cos(phase1) + cos(phase2) + cos(phase3)
-        elseif type == "N"
-          b[1,i,j,:] .= mx
-          b[2,i,j,:] .= my
-          b[3,i,j,:] .= cos(phase1) + cos(phase2) + cos(phase3)
-        end
-
-
+                
+        # This determines the in-plane magnetization rotation
+        Φ = v * ϕ + phi
+        sinΘ = sin(Θ)
+        cosΘ = cos(Θ)        
+        m_x = sinΘ * cos(Φ)
+        m_y = sinΘ * sin(Φ)
+        m_z = cosΘ
+        
+        return (m_x, m_y, m_z)
     end
-
-    if p==-1
-      spin .*= -1
-    end
-    init_m0(sim, spin)
-
+    
+    return texture_function
 end
 
 """
-  init_hard_bubble(sim::AbstractSim; R::Float64, delta::Float64, center::Any="default", S::Int=10, Q::Int=-1, phi0::Float64=pi/2)
+    skyrmion(;center=(0,0), R=10e-9, p=1, v=1, phi=0.0)
 
-Initialize a bubble with arbitrary topological charge                                            
-Ref: J.Appl.Phys.120,233901(2016)                                                                
-Parameters: R:radius in nanometer; 
-            delta: domain wall width= sqrt(A/k);
-            center=(100e-9,100e-9);  
-            S: winding number; 
-            Q:polarity or "topological quantities"; 
-            phi0= initial phase                                                                    
+Create a skyrmion function that can be invoked from `init_m0`.
+
+Parameters:
+    center      :: Tuple{Float64,Float64}  - (x,y) center position of the texture
+    R           :: Float64                 - Skyrmion radius (distance where Θ = π/2)
+    p           :: Int                     - Polarity (+1: up at center, -1: down at center)
+    v           :: Int                     - Vorticity/winding number (S in literature)
+    phi         :: Float64                 - Helicity angle (radians) - phase offset
+
+Example:
+```julia
+    # Néel skyrmion with upward center
+    neel_skyrmion = skyrmion(p=1, v=1, phi=0.0)
+    
+    # Bloch skyrmion  
+    bloch_skyrmion = skyrmion(p=1, v=1, phi=pi/2)
+    
+    # Antiskyrmion
+    antiskyrmion = skyrmion(p=1, v=-1, phi=0.0)
+
+    init_m0(sim, antiskyrmion)
+```
+"""
+function skyrmion(center=(0.0,0.0), R=10e-9, p=1, v=1, phi=0.0)
+    return bubble2d(center=center, R=R, w=R/2, p=p, v=v, phi=phi)
+end
+
+
+# Helper function for 2D rotation
+function rotation_2d(angle_deg::Float64, vector::Vector{Float64})
+    θ = deg2rad(angle_deg)
+    cosθ, sinθ = cos(θ), sin(θ)
+    x, y = vector[1], vector[2]
+    return [cosθ*x - sinθ*y, sinθ*x + cosθ*y]
+end
+
 
 """
+    skyrmion_lattice(lambda::Float64; p=-1, c=+1, type=:bloch)
 
-function init_hard_bubble(sim::AbstractSim; R::Float64, delta::Float64, center::Any="default", S::Int=10, Q::Int=-1, phi0::Float64=pi/2)
-    mesh = sim.mesh
-    nx,ny,nz = mesh.nx,mesh.ny,mesh.nz
-    dx,dy,dz = mesh.dx,mesh.dy,mesh.dz
-    Ms = sim.Ms
+Create a function that returns magnetization for a skyrmion lattice.
 
-    if center=="default"
-        center = ((nx+1)*dx/2, (ny+1)*dy/2)
-    end
-    x0,y0 = center[1],center[2]
-    b = reshape(sim.spin,(3,nx,ny,nz))
+Parameters:
+    lambda    :: Float64     - Skyrmion lattice period (m)
+    p         :: Int         - polarity: +1 (up) or -1 (down)
+    c         :: Int         - chirality - +1 (clockwise) or -1 (counterclockwise)
+    type      :: Symbol      - :bloch or :neel
 
-    eps = 1e-6
-    for i=1:nx, j=1:ny
-        x = (i+eps)*dx-x0
-        y = (j+eps)*dy-y0
-        r = sqrt(x^2+y^2)
-        if r>1.2*R
-            continue
+Returns:
+    A function f(x, y, z) -> (m_x, m_y, m_z) that returns normalized magnetization.
+
+Examples:
+```julia
+    lattice = skyrmion_lattice(50e-9, p=-1, c=1, type=:bloch)
+    init_m0(sim, lattice)
+```
+"""
+function skyrmion_lattice(lambda::Float64; p=-1, c=1, type=:bloch)
+    
+    # Wave vectors for triangular lattice (120° apart)
+    Q1 = [2π / lambda, 0.0]           # Primary direction
+    Q2 = rotation_2d(120.0, Q1)       # Rotated 120°
+    Q3 = rotation_2d(120.0, Q2)       # Rotated 240°
+    
+    function lattice_function(x, y, z)
+        # Calculate phases for each Q-vector
+        ϕ1 = Q1[1]*x + Q1[2]*y
+        ϕ2 = Q2[1]*x + Q2[2]*y 
+        ϕ3 = Q3[1]*x + Q3[2]*y 
+        
+        # Calculate in-plane components
+        mx = sin(ϕ1) + sin(ϕ2 + 2π/3) + sin(ϕ3 + 4π/3)
+        my = cos(ϕ1) + cos(ϕ2 + 2π/3) + cos(ϕ3 + 4π/3)
+        
+        # Apply chirality
+        if c == -1
+            mx, my = rotation_2d(180.0, [mx, my])
         end
-        psi = atan(y,x)
-        theta = 2*atan(exp(Q*(r-R)/delta))
-        phi = S*psi + phi0
-        mx = sin(theta)*cos(phi)
-        my = sin(theta)*sin(phi)
-        mz = cos(theta)
-
-        for k=1:nz
-            id = index(i,j,k,nx,ny,nz)
-            if Ms[id] == 0
-                continue
-            end
-
-            b[1,i,j,k] = mx
-            b[2,i,j,k] = my
-            b[3,i,j,k] = mz
+        
+        if type == :bloch
+            # Rotate by 90° for Bloch type
+            mx, my = rotation_2d(90.0, [mx, my])
         end
+        
+        mz = cos(ϕ1) + cos(ϕ2) + cos(ϕ3)
+        
+        norm = p*sqrt(mx^2 + my^2 + mz^2)
+        return (mx/norm, my/norm, mz/norm)
     end
+    
+    return lattice_function
 end
