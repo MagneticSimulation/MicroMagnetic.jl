@@ -1,4 +1,37 @@
 
+const Ms_demo = [
+    { title: "Create Mesh", code: `mesh = FDMesh(; nx=100, ny=100, nz=10, dx=2e-9, dy=2e-9, dz=2e-9);`, cellType: "mesh" },
+    { title: "Create Simulation", code: `sim = Sim(mesh; name="Ms_demo")`, cellType: "sim" },
+    { title: "Set Ms (const)", code: `set_Ms(sim, 8e5)`, cellType: "ms" },
+    { title: "Set Ms (function)", cellType: "ms",  code:
+`function circular_Ms(x, y, z)
+    if x^2 + y^2 <= (50e-9)^2
+        return 8e5
+    end
+    return 0.0
+end
+set_Ms(sim, circular_Ms)`, },
+    { title: "Set Ms (shape)", cellType: "ms", code:
+`shape = Cylinder(center=(-100e-9, 0, 0), radius = 100e-9);
+# only set the Ms inside the given shape\nset_Ms(sim, shape, 8e5)`, },
+    { title: "Set Ms (shapes)", cellType: "ms",  code:
+`shape = Cylinder(center=(-100e-9, 0, 0), radius = 50e-9);
+set_region(mesh, shape, 1);
+
+shape = Box(center=(100e-9, 0, 0), size=(100e-9, 100e-9, 50e-9));
+set_region(mesh, shape, 2);
+
+set_Ms(sim, region_map(1 => 8e5, 2 => 3e5))`, },
+    { title: "Set Ms (voronoi)", cellType: "ms",  code:
+`grain_ids, gb_mask, seeds = voronoi(mesh, min_dist=20, seed=100, threshold=0.28)
+function spatial_Ms(i,j,k,dx,dy,dz)
+    if gb_mask[i,j,k]
+        return 0
+    end
+    return 8e5
+end
+set_Ms(sim, spatial_Ms)`},
+]
 
 const vortex = [
     { title: "Create Mesh", code: `mesh = FDMesh(nx=100, ny=100, nz=10, dx=2e-9, dy=2e-9, dz=2e-9);`, cellType: "mesh" },
@@ -45,6 +78,12 @@ export const examples ={
         type: "fd",
         task: "relax_dyn",
         steps: std4
+    },
+    "Ms_demo": {
+        title: "Ms_demo",
+        type: "fd",
+        task: "demo",
+        steps: Ms_demo
     },
 }
 

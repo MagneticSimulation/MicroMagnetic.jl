@@ -20,7 +20,7 @@ function test_shapes()
     @test MicroMagnetic.inside(s1, (20e-9,30e-9,100)) == false
     @test MicroMagnetic.inside(s1, (20e-9,30e-9,0)) == true
 
-    b1 = Box(sides = (50e-9, 50e-9, Inf), theta=pi/4)
+    b1 = Box(size = (50e-9, 50e-9, Inf), theta=pi/4)
     @test MicroMagnetic.inside(b1, (50e-9*sqrt(2)/2*0.9999,0,100)) == true
     @test MicroMagnetic.inside(b1, (50e-9,0,0)) == false
 

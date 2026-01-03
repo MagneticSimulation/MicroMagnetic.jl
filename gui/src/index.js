@@ -2,14 +2,54 @@ import { CellSelector } from './CellSelector.js';
 import GUIManager from './GUIManager.js';
 import Visualization from './Visualization.js';
 import { Cell } from './Cell.js';
+import { examples } from './tasks.js';
 
 // Export to global scope
 window.Visualization = Visualization ;
 window.GUIManager = GUIManager;
 
+function filterExamplesByTaskType(taskType) {
+    const filteredExamples = [];
+    for (const [key, example] of Object.entries(examples)) {
+        if (example.task === taskType) {
+            filteredExamples.push({ value: key, label: example.title });
+        }
+    }
+    return filteredExamples;
+}
+
+function updateExampleSelector() {
+    const taskTypeSelect = document.getElementById('task-type');
+    const exampleSelector = document.getElementById('example-selector');
+    
+    if (!taskTypeSelect || !exampleSelector) {
+        console.error('Task type or example selector not found');
+        return;
+    }
+    
+    const selectedTaskType = taskTypeSelect.value;
+    const filteredExamples = filterExamplesByTaskType(selectedTaskType);
+    
+    exampleSelector.innerHTML = '<option value="" selected>-- Select Example --</option>';
+    
+    filteredExamples.forEach(example => {
+        const option = document.createElement('option');
+        option.value = example.value;
+        option.textContent = example.label;
+        exampleSelector.appendChild(option);
+    });
+}
+
 // Initialize GUI when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Initializing MicroMagneticGUI...');
+    
+    updateExampleSelector();
+
+    const taskTypeSelect = document.getElementById('task-type');
+    if (taskTypeSelect) {
+        taskTypeSelect.addEventListener('change', updateExampleSelector);
+    }
     
     // Create and initialize visualization
     const containerId = 'visualization-container';
