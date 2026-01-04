@@ -147,7 +147,7 @@ Example:
     init_m0(sim, antiskyrmion)
 ```
 """
-function skyrmion(center=(0.0,0.0), R=10e-9, p=1, v=1, phi=0.0)
+function skyrmion(;center=(0.0,0.0), R=10e-9, p=1, v=1, phi=0.0)
     return bubble2d(center=center, R=R, w=R/2, p=p, v=v, phi=phi)
 end
 

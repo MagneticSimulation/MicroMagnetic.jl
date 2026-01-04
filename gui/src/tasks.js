@@ -33,6 +33,28 @@ end
 set_Ms(sim, spatial_Ms)`},
 ]
 
+const init_m0_demo = [
+    { title: "Create Mesh", code: `mesh = FDMesh(; nx=100, ny=100, nz=10, dx=2e-9, dy=2e-9, dz=2e-9);`, cellType: "mesh" },
+    { title: "Create Simulation", code: `sim = Sim(mesh; name="init_m0_demo")`, cellType: "sim" },
+    { title: "Set Ms (shape)", cellType: "ms", code:`set_Ms(sim, Cylinder(radius = 100e-9), 8e5)`, },
+    { title: "init_m0 (const)", code: `init_m0(sim, (1, 0.25, 0.1))`, cellType: "m0" },
+    { title: "init_m0 (function)", cellType: "m0", code:
+`function init_fun(x, y, z)
+    r = sqrt(x^2 + y^2)
+    if r < 20e-9
+        return (0, 0, 1)
+    end
+    return (y / r, -x / r, 0)
+end
+init_m0(sim, init_fun)`, },
+{ title: "init_m0 (vortex)", cellType: "m0", code:`init_m0(sim, vortex(p=1, c=-1))`, },
+{ title: "init_m0 (neel skyrmion)", cellType: "m0", code:`init_m0(sim, skyrmion(p=1, v=1, phi=0.0))`, },
+{ title: "init_m0 (bloch skyrmion)", cellType: "m0", code:`init_m0(sim, skyrmion(p=1, v=-1, phi=pi/2))`, },
+{ title: "init_m0 (anti skyrmion)", cellType: "m0", code:`init_m0(sim, skyrmion(p=1, v=-1, phi=0.0))`, },
+{ title: "init_m0 (bubble)", cellType: "m0", code:`init_m0(sim, bubble2d(R=40e-9, p=1, v=1, phi=0.0))`, },
+]
+
+
 const vortex = [
     { title: "Create Mesh", code: `mesh = FDMesh(nx=100, ny=100, nz=10, dx=2e-9, dy=2e-9, dz=2e-9);`, cellType: "mesh" },
     { title: "Set Region", code: `shape = Cylinder(radius = 100e-9);\nset_region(mesh, shape, 1);`, cellType: "set_region" },
@@ -84,6 +106,12 @@ export const examples ={
         type: "fd",
         task: "demo",
         steps: Ms_demo
+    },
+    "init_m0_demo": {
+        title: "init_m0_demo",
+        type: "fd",
+        task: "demo",
+        steps: init_m0_demo
     },
 }
 
