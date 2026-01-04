@@ -88,7 +88,7 @@ function test_skyrmion()
     set_Ms(sim, 8e5)
 
     # Test skyrmion function with init_m0 (Néel skyrmion)
-    init_m0(sim, skyrmion((4.5e-9, 4.5e-9), 10e-9, 1, 1, 0.0))
+    init_m0(sim, skyrmion(center=(4.5e-9, 4.5e-9), R=10e-9, p=1, v=1))
     
     b = reshape(Array(sim.spin), (3, 50, 50, 1))
     

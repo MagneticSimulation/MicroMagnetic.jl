@@ -1,8 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GUI } from 'lil-gui';
+import FDMeshVisualization from './FDMeshVisualization.js';
+import VolumeVisualization from './VolumeVisualization.js';
+import ArrowVisualization from './ArrowVisualization.js';
 
 /**
- * Visualization class for visualizing magnetization distributions
+ * Main Visualization class coordinating all visualizers
  */
 class Visualization {
     constructor(containerId) {
@@ -10,19 +14,39 @@ class Visualization {
         this.camera = null;
         this.renderer = null;
         this.controls = null;
-        this.cube = null;
         this.animationId = null;
-        this.arrows = [];
-        this.gridSize = [10, 10, 10];
-        this.dimensions = [10, 10, 10];
-        this.arrowGroup = new THREE.Group();
-        this.arrowPositions = null;
-        this.meshGroup = new THREE.Group(); 
-        this.customSurfaceGroup = new THREE.Group();
+        
+        // Visualizers
+        this.fdMeshVisualization = null;
+        this.volumeVisualization = null;
+        this.arrowVisualization = null;
+        
+        // Grid helper
         this.gridHelper = null;
-        this.scaleFactor = 0.02;
-
+        
+        // GUI control properties
+        this.controlsData = {
+            showGrid: true,
+            showMesh: true,
+            magnetizationDisplay: 'arrows', // 'arrows' or 'volume'
+            arrowSampling: 'cartesian',
+            arrowSize: 1.0,
+            sampleDensity: {
+                nx: 10,
+                ny: 10,
+                nz: 10
+            },
+            surfacePosition: {
+                x: 0,
+                y: 0,
+                z: 0
+            },
+            surfaceDirection: 'z'
+        };
+        
+        this.gui = null;
         this.container = document.getElementById(containerId);
+        
         if (this.container) {
             this.init(this.container);
         } else {
@@ -32,8 +56,6 @@ class Visualization {
 
     /**
      * Initialize visualization scene
-     * @param {Object} container - DOM element containing renderer
-     * @param {Object} data - Initialization data
      */
     init(container, data = null) {
         // Create scene
@@ -47,7 +69,7 @@ class Visualization {
         this.camera.position.set(0, 10, 10);
         this.camera.lookAt(0, 0, 0);
 
-        this.scene.rotation.x = -Math.PI / 2; 
+        this.scene.rotation.x = -Math.PI / 2;
 
         // Create renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -55,17 +77,20 @@ class Visualization {
         container.innerHTML = '';
         container.appendChild(this.renderer.domElement);
         
+        // Add grid helper
         this.gridHelper = new THREE.GridHelper(100, 100, 0x666666, 0x555555);
         this.gridHelper.rotation.x = Math.PI / 2;
         this.scene.add(this.gridHelper);
     
+        // Add lighting
         this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
         const light = new THREE.HemisphereLight(0xffffff, 0x222222, 1.5);
         this.scene.add(light);
-        // Add arrow group
-        this.scene.add(this.arrowGroup);
-        this.scene.add(this.meshGroup);
-        this.scene.add(this.customSurfaceGroup); // Add custom surface group to scene
+
+        // Initialize visualizers
+        this.fdMeshVisualization = new FDMeshVisualization(this.scene);
+        this.volumeVisualization = new VolumeVisualization(this.scene);
+        this.arrowVisualization = new ArrowVisualization(this.scene);
 
         // Add orbit controls
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -87,6 +112,9 @@ class Visualization {
         // Handle window resize
         window.addEventListener('resize', () => this.resize());
 
+        // Initialize GUI
+        this.initGUI();
+
         console.log('Visualization initialized successfully!');
     }
 
@@ -107,538 +135,48 @@ class Visualization {
     }
 
     /**
-     * Update magnetization data
-     * @param {Object} data - Magnetization data (contains magnetization array, cells, and dimensions)
-     * @param {Object} options - Options including selection and scale
-     */
-    updateMagnetization(data, options = {}) {
-        console.log('updateMagnetization called with data length:', data.length);
-
-        const nx = this.gridSize[0];
-        const ny = this.gridSize[1];
-        const nz = this.gridSize[2];
-
-        if (data.length != nx*ny*nz * 3) {
-            return;
-        }
-    
-        // Calculate cell size
-        const cellSize = [
-            this.dimensions[0] / this.gridSize[0],
-            this.dimensions[1] / this.gridSize[1],
-            this.dimensions[2] / this.gridSize[2]
-        ];
-    
-        // Calculate arrow scale
-        const baseScale = Math.min(...cellSize) * 0.8;
-        const arrowScale = baseScale * (options.arrowScaleFactor || 1.0);
-    
-        // Filter cells by selection
-        const selection = options.selection || { type: 'full' };
-    
-        // Calculate arrow positions (only once or when grid changes)
-        if (!this.arrowPositions || this.arrowPositions.length !== nx*ny*nz) {
-            console.log('Calculating arrow positions');
-            this.arrowPositions = [];
-            
-            for (let i = 0; i < nx; i++) {
-                for (let j = 0; j < ny; j++) {
-                    for (let k = 0; k < nz; k++) {
-                        if (!this.isInSelection(i, j, k, selection)) continue;
-
-                        const x = (i - (nx - 1) / 2) * cellSize[0];
-                        const y = (j - (ny - 1) / 2) * cellSize[1];
-                        const z = (k - (nz - 1) / 2) * cellSize[2];
-                        
-                        this.arrowPositions.push([x, y, z]);
-                    }
-                }
-            }
-        }
-    
-        // Collect arrow data (positions + directions)
-        const arrowData = [];
-        let positionIndex = 0;
-        
-        for (let i = 0; i < nx; i++) {
-            for (let j = 0; j < ny; j++) {
-                for (let k = 0; k < nz; k++) {
-                    if (!this.isInSelection(i, j, k, selection)) continue;
-
-                    const index = i + j * nx + k * nx * ny;
-                    const magIndex = index * 3;
-
-                    const mx = data[magIndex];
-                    const my = data[magIndex + 1];
-                    const mz = data[magIndex + 2];
-
-                    if (positionIndex < this.arrowPositions.length) {
-                        arrowData.push({
-                            position: this.arrowPositions[positionIndex],
-                            direction: [mx, my, mz]
-                        });
-                        positionIndex++;
-                    }
-                }
-            }
-        }
-    
-        console.log(`Processing ${arrowData.length} arrows`);
-    
-        // Create or update arrows
-        const currentArrowCount = this.arrows.length > 0 ? this.arrows[0].count : 0;
-        
-        if (currentArrowCount !== arrowData.length) {
-            console.log(`Arrow count changed: creating ${arrowData.length} arrows`);
-            this.clearArrows();
-            if (arrowData.length > 0) {
-                this.createArrowInstances(arrowData, arrowScale);
-            }
-        } else if (arrowData.length > 0) {
-            console.log(`Updating ${arrowData.length} arrow directions`);
-            this.updateArrowInstances(arrowData, arrowScale);
-        }
-    }
-
-    /**
-     * Create arrow instances using InstancedMesh
-     * @param {Array} arrowData - Arrow data
-     * @param {number} arrowScale - Scale factor
-     */
-    createArrowInstances(arrowData, arrowScale) {
-        // Create geometries (cone for arrow head, cylinder for arrow shaft)
-        const coneGeometry = new THREE.ConeGeometry(0.05, 0.2, 32);
-        coneGeometry.translate(0, -0.2, 0);
-        
-        const cylinderGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.2, 32);
-        cylinderGeometry.translate(0, -0.2, 0);
-    
-        // Create shared material
-        const material = new THREE.MeshStandardMaterial({ 
-            color: 0x0077ff,
-            metalness: 0.3,
-            roughness: 0.4
-        });
-    
-        // Create instanced meshes
-        const coneMesh = new THREE.InstancedMesh(coneGeometry, material, arrowData.length);
-        const cylinderMesh = new THREE.InstancedMesh(cylinderGeometry, material, arrowData.length);
-    
-        // Set up transformation matrices and colors
-        const coneMatrix = new THREE.Matrix4();
-        const cylinderMatrix = new THREE.Matrix4();
-        const color = new THREE.Color();
-        const up = new THREE.Vector3(0, 1, 0);
-        const arrowLength = 0.6 * arrowScale;
-        const offset = arrowLength * 0.5;
-    
-        for (let i = 0; i < arrowData.length; i++) {
-            const data = arrowData[i];
-            const position = new THREE.Vector3(...data.position);
-            const direction = new THREE.Vector3(...data.direction).normalize();
-
-            // Calculate rotation quaternion from direction
-            const quaternion = new THREE.Quaternion();
-            quaternion.setFromUnitVectors(up, direction);
-
-            // Calculate arrow offset vector
-            const arrowDirection = direction.clone();
-            const offsetVector = arrowDirection.clone().multiplyScalar(offset);
-            
-            // Position cylinder (shaft of the arrow)
-            const cylinderPosition = position.clone().sub(offsetVector)
-                .add(arrowDirection.clone().multiplyScalar(0.2 * arrowScale));
-            cylinderMatrix.compose(cylinderPosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
-            cylinderMesh.setMatrixAt(i, cylinderMatrix);
-
-            // Position cone (head of the arrow)
-            const conePosition = position.clone().sub(offsetVector)
-                .add(arrowDirection.clone().multiplyScalar(0.4 * arrowScale));
-            coneMatrix.compose(conePosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
-            coneMesh.setMatrixAt(i, coneMatrix);
-
-            // Set color based on direction components
-            color.setRGB(Math.abs(direction.x), Math.abs(direction.y), Math.abs(direction.z));
-            coneMesh.setColorAt(i, color);
-            cylinderMesh.setColorAt(i, color);
-        }
-    
-        // Add meshes to scene
-        this.arrowGroup.add(coneMesh);
-        this.arrowGroup.add(cylinderMesh);
-    
-        // Store references for later updates
-        this.arrows.push(coneMesh, cylinderMesh);
-    }
-
-    /**
-     * Update existing arrow instances - only update direction, not position
-     * @param {Array} arrowData - Arrow data
-     * @param {number} arrowScale - Scale factor
-     */
-    updateArrowInstances(arrowData, arrowScale) {
-        if (this.arrows.length < 2) {
-            console.error('Not enough arrow meshes');
-            return;
-        }
-    
-        const coneMesh = this.arrows[0];
-        const cylinderMesh = this.arrows[1];
-        const coneMatrix = new THREE.Matrix4();
-        const cylinderMatrix = new THREE.Matrix4();
-        const color = new THREE.Color();
-        const up = new THREE.Vector3(0, 1, 0);
-    
-        for (let i = 0; i < arrowData.length; i++) {
-            const data = arrowData[i];
-            const position = new THREE.Vector3(...data.position);
-            const direction = new THREE.Vector3(...data.direction).normalize();
-
-            // Calculate rotation from direction
-            const quaternion = new THREE.Quaternion();
-            quaternion.setFromUnitVectors(up, direction);
-
-            // Calculate arrow offset for positioning
-            const arrowDirection = direction.clone();
-            const totalArrowLength = 0.6 * arrowScale;
-            const offset = arrowDirection.clone().multiplyScalar(totalArrowLength * 0.5);
-            
-            // Position cylinder (relative to arrow center)
-            const cylinderPosition = position.clone().sub(offset)
-                .add(arrowDirection.clone().multiplyScalar(0.2 * arrowScale));
-            cylinderMatrix.compose(cylinderPosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
-            cylinderMesh.setMatrixAt(i, cylinderMatrix);
-
-            // Position cone (relative to arrow center)
-            const conePosition = position.clone().sub(offset)
-                .add(arrowDirection.clone().multiplyScalar(0.4 * arrowScale));
-            coneMatrix.compose(conePosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
-            coneMesh.setMatrixAt(i, coneMatrix);
-
-            // Update color based on direction
-            color.setRGB(Math.abs(direction.x), Math.abs(direction.y), Math.abs(direction.z));
-            coneMesh.setColorAt(i, color);
-            cylinderMesh.setColorAt(i, color);
-        }
-    
-        // Mark for update
-        coneMesh.instanceMatrix.needsUpdate = true;
-        coneMesh.instanceColor.needsUpdate = true;
-        cylinderMesh.instanceMatrix.needsUpdate = true;
-        cylinderMesh.instanceColor.needsUpdate = true;
-    }
-
-    /**
      * Display FD Mesh
-     * @param {Object} meshData - Mesh data containing nx, ny, nz, dx, dy, dz
+     * @param {Object} meshData - Mesh data
      */
     displayFDMesh(meshData) {
-        // Clear only the FD mesh (box mesh), not arrows or custom surface
-        this.clearFDMesh();
+        const mesh = this.fdMeshVisualization.displayFDMesh(meshData);
         
-        const { nx, ny, nz, dx, dy, dz} = meshData;
-        const scale = this.scaleFactor;
-        const width = nx * dx * scale;
-        const height = ny * dy * scale;
-        const depth = nz * dz * scale;
-
-        this.gridSize = [nx, ny, nz];
-        this.dimensions = [width, height, depth];
-                
-        const boxGeometry = new THREE.BoxGeometry(width, height, depth, 1, 1, 1);
-        const boxMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0xffffff, 
-            transparent: true,
-            opacity: 0.5, 
-        });
-        const mesh = new THREE.Mesh(boxGeometry, boxMaterial);
+        // Adjust grid helper position
+        const gridInfo = this.fdMeshVisualization.getGridInfo();
+        this.gridHelper.position.set(0, 0, -gridInfo.dimensions[2] / 2);
         
-        // Enable shadows for better visual effect
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+        // Adjust camera
+        this.fdMeshVisualization.adjustCameraToFitMesh(this.camera, this.controls);
         
-        const position = mesh.geometry.attributes.position;
-        for (let i = 0; i < position.count; i++) {
-            position.setXYZ(i,
-                position.getX(i) * -1,
-                position.getY(i) * -1,
-                position.getZ(i) * -1,
-            );
-        }
-        // Update the geometry after modifying vertices
-        mesh.geometry.attributes.position.needsUpdate = true;
-        //mesh.geometry.computeVertexNormals();
-
-        // Add mesh to group
-        this.meshGroup.add(mesh);
-        
-        this.gridHelper.position.set(0, 0, -depth/2);
-        // Adjust camera to fit the mesh
-        this.adjustCameraToFitMesh(mesh);
+        return mesh;
     }
 
     /**
-     * Create custom surface visualization based on surfaceData
-     * @param {Array} surfaceData - Array of cell status information (length = nx*ny*nz). 
-     *                              Each element is Ms value (0 if cell should be excluded)
+     * Update magnetization data
+     * @param {Object} data - Magnetization data
+     * @param {Object} options - Visualization options
+     */
+    updateMagnetization(data, options = {}) {
+        const gridInfo = this.fdMeshVisualization.getGridInfo();
+        this.arrowVisualization.updateMagnetization(
+            data, 
+            gridInfo.gridSize, 
+            gridInfo.dimensions, 
+            options
+        );
+    }
+
+    /**
+     * Display custom surface
+     * @param {Array} surfaceData - Surface data
      */
     displayCustomSurface(surfaceData) {
-        // Clear only the custom surface mesh, not arrows or FD mesh
-        this.clearCustomSurface();
-        
-        // Get grid information from instance properties
-        const nx = this.gridSize[0];
-        const ny = this.gridSize[1];
-        const nz = this.gridSize[2];
-        
-        // Calculate cell sizes from mesh dimensions and grid cells
-        const dx = this.dimensions[0] / this.gridSize[0];
-        const dy = this.dimensions[1] / this.gridSize[1];
-        const dz = this.dimensions[2] / this.gridSize[2];
-        
-        // Create a material for surface faces
-        const surfaceMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0xe74c3c,
-            transparent: true,
-            opacity: 0.7, 
-            side: THREE.DoubleSide,
-            polygonOffset: true,
-            polygonOffsetFactor: 1,  // Push surface back in depth buffer
-            polygonOffsetUnits: 1
-        });
-        
-        // Create a material for surface edges
-        const edgeMaterial = new THREE.LineBasicMaterial({ 
-            color: 0xc0392b, 
-            transparent: false,
-            linewidth: 1.5,
-            depthTest: true,  // Ensure edges are rendered in front
-            depthWrite: true
-        });
-        
-        // Prepare vertices and faces arrays for custom surface geometry
-        const vertices = [];
-        const faces = [];
-        let vertexIndex = 0;
-        
-        // Helper function to get cell index from coordinates
-        const getCellIndex = (i, j, k) => i + j * nx + k * nx * ny;
-        
-        // Helper function to check if a cell has Ms=0
-        const isCellEmpty = (i, j, k) => {
-            // Check if cell is out of bounds
-            if (i < 0 || i >= nx || j < 0 || j >= ny || k < 0 || k >= nz) {
-                return true; // Treat out of bounds as empty
-            }
-            // Check if cell has Ms=0
-            const index = getCellIndex(i, j, k);
-            return surfaceData[index] < 1e-5;
-        };
-        
-        // Helper function to add a face to the geometry
-        const addFace = (v1, v2, v3, v4) => {
-            // Add vertices to array
-            vertices.push(v1.x, v1.y, v1.z);
-            vertices.push(v2.x, v2.y, v2.z);
-            vertices.push(v3.x, v3.y, v3.z);
-            vertices.push(v4.x, v4.y, v4.z);
-            
-            // Add faces (two triangles per quad)
-            faces.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
-            faces.push(vertexIndex, vertexIndex + 2, vertexIndex + 3);
-            
-            // Increment vertex index
-            vertexIndex += 4;
-        };
-        
-        // Calculate cell half sizes for positioning
-        const halfDx = dx / 2;
-        const halfDy = dy / 2;
-        const halfDz = dz / 2;
-        
-        // Traverse all cells
-        for (let k = 0; k < nz; k++) {
-            for (let j = 0; j < ny; j++) {
-                for (let i = 0; i < nx; i++) {
-                    const cellIndex = getCellIndex(i, j, k);
-                    
-                    // Skip cells with Ms=0
-                    if (surfaceData[cellIndex] === 0) {
-                        continue;
-                    }
-                    
-                    // Calculate cell center position
-                    const x = (i - nx / 2 + 0.5) * dx;
-                    const y = (j - ny / 2 + 0.5) * dy;
-                    const z = (k - nz / 2 + 0.5) * dz;
-                    
-                    // Define cell vertices
-                    const v1 = new THREE.Vector3(x - halfDx, y - halfDy, z - halfDz);
-                    const v2 = new THREE.Vector3(x + halfDx, y - halfDy, z - halfDz);
-                    const v3 = new THREE.Vector3(x + halfDx, y + halfDy, z - halfDz);
-                    const v4 = new THREE.Vector3(x - halfDx, y + halfDy, z - halfDz);
-                    const v5 = new THREE.Vector3(x - halfDx, y - halfDy, z + halfDz);
-                    const v6 = new THREE.Vector3(x + halfDx, y - halfDy, z + halfDz);
-                    const v7 = new THREE.Vector3(x + halfDx, y + halfDy, z + halfDz);
-                    const v8 = new THREE.Vector3(x - halfDx, y + halfDy, z + halfDz);
-                    
-                    // Check and add faces for each side of the cell
-                    
-                    // Front face (z+)
-                    if (isCellEmpty(i, j, k + 1)) {
-                        addFace(v5, v6, v7, v8);
-                    }
-                    
-                    // Back face (z-)
-                    if (isCellEmpty(i, j, k - 1)) {
-                        addFace(v1, v2, v3, v4);
-                    }
-                    
-                    // Right face (x+)
-                    if (isCellEmpty(i + 1, j, k)) {
-                        addFace(v2, v6, v7, v3);
-                    }
-                    
-                    // Left face (x-)
-                    if (isCellEmpty(i - 1, j, k)) {
-                        addFace(v5, v1, v4, v8);
-                    }
-                    
-                    // Top face (y+)
-                    if (isCellEmpty(i, j + 1, k)) {
-                        addFace(v4, v3, v7, v8);
-                    }
-                    
-                    // Bottom face (y-)
-                    if (isCellEmpty(i, j - 1, k)) {
-                        addFace(v5, v6, v2, v1);
-                    }
-                }
-            }
-        }
-        
-        // Create geometry from collected vertices and faces
-        const customGeometry = new THREE.BufferGeometry();
-        
-        // Only create surface if we have vertices
-        if (vertices.length > 0) {
-            // Create vertex buffer
-            const vertexBuffer = new Float32Array(vertices);
-            customGeometry.setAttribute('position', new THREE.BufferAttribute(vertexBuffer, 3));
-            
-            // Create face buffer
-            const faceBuffer = new Uint32Array(faces);
-            customGeometry.setIndex(new THREE.BufferAttribute(faceBuffer, 1));
-            
-            //const customMesh = new THREE.Mesh(customGeometry, surfaceMaterial);
-            //this.customSurfaceGroup.add(customMesh);
-            
-            const customWireframe = new THREE.EdgesGeometry(customGeometry);
-            const customEdges = new THREE.LineSegments(customWireframe, edgeMaterial);
-            this.customSurfaceGroup.add(customEdges);
-        } else {
-            console.log('No custom surface faces to render. All cells may be empty.');
-        }
-    }
-
-    /**
-     * Adjust camera to fit the mesh
-     * @param {THREE.Mesh} mesh - Mesh object to fit
-     */
-    adjustCameraToFitMesh(mesh) {
-        // Calculate bounding box of the mesh
-        const boundingBox = new THREE.Box3().setFromObject(mesh);
-        
-        // Calculate the size of the bounding box
-        const size = boundingBox.getSize(new THREE.Vector3());
-        
-        // Calculate the distance needed to fit the entire mesh
-        const maxDim = Math.max(size.x, size.y, size.z)*1.5;
-        const fov = this.camera.fov * (Math.PI / 180);
-        const distance = maxDim / (2 * Math.tan(fov / 2));
-        
-        // Set camera position
-        this.camera.position.set(-distance/10, distance/2, distance);
-        
-        // Look at the center of the mesh
-        const center = boundingBox.getCenter(new THREE.Vector3());
-        this.camera.lookAt(center);
-        this.controls.target.copy(center);
-        this.controls.update();
-    }
-
-    /**
-     * Check if cell is in selection area
-     * @param {number i} - X index
-     * @param {number} j - Y index
-     * @param {number} k - Z index
-     * @param {Object} selection - Selection config
-     * @returns {boolean} In selection
-     */
-    isInSelection(i, j, k, selection) {
-        switch (selection.type) {
-            case 'full':
-                return true;
-            case 'slice':
-                if (selection.axis === 'x' && i === selection.position) return true;
-                if (selection.axis === 'y' && j === selection.position) return true;
-                if (selection.axis === 'z' && k === selection.position) return true;
-                return false;
-            case 'box':
-                return i >= selection.min[0] && i < selection.max[0] &&
-                       j >= selection.min[1] && j < selection.max[1] &&
-                       k >= selection.min[2] && k < selection.max[2];
-            default:
-                return true;
-        }
-    }
-
-    /**
-     * Clear all arrows
-     */
-    clearArrows() {
-        for (const arrow of this.arrows) {
-            this.arrowGroup.remove(arrow);
-            arrow.geometry.dispose();
-            arrow.material.dispose();
-        }
-        this.arrows = [];
-    }
-
-    /**
-     * Clear all mesh elements
-     */
-    clearMesh() {
-        while (this.meshGroup.children.length > 0) {
-            const child = this.meshGroup.children[0];
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) child.material.dispose();
-            this.meshGroup.remove(child);
-        }
-    }
-
-    /**
-     * Clear only the FD mesh (box mesh), not arrows or custom surface
-     */
-    clearFDMesh() {
-        while (this.meshGroup.children.length > 0) {
-            const child = this.meshGroup.children[0];
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) child.material.dispose();
-            this.meshGroup.remove(child);
-        }
-    }
-
-    /**
-     * Clear only the custom surface mesh, not arrows or FD mesh
-     */
-    clearCustomSurface() {
-        while (this.customSurfaceGroup.children.length > 0) {
-            const child = this.customSurfaceGroup.children[0];
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) child.material.dispose();
-            this.customSurfaceGroup.remove(child);
-        }
+        const gridInfo = this.fdMeshVisualization.getGridInfo();
+        this.volumeVisualization.displayVolume(   
+            surfaceData,
+            gridInfo.gridSize,
+            gridInfo.dimensions
+        );
     }
 
     /**
@@ -662,32 +200,106 @@ class Visualization {
 
     /**
      * Get visualization status
-     * @returns {Object} Status info
      */
     getStatus() {
         return {
             initialized: !!this.scene,
-            dimensions: this.dimensions,
-            cells: this.gridSize,
-            arrowCount: this.arrows.length > 0 ? this.arrows[0].count : 0,
-            meshElementCount: this.meshGroup.children.length
+            dimensions: this.fdMeshVisualization.getGridInfo().dimensions,
+            cells: this.fdMeshVisualization.getGridInfo().gridSize,
+            arrowCount: this.arrowVisualization ? this.arrowVisualization.arrows.length : 0,
+            meshElementCount: this.fdMeshVisualization.meshGroup.children.length
         };
+    }
+
+    /**
+     * Initialize GUI controls
+     */
+    initGUI() {
+        const lilGuiContainer = document.getElementById('lilgui-panel');
+        
+        this.gui = new GUI({
+            title: 'Visualization Controls',
+            width: 300,
+            container: lilGuiContainer
+        });
+
+        // Display settings
+        const displayFolder = this.gui.addFolder('Display Settings');
+        displayFolder.add(this.controlsData, 'showGrid').name('Show Grid').onChange((value) => {
+            if (this.gridHelper) {
+                this.gridHelper.visible = value;
+            }
+        });
+        displayFolder.add(this.controlsData, 'showMesh').name('Show Mesh').onChange((value) => {
+            this.fdMeshVisualization.setVisible(value);
+        });
+        displayFolder.open();
+
+        // Magnetization display settings
+        const magnetizationFolder = this.gui.addFolder('Magnetization Display');
+        magnetizationFolder.add(this.controlsData, 'magnetizationDisplay', ['arrows', 'surface'])
+            .name('Display Type')
+            .onChange((value) => {
+                this.arrowVisualization.setVisible(value === 'arrows');
+                this.volumeVisualization.setVisible(value === 'volume');
+            });
+
+        // Arrow settings
+        const arrowFolder = magnetizationFolder.addFolder('Arrow Settings');
+        arrowFolder.add(this.controlsData, 'arrowSampling', ['cartesian', 'polar'])
+            .name('Sampling Method');
+        
+        const densityFolder = arrowFolder.addFolder('Sample Density');
+        densityFolder.add(this.controlsData.sampleDensity, 'nx', 1, 50, 1).name('NX');
+        densityFolder.add(this.controlsData.sampleDensity, 'ny', 1, 50, 1).name('NY');
+        densityFolder.add(this.controlsData.sampleDensity, 'nz', 1, 50, 1).name('NZ');
+        densityFolder.open();
+        
+        arrowFolder.add(this.controlsData, 'arrowSize', 0.1, 5.0, 0.1)
+            .name('Arrow Size')
+            .onChange((value) => {
+                this.arrowVisualization.setArrowSize(value);
+            });
+        arrowFolder.open();
+
+        // Surface settings
+        const surfaceFolder = magnetizationFolder.addFolder('Surface Settings');
+        const positionFolder = surfaceFolder.addFolder('Position');
+        positionFolder.add(this.controlsData.surfacePosition, 'x', -10, 10, 0.1).name('X');
+        positionFolder.add(this.controlsData.surfacePosition, 'y', -10, 10, 0.1).name('Y');
+        positionFolder.add(this.controlsData.surfacePosition, 'z', -10, 10, 0.1).name('Z');
+        positionFolder.open();
+        
+        surfaceFolder.add(this.controlsData, 'surfaceDirection', ['x', 'y', 'z']).name('Direction');
+        surfaceFolder.open();
+
+        magnetizationFolder.open();
     }
 
     /**
      * Dispose resources
      */
     dispose() {
-        if (this.animationId) {
-            cancelAnimationFrame(this.animationId);
+        cancelAnimationFrame(this.animationId);
+        
+        if (this.fdMeshVisualization) {
+            this.fdMeshVisualization.dispose();
         }
-
-        this.clearArrows();
-        this.clearMesh();
-        this.clearCustomSurface();
+        
+        if (this.volumeVisualization) {
+            this.volumeVisualization.dispose();
+        }
+        
+        if (this.arrowVisualization) {
+            this.arrowVisualization.dispose();
+        }
 
         if (this.renderer) {
             this.renderer.dispose();
+        }
+
+        if (this.gui) {
+            this.gui.destroy();
         }
 
         console.log('Visualization disposed');

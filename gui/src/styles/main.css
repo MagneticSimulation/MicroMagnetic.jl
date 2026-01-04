@@ -31,9 +31,27 @@ body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f0f0; ove
     flex-direction: column;
 }
 
+/* Lil-GUI Panel Styles */
+.visualization-section {
+    flex: 1;
+    position: relative;
+    background-color: #ffffff;
+}
+
+.lilgui-panel {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    width: 300px;
+    /* The actual lil-gui elements will be added here */
+}
+
+/* Main Controls Panel */
 #controls-panel {
     padding: 20px;
     flex: 1;
+    min-width: 500px;
 }
 
 /* Control Section Styles */

@@ -9,7 +9,8 @@
         {
             "imports": {
                 "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/"
+                "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/",
+                "lil-gui": "https://unpkg.com/lil-gui@0.19.2/dist/lil-gui.esm.js"
             }
         }
     </script>
@@ -29,10 +30,13 @@
         <!-- Left section: Three.js visualization -->
         <div class="visualization-section">
             <div id="visualization-container"></div>
+            <!-- Lil-GUI Controls Panel - Floating on top of visualization -->
+            <div id="lilgui-panel" class="lilgui-panel"></div>
         </div>
         
         <!-- Right section: Controls panel -->
         <div class="controls-section">
+            <!-- Main Controls Panel -->
             <div id="controls-panel">             
                <div style="font-size: 20px; font-weight: 600; color: #333333; margin-bottom: 20px;"> 
                 MicroMagnetic.jl 
