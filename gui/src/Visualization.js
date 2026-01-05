@@ -15,6 +15,8 @@ class Visualization {
         this.renderer = null;
         this.controls = null;
         this.animationId = null;
+
+        this.spin = null;
         
         // Visualizers
         this.fdMeshVisualization = null;
@@ -29,20 +31,28 @@ class Visualization {
             showGrid: true,
             showMesh: true,
             showVolume: true,
-            magnetizationDisplay: 'arrows', // 'arrows' or 'volume'
-            arrowSampling: 'cartesian',
+            showArrows: true,
+            showSurface: false,
+            arrowSampling: 'cartesian', //cylindrical
             arrowSize: 1.0,
-            sampleDensity: {
-                nx: 10,
-                ny: 10,
-                nz: 10
-            },
+            sampleNx: 10,
+            sampleNy: 10,
+            sampleNz: 10,
             surfacePosition: {
                 x: 0,
                 y: 0,
                 z: 0
             },
             surfaceDirection: 'z'
+        };
+        
+        // GUI controllers references
+        this.gui = {
+            sampleNx: null,
+            sampleNy: null,
+            sampleNz: null,
+            showArrows: null,
+            arrowFolder: null
         };
         
         this.gui = null;
@@ -151,7 +161,71 @@ class Visualization {
         // Adjust camera
         this.fdMeshVisualization.adjustCameraToFitMesh(this.camera, this.controls);
         
+        // Save mesh dimensions for sampling density range
+        this.meshDimensions = {
+            nx: meshData.nx,
+            ny: meshData.ny,
+            nz: meshData.nz
+        };
+        
+        // Set grid info for arrow visualization
+        this.arrowVisualization.setGridInfo(gridInfo.gridSize, gridInfo.dimensions);
+
+        this.updateSamplingRange();
+        
         return mesh;
+    }
+    
+    /**
+     * Update sampling density range based on mesh size
+     */
+    updateSamplingRange() {
+        // Check if GUI controllers are initialized
+        if (!this.gui || !this.controlsData || !this.meshDimensions) {
+            return;
+        }
+        const isCartesian = this.controlsData.arrowSampling === 'cartesian';
+        
+        const sampling = (n) => Math.min(n, 2*Math.round(Math.sqrt(n)));
+        
+        const nxController = this.gui.sampleNx;
+        
+        if (nxController) {
+            nxController.name(isCartesian ? 'Nx' : 'Nr');
+        }
+        const nyController = this.gui.sampleNy;
+        if (nyController) {
+            nyController.name(isCartesian ? 'Ny' : 'Nphi');
+        }
+
+        const nzController = this.gui.sampleNz;
+        if (isCartesian){
+            const nx = this.meshDimensions.nx
+            nxController.max(nx);
+            nxController.setValue(sampling(nx));  
+            const ny = this.meshDimensions.ny
+            nyController.max(ny);
+            nyController.setValue(sampling(ny));   
+            const nz = this.meshDimensions.nz
+            nzController.max(nz);
+            nzController.setValue(sampling(nz));     
+        }else{
+            nxController.max(30);
+            nxController.setValue(8);   
+            nyController.max(20);
+            nyController.min(4);
+            nyController.setValue(8);   
+        }
+    }
+
+    /**
+     * Update arrow sampling when sampleNx/sampleNy/sampleNz changes
+     */
+    updateArrowSampling() {
+        if (!this.arrowVisualization || !this.fdMeshVisualization) return;
+        const c = this.controlsData;
+        this.arrowVisualization.setSampling(c.arrowSampling, c.sampleNx, c.sampleNy, c.sampleNz)
+        this.updateMagnetization(this.spin);
     }
 
     /**
@@ -160,15 +234,11 @@ class Visualization {
      * @param {Object} options - Visualization options
      */
     updateMagnetization(data, options = {}) {
-        const gridInfo = this.fdMeshVisualization.getGridInfo();
-        this.arrowVisualization.updateMagnetization(
-            data, 
-            gridInfo.gridSize, 
-            gridInfo.dimensions, 
-            options
-        );
+        this.spin = data;
+        this.arrowVisualization.updateMagnetization(data, options);
+        this.gui.showArrows.enable()
+        this.gui.arrowFolder.show();
     }
-
     /**
      * Display custom surface
      * @param {Array} surfaceData - Surface data
@@ -262,31 +332,54 @@ class Visualization {
 
         // Magnetization display settings
         const magnetizationFolder = this.gui.addFolder('Magnetization Display');
-        magnetizationFolder.add(this.controlsData, 'magnetizationDisplay', ['arrows', 'surface'])
-            .name('Display Type')
-            .onChange((value) => {
-                this.arrowVisualization.setVisible(value === 'arrows');
-                this.volumeVisualization.setVisible(value === 'surface');
-            });
-
+        this.gui.showArrows = magnetizationFolder.add(this.controlsData, 'showArrows').name('Show Arrows')
+        .onChange((value) => {
+            this.arrowVisualization.setVisible(value);
+            if (value) {
+                arrowFolder.show();
+            } else {
+                arrowFolder.hide();
+            }
+        });
+        this.gui.showArrows.disable()
         // Arrow settings
-        const arrowFolder = magnetizationFolder.addFolder('Arrow Settings');
-        arrowFolder.add(this.controlsData, 'arrowSampling', ['cartesian', 'polar'])
-            .name('Sampling Method');
+        const arrowFolder = magnetizationFolder.addFolder('Arrow Settings').hide();
+        arrowFolder.add(this.controlsData, 'arrowSampling', ['cartesian', 'cylindrical'])
+            .name('Sampling Method')
+            .onChange((value) => {
+                this.updateSamplingRange();
+                this.updateArrowSampling();
+            });
         
+        this.gui.arrowFolder = arrowFolder;
         const densityFolder = arrowFolder.addFolder('Sample Density');
-        densityFolder.add(this.controlsData.sampleDensity, 'nx', 1, 50, 1).name('NX');
-        densityFolder.add(this.controlsData.sampleDensity, 'ny', 1, 50, 1).name('NY');
-        densityFolder.add(this.controlsData.sampleDensity, 'nz', 1, 50, 1).name('NZ');
-        densityFolder.open();
+        
+        // Create controllers with onFinishChange for lazy updates
+        // Labels will be updated by updateSamplingRange() based on sampling method
+        this.gui.sampleNx = densityFolder.add(this.controlsData, 'sampleNx', 1, 50, 1)
+            .name('Nx').onFinishChange(() => this.updateArrowSampling());
+            
+        this.gui.sampleNy = densityFolder.add(this.controlsData, 'sampleNy', 1, 50, 1)
+            .name('Ny').onFinishChange(() => this.updateArrowSampling());
+            
+        this.gui.sampleNz = densityFolder.add(this.controlsData, 'sampleNz', 1, 50, 1)
+            .name('Nz').onFinishChange(() => this.updateArrowSampling());
+            
+        // Initialize labels based on current sampling method
+        this.updateSamplingRange();
+        
+        //densityFolder.open();
         
         arrowFolder.add(this.controlsData, 'arrowSize', 0.1, 5.0, 0.1)
             .name('Arrow Size')
             .onChange((value) => {
                 this.arrowVisualization.setArrowSize(value);
             });
-        arrowFolder.open();
+        //arrowFolder.open();
 
+        magnetizationFolder.add(this.controlsData, 'showSurface').name('Show Surface').onChange((value) => {
+            this.volumeVisualization.setVisible(value);
+        });
         // Surface settings
         const surfaceFolder = magnetizationFolder.addFolder('Surface Settings');
         const positionFolder = surfaceFolder.addFolder('Position');

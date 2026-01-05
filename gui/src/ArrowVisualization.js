@@ -1,8 +1,5 @@
 import * as THREE from 'three';
 
-/**
- * Handles arrow visualization for magnetization
- */
 class ArrowVisualization {
     constructor(scene) {
         this.scene = scene;
@@ -11,63 +8,64 @@ class ArrowVisualization {
         
         this.arrows = [];
         this.arrowPositions = null;
-        this.currentSpinData = null;
+        this.data = null;
+        this.gridSize = null;
+        this.dimensions = null;
         
-        // Arrow visualization settings
         this.settings = {
             arrowSize: 1.0,
-            arrowSampling: 'cartesian',
-            sampleDensity: { nx: 10, ny: 10, nz: 10 }
+            samplingMethod: 'cartesian',
+            sampleNx: 10,
+            sampleNy: 10,
+            sampleNz: 5,
+            radius: 10,
+            ringNum: 4,
+            ringStep: 5,
         };
     }
 
-    /**
-     * Update magnetization data with arrows
-     * @param {Array} data - Magnetization data
-     * @param {Object} gridSize - Grid dimensions [nx, ny, nz]
-     * @param {Object} dimensions - Physical dimensions [width, height, depth]
-     * @param {Object} options - Visualization options
-     */
-    updateMagnetization(data, gridSize, dimensions, options = {}) {
-        console.log('ArrowVisualizer: updateMagnetization called with data length:', data.length);
+    setGridInfo(gridSize, dimensions) {
+        this.gridSize = gridSize;
+        this.dimensions = dimensions;
+        this.settings.radius = Math.min(dimensions[1], dimensions[0]) / 2.0;
+    }
 
-        const [nx, ny, nz] = gridSize;
+    updateMagnetization(data, options = {}) {
+        // Guard against null data (e.g., when GUI changes trigger before data is loaded)
+        if (!data || data.length === 0) {
+            return;
+        }
+        
+        if (!this.gridSize || !this.dimensions) {
+            console.error('ArrowVisualizer: gridSize and dimensions not set');
+            return;
+        }
+        
+        const [nx, ny, nz] = this.gridSize;
         
         if (data.length !== nx * ny * nz * 3) {
             console.error('ArrowVisualizer: Data length mismatch');
             return;
         }
         
-        // Store current spin data
-        this.currentSpinData = data;
-        this.gridSize = gridSize;
-        this.dimensions = dimensions;
+        this.data = data;
         
-        // Calculate cell size
         const cellSize = [
-            dimensions[0] / gridSize[0],
-            dimensions[1] / gridSize[1],
-            dimensions[2] / gridSize[2]
+            this.dimensions[0] / this.gridSize[0],
+            this.dimensions[1] / this.gridSize[1],
+            this.dimensions[2] / this.gridSize[2]
         ];
         
-        // Calculate arrow scale
         const baseScale = Math.min(...cellSize) * 0.8;
         const arrowScale = baseScale * (options.arrowScaleFactor || 1.0) * this.settings.arrowSize;
         
-        // Filter cells by selection
-        const selection = options.selection || { type: 'full' };
-        
-        // Calculate arrow positions
-        if (!this.arrowPositions || this.arrowPositions.length !== nx * ny * nz) {
-            this.calculateArrowPositions(gridSize, dimensions, selection);
+        // Ensure arrowPositions are calculated before collecting arrow data
+        if (!this.arrowPositions || this.arrowPositions.length === 0) {
+            this.calculateArrowPositions();
         }
         
-        // Collect arrow data
-        const arrowData = this.collectArrowData(data, gridSize, selection);
+        const arrowData = this.collectArrowData();
         
-        console.log(`ArrowVisualizer: Processing ${arrowData.length} arrows`);
-        
-        // Create or update arrows
         const currentArrowCount = this.arrows.length > 0 ? this.arrows[0].count : 0;
         
         if (currentArrowCount !== arrowData.length) {
@@ -82,91 +80,160 @@ class ArrowVisualization {
         }
     }
 
-    /**
-     * Calculate arrow positions based on grid and selection
-     */
-    calculateArrowPositions(gridSize, dimensions, selection) {
-        const [nx, ny, nz] = gridSize;
-        const cellSize = [
-            dimensions[0] / gridSize[0],
-            dimensions[1] / gridSize[1],
-            dimensions[2] / gridSize[2]
-        ];
-        
-        this.arrowPositions = [];
-        
-        for (let i = 0; i < nx; i++) {
-            for (let j = 0; j < ny; j++) {
-                for (let k = 0; k < nz; k++) {
-                    if (!this.isInSelection(i, j, k, selection)) continue;
+    calculateArrowPositions() {
+        const [nx, ny, nz] = this.gridSize;
+        const [dimX, dimY, dimZ] = this.dimensions;
+        const cellSize = [dimX / nx, dimY / ny, dimZ / nz];
 
-                    const x = (i - (nx - 1) / 2) * cellSize[0];
-                    const y = (j - (ny - 1) / 2) * cellSize[1];
-                    const z = (k - (nz - 1) / 2) * cellSize[2];
-                    
-                    this.arrowPositions.push([x, y, z]);
+        this.arrowPositions = [];
+        const { samplingMethod, sampleNz } = this.settings;
+        const stepZ = (nz - 1) / Math.max(1, sampleNz - 1);
+
+        if (samplingMethod === 'cylindrical') {
+            const { radius, ringNum, ringStep } = this.settings;
+            for (let k = 0; k < sampleNz; k++) {
+                       
+                const gridK = (sampleNz === 1) ? (nz - 1) / 2 : k * stepZ;
+                const z = (gridK - (nz - 1) / 2) * cellSize[2];
+                
+                this.arrowPositions.push([0, 0, z]);
+                
+                const dR = radius / ringNum;
+                for (let ring = 1; ring <= ringNum; ring++) {
+                    const r = dR * ring;
+                    const num = ringStep * ring;
+                    const dTheta = (2 * Math.PI) / num;
+
+                    for (let j = 0; j < num; j++) {
+                        const theta = dTheta * j;
+                        this.arrowPositions.push([r * Math.cos(theta), r * Math.sin(theta), z]);
+                    }
                 }
             }
-        }
-    }
+        } else {
+            const { sampleNx, sampleNy } = this.settings;
+            const stepX = (nx - 1) / Math.max(1, sampleNx - 1);
+            const stepY = (ny - 1) / Math.max(1, sampleNy - 1);
 
-    /**
-     * Collect arrow data from magnetization data
-     */
-    collectArrowData(data, gridSize, selection) {
-        const [nx, ny, nz] = gridSize;
-        const arrowData = [];
-        let positionIndex = 0;
-        
-        for (let i = 0; i < nx; i++) {
-            for (let j = 0; j < ny; j++) {
-                for (let k = 0; k < nz; k++) {
-                    if (!this.isInSelection(i, j, k, selection)) continue;
-
-                    const index = i + j * nx + k * nx * ny;
-                    const magIndex = index * 3;
-
-                    const mx = data[magIndex];
-                    const my = data[magIndex + 1];
-                    const mz = data[magIndex + 2];
-
-                    if (positionIndex < this.arrowPositions.length) {
-                        arrowData.push({
-                            position: this.arrowPositions[positionIndex],
-                            direction: [mx, my, mz]
-                        });
-                        positionIndex++;
+            for (let i = 0; i < sampleNx; i++) {
+                for (let j = 0; j < sampleNy; j++) {
+                    for (let k = 0; k < sampleNz; k++) {
+                        const gridI = (sampleNx === 1) ? (nx - 1) / 2 : i * stepX;
+                        const gridJ = (sampleNy === 1) ? (ny - 1) / 2 : j * stepY;
+                        const gridK = (sampleNz === 1) ? (nz - 1) / 2 : k * stepZ;
+                    
+                        const x = (gridI - (nx - 1) / 2) * cellSize[0];
+                        const y = (gridJ - (ny - 1) / 2) * cellSize[1];
+                        const z = (gridK - (nz - 1) / 2) * cellSize[2];
+                    
+                        this.arrowPositions.push([x, y, z]);
                     }
                 }
             }
         }
+    }
+
+    trilinearInterpolation(x, y, z) {
+        const [nx, ny, nz] = this.gridSize;
+        const data = this.data;
+    
+        const clamp = (value, max) => Math.max(0, Math.min(max - 1e-10, value));
+        const xClamped = clamp(x, nx - 1);
+        const yClamped = clamp(y, ny - 1);
+        const zClamped = clamp(z, nz - 1);
+    
+ 
+        const x0 = Math.floor(xClamped);
+        const x1 = Math.min(x0 + 1, nx - 1);
+        const y0 = Math.floor(yClamped);
+        const y1 = Math.min(y0 + 1, ny - 1);
+        const z0 = Math.floor(zClamped);
+        const z1 = Math.min(z0 + 1, nz - 1);
+    
+        const dx = xClamped - x0;
+        const dy = yClamped - y0;
+        const dz = zClamped - z0;
+    
+        const nxy = nx*ny;
+        const idx000 = (z0 * nxy + y0 * nx + x0) * 3;
+        const idx001 = (z1 * nxy + y0 * nx + x0) * 3;
+        const idx010 = (z0 * nxy + y1 * nx + x0) * 3;
+        const idx011 = (z1 * nxy + y1 * nx + x0) * 3;
+        const idx100 = (z0 * nxy + y0 * nx + x1) * 3;
+        const idx101 = (z1 * nxy + y0 * nx + x1) * 3;
+        const idx110 = (z0 * nxy + y1 * nx + x1) * 3;
+        const idx111 = (z1 * nxy + y1 * nx + x1) * 3;
+    
+        const result = [0, 0, 0];
+        for (let comp = 0; comp < 3; comp++) {
+            const v000 = data[idx000 + comp];
+            const v001 = data[idx001 + comp];
+            const v010 = data[idx010 + comp];
+            const v011 = data[idx011 + comp];
+            const v100 = data[idx100 + comp];
+            const v101 = data[idx101 + comp];
+            const v110 = data[idx110 + comp];
+            const v111 = data[idx111 + comp];
+            
+            const c00 = v000 * (1 - dz) + v001 * dz;
+            const c01 = v010 * (1 - dz) + v011 * dz;
+            const c10 = v100 * (1 - dz) + v101 * dz;
+            const c11 = v110 * (1 - dz) + v111 * dz;
+    
+            const c0 = c00 * (1 - dy) + c01 * dy;
+            const c1 = c10 * (1 - dy) + c11 * dy;
+
+            result[comp] = c0 * (1 - dx) + c1 * dx;
+        }
+    
+        return result;
+    }
+
+    collectArrowData() {
+        if (!this.data || !this.arrowPositions || this.arrowPositions.length === 0) {
+            console.warn("No data or arrow positions available");
+            return [];
+        }
+        const arrowData = [];
         
+        const [nx, ny, nz] = this.gridSize;    
+        const [dimX, dimY, dimZ] = this.dimensions;
+        this.cellSize = [dimX / nx, dimY / ny, dimZ / nz];
+        
+        const centerIdxX = (nx - 1) / 2;
+        const centerIdxY = (ny - 1) / 2;
+        const centerIdxZ = (nz - 1) / 2;
+        
+        for (let pos of this.arrowPositions) {
+            const gridX = pos[0] / this.cellSize[0] + centerIdxX;
+            const gridY = pos[1] / this.cellSize[1] + centerIdxY;
+            const gridZ = pos[2] / this.cellSize[2] + centerIdxZ;
+            
+            const vector = this.trilinearInterpolation(gridX, gridY, gridZ);
+            arrowData.push({
+                position: pos,
+                direction: vector
+            });
+        }
         return arrowData;
     }
 
-    /**
-     * Create arrow instances using InstancedMesh
-     */
     createArrowInstances(arrowData, arrowScale) {
-        // Create geometries
         const coneGeometry = new THREE.ConeGeometry(0.05, 0.2, 32);
         coneGeometry.translate(0, -0.2, 0);
         
         const cylinderGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.2, 32);
         cylinderGeometry.translate(0, -0.2, 0);
         
-        // Create shared material
         const material = new THREE.MeshStandardMaterial({ 
             color: 0x0077ff,
             metalness: 0.3,
             roughness: 0.4
         });
         
-        // Create instanced meshes
         const coneMesh = new THREE.InstancedMesh(coneGeometry, material, arrowData.length);
         const cylinderMesh = new THREE.InstancedMesh(cylinderGeometry, material, arrowData.length);
         
-        // Set up transformation matrices
         const coneMatrix = new THREE.Matrix4();
         const cylinderMatrix = new THREE.Matrix4();
         const color = new THREE.Color();
@@ -175,52 +242,35 @@ class ArrowVisualization {
         const offset = arrowLength * 0.5;
         
         for (let i = 0; i < arrowData.length; i++) {
-            const data = arrowData[i];
-            const position = new THREE.Vector3(...data.position);
-            const direction = new THREE.Vector3(...data.direction).normalize();
+            const { position, direction } = arrowData[i];
+            const pos = new THREE.Vector3(...position);
+            const dir = new THREE.Vector3(...direction).normalize();
             
-            // Calculate rotation
             const quaternion = new THREE.Quaternion();
-            quaternion.setFromUnitVectors(up, direction);
+            quaternion.setFromUnitVectors(up, dir);
             
-            // Calculate positions
-            const arrowDirection = direction.clone();
-            const offsetVector = arrowDirection.clone().multiplyScalar(offset);
+            const offsetVector = dir.clone().multiplyScalar(offset);
             
-            // Position cylinder
-            const cylinderPosition = position.clone().sub(offsetVector)
-                .add(arrowDirection.clone().multiplyScalar(0.2 * arrowScale));
-            cylinderMatrix.compose(cylinderPosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
+            const cylinderPos = pos.clone().sub(offsetVector).add(dir.clone().multiplyScalar(0.2 * arrowScale));
+            cylinderMatrix.compose(cylinderPos, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             cylinderMesh.setMatrixAt(i, cylinderMatrix);
             
-            // Position cone
-            const conePosition = position.clone().sub(offsetVector)
-                .add(arrowDirection.clone().multiplyScalar(0.4 * arrowScale));
-            coneMatrix.compose(conePosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
+            const conePos = pos.clone().sub(offsetVector).add(dir.clone().multiplyScalar(0.4 * arrowScale));
+            coneMatrix.compose(conePos, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             coneMesh.setMatrixAt(i, coneMatrix);
             
-            // Set color
-            color.setRGB(Math.abs(direction.x), Math.abs(direction.y), Math.abs(direction.z));
+            color.setRGB(Math.abs(dir.x), Math.abs(dir.y), Math.abs(dir.z));
             coneMesh.setColorAt(i, color);
             cylinderMesh.setColorAt(i, color);
         }
         
-        // Add to scene
         this.arrowGroup.add(coneMesh);
         this.arrowGroup.add(cylinderMesh);
-        
-        // Store references
         this.arrows.push(coneMesh, cylinderMesh);
     }
 
-    /**
-     * Update existing arrow instances
-     */
     updateArrowInstances(arrowData, arrowScale) {
-        if (this.arrows.length < 2) {
-            console.error('ArrowVisualizer: Not enough arrow meshes');
-            return;
-        }
+        if (this.arrows.length < 2) return;
         
         const coneMesh = this.arrows[0];
         const cylinderMesh = this.arrows[1];
@@ -230,68 +280,34 @@ class ArrowVisualization {
         const up = new THREE.Vector3(0, 1, 0);
         
         for (let i = 0; i < arrowData.length; i++) {
-            const data = arrowData[i];
-            const position = new THREE.Vector3(...data.position);
-            const direction = new THREE.Vector3(...data.direction).normalize();
+            const { position, direction } = arrowData[i];
+            const pos = new THREE.Vector3(...position);
+            const dir = new THREE.Vector3(...direction).normalize();
             
-            // Calculate rotation
             const quaternion = new THREE.Quaternion();
-            quaternion.setFromUnitVectors(up, direction);
+            quaternion.setFromUnitVectors(up, dir);
             
-            // Calculate positions
-            const arrowDirection = direction.clone();
-            const totalArrowLength = 0.6 * arrowScale;
-            const offset = arrowDirection.clone().multiplyScalar(totalArrowLength * 0.5);
+            const offset = dir.clone().multiplyScalar(0.3 * arrowScale);
             
-            // Position cylinder
-            const cylinderPosition = position.clone().sub(offset)
-                .add(arrowDirection.clone().multiplyScalar(0.2 * arrowScale));
-            cylinderMatrix.compose(cylinderPosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
+            const cylinderPos = pos.clone().sub(offset).add(dir.clone().multiplyScalar(0.2 * arrowScale));
+            cylinderMatrix.compose(cylinderPos, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             cylinderMesh.setMatrixAt(i, cylinderMatrix);
             
-            // Position cone
-            const conePosition = position.clone().sub(offset)
-                .add(arrowDirection.clone().multiplyScalar(0.4 * arrowScale));
-            coneMatrix.compose(conePosition, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
+            const conePos = pos.clone().sub(offset).add(dir.clone().multiplyScalar(0.4 * arrowScale));
+            coneMatrix.compose(conePos, quaternion, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             coneMesh.setMatrixAt(i, coneMatrix);
             
-            // Update color
-            color.setRGB(Math.abs(direction.x), Math.abs(direction.y), Math.abs(direction.z));
+            color.setRGB(Math.abs(dir.x), Math.abs(dir.y), Math.abs(dir.z));
             coneMesh.setColorAt(i, color);
             cylinderMesh.setColorAt(i, color);
         }
         
-        // Mark for update
         coneMesh.instanceMatrix.needsUpdate = true;
         coneMesh.instanceColor.needsUpdate = true;
         cylinderMesh.instanceMatrix.needsUpdate = true;
         cylinderMesh.instanceColor.needsUpdate = true;
     }
 
-    /**
-     * Check if cell is in selection area
-     */
-    isInSelection(i, j, k, selection) {
-        switch (selection.type) {
-            case 'full':
-                return true;
-            case 'slice':
-                if (selection.axis === 'x' && i === selection.position) return true;
-                if (selection.axis === 'y' && j === selection.position) return true;
-                if (selection.axis === 'z' && k === selection.position) return true;
-                return false;
-            case 'box':
-                return i >= selection.min[0] && i < selection.max[0] &&
-                       j >= selection.min[1] && j < selection.max[1] &&
-                       k >= selection.min[2] && k < selection.max[2];
-            default:
-                return true;
-        }
-    }
-
-    /**
-     * Clear all arrows
-     */
     clearArrows() {
         for (const arrow of this.arrows) {
             this.arrowGroup.remove(arrow);
@@ -301,26 +317,30 @@ class ArrowVisualization {
         this.arrows = [];
     }
 
-    /**
-     * Set arrow size
-     */
     setArrowSize(size) {
         this.settings.arrowSize = size;
-        if (this.currentSpinData) {
-            this.updateMagnetization(this.currentSpinData, this.gridSize, this.dimensions);
+        if (this.data) {
+            this.updateMagnetization(this.data, this.gridSize, this.dimensions);
         }
     }
 
-    /**
-     * Set visibility
-     */
+    setSampling(method, nx, ny, nz) {
+        this.settings.samplingMethod = method;
+        this.settings.sampleNz = nz;
+        if (method === 'cartesian') {
+            this.settings.sampleNx = nx;
+            this.settings.sampleNy = ny;
+        }else{
+            this.settings.ringNum = nx;
+            this.settings.ringStep = ny;
+        }
+        this.calculateArrowPositions();
+    }
+
     setVisible(visible) {
         this.arrowGroup.visible = visible;
     }
 
-    /**
-     * Dispose resources
-     */
     dispose() {
         this.clearArrows();
         this.scene.remove(this.arrowGroup);
