@@ -20,7 +20,7 @@ class FDMeshVisualization {
      * @param {Object} meshData - Mesh data containing nx, ny, nz, dx, dy, dz
      */
     displayFDMesh(meshData) {
-        this.clearMesh();
+        //this.clearMesh();
         
         const { nx, ny, nz, dx, dy, dz } = meshData;
         const scale = this.scaleFactor;

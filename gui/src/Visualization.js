@@ -28,6 +28,7 @@ class Visualization {
         this.controlsData = {
             showGrid: true,
             showMesh: true,
+            showVolume: true,
             magnetizationDisplay: 'arrows', // 'arrows' or 'volume'
             arrowSampling: 'cartesian',
             arrowSize: 1.0,
@@ -139,6 +140,8 @@ class Visualization {
      * @param {Object} meshData - Mesh data
      */
     displayFDMesh(meshData) {
+        this.clearAllVisualizations()
+
         const mesh = this.fdMeshVisualization.displayFDMesh(meshData);
         
         // Adjust grid helper position
@@ -197,6 +200,23 @@ class Visualization {
             this.renderer.setSize(width, height);
         }
     }
+    
+    /**
+     * Clear all visualizations
+     */
+    clearAllVisualizations() {
+        if (this.arrowVisualization) {
+            this.arrowVisualization.clearArrows();
+        }
+        
+        if (this.volumeVisualization) {
+            this.volumeVisualization.clearVolume();
+        }
+        
+        if (this.fdMeshVisualization) {
+            this.fdMeshVisualization.clearMesh();
+        }
+    }
 
     /**
      * Get visualization status
@@ -235,13 +255,18 @@ class Visualization {
         });
         displayFolder.open();
 
+        displayFolder.add(this.controlsData, 'showVolume').name('Show Volume').onChange((value) => {
+            this.volumeVisualization.setVisible(value);
+        });
+        displayFolder.open();
+
         // Magnetization display settings
         const magnetizationFolder = this.gui.addFolder('Magnetization Display');
         magnetizationFolder.add(this.controlsData, 'magnetizationDisplay', ['arrows', 'surface'])
             .name('Display Type')
             .onChange((value) => {
                 this.arrowVisualization.setVisible(value === 'arrows');
-                this.volumeVisualization.setVisible(value === 'volume');
+                this.volumeVisualization.setVisible(value === 'surface');
             });
 
         // Arrow settings
