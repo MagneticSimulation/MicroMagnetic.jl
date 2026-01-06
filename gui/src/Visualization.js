@@ -45,7 +45,7 @@ class Visualization {
             type: 'surface',      // 'surface' | 'isosurface'
             component: 'mx',      // 'mx' | 'my' | 'mz'
             isoValue: 0.5,
-            position: { x: 0, y: 0, z: 0 },
+            position: 0,          // surface position
             direction: 'z',       // 'x' | 'y' | 'z'
             visible: true
         };
@@ -179,14 +179,11 @@ class Visualization {
      */
     updateSurfacePositionRange() {
         if (!this.gui || !this.fdMesh) return;
-        if (this.gui.posX) {
-            this.gui.posX.max(this.fdMesh.nx - 1);
-        }
-        if (this.gui.posY) {
-            this.gui.posY.max(this.fdMesh.ny - 1);
-        }
-        if (this.gui.posZ) {
-            this.gui.posZ.max(this.fdMesh.nz - 1);
+        if (this.gui.posSurface) {
+            const maxValue = this.surfaceConfig.direction === 'x' ? this.fdMesh.nx - 1 :
+                             this.surfaceConfig.direction === 'y' ? this.fdMesh.ny - 1 :
+                             this.fdMesh.nz - 1;
+            this.gui.posSurface.max(maxValue);
         }
     }
     
@@ -291,31 +288,15 @@ class Visualization {
             this.arrowConfig.ny,
             this.arrowConfig.nz
         );
-        this.arrowVisualization.updateMagnetization(data);
+        this.arrowVisualization.updateMagnetization(this.spin);
         
-        // Update surface visualization
         this.surfaceVisualization.updateVisualization(
-            data,
-            this.surfaceConfig.type,
-            this.surfaceConfig.component,
-            this.getSurfaceOptions()
+            this.spin,
+            this.surfaceConfig
         );
         
         // Enable GUI controls
         this.enableVisualizationControls(true);
-    }
-    
-    /**
-     * Get surface visualization options
-     * @returns {Object} Surface options
-     */
-    getSurfaceOptions() {
-        const d = this.surfaceConfig.direction;
-        return {
-            surfaceAxis: d,
-            surfacePosition: this.surfaceConfig.position[d],
-            isoValue: this.surfaceConfig.isoValue
-        };
     }
     
     /**
@@ -326,17 +307,34 @@ class Visualization {
         if (config.type !== undefined) this.surfaceConfig.type = config.type;
         if (config.component !== undefined) this.surfaceConfig.component = config.component;
         if (config.isoValue !== undefined) this.surfaceConfig.isoValue = config.isoValue;
-        if (config.direction !== undefined) this.surfaceConfig.direction = config.direction;
+        if (config.direction !== undefined) {
+            this.surfaceConfig.direction = config.direction;
+            
+            // Reset position to 0 when direction changes
+            this.surfaceConfig.position = 0;
+            if (this.gui?.posSurface) {
+                this.gui.posSurface.setValue(0);
+            }
+            
+            // Update position range for new direction
+            this.updateSurfacePositionRange();
+            
+            // Trigger visualization update when direction changes
+            if (this.hasSpinData) {
+                this.surfaceVisualization.updateVisualization(
+                    this.spin,
+                    this.surfaceConfig
+                );
+            }
+        }
         if (config.position !== undefined) {
-            Object.assign(this.surfaceConfig.position, config.position);
+            this.surfaceConfig.position = config.position;
         }
         
         if (this.hasSpinData) {
             this.surfaceVisualization.updateVisualization(
                 this.spin,
-                this.surfaceConfig.type,
-                this.surfaceConfig.component,
-                this.getSurfaceOptions()
+                this.surfaceConfig
             );
         }
     }
@@ -525,14 +523,12 @@ class Visualization {
 
         // Surface settings
         const surfaceSettings = surfaceFolder.addFolder('Surface Settings');
-        this.gui.posX = surfaceSettings.add(this.surfaceConfig.position, 'x', 0, 10, 1)
-            .name('X Index').onChange(() => this.updateSurfaceConfig({ position: this.surfaceConfig.position }));
-        this.gui.posY = surfaceSettings.add(this.surfaceConfig.position, 'y', 0, 10, 1)
-            .name('Y Index').onChange(() => this.updateSurfaceConfig({ position: this.surfaceConfig.position }));
-        this.gui.posZ = surfaceSettings.add(this.surfaceConfig.position, 'z', 0, 10, 1)
-            .name('Z Index').onChange(() => this.updateSurfaceConfig({ position: this.surfaceConfig.position }));
+        this.gui.posSurface = surfaceSettings.add(this.surfaceConfig, 'position', 0, 10, 1)
+            .name('Position Index')
+            .onChange(() => this.updateSurfaceConfig({ position: this.surfaceConfig.position }));
         surfaceSettings.add(this.surfaceConfig, 'direction', ['x', 'y', 'z'])
-            .name('Direction').onChange((value) => this.updateSurfaceConfig({ direction: value }));
+            .name('Direction')
+            .onChange((value) => this.updateSurfaceConfig({ direction: value }));
 
         // Isosurface settings
         const isosurfaceSettings = surfaceFolder.addFolder('Isosurface Settings');

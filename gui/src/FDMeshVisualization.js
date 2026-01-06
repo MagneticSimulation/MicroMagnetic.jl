@@ -13,6 +13,7 @@ class FDMeshVisualization {
         this.gridSize = [10, 10, 10];
         this.dimensions = [10, 10, 10];
         this.currentMesh = null;
+        this.edgeLines = null;
     }
 
     /**
@@ -20,7 +21,7 @@ class FDMeshVisualization {
      * @param {Object} meshData - Mesh data containing nx, ny, nz, dx, dy, dz
      */
     displayFDMesh(meshData) {
-        //this.clearMesh();
+        this.clearMesh();
         
         const { nx, ny, nz, dx, dy, dz } = meshData;
         const scale = this.scaleFactor;
@@ -30,7 +31,6 @@ class FDMeshVisualization {
 
         this.gridSize = [nx, ny, nz];
         this.dimensions = [width, height, depth];
-                
         const boxGeometry = new THREE.BoxGeometry(width, height, depth, 1, 1, 1);
         const boxMaterial = new THREE.MeshPhongMaterial({ 
             color: 0xffffff, 
@@ -60,6 +60,14 @@ class FDMeshVisualization {
         
         // Add mesh to group
         this.meshGroup.add(mesh);
+        
+        // Add yellow edges
+        const edgesGeometry = new THREE.EdgesGeometry(boxGeometry);
+        this.edgeLines = new THREE.LineSegments(
+            edgesGeometry,
+            new THREE.LineBasicMaterial({ color: 0xffff00 })
+        );
+        this.meshGroup.add(this.edgeLines);
         
         return mesh;
     }
@@ -107,6 +115,7 @@ class FDMeshVisualization {
             this.meshGroup.remove(child);
         }
         this.currentMesh = null;
+        this.edgeLines = null;
     }
 
     /**

@@ -41,14 +41,16 @@ class SurfaceVisualization {
     /**
      * Update visualization
      */
-    updateVisualization(data, type = 'surface', component = 'mx', options = {}) {
+    updateVisualization(data, options = {}) {
         this.spin = data;
-        this.currentType = type;
-        this.currentComponent = component;
+        
+        const type = options.type || 'surface';
 
-        if (options.isoValue !== undefined) this.isoValue = options.isoValue;
-        if (options.surfacePosition !== undefined) this.position = options.surfacePosition;
-        if (options.surfaceAxis !== undefined) this.surfaceAxis = options.surfaceAxis;
+        this.currentType = type;
+        this.currentComponent = options.component || 'mx';
+        this.isoValue = options.isoValue || 0.0;
+        this.position = options.position || 1;
+        this.surfaceAxis = options.direction || 'z';
 
         this.clearSurface();
 
@@ -222,11 +224,12 @@ class SurfaceVisualization {
         if (this.surfaceAxis === 'x') {
             const cellSize = dimX / nx;
             this.currentMesh.position.x = (this.position - (nx - 1) / 2) * cellSize;
+            this.currentMesh.rotation.z = Math.PI / 2;
             this.currentMesh.rotation.y = Math.PI / 2;
         } else if (this.surfaceAxis === 'y') {
             const cellSize = dimY / ny;
             this.currentMesh.position.y = (this.position - (ny - 1) / 2) * cellSize;
-            this.currentMesh.rotation.x = Math.PI / 2;
+            this.currentMesh.rotation.x = Math.PI / 2; 
         } else {
             const cellSize = dimZ / nz;
             this.currentMesh.position.z = (this.position - (nz - 1) / 2) * cellSize;
