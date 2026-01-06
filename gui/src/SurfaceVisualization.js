@@ -51,6 +51,7 @@ class SurfaceVisualization {
         this.isoValue = options.isoValue || 0.0;
         this.position = options.position || 1;
         this.surfaceAxis = options.direction || 'z';
+        this.currentColormap = options.colormap || 'viridis'; 
 
         this.clearSurface();
 

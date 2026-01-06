@@ -5,6 +5,7 @@ import FDMeshVisualization from './FDMeshVisualization.js';
 import VolumeVisualization from './VolumeVisualization.js';
 import ArrowVisualization from './ArrowVisualization.js';
 import SurfaceVisualization from './SurfaceVisualization.js';
+import { getAvailableColormaps } from './colormaps.js';
 
 /**
  * Main Visualization class coordinating all visualizers
@@ -47,7 +48,8 @@ class Visualization {
             isoValue: 0.5,
             position: 0,          // surface position
             direction: 'z',       // 'x' | 'y' | 'z'
-            visible: true
+            visible: true,
+            colormap: 'viridis'   // colormap name
         };
         
         // State flag
@@ -330,6 +332,9 @@ class Visualization {
         if (config.position !== undefined) {
             this.surfaceConfig.position = config.position;
         }
+        if (config.colormap !== undefined) {
+            this.surfaceConfig.colormap = config.colormap;
+        }
         
         if (this.hasSpinData) {
             this.surfaceVisualization.updateVisualization(
@@ -514,26 +519,50 @@ class Visualization {
         // Surface type
         surfaceFolder.add(this.surfaceConfig, 'type', ['surface', 'isosurface'])
             .name('Type')
-            .onChange((value) => this.updateSurfaceConfig({ type: value }));
+            .onChange((value) => {
+                this.updateSurfaceConfig({ type: value });
+                if (value === 'surface') {
+                    this.gui.posSurface.show();
+                    this.gui.dirSurface.show();
+                    this.gui.isoSurfaceValue.hide();
+                } else {
+                    this.gui.posSurface.hide();
+                    this.gui.dirSurface.hide();
+                    this.gui.isoSurfaceValue.show();
+                }
+            });
 
         // Surface component
         surfaceFolder.add(this.surfaceConfig, 'component', ['mx', 'my', 'mz'])
             .name('Component')
             .onChange((value) => this.updateSurfaceConfig({ component: value }));
 
-        // Surface settings
-        const surfaceSettings = surfaceFolder.addFolder('Surface Settings');
-        this.gui.posSurface = surfaceSettings.add(this.surfaceConfig, 'position', 0, 10, 1)
+        this.gui.posSurface = surfaceFolder.add(this.surfaceConfig, 'position', 0, 10, 1)
             .name('Position Index')
             .onChange(() => this.updateSurfaceConfig({ position: this.surfaceConfig.position }));
-        surfaceSettings.add(this.surfaceConfig, 'direction', ['x', 'y', 'z'])
+        this.gui.dirSurface = surfaceFolder.add(this.surfaceConfig, 'direction', ['x', 'y', 'z'])
             .name('Direction')
             .onChange((value) => this.updateSurfaceConfig({ direction: value }));
+        // Colormap selector
+        surfaceFolder.add(this.surfaceConfig, 'colormap', getAvailableColormaps())
+            .name('Colormap')
+            .onChange((value) => this.updateSurfaceConfig({ colormap: value }));
 
-        // Isosurface settings
-        const isosurfaceSettings = surfaceFolder.addFolder('Isosurface Settings');
-        isosurfaceSettings.add(this.surfaceConfig, 'isoValue', -1, 1, 0.01)
-            .name('Isovalue').onChange((value) => this.updateSurfaceConfig({ isoValue: value }));
+        // Isosurface settings - directly in surfaceFolder
+        this.gui.isoSurfaceValue = surfaceFolder.add(this.surfaceConfig, 'isoValue', -1, 1, 0.01)
+            .name('Isosurface').onChange((value) => this.updateSurfaceConfig({ isoValue: value }));
+
+        // Initialize control visibility based on initial type using lil-gui methods
+        const initialType = this.surfaceConfig.type;
+        if (initialType === 'surface') {
+            this.gui.posSurface.show();
+            this.gui.dirSurface.show();
+            this.gui.isoSurfaceValue.hide();
+        } else {
+            this.gui.posSurface.hide();
+            this.gui.dirSurface.hide();
+            this.gui.isoSurfaceValue.show();
+        }
 
         magnetizationFolder.open();
     }

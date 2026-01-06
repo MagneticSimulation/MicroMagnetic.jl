@@ -77,11 +77,6 @@ export const coolwarm = {
 };
 
 /**
- * Blue-White-Red colormap (same as coolwarm)
- */
-export const bwr = coolwarm;
-
-/**
  * Red-White-Blue divergent colormap (reversed coolwarm)
  */
 export const rwb = {
@@ -694,7 +689,6 @@ export function mapValuesToColors(values, colormapName = 'coolwarm', min, max) {
  */
 export const colormaps = {
     coolwarm,
-    bwr,
     rwb,
     hsv,
     jet,
@@ -729,7 +723,6 @@ export function getColormap(name) {
 
 export default {
     coolwarm,
-    bwr,
     rwb,
     hsv,
     jet,
