@@ -37,14 +37,14 @@ class ArrowVisualization {
         }
         
         if (!this.gridSize || !this.dimensions) {
-            console.error('ArrowVisualizer: gridSize and dimensions not set');
+            console.warn('ArrowVisualizer: gridSize and dimensions not set');
             return;
         }
         
         const [nx, ny, nz] = this.gridSize;
         
         if (data.length !== nx * ny * nz * 3) {
-            console.error('ArrowVisualizer: Data length mismatch');
+            console.warn('ArrowVisualizer: Data length mismatch');
             return;
         }
         
