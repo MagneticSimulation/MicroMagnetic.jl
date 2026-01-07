@@ -6,21 +6,18 @@ class WebSocketClient {
      * Create a new WebSocket client
      * @param {Object} options - Configuration options
      * @param {string} [options.serverUrl] - WebSocket server URL (auto-detected by default)
-     * @param {number} [options.heartbeatInterval=30000] - Heartbeat interval in ms
      * @param {string} [options.sessionId] - Session ID for client identification
      */
     constructor(options = {}) {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         this.config = {
             serverUrl: options.serverUrl || `${protocol}//${window.location.host}`,
-            heartbeatInterval: options.heartbeatInterval || 30000,
             sessionId: options.sessionId || this.generateSessionId(),
         };
 
         // Connection state
         this.ws = null;
         this.connected = false;
-        this.heartbeatTimer = null;
         
         // Event listeners
         this.listeners = new Map();
@@ -61,7 +58,6 @@ class WebSocketClient {
                     console.log('WebSocket connection established');
                     this.connected = true;
                     this.emit('connect', event);
-                    this.startHeartbeat();
                     resolve(event);
                 };                
                 this.ws.onmessage = (event) => {
@@ -77,7 +73,6 @@ class WebSocketClient {
                 this.ws.onclose = (event) => {
                     console.log(`WebSocket connection closed: ${event.code} ${event.reason}`);
                     this.connected = false;
-                    this.stopHeartbeat();
                     this.emit('disconnect', event);
                 };
                 
@@ -90,45 +85,6 @@ class WebSocketClient {
     
     
     /**
-     * Start heartbeat mechanism
-     */
-    startHeartbeat() {
-        if (this.heartbeatTimer) {
-            clearInterval(this.heartbeatTimer);
-        }
-        
-        this.heartbeatTimer = setInterval(() => {
-            if (this.connected) {
-                this.sendHeartbeat();
-            }
-        }, this.config.heartbeatInterval);
-    }
-    
-    /**
-     * Stop heartbeat mechanism
-     */
-    stopHeartbeat() {
-        if (this.heartbeatTimer) {
-            clearInterval(this.heartbeatTimer);
-            this.heartbeatTimer = null;
-        }
-    }
-    
-    /**
-     * Send heartbeat to server
-     */
-    sendHeartbeat() {
-        const heartbeatMsg = {
-            type: 'heartbeat',
-            timestamp: Date.now()
-        };
-        
-        this.send(heartbeatMsg).catch(error => {
-            console.warn('Heartbeat failed', error);
-        });
-    }
-    
-    /**
      * Handle incoming WebSocket message
      * @param {string} data - Raw message data
      */
@@ -138,9 +94,7 @@ class WebSocketClient {
             console.log('Received message', message);
             
             const type = message.type;
-            if (type === 'heartbeat_response') {
-                this.emit('heartbeat', message.data);
-            } else if (type === 'error') {
+            if (type === 'error') {
                 console.error(`Server error: ${message.data.message || 'Unknown error'}`);
                 this.emit('error', message.data);
             } else {
@@ -231,9 +185,7 @@ class WebSocketClient {
      */
     disconnect() {
         console.log('Disconnecting from server');
-        
-        this.stopHeartbeat();
-        
+            
         if (this.ws) {
             this.ws.close(1000, 'Client disconnect');
         }

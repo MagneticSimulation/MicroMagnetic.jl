@@ -78,8 +78,8 @@ class GUIManager {
     handleMagnetizationData(data) {
         console.log('Received magnetization data:', data);
         
-        if (this.visualization) {
-            this.visualization.updateMagnetization(data);
+        if (this.visualization && data.m_data) {
+            this.visualization.updateMagnetization(data.m_data);
         }
     }
 

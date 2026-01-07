@@ -73,10 +73,6 @@ end
 Initialize default message handlers
 """
 function init_default_handlers()
-        
-    register_handler("heartbeat") do ws, data
-        send_message(ws, "heartbeat_response", Dict("timestamp" => now()))
-    end
     
     register_handler("run_code") do ws, data
         code = get(data, "code", "")
