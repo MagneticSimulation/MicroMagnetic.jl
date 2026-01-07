@@ -433,7 +433,6 @@ class Visualization {
         
         this.gui = new GUI({
             title: 'Visualization Controls',
-            width: 300,
             container: lilGuiContainer
         });
 

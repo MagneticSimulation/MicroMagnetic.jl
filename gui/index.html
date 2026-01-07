@@ -27,17 +27,10 @@
 </head>
 <body>
     <div class="main-container">
-        <!-- Left section: Three.js visualization -->
-        <div class="visualization-section">
-            <div id="visualization-container"></div>
-            <!-- Lil-GUI Controls Panel - Floating on top of visualization -->
-            <div id="lilgui-panel" class="lilgui-panel"></div>
-        </div>
-        
-        <!-- Right section: Controls panel -->
+        <!-- Left section: Controls panel -->
         <div class="controls-section">
             <!-- Main Controls Panel -->
-            <div id="controls-panel">             
+            <div id="controls-panel">              
                <div style="font-size: 20px; font-weight: 600; color: #333333; margin-bottom: 20px;"> 
                 MicroMagnetic.jl 
                </div>
@@ -115,6 +108,13 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Right section: Three.js visualization -->
+        <div class="visualization-section">
+            <div id="visualization-container"></div>
+            <div id="lilgui-panel" class="lilgui-panel"></div>
+        </div>
+          
     </div>
       
     <!-- Import the bundle.js file (built by Rollup) -->

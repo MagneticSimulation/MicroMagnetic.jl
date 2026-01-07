@@ -7,6 +7,7 @@ body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f0f0; ove
     display: flex;
     width: 100vw;
     height: 100vh;
+    position: relative;
 }
 
 /* Left section: Three.js visualization */
@@ -23,9 +24,9 @@ body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f0f0; ove
 
 /* Right section: Controls panel */
 .controls-section {
-    width: 500px;
+    width: 480px;
     background-color: #ffffff;
-    border-left: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -40,18 +41,24 @@ body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f0f0; ove
 
 .lilgui-panel {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 5px;
+    right: 5px;
     z-index: 1000;
-    width: 300px;
-    /* The actual lil-gui elements will be added here */
 }
+
+.lil-gui { 
+	--width: 240px;
+    --name-width: 32%; 
+    --spacing: 4px; 
+}
+
+
 
 /* Main Controls Panel */
 #controls-panel {
     padding: 20px;
     flex: 1;
-    min-width: 500px;
+    min-width: 400px;
 }
 
 /* Control Section Styles */
