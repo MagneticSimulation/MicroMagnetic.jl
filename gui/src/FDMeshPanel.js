@@ -98,7 +98,7 @@ class FDMeshPanel {
         if (!selectedCell) return;
 
         // Refresh panel with selected cell data
-        this.refreshFromCellCode(selectedCell.code);
+        this.refreshFromCellCode(selectedCell);
 
         // Show the panel
         this.container.classList.add('expanded');

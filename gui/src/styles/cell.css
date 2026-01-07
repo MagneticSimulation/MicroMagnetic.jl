@@ -35,15 +35,15 @@
     overflow: hidden;
 }
 
-/* Selected cell styles */
+
 .cell.selected {
-    border: 3px solid #2196F3 !important;
-    box-shadow: 0 0 10px rgba(33, 150, 243, 0.5) !important;
+  border: 2px solid var(--primary-blue);
+  box-shadow: 0 0 0 1px rgba(44, 82, 130, 0.1);
 }
 
 .cell.selected .cell-header {
-    background-color: rgba(33, 150, 243, 0.2) !important;
-    border-bottom: 1px solid #90caf9;
+  background: rgba(44, 82, 130, 0.05);
+  border-bottom-color: rgba(44, 82, 130, 0.2);
 }
 
 .cell-header {
