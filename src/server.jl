@@ -1,12 +1,10 @@
 using HTTP
 using JSON
 using Dates
+using Sockets
 
-export start_server, serve, gui
+export start_server, gui
 
-const DEFAULT_HOST = "0.0.0.0"
-const DEFAULT_PORT = 10056
-global current_port = DEFAULT_PORT
 # global variables for managing single connection
 global_sim = nothing
 global_client = nothing
@@ -62,7 +60,9 @@ Log a message with timestamp
 """
 function log_message(message::String)
     timestamp = Dates.format(Dates.now(), "yyyy-mm-dd HH:MM:SS")
-    @info "[$timestamp] $message"
+    if !isinteractive()
+        @info("[$timestamp] $message")
+    end
 end
 
 function register_handler(handler::Function, message_type::String)
@@ -320,65 +320,48 @@ function handle_http_request(http::HTTP.Stream)
 end
 
 """
-Start MicroMagnetic GUI server
+    start_server(;port::Int=10056, host::String=nothing, async::Bool=true, lan::Bool=true)
+
+Start MicroMagnetic server
+  - `port`: Port number to listen on (default: 10056)
+  - `host`: Host address to bind to (default: "127.0.0.1" for lan=false, Sockets.getipaddr() for lan=true)
+  - `async`: Whether to run the server asynchronously (default: true)
+  - `lan`: Whether to allow LAN access (default: true)
+
+Examples:
+```julia
+    MicroMagnetic.start_server()
+    MicroMagnetic.start_server(port=10057, lan=false)
+    MicroMagnetic.start_server(port=10057, host="192.168.10.11")
+```
 """
-function start_server(port::Int=DEFAULT_PORT, host::String=DEFAULT_HOST)
-    max_attempts = 5
-    
-    for attempt in 1:max_attempts
-        current_attempt_port = port + (attempt - 1)
-        
-        try
-            log_message("Starting MicroMagnetic server on $host:$current_attempt_port (attempt $attempt/$max_attempts)")
-            println("Server address: http://$host:$current_attempt_port")
-            println("Press Ctrl+C to stop server")
-            
-            # Initialize default message handlers
-            init_default_handlers()
-            
-            # Update global current_port variable
-            global current_port = current_attempt_port
-            
-            # Create a server object that can be stopped
-            server = nothing
-            
-            # Try to start the server
-            server = HTTP.listen(host, current_attempt_port) do http::HTTP.Stream
-                handle_http_request(http)
-            end
-            
-            # If we get here, the server started successfully and will run until interrupted
-            return
-            
-        catch e
-            if e isa InterruptException
-                log_message("Server stopped by user")
-                return
-            elseif occursin("address already in use", lowercase(string(e))) || 
-                   occursin("port is already in use", lowercase(string(e))) ||
-                   occursin("listen: address already in use", lowercase(string(e)))
-                log_message("Port $current_attempt_port is already in use, trying port $(current_attempt_port + 1)...")
-                # Continue to next iteration to try the next port
-            else
-                log_message("Server error: $e")
-                # For other errors, stop trying
-                rethrow(e)
-            end
-        end
+function start_server(;port::Int=10056, host=nothing, async::Bool=true, lan::Bool=true)
+    if host === nothing
+        host = lan ? Sockets.getipaddr() : Sockets.localhost
     end
     
-    # If we've tried all attempts and failed
-    error("Failed to start server after $max_attempts attempts. All ports from $port to $(port + max_attempts - 1) are in use.")
+    @info("Server address: http://$host:$port")
+    
+    init_default_handlers()
+    if async
+        server_task = @async HTTP.listen(host, port) do http::HTTP.Stream
+            handle_http_request(http)
+        end
+        return server_task  
+    else
+        HTTP.listen(host, port) do http::HTTP.Stream
+            handle_http_request(http)
+        end
+    end
+    return nothing
 end
 
 """
-Start MicroMagnetic GUI (convenience function)
+Start MicroMagnetic GUI 
 """
-function gui(port::Int=DEFAULT_PORT, host::String=DEFAULT_HOST)
+function gui(;port::Int=10056, host::String=nothing, lan::Bool=false)
     println("Starting MicroMagnetic GUI...")
-    println("GUI will be available at: http://$host:$port")
-    println("Press Ctrl+C to exit")
-    start_server(port, host)
+    start_server(port, host, lan=lan, async=false)
 end
 
 """
@@ -389,7 +372,6 @@ function handle_get_request(http, req, message_handlers)
         # Return JSON status
         status = Dict(
             "status" => "running",
-            "port" => current_port,
             "active_connections" => global_client !== nothing ? 1 : 0,
             "server_time" => string(now()),
             "message_handlers" => collect(keys(message_handlers))

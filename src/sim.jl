@@ -106,6 +106,7 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     if global_client != nothing && isa(mesh, FDMesh)
         response = Dict(
             "type" => "fd_mesh_data",
+            "success" => success,
             "fd_mesh_data" => Dict(
                 "nx" => mesh.nx,
                 "ny" => mesh.ny,

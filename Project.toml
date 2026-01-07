@@ -17,6 +17,7 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 ReadVTK = "dc215faf-f008-4882-a9f7-a79a826fadc3"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 
