@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getColor } from './colormaps.js';
 
 class ArrowVisualization {
     constructor(scene) {
@@ -18,19 +19,13 @@ class ArrowVisualization {
         this.initialCylinderPositions = null;
         this.initialConePositions = null;
         this.initialArrowScale = null;
-        
-        // Reusable Three.js objects to reduce memory allocation
-        this._tempPos = new THREE.Vector3();
-        this._tempDir = new THREE.Vector3();
-        this._tempQuat = new THREE.Quaternion();
-        this._tempColor = new THREE.Color();
-        this._upVector = new THREE.Vector3(0, 1, 0);
-        this._offsetVector = new THREE.Vector3();
-        this._tempScale = new THREE.Vector3();
+        // Color mapping properties
+        this.component = 'mx'; // 'mx', 'my', 'mz'
+        this.colormap = 'viridis'; // Colormap name
         
         this.settings = {
             arrowSize: 1.0,
-            samplingMethod: 'cartesian',
+            sampling: 'cartesian',
             sampleNx: 10,
             sampleNy: 10,
             sampleNz: 5,
@@ -43,26 +38,20 @@ class ArrowVisualization {
     setGridInfo(gridSize, dimensions) {
         this.gridSize = gridSize;
         this.dimensions = dimensions;
-        this.settings.radius = Math.min(dimensions[1], dimensions[0]) / 2.0;
-        
-        // Calculate cell size once and store it
         this.cellSize = [
             dimensions[0] / gridSize[0],
             dimensions[1] / gridSize[1],
             dimensions[2] / gridSize[2]
         ];
+        this.settings.radius = Math.min(dimensions[1], dimensions[0]) / 2.0;
+        this.settings.radius -= Math.max(this.cellSize[0], this.cellSize[1]) / 2;
     }
 
-    updateMagnetization(data, options = {}) {
-        // Guard against null data (e.g., when GUI changes trigger before data is loaded)
-        if (!data || data.length === 0) {
+    updateMagnetization(data, updatePosition=false, options = {}) {
+        if (!data || !this.gridSize || !this.dimensions) {
             return;
         }
-        
-        if (!this.gridSize || !this.dimensions) {
-            return;
-        }
-        
+                
         const [nx, ny, nz] = this.gridSize;
         
         if (data.length !== nx * ny * nz * 3) {
@@ -70,26 +59,40 @@ class ArrowVisualization {
         }
         
         this.data = data;
+        this.settings.sampling = options.sampling;
+        if (options.sampling === 'cartesian') {
+            this.settings.sampleNx = options.sampleNx;
+            this.settings.sampleNy = options.sampleNy;
+        } else {
+            this.settings.ringNum = options.sampleNx;
+             this.settings.ringStep = options.sampleNy;
+        }   
+        this.settings.sampleNz = options.sampleNz;
+        this.settings.arrowSize = options.arrowSize;
+        this.component = options.component;
+        this.colormap = options.colormap;
         
-        // Use pre-calculated cellSize
-        const baseScale = Math.min(...this.cellSize) * 3;
-        const arrowScale = baseScale * (options.arrowScaleFactor || 1.0) * this.settings.arrowSize;
-        
-        // Ensure arrowPositions are calculated before collecting arrow data
-        if (!this.arrowPositions || this.arrowPositions.length === 0) {
+        // Recalculate arrow positions if sampling settings changed
+        if ( updatePosition || !this.arrowPositions) {
             this.calculateArrowPositions();
+            this.initialCylinderPositions = null;
+            this.initialConePositions = null;
+            this.initialArrowScale = null;
+        }
+        const arrowData = this.collectArrowData();
+        if (arrowData.length === 0) {
+            return;
         }
         
-        const arrowData = this.collectArrowData();
-        
+        const baseScale = Math.min(...this.cellSize) * 3;
+        const arrowScale = baseScale * this.settings.arrowSize;
+
         const currentArrowCount = this.arrows.length > 0 ? this.arrows[0].count : 0;
         
-        if (currentArrowCount !== arrowData.length) {
+        if (updatePosition || currentArrowCount !== arrowData.length) {
             this.clearArrows();
-            if (arrowData.length > 0) {
-                this.createArrowInstances(arrowData, arrowScale);
-            }
-        } else if (arrowData.length > 0) {
+            this.createArrowInstances(arrowData, arrowScale);
+        } else {
             this.updateArrowInstances(arrowData, arrowScale);
         }
     }
@@ -100,10 +103,10 @@ class ArrowVisualization {
         const cellSize = [dimX / nx, dimY / ny, dimZ / nz];
 
         this.arrowPositions = [];
-        const { samplingMethod, sampleNz } = this.settings;
+        const { sampling, sampleNz } = this.settings;
         const stepZ = (nz - 1) / Math.max(1, sampleNz - 1);
 
-        if (samplingMethod === 'cylindrical') {
+        if (sampling === 'cylindrical') {
             const { radius, ringNum, ringStep } = this.settings;
             for (let k = 0; k < sampleNz; k++) {
                        
@@ -264,7 +267,6 @@ class ArrowVisualization {
         cylinderGeometry.translate(0, -0.2, 0);
         
         const material = new THREE.MeshStandardMaterial({ 
-            color: 0x0077ff,
             metalness: 0.3,
             roughness: 0.4
         });
@@ -281,31 +283,42 @@ class ArrowVisualization {
         this.initialCylinderPositions = new Array(arrowData.length);
         this.initialConePositions = new Array(arrowData.length);
         this.initialArrowScale = arrowScale;
+        const componentIndex = this.getComponentIndex(this.component);
+        
+        const tempPos = new THREE.Vector3();
+        const tempDir = new THREE.Vector3();
+        const tempQuat = new THREE.Quaternion();
+        const tempColor = new THREE.Color();
+        const upVector = new THREE.Vector3(0, 1, 0);
+        const offsetVector = new THREE.Vector3();
         
         for (let i = 0; i < arrowData.length; i++) {
             const { position, direction } = arrowData[i];
             
-            // Use reusable objects instead of creating new ones
-            this._tempPos.set(...position);
-            this._tempDir.set(...direction).normalize();
+            // Use temporary objects instead of creating new ones
+            tempPos.set(...position);
+            tempDir.set(...direction).normalize();
             
-            this._tempQuat.setFromUnitVectors(this._upVector, this._tempDir);
+            tempQuat.setFromUnitVectors(upVector, tempDir);
             
-            this._offsetVector.copy(this._tempDir).multiplyScalar(offset);
+            offsetVector.copy(tempDir).multiplyScalar(offset);
             
-            const cylinderPos = this._tempPos.clone().sub(this._offsetVector).add(this._tempDir.clone().multiplyScalar(0.2 * arrowScale));
+            const cylinderPos = tempPos.clone().sub(offsetVector).add(tempDir.clone().multiplyScalar(0.2 * arrowScale));
             this.initialCylinderPositions[i] = cylinderPos.clone();
-            cylinderMatrix.compose(cylinderPos, this._tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
+            cylinderMatrix.compose(cylinderPos, tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             cylinderMesh.setMatrixAt(i, cylinderMatrix);
             
-            const conePos = this._tempPos.clone().sub(this._offsetVector).add(this._tempDir.clone().multiplyScalar(0.4 * arrowScale));
+            const conePos = tempPos.clone().sub(offsetVector).add(tempDir.clone().multiplyScalar(0.4 * arrowScale));
             this.initialConePositions[i] = conePos.clone();
-            coneMatrix.compose(conePos, this._tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
+            coneMatrix.compose(conePos, tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             coneMesh.setMatrixAt(i, coneMatrix);
             
-            this._tempColor.setRGB(Math.abs(this._tempDir.x), Math.abs(this._tempDir.y), Math.abs(this._tempDir.z));
-            coneMesh.setColorAt(i, this._tempColor);
-            cylinderMesh.setColorAt(i, this._tempColor);
+            const normalizedValue = (direction[componentIndex] + 1) / 2;
+            
+            const color = getColor(normalizedValue, this.colormap);
+            tempColor.setRGB(color.r, color.g, color.b);
+            coneMesh.setColorAt(i, tempColor);
+            cylinderMesh.setColorAt(i, tempColor);
         }
         
         this.arrowGroup.add(coneMesh);
@@ -322,14 +335,23 @@ class ArrowVisualization {
         const cylinderMatrix = new THREE.Matrix4();
         
         const hasScaleChanged = this.initialArrowScale !== arrowScale;
+        const componentIndex = this.getComponentIndex(this.component);
+        
+        const tempPos = new THREE.Vector3();
+        const tempDir = new THREE.Vector3();
+        const tempQuat = new THREE.Quaternion();
+        const tempColor = new THREE.Color();
+        const upVector = new THREE.Vector3(0, 1, 0);
+        const offsetVector = new THREE.Vector3();
+        const tempScale = new THREE.Vector3();
         
         for (let i = 0; i < arrowData.length; i++) {
             const { direction } = arrowData[i];
             
-            // Use reusable objects instead of creating new ones
-            this._tempDir.set(...direction).normalize();
+            // Use temporary objects instead of creating new ones
+            tempDir.set(...direction).normalize();
             
-            this._tempQuat.setFromUnitVectors(this._upVector, this._tempDir);
+            tempQuat.setFromUnitVectors(upVector, tempDir);
             
             if (hasScaleChanged) {
                 // Scale changed - need to recalculate positions
@@ -337,35 +359,36 @@ class ArrowVisualization {
                 const offset = arrowLength * 0.5;
                 
                 const { position } = arrowData[i];
-                this._tempPos.set(...position);
+                tempPos.set(...position);
                 
-                this._offsetVector.copy(this._tempDir).multiplyScalar(offset);
+                offsetVector.copy(tempDir).multiplyScalar(offset);
                 
-                const cylinderPos = this._tempPos.clone().sub(this._offsetVector).add(this._tempDir.clone().multiplyScalar(0.2 * arrowScale));
-                const conePos = this._tempPos.clone().sub(this._offsetVector).add(this._tempDir.clone().multiplyScalar(0.4 * arrowScale));
+                const cylinderPos = tempPos.clone().sub(offsetVector).add(tempDir.clone().multiplyScalar(0.2 * arrowScale));
+                const conePos = tempPos.clone().sub(offsetVector).add(tempDir.clone().multiplyScalar(0.4 * arrowScale));
                 
-                this._tempScale.set(arrowScale, arrowScale, arrowScale);
+                tempScale.set(arrowScale, arrowScale, arrowScale);
                 
-                cylinderMatrix.compose(cylinderPos, this._tempQuat, this._tempScale);
-                coneMatrix.compose(conePos, this._tempQuat, this._tempScale);
+                cylinderMatrix.compose(cylinderPos, tempQuat, tempScale);
+                coneMatrix.compose(conePos, tempQuat, tempScale);
             } else {
                 // No scale change - use stored positions (optimization)
                 const cylinderPos = this.initialCylinderPositions[i];
                 const conePos = this.initialConePositions[i];
                 
                 // Only need to update rotation (direction), position and scale remain the same
-                cylinderMatrix.compose(cylinderPos, this._tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
-                coneMatrix.compose(conePos, this._tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
+                cylinderMatrix.compose(cylinderPos, tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
+                coneMatrix.compose(conePos, tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             }
             
             // Apply transformations
             cylinderMesh.setMatrixAt(i, cylinderMatrix);
             coneMesh.setMatrixAt(i, coneMatrix);
             
-            // Update color
-            this._tempColor.setRGB(Math.abs(this._tempDir.x), Math.abs(this._tempDir.y), Math.abs(this._tempDir.z));
-            coneMesh.setColorAt(i, this._tempColor);
-            cylinderMesh.setColorAt(i, this._tempColor);
+            const normalizedValue = (direction[componentIndex] + 1) / 2;
+            const color = getColor(normalizedValue, this.colormap);
+            tempColor.setRGB(color.r, color.g, color.b);
+            coneMesh.setColorAt(i, tempColor);
+            cylinderMesh.setColorAt(i, tempColor);
         }
         
         // Update scale if it changed
@@ -389,33 +412,17 @@ class ArrowVisualization {
         this.arrows = [];
     }
 
-    setArrowSize(size) {
-        this.settings.arrowSize = size;
-        if (this.data) {
-            this.updateMagnetization(this.data);
-        }
-    }
-
-    setSampling(method, nx, ny, nz) {
-        this.settings.samplingMethod = method;
-        this.settings.sampleNz = nz;
-        if (method === 'cartesian') {
-            this.settings.sampleNx = nx;
-            this.settings.sampleNy = ny;
-        }else{
-            this.settings.ringNum = nx;
-            this.settings.ringStep = ny;
-        }
-        this.calculateArrowPositions();
-        
-        // Clear initial positions when sampling parameters change to ensure consistent lifecycle
-        this.initialCylinderPositions = null;
-        this.initialConePositions = null;
-        this.initialArrowScale = null;
-    }
-
     setVisible(visible) {
         this.arrowGroup.visible = visible;
+    }
+    
+    getComponentIndex(component) {
+        switch(component) {
+            case 'mx': return 0;
+            case 'my': return 1;
+            case 'mz': return 2;
+            default: return 0;
+        }
     }
 
     dispose() {

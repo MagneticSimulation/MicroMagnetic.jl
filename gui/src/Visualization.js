@@ -34,11 +34,13 @@ class Visualization {
         // Arrow configuration (sampling settings)
         this.arrowConfig = {
             sampling: 'cartesian', // 'cartesian' | 'cylindrical'
-            nx: 10,
-            ny: 10,
-            nz: 10,
-            size: 1.0,
-            visible: true
+            sampleNx: 10,
+            sampleNy: 10,
+            sampleNz: 10,
+            arrowSize: 1.0,
+            visible: true,
+            component: 'mx',      // 'mx' | 'my' | 'mz'
+            colormap: 'viridis'   // colormap name
         };
         
         // Surface configuration
@@ -221,46 +223,6 @@ class Visualization {
     }
 
     /**
-     * Update arrow sampling - GUI callback
-     * @param {Object} config - Sampling configuration {sampling, nx, ny, nz}
-     */
-    updateSampling(config) {
-        if (config.sampling !== undefined) {
-            this.arrowConfig.sampling = config.sampling;
-        }
-        if (config.nx !== undefined) this.arrowConfig.nx = config.nx;
-        if (config.ny !== undefined) this.arrowConfig.ny = config.ny;
-        if (config.nz !== undefined) this.arrowConfig.nz = config.nz;
-        
-        // Update sampling range labels if sampling method changed
-        if (config.sampling !== undefined) {
-            this.updateSamplingRange();
-        }
-        
-        // Re-render arrows with new sampling
-        if (this.hasSpinData) {
-            this.arrowVisualization.setSampling(
-                this.arrowConfig.sampling,
-                this.arrowConfig.nx,
-                this.arrowConfig.ny,
-                this.arrowConfig.nz
-            );
-            this.arrowVisualization.updateMagnetization(this.spin);
-        }
-    }
-    
-    /**
-     * Update arrow size - GUI callback
-     * @param {number} size - Arrow size
-     */
-    updateArrowSize(size) {
-        this.arrowConfig.size = size;
-        if (this.hasSpinData) {
-            this.arrowVisualization.setArrowSize(size);
-        }
-    }
-    
-    /**
      * Toggle arrow visibility - GUI callback
      * @param {boolean} visible - Whether arrows are visible
      */
@@ -276,6 +238,30 @@ class Visualization {
     }
 
     /**
+     * Update arrow configuration - GUI callback
+     * @param {Object} config - Arrow configuration {sampling, nx, ny, nz, size, component, colormap}
+     */
+    updateArrowConfig(config) {
+        const updatePosition = config.sampling !== undefined || 
+                             config.sampleNx !== undefined || 
+                             config.sampleNy !== undefined || 
+                             config.sampleNz !== undefined;
+        // Check if any configuration changed
+        if (config.sampling !== undefined) {
+            this.updateSamplingRange();
+        }
+
+        // Re-render arrows if any configuration changed and we have spin data
+        if (this.hasSpinData) {
+            this.arrowVisualization.updateMagnetization(
+                this.spin, 
+                updatePosition,
+                this.arrowConfig
+            );
+        }
+    }
+
+    /**
      * Update magnetization data - core interface
      * @param {Object} data - Magnetization data (spin)
      */
@@ -283,14 +269,12 @@ class Visualization {
         this.spin = data;
         this.hasSpinData = true;
         
-        // Update arrow visualization
-        this.arrowVisualization.setSampling(
-            this.arrowConfig.sampling,
-            this.arrowConfig.nx,
-            this.arrowConfig.ny,
-            this.arrowConfig.nz
+        // Update arrow visualization using unified interface
+        this.arrowVisualization.updateMagnetization(
+            this.spin, 
+            false,
+            this.arrowConfig
         );
-        this.arrowVisualization.updateMagnetization(this.spin);
         
         this.surfaceVisualization.updateVisualization(
             this.spin,
@@ -321,13 +305,6 @@ class Visualization {
             // Update position range for new direction
             this.updateSurfacePositionRange();
             
-            // Trigger visualization update when direction changes
-            if (this.hasSpinData) {
-                this.surfaceVisualization.updateVisualization(
-                    this.spin,
-                    this.surfaceConfig
-                );
-            }
         }
         if (config.position !== undefined) {
             this.surfaceConfig.position = config.position;
@@ -490,22 +467,32 @@ class Visualization {
         // Sampling method
         arrowFolder.add(this.arrowConfig, 'sampling', ['cartesian', 'cylindrical'])
             .name('Sampling Method')
-            .onChange((value) => this.updateSampling({ sampling: value }));
+            .onChange((value) => this.updateArrowConfig({ sampling: value }));
         
         // Sample density
         const densityFolder = arrowFolder.addFolder('Sample Density');
-        this.gui.sampleNx = densityFolder.add(this.arrowConfig, 'nx', 1, 50, 1)
-            .name('Nx').onFinishChange(() => this.updateSampling({ nx: this.arrowConfig.nx }));
-        this.gui.sampleNy = densityFolder.add(this.arrowConfig, 'ny', 1, 50, 1)
-            .name('Ny').onFinishChange(() => this.updateSampling({ ny: this.arrowConfig.ny }));
-        this.gui.sampleNz = densityFolder.add(this.arrowConfig, 'nz', 1, 50, 1)
-            .name('Nz').onFinishChange(() => this.updateSampling({ nz: this.arrowConfig.nz }));
+        this.gui.sampleNx = densityFolder.add(this.arrowConfig, 'sampleNx', 1, 50, 1)
+            .name('Nx').onFinishChange(() => this.updateArrowConfig({ sampleNx: this.arrowConfig.sampleNx }));
+        this.gui.sampleNy = densityFolder.add(this.arrowConfig, 'sampleNy', 1, 50, 1)
+            .name('Ny').onFinishChange(() => this.updateArrowConfig({ sampleNy: this.arrowConfig.sampleNy }));
+        this.gui.sampleNz = densityFolder.add(this.arrowConfig, 'sampleNz', 1, 50, 1)
+            .name('Nz').onFinishChange(() => this.updateArrowConfig({ sampleNz: this.arrowConfig.sampleNz }));
         this.updateSamplingRange();
         
         // Arrow size
-        arrowFolder.add(this.arrowConfig, 'size', 0.1, 5.0, 0.1)
+        arrowFolder.add(this.arrowConfig, 'arrowSize', 0.1, 5.0, 0.1)
             .name('Arrow Size')
-            .onChange((value) => this.updateArrowSize(value));
+            .onChange((value) => this.updateArrowConfig({ arrowSize: value }));
+
+        // Arrow component
+        arrowFolder.add(this.arrowConfig, 'component', ['mx', 'my', 'mz'])
+            .name('Component')
+            .onChange((value) => this.updateArrowConfig({ component: value }));
+
+        // Arrow colormap
+        arrowFolder.add(this.arrowConfig, 'colormap', getAvailableColormaps())
+            .name('Colormap')
+            .onChange((value) => this.updateArrowConfig({ colormap: value }));
 
         // Surface visibility toggle
         this.gui.showSurface = magnetizationFolder.add(this.surfaceConfig, 'visible').name('Show Surface/Isosurface')
