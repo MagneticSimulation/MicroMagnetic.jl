@@ -249,17 +249,14 @@ class GUIManager {
 
         // Handle different response types with validation
         if (response.type === 'fd_mesh_data') {
-           console.log('FD Mesh Data:', response.fd_mesh_data);
            if (this.visualization && response.fd_mesh_data) {
                this.visualization.displayFDMesh(response.fd_mesh_data);
            }
         } else if (response.type === 'Ms_data') {
-            console.log('Ms Data:', response.Ms_data);
             if (this.visualization && response.Ms_data) {
                 this.visualization.displayCustomSurface(response.Ms_data);
             }
         } else if (response.type === 'm_data') {
-            console.log('m Data:', response.m_data);
             if (this.visualization && response.m_data) {
                 this.visualization.updateMagnetization(response.m_data);
             }

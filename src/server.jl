@@ -310,8 +310,12 @@ function handle_http_request(http::HTTP.Stream)
         # Method not allowed
         HTTP.setstatus(http, 405)
         HTTP.setheader(http, "Content-Type" => "text/plain")
-        HTTP.startwrite(http)
-        HTTP.write(http, "Method not allowed")
+        try
+            HTTP.startwrite(http)
+            HTTP.write(http, "Method not allowed")
+        catch e
+            # Client closed connection
+        end
     end
 end
 
@@ -436,8 +440,12 @@ function handle_get_request(http, req, message_handlers)
             # File not found
             HTTP.setstatus(http, 404)
             HTTP.setheader(http, "Content-Type" => "text/plain")
-            HTTP.startwrite(http)
-            HTTP.write(http, "File not found")
+            try
+                HTTP.startwrite(http)
+                HTTP.write(http, "File not found")
+            catch e
+                # Client closed connection
+            end
         end
     end
 end

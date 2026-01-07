@@ -103,6 +103,21 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
         @info "AtomisticSim has been created."
     end
 
+    if global_client != nothing && isa(mesh, FDMesh)
+        response = Dict(
+            "type" => "fd_mesh_data",
+            "fd_mesh_data" => Dict(
+                "nx" => mesh.nx,
+                "ny" => mesh.ny,
+                "nz" => mesh.nz,
+                "dx" => mesh.dx*1e9,
+                "dy" => mesh.dy*1e9,
+                "dz" => mesh.dz*1e9,
+            )
+        )
+        send_message(global_client, "run_code_response", response)
+    end
+
     return sim
 end
 
@@ -761,6 +776,7 @@ Run the simulation for a total duration of `steps * dt` seconds.
 - `save_m_every`: Specifies how often to save the magnetization configuration. For example, if `save_m_every = 1`, the magnetization is saved at every step. A negative value will disable magnetization saving entirely.
 - `saver_item`: A `SaverItem` instance or a list of `SaverItem` instances. These are custom data-saving utilities that can be used to store additional quantities during the simulation (e.g., guiding centers or other derived values). If `nothing`, no additional data is saved beyond the default.
 - `call_back`: A user-defined function or `nothing`. If provided, this function will be called at every step, allowing for real-time inspection or manipulation of the simulation state.
+- `update_time`: The time interval (in seconds) at which the magnetization data is sent to the client. The default is `1.0` second.
 
 #### Example Usage
 
@@ -778,7 +794,7 @@ In this example:
 This setup will save the computed guiding center to the simulation output, in addition to the default data like energies and average magnetization.
 """
 function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_every=-1,
-                 saver_item=nothing, call_back=nothing, output="ovf")
+                 saver_item=nothing, call_back=nothing, output="ovf", update_time=1.0)
     if isa(saver_item, SaverItem)
         push!(sim.saver.items, saver_item)
     end
@@ -794,6 +810,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
         mkpath(output_folder)
     end
 
+    last_update_time = time()
     for i in 0:steps
         run_until(sim, i * dt; save_data=save_data)
 
@@ -807,6 +824,18 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
                 save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
             elseif output == "vts" || output == "vtu"
                 save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
+            end
+        end
+
+        current_time = time()
+        if update_time > 0 && (current_time - last_update_time >= update_time || i == steps)
+            if global_client != nothing
+                response = Dict(
+                    "type" => "m_data",
+                    "m_data" => Array(sim.spin),
+                )
+                send_message(global_client, "m_data", response)
+                last_update_time = current_time
             end
         end
     end
