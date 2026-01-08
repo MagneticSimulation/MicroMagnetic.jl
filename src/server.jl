@@ -359,9 +359,9 @@ end
 """
 Start MicroMagnetic GUI 
 """
-function gui(;port::Int=10056, host::String=nothing, lan::Bool=false)
+function gui(;port::Int=10056, host::String="127.0.0.1", lan::Bool=false)
     println("Starting MicroMagnetic GUI...")
-    start_server(port, host, lan=lan, async=false)
+    start_server(port=port, host=host, lan=lan, async=false)
 end
 
 """

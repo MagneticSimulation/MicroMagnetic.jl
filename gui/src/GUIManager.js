@@ -34,12 +34,7 @@ class GUIManager {
             
         } catch (error) {
             console.error('Failed to initialize WebSocket client:', error);
-            
-            const statusElement = document.getElementById('status-message');
-            if (statusElement) {
-                statusElement.textContent = `Error: ${error.message}`;
-                statusElement.className = 'status-error';
-            }
+            this.updateExecutionUI('error', "WebSocket error!", error.toString());
         }
     }
 
@@ -64,6 +59,7 @@ class GUIManager {
             console.error('WebSocket error:', error);
             this.isConnected = false;
             this.updateWebSocketStatus(false);
+            this.updateExecutionUI('error', "Connection error!", error.message);
         });
         
         // Data events
@@ -124,16 +120,12 @@ class GUIManager {
                 } else {
                     // Connect
                     await this.wsClient.connect();
+                    this.updateExecutionUI('success', "Connection successful!", "");
                 }
             } catch (error) {
                 console.error('WebSocket connection error:', error);
                 this.updateWebSocketStatus(false);
-                
-                const statusElement = document.getElementById('status-message');
-                if (statusElement) {
-                    statusElement.textContent = `Connection error: ${error.message}`;
-                    statusElement.className = 'status-error';
-                }
+                this.updateExecutionUI('error', "Connection error!", error.message);
             }
         });
         
