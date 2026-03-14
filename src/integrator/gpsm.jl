@@ -18,6 +18,7 @@ mutable struct GPSM{T<:AbstractFloat} <: Integrator
     gn2::AbstractArray{T,1}
     gn3::AbstractArray{T,1}
     rhs::AbstractArray{T,1}
+    exch::Union{Nothing, MicroEnergy}
     GPSM{T}() where {T<:AbstractFloat} = new()
 end
 
@@ -41,11 +42,11 @@ function initialize!(integrator::GPSM, sim::AbstractSim)
     end
     idx = findfirst(x -> isa(x, ExchangeFE) || isa(x, UniformExchange), sim.interactions)
     if idx !== nothing
-        exch = splice!(sim.interactions, idx)
+        integrator.exch = splice!(sim.interactions, idx)
     else
         error("GPSM integrator requires Exchange interaction!")
     end
-    integrator.Laplaian = build_exch_matrix(exch, sim)
+    integrator.Laplaian = build_exch_matrix(integrator.exch, sim)
     alpha = sim.driver.alpha
     gamma_G = sim.driver.gamma 
     dt = integrator.step * gamma_G / (1 + alpha * alpha)

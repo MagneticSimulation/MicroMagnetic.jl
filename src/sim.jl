@@ -2,7 +2,8 @@ using KernelAbstractions
 using Printf
 
 export Sim, init_m0, set_Ms, set_Ms_cylindrical, run_until, relax, create_sim, run_sim,
-       set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with, advance_step, set_alpha
+       set_driver, set_pinning, set_ux, set_uy, set_uz, sim_with, advance_step, set_alpha,
+       hysteresis
 
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
@@ -417,6 +418,8 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
     last_update_time = time()
 
     driver = sim.driver
+    stop_flag = false
+    max_dmdt = 0
     @info @sprintf("Running Driver : %s.", typeof(driver))
     for i in 1:max_steps
         @timeit timer "run_step" run_step(sim, driver)
@@ -481,6 +484,10 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             break
         end
 
+    end
+
+    if !stop_flag
+        @info @sprintf("max_steps is reached %d, and max_dmdt=%g, Done!", max_steps, max_dmdt/dmdt_factor)
     end
 
     return nothing
@@ -620,6 +627,55 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
     end
 
     return set_driver_arguments(sim, args)
+end
+
+"""
+    hysteresis(sim::AbstractSim, Hs::AbstractVector, direction::Tuple=(1, 0, 0);  
+                    stopping_dmdt=0.1, max_steps=10000, output="ovf", full_loop=true)
+
+Compute magnetic hysteresis loop by applying a sequence of external magnetic fields and relaxing system at each field value.
+
+# Arguments
+- `sim::AbstractSim`: Simulation instance
+- `Hs::AbstractVector`: Vector of magnetic field values (in A/m) to apply
+- `direction::Tuple=(1, 0, 0)`: Direction vector for applied magnetic field
+
+# Keyword Arguments
+- `stopping_dmdt::Float64=0.1`: Convergence criterion for relaxation
+- `max_steps::Int=50000`: Maximum number of relaxation steps
+- `output::String="ovf"`: Output format for data saving
+- `full_loop::Bool=true`: If true, applies fields in reverse order after completing forward sweep
+
+# Examples
+```julia
+# Create hysteresis loop with field sweep from -100 mT to 100 mT
+Hs = [i*mT for i = -100:10:100]
+hysteresis(sim, Hs; full_loop=true)
+
+# Apply field along y-direction
+hysteresis(sim, Hs, direction=(0, 1, 0))
+```
+"""
+function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0, 0),
+                    stopping_dmdt=0.1, max_steps=50000, output="ovf", full_loop=true)
+        
+    for (i, H) in enumerate(Hs)
+        Hx = H * direction[1]
+        Hy = H * direction[2]
+        Hz = H * direction[3]
+        update_zeeman(sim, (Hx, Hy, Hz))
+        relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, output=output)
+    end
+
+    if full_loop
+        for (i, H) in enumerate(reverse(Hs))
+            Hx = H * direction[1]
+            Hy = H * direction[2]
+            Hz = H * direction[3]
+            update_zeeman(sim, (Hx, Hy, Hz))
+            relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, output=output)
+        end
+    end
 end
 
 """

@@ -25,16 +25,15 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
     push!(sim.interactions, zeeman)
 
     if sim.save_data
-        id = length(sim.interactions)
         if isa(H0, Tuple) && length(H0) == 3
             field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
                                     string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
-                                   o::AbstractSim -> o.interactions[id].H0)
+                                   o::AbstractSim -> zeeman.H0)
             push!(sim.saver.items, field_item)
         end
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(zeeman.energy)))
     end
 
     @info "Static Zeeman has been added."
@@ -173,7 +172,6 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
 
     if sim.save_data
         unit = isa(sim, MicroSim) ? "<A/m>" : "<Tesla>"
-        id = length(sim.interactions)
         if isa(H0, Tuple) && length(H0) == 3
             field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
                                     string(name, "_Hz")), (unit, unit, unit),
@@ -183,7 +181,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
         end
         push!(sim.saver.items,
               SaverItem(string("E_", name), "J",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(zee.energy)))
     end
     return zee
 end
@@ -244,10 +242,9 @@ function add_exch(sim::MicroSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
     push!(sim.interactions, exch)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(exch.energy)))
     end
     @info "Exchange has been added."
     return exch
@@ -318,10 +315,9 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
     push!(sim.interactions, dmi)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(dmi.energy)))
     end
     return dmi
 end
@@ -342,10 +338,9 @@ function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true)
     push!(sim.interactions, demag)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(demag.energy)))
     end
     return demag
 end
@@ -386,10 +381,9 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction;
     push!(sim.interactions, anis)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(anis.energy)))
     end
 
     @info "Uniaxial Anisotropy has been added."
@@ -421,10 +415,9 @@ function add_anis(sim::AbstractSim, geo::Shape, Ku::Number; axis=(0, 0, 1), name
     push!(sim.interactions, anis)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(anis.energy)))
     end
     return anis
 end
@@ -496,10 +489,9 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
     push!(sim.interactions, anis)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(anis.energy)))
     end
     return anis
 end
@@ -528,10 +520,9 @@ function add_hex_anis(sim::AbstractSim; K1=0, K2=0, K3=0, name="hex")
     push!(sim.interactions, anis)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(anis.energy)))
     end
     return anis
 end
@@ -630,15 +621,14 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
     push!(sim.interactions, thermal)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(thermal.energy)))
 
         push!(sim.saver.items,
               SaverItem(string("T_", name), "<K>",
-                        o::AbstractSim -> o.interactions[id].mean_temperature *
-                                          o.interactions[id].scaling_factor))
+                        o::AbstractSim -> thermal.mean_temperature *
+                                          thermal.scaling_factor))
     end
     return thermal
 end
@@ -680,10 +670,9 @@ function add_exch_int(sim::MicroSim, J::NumberOrArrayOrFunction; k1=1, k2=-1,
     push!(sim.interactions, exch)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(exch.energy)))
     end
     return exch
 end
@@ -720,10 +709,9 @@ function add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1, name=
     push!(sim.interactions, dmi)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(dmi.energy)))
     end
     return dmi
 end
@@ -1152,9 +1140,8 @@ function rm_demag_charges(sim::MicroSim, Ms; x::Tuple=(0, 0), y::Tuple=(0, 0), z
     push!(sim.interactions, zeeman)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
-                        o::AbstractSim -> sum(o.interactions[id].energy)))
+                        o::AbstractSim -> sum(zeeman.energy)))
     end
 end

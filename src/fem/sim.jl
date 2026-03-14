@@ -95,10 +95,9 @@ function add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
     assemble_anis_matirx(anis, sim)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "J",
-                        o::MicroSimFE -> sum(o.interactions[id].energy)))
+                        o::MicroSimFE -> sum(anis.energy)))
     end
     return anis
 end
@@ -133,10 +132,9 @@ function add_exch(sim::MicroSimFE, A::NumberOrArrayOrFunction; name="exch", meth
     push!(sim.interactions, exch)
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "J",
-                        o::MicroSimFE -> sum(o.interactions[id].energy)))
+                        o::MicroSimFE -> sum(exch.energy)))
     end
 
     return exch
@@ -156,10 +154,9 @@ function add_demag(sim::MicroSimFE; name="demag", method="bem", kwargs...)
     demag.name = name
 
     if sim.save_data
-        id = length(sim.interactions)
         push!(sim.saver.items,
               SaverItem(string("E_", name), "J",
-                        o::MicroSimFE -> sum(o.interactions[id].energy)))
+                        o::MicroSimFE -> sum(demag.energy)))
     end
 
     return demag

@@ -51,6 +51,7 @@ add_thermal_noise
 create_sim
 relax
 run_sim
+hysteresis
 #compute_guiding_center
 ```
 

@@ -455,6 +455,11 @@ function compute_system_energy(sim::AbstractSim, spin::AbstractArray, t::Float64
                 sim.energy .+= interaction.energy
             end
         end
+        if isa(sim.driver, LLG) && isa(sim.driver.integrator, GPSM)
+            exch = sim.driver.integrator.exch
+            effective_field(exch, sim, spin, t)
+            sim.energy .+= exch.energy
+        end
     end
     return 0
 end

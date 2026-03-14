@@ -107,7 +107,9 @@ function save_vtk_points(sim::AbstractSim, fname::String; fields::Array{String,1
     if scale_factor != 1.0
         vtk["scale_factor", VTKFieldData()] = string(scale_factor)
     end
-    return vtk_save(vtk)
+    mkpath(dirname(fname))
+    vtk_save(vtk)
+    return nothing
 end
 
 function ovf2_skyrmion_number_vtk(ovfname::String, fname::String)

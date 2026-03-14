@@ -162,9 +162,8 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
     exch = HeisenbergExchange(Js, Js2, Js3, Js4, field, energy, name)
     push!(sim.interactions, exch)
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "<J>",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(exch.energy))
         push!(sim.saver.items, item)
     end
     return exch
@@ -201,9 +200,8 @@ function add_exch_bq(sim::AtomisticSim, K::NumberOrArray; name="exch_bq")
 
     push!(sim.interactions, exch)
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "<J>",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(exch.energy))
         push!(sim.saver.items, item)
     end
 
@@ -284,9 +282,8 @@ function add_exch(sim::AtomisticSim, Jfun::Function; name="exch")
     exch = SpatialHeisenberg(Js, field, energy, name)
     push!(sim.interactions, exch)
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "<J>",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(exch.energy))
         push!(sim.saver.items, item)
     end
     return exch
@@ -394,9 +391,8 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
 
     push!(sim.interactions, dmi)
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(dmi.energy))
         push!(sim.saver.items, item)
     end
     return dmi
@@ -442,9 +438,8 @@ function add_dmi(sim::AtomisticSim, Dij::Array{<:Real,2}; name="dmi")
     dmi = HeisenbergDMI(kernel_array(Dij), field, energy, name)
     push!(sim.interactions, dmi)
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "J",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(dmi.energy))
         push!(sim.saver.items, item)
     end
     return dmi
@@ -526,9 +521,8 @@ function add_dmi(sim::AtomisticSim, Dfun::Function; name="dmi")
     dmi = SpatialHeisenbergDMI(Dij, field, energy, name)
     push!(sim.interactions, dmi)
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "<J>",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(dmi.energy))
         push!(sim.saver.items, item)
     end
     return dmi
@@ -571,9 +565,8 @@ function add_anis_kagome(sim::AtomisticSim, Ku::Float64; ax1=(-0.5, -sqrt(3) / 2
     push!(sim.interactions, anis)
 
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "<J>",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(anis.energy))
         push!(sim.saver.items, item)
     end
     return anis
@@ -607,9 +600,8 @@ function add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
     push!(sim.interactions, anis)
 
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "<J>",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(anis.energy))
         push!(sim.saver.items, item)
     end
     return anis
@@ -648,9 +640,8 @@ function add_magnetoelectric_laser(sim::AtomisticSim, lambda::Float64, E::Float6
     push!(sim.interactions, laser)
 
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "<J>",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(laser.energy))
         push!(sim.saver.items, item)
     end
     return laser
@@ -671,9 +662,8 @@ function add_demag(sim::AtomisticSim; name="demag", Nx=0, Ny=0, Nz=0)
     push!(sim.interactions, demag)
 
     if sim.save_data
-        id = length(sim.interactions)
         item = SaverItem(string("E_", name), "<J>",
-                         o::AbstractSim -> sum(o.interactions[id].energy))
+                         o::AbstractSim -> sum(demag.energy))
         push!(sim.saver.items, item)
     end
     return demag
