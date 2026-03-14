@@ -422,7 +422,7 @@ For example:
 
 After running this function, the effective field is calculated and saved in sim.field.
 """
-function effective_field(sim::AbstractSim, spin, t::Float64=0.0)
+function effective_field(sim::AbstractSim, spin, t::Float64=0.0;)
     fill!(sim.field, 0.0)
     for interaction in sim.interactions
         if !isa(interaction, Zeeman)
@@ -468,4 +468,61 @@ function effective_field_energy(sim::AbstractSim, spin, t::Float64=0.0)
         sim.energy .+= interaction.energy
     end
     return nothing
+end
+
+function build_exch_matrix(exch::UniformExchange, sim::MicroSim)
+    mesh = sim.mesh
+    dx, dy, dz = mesh.dx, mesh.dx, mesh.dz
+    ngbs = Array(mesh.ngbs)
+    Ms = Array(sim.mu0_Ms)
+    ax = 2 * exch.Ax / (dx * dx)
+    ay = 2 * exch.Ay / (dy * dy)
+    az = 2 * exch.Az / (dz * dz)
+    nabla = (ax, ax, ay, ay, az, az)
+    n_total = sim.n_total
+
+    T = Float[]
+    
+    I = Int64[]
+    J = Int64[]
+    V = T[]
+    
+    for index in 1:n_total
+        if Ms[index] == 0.0
+            continue
+        end
+        
+        Ms_inv = 1.0 / Ms[index]
+        diag_sum = 0.0
+        for j in 1:6
+            id = ngbs[j, index]
+            if id > 0 && Ms[id] > 0
+                diag_sum -= nabla[j] * Ms_inv
+            end
+        end
+        push!(I, index)
+        push!(J, index)
+        push!(V, diag_sum)
+        
+        # neighbor contributions
+        for j in 1:6
+            id = ngbs[j, index]
+            if id > 0 && Ms[id] > 0
+                coeff = nabla[j] * Ms_inv
+                
+                push!(I, index)
+                push!(J, id)
+                push!(V, coeff)
+            end
+        end
+        
+    end
+    
+    Laplaian = sparse(I, J, V, n_total, n_total)
+
+    if default_backend[] != CPU()
+        Laplaian = GPUSparseMatrixCSR[](Laplaian)
+    end
+    
+    return Laplaian
 end

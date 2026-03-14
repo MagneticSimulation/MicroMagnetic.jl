@@ -1,4 +1,9 @@
 using MicroMagnetic
+if Base.find_package("CUDSS") !== nothing
+    using CUDSS
+else
+    @warn("CUDSS is needed for GPSM when using CUDA.")
+end
 using Test
 
 if !isdefined(Main, :test_functions)
@@ -54,7 +59,8 @@ function test_llg(integrator="DormandPrince"; driver="LLG")
     @test abs(mz[1] - m[3]) < error
 end
 
-function test_llg_rk(integrator="RungeKutta")
+function test_llg_fixed(integrator="RungeKutta")
+    println("integrator=", integrator)
     #Test mesh
     mesh = FDMesh(; nx=1, ny=1, dx=1e-9)
 
@@ -64,22 +70,25 @@ function test_llg_rk(integrator="RungeKutta")
     sim.driver.gamma = 2.21e5
     sim.driver.integrator.step = 1e-13
 
+    add_exch(sim, 1.3e-11)
     add_zeeman(sim, (0, 0, 1e5))
     init_m0(sim, (1.0, 0, 0))
 
     for i in 1:500
         MicroMagnetic.run_step(sim, sim.driver)
     end
-
+    
     #println(sim.spin[1]," ",sim.spin[2]," ",sim.spin[3])
     ts = Array([5e-11])
     mx, my, mz = analytical(0.05, 2.21e5, 1e5, ts)
 
     m = Array(sim.spin)
 
-    @test abs(mx[1] - m[1]) < 8e-6
-    @test abs(my[1] - m[2]) < 8e-6
-    @test abs(mz[1] - m[3]) < 8e-6
+    eps = integrator == "GPSM" ? 8e-4 : 8e-6
+
+    @test abs(mx[1] - m[1]) < eps
+    @test abs(my[1] - m[2]) < eps
+    @test abs(mz[1] - m[3]) < eps
 end
 
 function test_llg_dp()
@@ -105,8 +114,8 @@ function test_llg_spatial()
 end
 
 function test_llg_fixed_dt()
-    for integrator in ["Heun", "RungeKutta", "RungeKuttaCayley"]
-        test_llg_rk(integrator)
+    for integrator in ["GPSM", "Heun", "RungeKutta", "RungeKuttaCayley"]
+        test_llg_fixed(integrator)
     end
 end
 
