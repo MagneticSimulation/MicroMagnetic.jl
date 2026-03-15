@@ -658,24 +658,44 @@ hysteresis(sim, Hs, direction=(0, 1, 0))
 """
 function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0, 0),
                     stopping_dmdt=0.1, max_steps=50000, output="ovf", full_loop=true)
-        
+
+    output_folder = @sprintf("%s_hysteresis", sim.name)
+    mkpath(output_folder)
+    
+    norm = (direction[1]^2 + direction[2]^2 + direction[3]^2)^0.5
+    stage = 1
     for (i, H) in enumerate(Hs)
-        Hx = H * direction[1]
-        Hy = H * direction[2]
-        Hz = H * direction[3]
+        Hx = H * direction[1] / norm
+        Hy = H * direction[2] / norm
+        Hz = H * direction[3] / norm
         update_zeeman(sim, (Hx, Hy, Hz))
-        relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, output=output)
+        relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, save_m_every=-1)
+        if output == "ovf"
+            save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", stage)))
+        elseif output == "vts" || output == "vtu"
+            save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", stage)))
+        end
+        stage += 1
     end
 
-    if full_loop
-        for (i, H) in enumerate(reverse(Hs))
-            Hx = H * direction[1]
-            Hy = H * direction[2]
-            Hz = H * direction[3]
-            update_zeeman(sim, (Hx, Hy, Hz))
-            relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, output=output)
-        end
+    if !full_loop
+        return
     end
+    
+    for (i, H) in enumerate(reverse(Hs))
+        Hx = H * direction[1] / norm
+        Hy = H * direction[2] / norm
+        Hz = H * direction[3] / norm
+        update_zeeman(sim, (Hx, Hy, Hz))
+        relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, save_m_every=-1)
+        if output == "ovf"
+            save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", stage)))
+        elseif output == "vts" || output == "vtu"
+            save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", stage)))
+        end
+        stage += 1
+    end
+    
 end
 
 """
