@@ -673,7 +673,7 @@ function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0
         if output == "ovf"
             save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", stage)))
         elseif output == "vts" || output == "vtu"
-            save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", stage)))
+            save_vtk(sim, joinpath(output_folder, @sprintf("m_%08d", stage)))
         end
         stage += 1
     end
@@ -691,7 +691,7 @@ function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0
         if output == "ovf"
             save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", stage)))
         elseif output == "vts" || output == "vtu"
-            save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", stage)))
+            save_vtk(sim, joinpath(output_folder, @sprintf("m_%08d", stage)))
         end
         stage += 1
     end

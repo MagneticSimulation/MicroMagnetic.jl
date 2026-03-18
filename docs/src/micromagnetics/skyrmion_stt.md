@@ -83,5 +83,5 @@ if !isfile("assets/skx.mp4")
 end
 ````
 
-![](./assets/skx.mp4)
+<video src='../assets/skx.mp4' controls='controls'></video>
 

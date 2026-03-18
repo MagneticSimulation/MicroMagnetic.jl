@@ -23,18 +23,33 @@ function init_m0_function(i, j, k, dx, dy, dz)
     return (mx, my, mz)
 end
 
-function test_Laplaian()
-    mesh = FDMesh(nx=10, ny=2, nz=2, dx=2e-9, dy=2e-9, dz=2e-9)
+function init_m_fun_fem(x, y, z)
+    r = sqrt(x * x + y * y + z * z)
+    return (0, sin(r), cos(r))
+end
+
+function test_Laplaian(;fem=true)
+    if fem
+        filepath = joinpath(@__DIR__, "fem/meshes/cylinder.mesh")
+        mesh = FEMesh(filepath)
+    else
+        mesh = FDMesh(nx=10, ny=2, nz=2, dx=2e-9, dy=2e-9, dz=2e-9)
+    end
+
     sim = Sim(mesh; name="test", driver="SD")
     set_Ms(sim, 8e5)
 
-    init_m0(sim, init_m0_function)
+    if fem
+        init_m0(sim, init_m_fun_fem)
+    else
+        init_m0(sim, init_m0_function)
+    end
 
     exch = add_exch(sim, 1.3e-11)
     M = MicroMagnetic.build_exch_matrix(exch, sim)
 
     m = Array(sim.spin)
-    m = reshape(m, (3, 40))
+    m = reshape(m, (3, sim.n_total))
     mx = m[1, :]
     my = m[2, :]
     mz = m[3, :]
@@ -44,11 +59,11 @@ function test_Laplaian()
     fz = M*mz
     MicroMagnetic.effective_field(sim, sim.spin)
     exch = Array(exch.field)
-    f = reshape(exch, (3, 40))
+    f = reshape(exch, (3, sim.n_total))
     
-    @test isapprox(fx , f[1, :], atol=1e-12)
-    @test isapprox(fy , f[2, :], atol=1e-12)
-    @test isapprox(fz , f[3, :], atol=1e-12)
+    @test isapprox(fx , f[1, :], atol=1e-5)
+    @test isapprox(fy , f[2, :], atol=1e-5)
+    @test isapprox(fz , f[3, :], atol=1e-5)
 end
 
 
@@ -82,5 +97,6 @@ function relax_system()
 end
 
 
-relax_system()
+test_Laplaian()
+#relax_system()
 

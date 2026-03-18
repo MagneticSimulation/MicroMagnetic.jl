@@ -8,7 +8,7 @@ Several software tools are available for mesh generation. Here we introduce two 
 - **Documentation**: [https://github.com/NGSolve/netgen/blob/master/doc/ng4.pdf](https://github.com/NGSolve/netgen/blob/master/doc/ng4.pdf)
   
 **Typical Usage** (creates hemisphere):
-```ng
+```text
 algebraic3d
 
 solid hemisphere = sphere (1, 0, 0; 10) and plane (1, 0, 0; 0, 0, -1);

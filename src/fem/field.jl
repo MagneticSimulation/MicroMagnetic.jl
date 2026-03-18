@@ -77,6 +77,61 @@ function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
     end
 end
 
+function build_exch_matrix(exch::ExchangeFE, sim::MicroSimFE)
+    mesh = sim.mesh
+    unit_length = mesh.unit_length
+    A = exch.A
+    mu0_Ms = sim.mu0_Ms
+    n_total = mesh.number_nodes
+
+    T = Float64
+    I = Int64[]
+    J = Int64[]
+    V = T[]
+
+    for c in 1:(mesh.number_cells)
+        if mu0_Ms[c] < eps()
+            continue
+        end
+        k1 = mesh.cell_verts[1, c]
+        k2 = mesh.cell_verts[2, c]
+        k3 = mesh.cell_verts[3, c]
+        k4 = mesh.cell_verts[4, c]
+        verts = (k1, k2, k3, k4)
+
+        bcd = compute_bcd12(mesh.coordinates[:, k1], mesh.coordinates[:, k2],
+                            mesh.coordinates[:, k3], mesh.coordinates[:, k4])
+
+        coef = 2 * (A[c] / unit_length) * mesh.volumes[c] / mu0_Ms[c] / unit_length
+
+        for alpha in 0:3, beta in 0:3
+            i = 3 * alpha + 1
+            j = 3 * beta + 1
+
+            fa = coef *
+                 (bcd[i] * bcd[j] + bcd[i + 1] * bcd[j + 1] + bcd[i + 2] * bcd[j + 2])
+
+            push!(I, verts[alpha + 1])
+            push!(J, verts[beta + 1])
+            push!(V, fa)
+        end
+    end
+
+    Laplacian = sparse(I, J, V, n_total, n_total)
+
+    L_inv_neg = Array(mesh.L_inv_neg)
+    nodal_L_inv_neg = L_inv_neg[1:3:end]
+
+    D = spdiagm(nodal_L_inv_neg)
+    Laplacian = D * Laplacian
+
+    if default_backend[] != CPU()
+        Laplacian = GPUSparseMatrixCSR[](Laplacian)
+    end
+
+    return Laplacian
+end
+
 
 
 function effective_field(zee::Zeeman, sim::MicroSimFE, spin::AbstractArray{T,1},
