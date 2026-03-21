@@ -304,7 +304,11 @@ function init_demag(sim::MicroSimFE, method; kwargs...)
     assemble_matirx_DGK1K2(demag, sim, using_constraint = constraint)
 
     try
-        demag.K1 = cholesky(demag.K1) #reuse the factorization to speed up the calculation
+        if default_backend[] == CPU()
+            demag.K1 = cholesky(demag.K1)  
+        else
+            demag.K1 = ldlt(demag.K1) # cudss version of cholesky give wrong results? 
+        end
     catch
         try
             demag.K1 = lu(demag.K1)
