@@ -102,13 +102,13 @@ function init_vector!(v::Array{T,1}, mesh::Mesh, init::Function) where {T<:Abstr
 end
 
 """
-    function set_region(mesh::Mesh, shape::CSGShape, region_id::Int)
+    set_region(mesh::FDMesh, region_id::Int, shape::CSGShape)
 
 Set the region ID for cells inside the specified shape.
 Parameters:
-    - mesh: The mesh to set regions for
-    - shape: The shape defining the region
-    - region_id: The ID to assign to cells inside the shape
+- mesh: The mesh to set regions for
+- region_id: The ID to assign to cells inside the shape
+- shape: The shape defining the region
 
 # Example
 ```julia
@@ -119,11 +119,10 @@ mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=10, ny=10, nz=10)
 sphere = Sphere(radius=10e-9, center=(10e-9, 10e-9, 0))
 
 # Set all cells inside the sphere to region ID 1
-set_region(mesh, sphere, 1)
+set_region(mesh, 1, sphere)
 ```
 """
-function set_region(mesh::Mesh, shape::CSGShape, region_id::Int)
-
+function set_region(mesh::FDMesh, region_id::Int, shape::CSGShape)
     a = isa(mesh.regions, Array) ? mesh.regions : Array(mesh.regions)
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz

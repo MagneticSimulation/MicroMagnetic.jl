@@ -141,3 +141,50 @@ end
     end
     return -1
 end
+
+"""
+    set_region(mesh::FDMesh, region_id::Int; i=:, j=:, k=:)
+
+Set the region ID for cells in specified i, j, k ranges.
+
+**Parameters:**
+- mesh: The finite difference mesh to set regions for
+- region_id: The ID to assign to the specified cells
+- i: The range of i indices to set (default: all)
+- j: The range of j indices to set (default: all)
+- k: The range of k indices to set (default: all)
+
+**Examples:**
+```julia
+# Create a finite difference mesh
+mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=10, ny=10, nz=10)
+
+# Set all cells to region ID 1
+set_region(mesh, 1)
+
+# Set cells in the first layer (k=1) to region ID 2
+set_region(mesh, 2, k=1)
+
+# Set cells in a rectangular region to region ID 3
+set_region(mesh, 3, i=2:5, j=3:7)
+```
+"""
+function set_region(mesh::FDMesh, region_id::Int; i=:, j=:, k=:)
+    a = isa(mesh.regions, Array) ? mesh.regions : Array(mesh.regions)
+    
+    i_range = isa(i, Colon) ? (1:mesh.nx) : i
+    j_range = isa(j, Colon) ? (1:mesh.ny) : j
+    k_range = isa(k, Colon) ? (1:mesh.nz) : k
+    
+    for k_idx in k_range, j_idx in j_range, i_idx in i_range
+        if i_idx < 1 || i_idx > mesh.nx || j_idx < 1 || j_idx > mesh.ny || k_idx < 1 || k_idx > mesh.nz
+            continue
+        end
+        
+        id = index(i_idx, j_idx, k_idx, mesh.nx, mesh.ny, mesh.nz)
+        a[id] = region_id
+    end
+    
+    isa(mesh.regions, Array) || copyto!(mesh.regions, a)
+    return true
+end
