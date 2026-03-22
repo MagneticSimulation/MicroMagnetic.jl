@@ -341,3 +341,12 @@ mutable struct AnisotropyFE{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
+mutable struct InterlayerExchangeFE{T<:AbstractFloat} <: MicroEnergy
+    J::T
+    s1::Int32 # surface id
+    s2::Int32 # surface id
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    K_matrix::AbstractSparseMatrix
+    name::String
+end

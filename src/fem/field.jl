@@ -35,7 +35,9 @@ function assemble_anis_matirx(anis::AnisotropyFE, sim::MicroSimFE)
 end
 
 """
-  assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
+    assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
+
+assemble the exchange matrix used for calculating the exchange field in the FEM simulation.
 """
 function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
     mesh = sim.mesh
@@ -77,6 +79,7 @@ function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
     end
 end
 
+# this function is used to build the exchange matrix used for GPSM
 function build_exch_matrix(exch::ExchangeFE, sim::MicroSimFE)
     mesh = sim.mesh
     unit_length = mesh.unit_length
@@ -132,6 +135,106 @@ function build_exch_matrix(exch::ExchangeFE, sim::MicroSimFE)
     return Laplacian
 end
 
+function assemble_rkky_matirx(rkky::InterlayerExchangeFE, sim::MicroSimFE)
+    mesh = sim.mesh
+    unit_length = mesh.unit_length
+    K = rkky.K_matrix
+    J = rkky.J
+    mu0_Ms = sim.mu0_Ms
+    cds = mesh.coordinates
+    
+    s1 = rkky.s1
+    s2 = rkky.s2
+
+    fv1 = mesh.face_verts[:, mesh.surface_ids .== s1]
+    fv2 = mesh.face_verts[:, mesh.surface_ids .== s2]
+    nodal_Ms = Array(sim.L_mu)
+
+    nodal_area1 = zeros(mesh.number_nodes)
+    barycenters1 = zeros(3, size(fv1, 2))
+    for f in 1:size(fv1)[2]
+        i,j,k = fv1[:, f]   
+        p1 = cds[:, i]
+        p2 = cds[:, j]
+        p3 = cds[:, k]
+        area = 0.5 * norm(cross(p2 - p1, p3 - p1))
+        nodal_area1[i] += area / 3
+        nodal_area1[j] += area / 3
+        nodal_area1[k] += area / 3
+        barycenters1[:, f] .= (p1 + p2 + p3) / 3
+    end
+
+    nodal_area2 = zeros(mesh.number_nodes)
+    barycenters2 = zeros(3, size(fv2, 2))
+    for f in 1:size(fv2)[2]
+        i,j,k = fv2[:, f]   
+        p1 = cds[:, i]
+        p2 = cds[:, j]
+        p3 = cds[:, k]
+        area = 0.5 * norm(cross(p2 - p1, p3 - p1))
+        nodal_area2[i] += area / 3
+        nodal_area2[j] += area / 3
+        nodal_area2[k] += area / 3
+        barycenters2[:, f] .= (p1 + p2 + p3) / 3
+    end
+
+    kdtree1 = KDTree(barycenters1)
+    kdtree2 = KDTree(barycenters2)
+    
+    fv1_unique = unique(fv1)
+    fv2_unique = unique(fv2)
+
+    for id in fv1_unique
+        p = cds[:, id]
+        idx, _ = nn(kdtree2, p) # the nearest barycenters2 in s2
+        ta, tb, tc = fv2[:, idx]
+        p1 = cds[:, ta]
+        p2 = cds[:, tb]
+        p3 = cds[:, tc]
+        a, b, c = barycentric_coords(p, p1, p2, p3)
+
+        I = 3*(id-1) + 1
+        coeff_base = J * nodal_area1[id] / nodal_Ms[I] / unit_length
+
+        for (node, w) in zip((ta, tb, tc), (a, b, c))
+            if abs(w) > 1e-12
+                J_idx = 3 * (node - 1) + 1
+                coeff = coeff_base * w
+                for d in 0:2
+                    K[I+d, J_idx+d] += coeff
+                end
+            end
+        end
+    end
+
+    for id in fv2_unique
+        p = cds[:, id]
+        idx, _ = nn(kdtree1, p) 
+        ta, tb, tc = fv1[:, idx]
+        p1 = cds[:, ta]
+        p2 = cds[:, tb]
+        p3 = cds[:, tc]
+        a, b, c = barycentric_coords(p, p1, p2, p3)
+        
+        I = 3 * (id - 1) + 1
+        coeff_base = J * nodal_area2[id] / nodal_Ms[I]  / unit_length
+        
+        for (node, w) in zip((ta, tb, tc), (a, b, c))
+            if abs(w) > 1e-12
+                J_idx = 3 * (node - 1) + 1
+                coeff = coeff_base * w
+                for d in 0:2
+                    K[I+d, J_idx+d] += coeff
+                end
+            end
+        end
+    end
+
+    if default_backend[] != CPU()
+        rkky.K_matrix = GPUSparseMatrixCSC[](K)
+    end
+end
+
 
 
 function effective_field(zee::Zeeman, sim::MicroSimFE, spin::AbstractArray{T,1},
@@ -157,6 +260,22 @@ function effective_field(anis::Union{AnisotropyFE, ExchangeFE}, sim::MicroSimFE,
     v_coeff = 0.5 * mesh.unit_length^3
     back = default_backend[]
     zeeman_fe_kernel!(back, groupsize[])(spin, anis.field, anis.energy, sim.L_mu, T(v_coeff);
+                                      ndrange=N)
+
+    return nothing
+end
+
+function effective_field(rkky::InterlayerExchangeFE, sim::MicroSimFE,
+                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+    mesh = sim.mesh
+    N = sim.n_total
+
+    mul!(rkky.field, rkky.K_matrix, spin)
+    #rkky.field .*= mesh.L_inv_neg
+    
+    v_coeff = 0.5 * mesh.unit_length^3
+    back = default_backend[]
+    zeeman_fe_kernel!(back, groupsize[])(spin, rkky.field, rkky.energy, sim.L_mu, T(v_coeff);
                                       ndrange=N)
 
     return nothing

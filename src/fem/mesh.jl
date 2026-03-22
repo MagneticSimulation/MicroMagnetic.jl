@@ -68,9 +68,6 @@ function load_mesh_netgen_neutral(fname::String)
         mesh.cell_verts[4, i] = parse(Int64, x[5])
     end
 
-    close(io)
-
-    """
     N = parse(Int64, readline(io)) #finally it sould be the total surface number
     mesh.number_faces_bnd = N
     mesh.face_verts = zeros(Int64, 3, N)
@@ -83,7 +80,6 @@ function load_mesh_netgen_neutral(fname::String)
         mesh.face_verts[2, i] = parse(Int64, x[3])
         mesh.face_verts[3, i] = parse(Int64, x[4])
     end
-    """
     return mesh
 end
 
@@ -154,6 +150,76 @@ function build_boundary_surfaces!(mesh::FEMesh)
     end
 end
 
+"""
+Reorder the vertices of boundary faces to ensure outward-pointing normals.
+"""
+function reorder_surface_normals!(mesh::FEMesh)
+
+    if !isdefined(mesh, :face_verts) || !isdefined(mesh, :cell_verts) || !isdefined(mesh, :coordinates)
+        @warn("Mesh does not have required boundary information for reordering normals")
+        return false
+    end
+    
+    face_info = Dict{Tuple{Int,Int,Int}, Vector{Int}}()
+    
+    # Iterate through all tetrahedral elements to find boundary faces
+    for c in 1:mesh.number_cells
+        verts = mesh.cell_verts[:, c]
+        
+        # Generate the four faces of the tetrahedron with their opposite vertices
+        faces = [
+            (verts[1], verts[2], verts[3], verts[4]),
+            (verts[1], verts[2], verts[4], verts[3]),
+            (verts[1], verts[3], verts[4], verts[2]),
+            (verts[2], verts[3], verts[4], verts[1])
+        ]
+        
+        for face in faces
+            a, b, c, opp = face
+            # Create sorted key for the face
+            sorted_face = tuple(sort([a, b, c])...)
+            
+            # Add the opposite vertex to the face's information
+            if haskey(face_info, sorted_face)
+                push!(face_info[sorted_face], opp)
+            else
+                face_info[sorted_face] = [opp]
+            end
+        end
+    end
+    
+    # Reorder each boundary face to ensure correct normal orientation
+    for i in 1:mesh.number_faces_bnd
+        # Get the current face vertices
+        v1, v2, v3 = mesh.face_verts[:, i]
+        
+        # Find the face in our dictionary
+        sorted_face = tuple(sort([v1, v2, v3])...)
+        if !haskey(face_info, sorted_face)
+            continue  # Skip if face not found (shouldn't happen)
+        end
+        
+        # Get an opposite vertex from any containing tetrahedron
+        opp = face_info[sorted_face][1]
+        
+        # Get coordinates of the four points
+        a = mesh.coordinates[:, opp]
+        b = mesh.coordinates[:, v1]
+        c = mesh.coordinates[:, v2]
+        d = mesh.coordinates[:, v3]
+        
+        # Calculate the volume of the tetrahedron
+        vol = tet_volume(a, b, c, d)
+        
+        if vol < 0.0
+            println("Reorder face $i with vertices $v1, $v2, $v3")
+            mesh.face_verts[2, i], mesh.face_verts[3, i] = mesh.face_verts[3, i], mesh.face_verts[2, i]
+        end
+    end
+    
+    return true
+end
+
 function build_boundary_maps!(mesh::FEMesh)
     map_g2b = zeros(Int32, mesh.number_nodes)
     map_g2b .= -1
@@ -202,9 +268,10 @@ Create a FEMesh from the given netgen neutral file.
 function FEMesh(fname::String; unit_length=1e-9)
     mesh = load_mesh_netgen_neutral(fname)
     mesh.unit_length = unit_length
+    reorder_surface_normals!(mesh)
     compute_mesh_volume!(mesh)
     compute_L_inv_neg!(mesh)
-    build_boundary_surfaces!(mesh)
+    #build_boundary_surfaces!(mesh)
     build_boundary_maps!(mesh)
     return mesh
 end

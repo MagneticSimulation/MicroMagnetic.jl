@@ -126,7 +126,6 @@ function add_exch(sim::MicroSimFE, A::NumberOrArrayOrFunction; name="exch", meth
 
     init_scalar!(Spatial_A, sim.mesh, A)
 
-    # note that exch.K_matrix will be come to the GPU version if necessary
     assemble_exch_matirx(exch, sim)
 
     push!(sim.interactions, exch)
@@ -160,6 +159,46 @@ function add_demag(sim::MicroSimFE; name="demag", method="bem", kwargs...)
     end
 
     return demag
+end
+
+@doc raw"""
+    add_exch_int(sim::MicroSimFE, J::Number; s1=1, s2=2, name="rkky")
+
+Add an RKKY-type exchange interaction between layers. The energy of RKKY-type exchange is defined as
+
+```math
+E_\mathrm{rkky} =  - \int_\Gamma J_\mathrm{rkky} \mathbf{m}_{i} \cdot \mathbf{m}_{j} dA
+```
+where $\Gamma$ is the interface between magnetizations $\mathbf{m}_{i}$ and $\mathbf{m}_{j}$,
+and $J_\mathrm{rkky}$ is the coupling constant related to the spacer layer thickness.
+
+k1 and k2 are the surface IDs of the two layers, which can be specified in Netgen's .geo file, for example:
+```
+solid p1 = plane (0, 0, 1; 0, 0, -1) -bc=1;
+solid p2 = plane (0, 0, 2; 0, 0, 1) -bc=2;
+```
+
+For coupling between p1 and p2, set k1=1 and k2=2.
+"""
+function add_exch_int(sim::MicroSimFE, J::Number; k1=1, k2=2, name="exch_int")
+    n_total = sim.n_total
+    field = create_zeros(3 * n_total)
+    energy = create_zeros(n_total)
+
+    N = sim.n_total
+    #initialize a sparse matrix on CPU
+    K_mat = spzeros(3 * N, 3 * N)
+
+    rkky = InterlayerExchangeFE(J, Int32(k1), Int32(k2), field, energy, K_mat, name)
+
+    assemble_rkky_matirx(rkky, sim)
+
+    push!(sim.interactions, rkky)
+
+    if sim.save_data
+        push!(sim.saver.items, SaverItem(string("E_", name), "<J>", o::AbstractSim -> sum(rkky.energy)))
+    end
+    return rkky
 end
 
 

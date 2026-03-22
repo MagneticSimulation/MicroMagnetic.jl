@@ -403,6 +403,9 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
 
     # to dertermine which driver is used.
     llg_driver = isa(sim.driver, LLG)
+    if isa(sim, MicroSimFE)
+        output = "vtu"
+    end
 
     time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
@@ -461,8 +464,10 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         if (save_m_every > 0 && i % save_m_every == 0) || (stop_flag && save_m_every == 0)
             if output == "ovf"
                 save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
-            elseif output == "vts" || output == "vtu"
+            elseif output == "vts"
                 save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
+            elseif output == "vtu"
+                save_vtk(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
             end
         end
 

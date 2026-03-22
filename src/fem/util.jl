@@ -1,3 +1,5 @@
+using StaticArrays
+
 @inline function distance(x1::Array{Float64,1}, x2::Array{Float64,1})
     x = x1 .- x2
     return norm2(x)
@@ -42,6 +44,25 @@ function triangle_area(x1::Array{Float64,1}, x2::Array{Float64,1}, x3::Array{Flo
     s = (s1 + s2 + s3) / 2.0
     area = sqrt(s * (s - s1) * (s - s2) * (s - s3))
     return area
+end
+
+function barycentric_coords(p, p1, p2, p3)
+    p_s = SVector{3}(p)
+    p1_s = SVector{3}(p1)
+    p2_s = SVector{3}(p2)
+    p3_s = SVector{3}(p3)
+    
+    A = @SMatrix [p1_s[1]-p3_s[1]  p2_s[1]-p3_s[1];
+                  p1_s[2]-p3_s[2]  p2_s[2]-p3_s[2];
+                  p1_s[3]-p3_s[3]  p2_s[3]-p3_s[3]]
+    
+    b = @SVector [p_s[1]-p3_s[1], p_s[2]-p3_s[2], p_s[3]-p3_s[3]]
+    
+    AtA = A' * A 
+    Atb = A' * b  
+    ab = AtA \ Atb 
+    
+    return (ab[1], ab[2], 1 - ab[1] - ab[2])
 end
 
 function cross3(x::Array{Float64,1}, y::Array{Float64,1})
@@ -295,6 +316,9 @@ function assemble_mass_matirx(mesh)
 
     return M
 end
+
+
+
 
 function compute_character_length(mesh)
     v = sum(mesh.volumes) / length(mesh.volumes)
