@@ -271,7 +271,6 @@ function effective_field(rkky::InterlayerExchangeFE, sim::MicroSimFE,
     N = sim.n_total
 
     mul!(rkky.field, rkky.K_matrix, spin)
-    #rkky.field .*= mesh.L_inv_neg
     
     v_coeff = 0.5 * mesh.unit_length^3
     back = default_backend[]

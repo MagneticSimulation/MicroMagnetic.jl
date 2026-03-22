@@ -36,6 +36,11 @@ function test_FDMesh()
     @test isapprox(mesh.dx * 1.0, 1.1e-9, rtol=1e-7)
     @test mesh.nx == 10
     @test isapprox(mesh.volume * 1.0, 1.1e-27, rtol=1e-7)
+
+    @test all(mesh.regions .== 0)
+    set_region(mesh, 10, i=1:3:10)
+    @test all(mesh.regions[1:3:10] .== 10)
+
 end
 
 function test_set_region()
@@ -43,7 +48,7 @@ function test_set_region()
 
     sphere = Sphere(radius=10e-9, center=(10e-9, 10e-9, 0))
     
-    set_region(mesh, sphere, 1)
+    set_region(mesh, 1, sphere)
     
     regions = Array(mesh.regions)
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
