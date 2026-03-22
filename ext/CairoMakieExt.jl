@@ -313,18 +313,19 @@ General time series plotting function
 # Arguments
 - `filename`: Data file name
 - `keys`: Data column keys to plot
-- `x_key`: Time column key, default is "time"
-- `x_unit`: Time unit conversion factor, default is 1e9 (seconds to nanoseconds)
+- `x_key`: X-axis column key, default is "time"
+- `x_unit`: X-axis data unit conversion factor, default is 1e9 (seconds to nanoseconds)
 - `y_units`: Y-axis data unit conversion factors for each key, same order as `keys`
 - `plot_type`: Plot type, `:lines`, `:scatter`, `:scatterlines`, `:linesmarkers`
 - `legend_position`: Legend position, `:rt`(top right), `:lt`(top left), `:rb`(bottom right), `:lb`(bottom left)
 - `colors`: Custom color sequence
 - `linestyles`: Custom line style sequence
 - `transparency`: Whether to use transparent background
+- `mirror_loop`: Whether to plot mirrored loop by reflecting the data (-x, -y) for hysteresis visualization (default: false)
 
 # Examples
 ```julia
-# Plot magnetization components
+# Plot magnetization components over time
 plot_ts("std4_llg.txt", ["m_x", "m_y", "m_z"]; 
         xlabel="Time (ns)", ylabel="m", plot_type=:scatter)
 
@@ -337,13 +338,19 @@ plot_ts("std5_llg.txt", ["cx", "cy"];
 plot_ts("data.txt", ["A", "B", "C"]; 
         colors=[:red, :blue, :green],
         linestyles=[:solid, :dash, :dot])
+
+# Plot hysteresis loop
+plot_ts("sw_sd.txt", ["mx"]; 
+        x_key="H", x_unit=1, xlabel="H (A/m)", ylabel="mx", 
+        plot_type=:scatterlines, mirror_loop=true)
 ```
 """
 function MicroMagnetic.plot_ts(filename::String, keys::Vector{String}; 
                 x_key::String="time", x_unit::Real=1e9, y_units::Vector=[],
                 size=(400, 280), title="", xlabel="", ylabel="", 
                 plot_type=:scatterlines, markersize=6, legend_position=:rt,
-                colors=nothing, linestyles=nothing, transparency=false)
+                colors=nothing, linestyles=nothing, transparency=false, 
+                mirror_loop=false)
     
     # Load data
     data, unit = MicroMagnetic.read_table(filename)
@@ -353,8 +360,8 @@ function MicroMagnetic.plot_ts(filename::String, keys::Vector{String};
     fig = Figure(; size=size, backgroundcolor=bg_color)
     ax = Axis(fig[1, 1]; xlabel=xlabel, ylabel=ylabel, title=title, backgroundcolor=bg_color)
     
-    # Time data
-    time_data = data[x_key] .* x_unit
+    # X-axis data
+    x_data = data[x_key] .* x_unit
     
     # Default colors and line styles
     default_colors = [:slateblue1, :sienna1, :seagreen2, :tomato1, :gold1,
@@ -380,15 +387,29 @@ function MicroMagnetic.plot_ts(filename::String, keys::Vector{String};
         
         # Plot according to plot type
         if plot_type == :lines
-            lines!(ax, time_data, y_data; color=color, linestyle=linestyle, label=key)
+            lines!(ax, x_data, y_data; color=color, linestyle=linestyle, label=key)
+            if mirror_loop
+                lines!(ax, -x_data, -y_data; color=color, linestyle=linestyle)
+            end
         elseif plot_type == :scatter
-            scatter!(ax, time_data, y_data; color=color, markersize=markersize, label=key)
+            scatter!(ax, x_data, y_data; color=color, markersize=markersize, label=key)
+            if mirror_loop
+                scatter!(ax, -x_data, -y_data; color=color, markersize=markersize)
+            end
         elseif plot_type == :scatterlines
-            scatterlines!(ax, time_data, y_data; color=color, markersize=markersize, 
+            scatterlines!(ax, x_data, y_data; color=color, markersize=markersize, 
                          linestyle=linestyle, label=key)
+            if mirror_loop
+                scatterlines!(ax, -x_data, -y_data; color=color, markersize=markersize, 
+                             linestyle=linestyle)
+            end
         elseif plot_type == :linesmarkers
-            lines!(ax, time_data, y_data; color=color, linestyle=linestyle, label=key)
-            scatter!(ax, time_data, y_data; color=color, markersize=markersize)
+            lines!(ax, x_data, y_data; color=color, linestyle=linestyle, label=key)
+            scatter!(ax, x_data, y_data; color=color, markersize=markersize)
+            if mirror_loop
+                lines!(ax, -x_data, -y_data; color=color, linestyle=linestyle)
+                scatter!(ax, -x_data, -y_data; color=color, markersize=markersize)
+            end
         else
             error("Unknown plot_type: $plot_type. Use :lines, :scatter, :scatterlines, or :linesmarkers")
         end

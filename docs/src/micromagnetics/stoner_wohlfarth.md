@@ -6,7 +6,6 @@ ShareDefaultModule = true
 
 link: <https://en.wikipedia.org/wiki/Stoner%E2%80%93Wohlfarth_model>
 
-
 When the size of the studied system is below the exchange length, the magnetization of the system is uniform
 and thus can be described using a single 3d vector. In this situation, the demagnetization field can be calculated
 by simply multiplying the demagnetization tensor and the magnetization. Therefore, the demagnetization energy is
@@ -51,54 +50,37 @@ We create a mesh for a cubic geometry 4nm x 4nm x 4nm
 mesh = FDMesh(; nx=4, ny=4, nz=4, dx=1e-9, dy=1e-9, dz=1e-9);
 nothing #hide
 ````
-
-Define simulation parameters. See [High-Level Interface](@ref).
-
+We create a simulation instance with the LLG driver and the BS23 integrator.
 ````@example
-args = (
-    name = "sw",
-    task = "Relax",
-    mesh = mesh,
-    Ms=1.0e6,
-    A=1.3e-11,
-    m0=(-1, 1, 0),
-    Ku=5e4,
-    axis=(1, 1, 0),
-    stopping_dmdt = 0.05,
-    H_s = [(i*1mT, 0, 0) for i=-100:5:100]
-);
+sim = Sim(mesh, driver="LLG", integrator="BS23", name="SW")
 
-sim_with(args);
+sim.driver.alpha = 0.5
+sim.driver.integrator.tol = 1e-7
+
+set_Ms(sim, 1e6)
+init_m0(sim, (-1,1,0))
+    
+add_exch(sim, 1.3e-11)
+add_anis(sim, 5e4, axis=(1, 1, 0))
+add_zeeman(sim, (0,0,0))
 nothing #hide
 ````
 
-For the used anisotropy $K_u=5e4$ A/m$^3$, the expected switch field is $H_c = (1/2) H_K = 39788.7$ A/m.
-We plot the hysteresis loops using the following function
+We use the `hysteresis` function to simulate the hysteresis loops.
+````@example
+Hs = [i*mT for i=-100:5:100]
+hysteresis(sim, Hs, direction=(1,0,0), full_loop=false, stopping_dmdt=0.05, output="vts")
+nothing #hide
+````
+
+For the used anisotropy $K_u=5\times 10^4$ A/m$^3$, the expected switch field is $H_c = (1/2) H_K = 39788.7$ A/m.
+We plot the hysteresis loops using the `plot_ts` function
 
 ````@example
-using DelimitedFiles
 using CairoMakie
-
-function plot_loop()
-    data = readdlm("./sw_sd.txt"; skipstart=2)
-    m, H = data[:, 3], data[:, 8]
-
-    fig = Figure(; size=(400, 280), backgroundcolor = :transparent )
-    ax = Axis(fig[1, 1]; xlabel="H (A/m)", ylabel="mx", backgroundcolor = :transparent)
-
-    scatterlines!(ax, H, m; markersize=8, color=:blue, markercolor=:orange)
-    scatterlines!(ax, -H, -m; markersize=8, color=:blue, markercolor=:orange)
-
-    expected = 39788.736 # A/m
-    vlines!(ax, [expected, -expected]; color=:red, linestyle=:dash)
-
-    return fig
-end
-
-fig = plot_loop()
+fig = plot_ts("SW_llg.txt", x_key="Hx", ["m_x", "m_y"], x_unit=1/mT, xlabel="H (mT)", ylabel="m", mirror_loop=true);
 ````
 
 ```@setup
 save("../public/sw.png", fig)
 ```
-

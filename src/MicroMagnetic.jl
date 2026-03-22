@@ -190,10 +190,11 @@ end
 function ovf2png end
 function plot_m end
 function plot_ts end
+function plot_hysteresis end
 function ovf2movie end
 function dynamic_matrix end
 
-export ovf2png, plot_m, plot_ts, ovf2movie, dynamic_matrix
+export ovf2png, plot_m, plot_ts, plot_hysteresis, ovf2movie, dynamic_matrix
 
 include("server.jl")
 include("const.jl")

@@ -26,10 +26,16 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 
     if sim.save_data
         if isa(H0, Tuple) && length(H0) == 3
-            field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
-                                    string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
-                                   o::AbstractSim -> zeeman.H0)
-            push!(sim.saver.items, field_item)
+            if name == "zeeman" #if the name is standard zeeman, then save Hx, Hy, Hz
+                field_item = SaverItem(("Hx", "Hy", "Hz"), ("<A/m>", "<A/m>", "<A/m>"),
+                                       o::AbstractSim -> zeeman.H0)
+                push!(sim.saver.items, field_item)
+            else
+                field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
+                                        string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
+                                       o::AbstractSim -> zeeman.H0)
+                push!(sim.saver.items, field_item)
+            end
         end
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
