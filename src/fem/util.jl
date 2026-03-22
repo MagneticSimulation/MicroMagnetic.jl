@@ -1,4 +1,4 @@
-using StaticArrays
+using StaticArrays, NearestNeighbors
 
 @inline function distance(x1::Array{Float64,1}, x2::Array{Float64,1})
     x = x1 .- x2
@@ -324,4 +324,72 @@ function compute_character_length(mesh)
     v = sum(mesh.volumes) / length(mesh.volumes)
 
     return v^(1 / 3)
+end
+
+function compute_tetrahedron_centers(mesh::FEMesh)
+    """
+    Compute the centers of all tetrahedrons in the mesh.
+    
+    Parameters:
+        - mesh: The finite element mesh
+    
+    Returns:
+        - centers: 3×N matrix of tetrahedron centers, where N is number of cells
+    """
+    centers = zeros(3, mesh.number_cells)
+    
+    for cell_id in 1:mesh.number_cells
+        # Get the four vertices of the tetrahedron
+        v1 = mesh.coordinates[:, mesh.cell_verts[1, cell_id]]
+        v2 = mesh.coordinates[:, mesh.cell_verts[2, cell_id]]
+        v3 = mesh.coordinates[:, mesh.cell_verts[3, cell_id]]
+        v4 = mesh.coordinates[:, mesh.cell_verts[4, cell_id]]
+        
+        # Compute the center as the average of the four vertices
+        centers[:, cell_id] = (v1 + v2 + v3 + v4) / 4.0
+    end
+    
+    return centers
+end
+
+function barycentric_coords(p, v1, v2, v3, v4)
+    p_s = SVector{3}(p)
+    v1_s = SVector{3}(v1)
+    v2_s = SVector{3}(v2)
+    v3_s = SVector{3}(v3)
+    v4_s = SVector{3}(v4)
+    
+    # Create transformation matrix as SMatrix
+    A = @SMatrix [v2_s[1]-v1_s[1] v3_s[1]-v1_s[1] v4_s[1]-v1_s[1];
+                  v2_s[2]-v1_s[2] v3_s[2]-v1_s[2] v4_s[2]-v1_s[2];
+                  v2_s[3]-v1_s[3] v3_s[3]-v1_s[3] v4_s[3]-v1_s[3]]
+    
+    b = p_s - v1_s
+    r = A \ b
+    return (1-r[1]-r[2]-r[3], r[1], r[2], r[3])
+end
+
+function find_containing_tetrahedron(mesh::FEMesh, point::AbstractVector, 
+                                          kdtree::KDTree, centers::Matrix{Float64}, 
+                                          k::Int=10)
+    """
+    Fast version using pre-built KDTree.
+    """
+    # Find k nearest tetrahedron centers
+    candidate_ids, _ = knn(kdtree, point, k, true)
+    
+    for cell_id in candidate_ids
+        v1 = mesh.coordinates[:, mesh.cell_verts[1, cell_id]]
+        v2 = mesh.coordinates[:, mesh.cell_verts[2, cell_id]]
+        v3 = mesh.coordinates[:, mesh.cell_verts[3, cell_id]]
+        v4 = mesh.coordinates[:, mesh.cell_verts[4, cell_id]]
+        
+        α, β, γ, δ = barycentric_coords(point, v1, v2, v3, v4)
+        
+        if α >= -1e-12 && β >= -1e-12 && γ >= -1e-12 && δ >= -1e-12
+            return cell_id, (α, β, γ, δ)
+        end
+    end
+    
+    return -1, nothing
 end

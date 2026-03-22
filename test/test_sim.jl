@@ -59,7 +59,7 @@ function test_region_map()
     # Integration with set_region and set_Ms
     mesh = FDMesh(nx=10, ny=10, nz=1, dx=5e-9, dy=5e-9, dz=5e-9)
     circle = Cylinder(center=(0, 0, 0), radius=20e-9, height=10e-9, normal=(0, 0, 1))
-    set_region(mesh, circle, 1)
+    set_region(mesh, 1, circle)
     
     # Verify set_region worked correctly
     regions = Array(mesh.regions)

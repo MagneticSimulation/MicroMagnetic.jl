@@ -1,4 +1,5 @@
 using Printf
+export interpolate_field
 
 function set_Ms(sim::MicroSimFE, Ms::NumberOrArray)
     sim.mu0_Ms .= mu_0 * Ms
@@ -201,6 +202,86 @@ function add_exch_int(sim::MicroSimFE, J::Number; k1=1, k2=2, name="exch_int")
     return rkky
 end
 
+
+"""
+    interpolate_field(mesh::FEMesh, field::AbstractVector{T}, points::AbstractMatrix{T}) where T 
+
+Interpolate a field (vector or scalar) at multiple points.
+    
+Parameters:
+- mesh: The FEMesh
+- field: The field data (vector: size 3*N, scalar: size N)
+- points: 3×M matrix of point coordinates
+
+**Examples:**
+```julia
+mesh = FEMesh("meshes/cylinder.mesh")
+spin = Array(sim.spin)
+points = hcat([0.5, 0.4, 1.1], [1.6, 0.5, 2.4])
+f = interpolate_field(mesh, spin, points)
+```
+"""
+function interpolate_field(mesh::FEMesh, field::AbstractVector{T}, 
+                          points::AbstractMatrix{T}) where T
+
+    # Precompute tetrahedron centers once (always needed)
+    centers = compute_tetrahedron_centers(mesh)
+    
+    # Determine if field is vector or scalar
+    is_vector_field = length(field) == 3 * mesh.number_nodes
+    M = size(points, 2)
+    
+    # Initialize output
+    if is_vector_field
+        values = zeros(3, M)
+    else
+        values = zeros(M)
+    end
+    
+    # Build KDTree once for all points
+    kdtree = KDTree(centers)
+    
+    # Process each point
+    for i in 1:M
+        point = points[:, i]
+        
+        # Find containing tetrahedron using KDTree
+        cell_id, bary = find_containing_tetrahedron(mesh, point, kdtree, centers)
+        
+        if cell_id == -1
+            error("Point (x=", point[1], ", y=", point[2], ", z=", point[3], ") is outside the mesh")
+        end
+        
+        α, β, γ, δ = bary
+        v_ids = mesh.cell_verts[:, cell_id]
+        
+        if is_vector_field
+            # Vector field interpolation
+            for comp in 1:3
+                f1 = field[3*(v_ids[1]-1) + comp]
+                f2 = field[3*(v_ids[2]-1) + comp]
+                f3 = field[3*(v_ids[3]-1) + comp]
+                f4 = field[3*(v_ids[4]-1) + comp]
+                values[comp, i] = α*f1 + β*f2 + γ*f3 + δ*f4
+            end
+        else
+            # Scalar field interpolation
+            f1 = field[v_ids[1]]
+            f2 = field[v_ids[2]]
+            f3 = field[v_ids[3]]
+            f4 = field[v_ids[4]]
+            values[i] = α*f1 + β*f2 + γ*f3 + δ*f4
+        end
+    end
+    
+    return values
+end
+
+function interpolate_field(mesh::FEMesh, field::AbstractVector{T}, point::AbstractVector{T}) where T
+    points = reshape(point, 3, 1)
+    result = interpolate_field(mesh, field, points)
+    return result[:, 1]
+end
 
 function save_inp(sim::MicroSimFE, fname::String)
     mesh = sim.mesh
