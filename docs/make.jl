@@ -20,7 +20,8 @@ Micromagnetic = ["Nanobar" => "micromagnetics/nanobar.md",
                  "Dynamical susceptibility" => "micromagnetics/chi.md"]
 
 FE = ["Magnetized Sphere" => "fem/sphere_demag.md",
-      "RKKY interaction" => "fem/rkky.md"]
+      "RKKY interaction" => "fem/rkky.md",
+      "Hysteresis Loop" => "fem/hysteresis.md"]
 
 API = ["api.md", "api_dev.md"]
 
