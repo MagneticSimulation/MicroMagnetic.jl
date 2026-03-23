@@ -66,8 +66,7 @@ First, import MicroMagnetic and create the mesh:
 using MicroMagnetic
 using CairoMakie
 
-filepath = joinpath(@__DIR__, "meshes/nanorod.mesh")
-mesh = FEMesh(filepath, unit_length=1e-9);
+mesh = FEMesh("meshes/nanorod.mesh", unit_length=1e-9);
 nothing #hide
 ````
 
