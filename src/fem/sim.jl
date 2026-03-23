@@ -163,7 +163,7 @@ function add_demag(sim::MicroSimFE; name="demag", method="bem", kwargs...)
 end
 
 @doc raw"""
-    add_exch_int(sim::MicroSimFE, J::Number; s1=1, s2=2, name="rkky")
+    add_exch_int(sim::MicroSimFE, J::Number; k1=1, k2=2, name="rkky")
 
 Add an RKKY-type exchange interaction between layers. The energy of RKKY-type exchange is defined as
 
@@ -176,10 +176,15 @@ and $J_\mathrm{rkky}$ is the coupling constant related to the spacer layer thick
 k1 and k2 are the surface IDs of the two layers, which can be specified in Netgen's .geo file, for example:
 ```
 solid p1 = plane (0, 0, 1; 0, 0, -1) -bc=1;
-solid p2 = plane (0, 0, 2; 0, 0, 1) -bc=2;
+solid p2 = plane (0, 0, 2; 0, 0, 1) -bc=5;
 ```
 
-For coupling between p1 and p2, set k1=1 and k2=2.
+Suppose the RKKY coupling between p1 and p2 is J = -1e-4 J/m^2. We can use the following example to add the RKKY interaction:
+
+**Examaple**
+```julia
+add_exch_int(sim, -1e-4; k1=1, k2=5)
+```
 """
 function add_exch_int(sim::MicroSimFE, J::Number; k1=1, k2=2, name="exch_int")
     n_total = sim.n_total
@@ -246,10 +251,13 @@ function interpolate_field(mesh::FEMesh, field::AbstractVector{T},
         point = points[:, i]
         
         # Find containing tetrahedron using KDTree
-        cell_id, bary = find_containing_tetrahedron(mesh, point, kdtree, centers)
+        cell_id, bary = find_containing_tetrahedron(mesh, point, kdtree)
         
         if cell_id == -1
-            error("Point (x=", point[1], ", y=", point[2], ", z=", point[3], ") is outside the mesh")
+            cell_id, bary = find_containing_tetrahedron_all_cells(mesh, point)
+            if cell_id == -1
+                error("Point (x=", point[1], ", y=", point[2], ", z=", point[3], ") is outside the mesh")
+            end
         end
         
         α, β, γ, δ = bary
@@ -275,6 +283,15 @@ function interpolate_field(mesh::FEMesh, field::AbstractVector{T},
     end
     
     return values
+end
+
+function MicroMagnetic.interpolate_field(mesh::FEMesh, field::AbstractVector{T}, points::Vector{Vector{T}}) where T
+    M = length(points)
+    point_matrix = Matrix{T}(undef, 3, M)
+    for i in 1:M
+        point_matrix[:, i] = points[i]
+    end
+    return interpolate_field(mesh, field, point_matrix)
 end
 
 function interpolate_field(mesh::FEMesh, field::AbstractVector{T}, point::AbstractVector{T}) where T

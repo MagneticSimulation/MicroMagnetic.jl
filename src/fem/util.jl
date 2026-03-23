@@ -370,8 +370,7 @@ function barycentric_coords(p, v1, v2, v3, v4)
 end
 
 function find_containing_tetrahedron(mesh::FEMesh, point::AbstractVector, 
-                                          kdtree::KDTree, centers::Matrix{Float64}, 
-                                          k::Int=10)
+                                          kdtree::KDTree, k::Int=10)
     """
     Fast version using pre-built KDTree.
     """
@@ -379,6 +378,24 @@ function find_containing_tetrahedron(mesh::FEMesh, point::AbstractVector,
     candidate_ids, _ = knn(kdtree, point, k, true)
     
     for cell_id in candidate_ids
+        v1 = mesh.coordinates[:, mesh.cell_verts[1, cell_id]]
+        v2 = mesh.coordinates[:, mesh.cell_verts[2, cell_id]]
+        v3 = mesh.coordinates[:, mesh.cell_verts[3, cell_id]]
+        v4 = mesh.coordinates[:, mesh.cell_verts[4, cell_id]]
+        
+        α, β, γ, δ = barycentric_coords(point, v1, v2, v3, v4)
+        
+        if α >= -1e-12 && β >= -1e-12 && γ >= -1e-12 && δ >= -1e-12
+            return cell_id, (α, β, γ, δ)
+        end
+    end
+    
+    return -1, nothing
+end
+
+function find_containing_tetrahedron_all_cells(mesh::FEMesh, point::AbstractVector)
+    
+    for cell_id in 1:mesh.number_cells
         v1 = mesh.coordinates[:, mesh.cell_verts[1, cell_id]]
         v2 = mesh.coordinates[:, mesh.cell_verts[2, cell_id]]
         v3 = mesh.coordinates[:, mesh.cell_verts[3, cell_id]]

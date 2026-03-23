@@ -19,7 +19,9 @@ Micromagnetic = ["Nanobar" => "micromagnetics/nanobar.md",
                  "Stoner-Wohlfarth model" => "micromagnetics/stoner_wohlfarth.md",
                  "Dynamical susceptibility" => "micromagnetics/chi.md"]
 
-FE = ["Magnetized Sphere" => "fem/sphere_demag.md"]
+FE = ["Magnetized Sphere" => "fem/sphere_demag.md",
+      "RKKY interaction" => "fem/rkky.md"]
+
 API = ["api.md", "api_dev.md"]
 
 Miscellaneous = ["Skyrmion Phase (Monte Carlo)" => "monte_carlo/skyrmion.md",
