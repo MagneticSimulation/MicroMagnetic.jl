@@ -66,7 +66,7 @@ First, import MicroMagnetic and create the mesh:
 using MicroMagnetic
 using CairoMakie
 
-mesh = FEMesh("meshes/nanorod.mesh", unit_length=1e-9);
+mesh = FEMesh("./meshes/nanorod.mesh", unit_length=1e-9);
 nothing #hide
 ````
 
@@ -127,8 +127,9 @@ end
 
 fig = plot_magnetization_angle(zs, phi)
 ````
-We can observe that $phi$ decays with position and reaches a maximum value of 25.246 degrees.
-For the case $h_x=4$ and $j=2$, we can numerically solve the equation to obtain $hi = 26.25^irc$, which agrees well with the numerical results.
+
+We can observe that $\phi$ decays with position and reaches a maximum value of 25.246 degrees.
+For the case $h_x=4$ and $j=2$, we can numerically solve the equation to obtain $\phi = 26.25^irc$, which agrees well with the numerical results.
 
 ## Download
 
