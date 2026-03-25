@@ -1,0 +1,20 @@
+FROM ghcr.io/juliagpu/cuda.jl:dev-julia1.11-cuda12
+
+LABEL org.opencontainers.image.authors="Weiwei Wang" \
+      org.opencontainers.image.description="MicroMagnetic.jl with CUDA support" \
+      org.opencontainers.image.title="MicroMagnetic.jl" \
+      org.opencontainers.image.source="https://github.com/MagneticSimulation/MicroMagnetic.jl" \
+      org.opencontainers.image.licenses="MIT"
+
+# Install MicroMagnetic.jl and common dependencies
+RUN julia -e 'using Pkg; Pkg.add(url="https://github.com/MagneticSimulation/MicroMagnetic.jl.git", rev="master"); using MicroMagnetic'
+
+
+# Set the working directory
+WORKDIR /workspace
+
+# Volume mounts for data persistence
+VOLUME ["/depot", "/workspace"]
+
+# Default command to start Julia
+CMD ["julia"]
