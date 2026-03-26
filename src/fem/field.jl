@@ -217,6 +217,7 @@ function assemble_rkky_matirx(rkky::InterlayerExchangeFE, sim::MicroSimFE)
         a, b, c = barycentric_coords(p, p1, p2, p3)
         
         I = 3 * (id - 1) + 1
+       
         coeff_base = J * nodal_area2[id] / nodal_Ms[I]  / unit_length
         
         for (node, w) in zip((ta, tb, tc), (a, b, c))

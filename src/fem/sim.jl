@@ -1,20 +1,21 @@
 using Printf
 export interpolate_field
 
-function set_Ms(sim::MicroSimFE, Ms::NumberOrArray)
-    sim.mu0_Ms .= mu_0 * Ms
-    compute_L_Ms!(sim.L_mu, sim.mesh, sim.mu0_Ms)
-    return true
-end
+function set_Ms(sim::MicroSimFE, Ms::NumberOrArrayOrFunction; region_id=-1)
+    Ms_array = zeros(Float64, sim.n_cells)
+    init_scalar!(Ms_array, sim.mesh, Ms)
 
-function set_Ms(sim::MicroSimFE, Ms::Number; region_id=1)
-    mesh = sim.mesh
     mu0_Ms = Array(sim.mu0_Ms)
-    for i in 1:mesh.number_cells
-        if mesh.region_ids[i] == region_id
-            mu0_Ms[i] = mu_0 * Ms
+    if region_id >= 0
+        for i in 1:mesh.number_cells
+            if mesh.region_ids[i] == region_id
+                mu0_Ms[i] = mu_0 * Ms_array[i]
+            end
         end
+    else
+        mu0_Ms .= mu_0 .* Ms_array
     end
+
     sim.mu0_Ms .= mu0_Ms
     compute_L_Ms!(sim.L_mu, sim.mesh, sim.mu0_Ms)
     return true
