@@ -42,9 +42,13 @@ assemble the exchange matrix used for calculating the exchange field in the FEM 
 function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
     mesh = sim.mesh
     unit_length = mesh.unit_length
-    K = exch.K_matrix
     A = exch.A
     mu0_Ms = sim.mu0_Ms
+    
+    T = Float64
+    I = Int64[]
+    J = Int64[]
+    V = T[]
 
     for c in 1:(mesh.number_cells)
         if mu0_Ms[c] < eps()
@@ -70,10 +74,21 @@ function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
                  (bcd[i] * bcd[j] + bcd[i + 1] * bcd[j + 1] + bcd[i + 2] * bcd[j + 2])
 
             for k in 1:3
-                K[v[alpha + 1] + k, v[beta + 1] + k] += fa
+                push!(I, v[alpha + 1] + k)
+                push!(J, v[beta + 1] + k)
+                push!(V, fa)
             end
         end
     end
+    
+    # Construct the sparse matrix from COO arrays
+    N = mesh.number_nodes
+    K = sparse(I, J, V, 3*N, 3*N)
+    
+    # Update the exchange matrix
+    exch.K_matrix = K
+    
+    # Handle GPU conversion if needed
     if default_backend[] != CPU()
         exch.K_matrix = GPUSparseMatrixCSC[](K)
     end
