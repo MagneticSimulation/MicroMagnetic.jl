@@ -25,17 +25,15 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
     push!(sim.interactions, zeeman)
 
     if sim.save_data
-        if isa(H0, Tuple) && length(H0) == 3
-            if name == "zeeman" #if the name is standard zeeman, then save Hx, Hy, Hz
-                field_item = SaverItem(("Hx", "Hy", "Hz"), ("<A/m>", "<A/m>", "<A/m>"),
-                                       o::AbstractSim -> zeeman.H0)
-                push!(sim.saver.items, field_item)
-            else
-                field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
-                                        string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
-                                       o::AbstractSim -> zeeman.H0)
-                push!(sim.saver.items, field_item)
-            end
+        if name == "zeeman" #if the name is standard zeeman, then save Hx, Hy, Hz
+            field_item = SaverItem(("Hx", "Hy", "Hz"), ("<A/m>", "<A/m>", "<A/m>"),
+                                    o::AbstractSim -> zeeman.H0)
+            push!(sim.saver.items, field_item)
+        else
+            field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
+                                    string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
+                                    o::AbstractSim -> zeeman.H0)
+            push!(sim.saver.items, field_item)
         end
         push!(sim.saver.items,
               SaverItem(string("E_", name), "<J>",
@@ -48,7 +46,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
 end
 
 """
-    update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
+    update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; H0_output=nothing, name="zeeman")
 
 Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its name. For example,
 
@@ -56,8 +54,10 @@ Set the Zeeman field to H0 where H0 is TupleOrArrayOrFunction according to its n
    add_zeeman(sim, (0,0,0), name="my_H")  #create a zeeman energy with field (0,0,0) A/m
    update_zeeman(sim, (0,0,1e5), name="my_H")  #change the field to (0,0,1e5) A/m
 ```
+
+H0_output is a tuple of 3 numbers that specifies the field components that will be saved into text files.
 """
-function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
+function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; H_output=nothing, name="zeeman")
     n_total = sim.n_total
     T = Float[]
     field = zeros(T, 3 * n_total)
@@ -66,7 +66,9 @@ function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeema
     for i in sim.interactions
         if i.name == name
             copyto!(i.field, field)
-            if isa(H0, Tuple)
+            if H_output !== nothing
+                i.H0 = H_output
+            elseif isa(H0, Tuple)
                 i.H0 = H0
             end
             return nothing

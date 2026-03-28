@@ -650,6 +650,7 @@ Compute magnetic hysteresis loop by applying a sequence of external magnetic fie
 - `max_steps::Int=50000`: Maximum number of relaxation steps
 - `output::String="ovf"`: Output format for data saving
 - `full_loop::Bool=true`: If true, applies fields in reverse order after completing forward sweep
+- `H_output::Array=nothing`: Array of tuple with each tuple has 3 numbers that specifies the field components, the length should the same as Hs.
 
 # Examples
 ```julia
@@ -660,9 +661,19 @@ hysteresis(sim, Hs; full_loop=true)
 # Apply field along y-direction
 hysteresis(sim, Hs, direction=(0, 1, 0))
 ```
+
+Note that `Hs` can be an array of numbers, tuples of 3 numbers, arrays, or even functions,
+because the `update_zeeman` function accepts `TupleOrArrayOrFunction`. In such cases, the `direction` parameter is ignored.
+
+```julia
+# Create hysteresis loop with field sweep from -100 mT to 100 mT along y-direction
+Hs = [(0, i*mT, 0) for i = -100:10:100]
+hysteresis(sim, Hs; full_loop=true)
+```
+
 """
 function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0, 0),
-                    stopping_dmdt=0.1, max_steps=50000, output="ovf", full_loop=true)
+                    stopping_dmdt=0.1, max_steps=50000, output="ovf", full_loop=true, H_output=nothing)
 
     output_folder = @sprintf("%s_hysteresis", sim.name)
     mkpath(output_folder)
@@ -670,10 +681,15 @@ function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0
     norm = (direction[1]^2 + direction[2]^2 + direction[3]^2)^0.5
     stage = 1
     for (i, H) in enumerate(Hs)
-        Hx = H * direction[1] / norm
-        Hy = H * direction[2] / norm
-        Hz = H * direction[3] / norm
-        update_zeeman(sim, (Hx, Hy, Hz))
+        if isa(H, Number)
+            Hx = H * direction[1] / norm
+            Hy = H * direction[2] / norm
+            Hz = H * direction[3] / norm
+            update_zeeman(sim, (Hx, Hy, Hz))
+        else
+            update_zeeman(sim, H, H_output=H_output[i])
+        end
+        
         relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, save_m_every=-1)
         if output == "ovf"
             save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", stage)))
@@ -687,11 +703,16 @@ function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0
         return
     end
     
+    H_output_rev = reverse(H_output)
     for (i, H) in enumerate(reverse(Hs))
-        Hx = H * direction[1] / norm
-        Hy = H * direction[2] / norm
-        Hz = H * direction[3] / norm
-        update_zeeman(sim, (Hx, Hy, Hz))
+        if isa(H, Number)
+            Hx = H * direction[1] / norm
+            Hy = H * direction[2] / norm
+            Hz = H * direction[3] / norm
+            update_zeeman(sim, (Hx, Hy, Hz))
+        else
+            update_zeeman(sim, H, H_output=H_output_rev[i])
+        end
         relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, save_m_every=-1)
         if output == "ovf"
             save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", stage)))
@@ -1159,12 +1180,3 @@ end
 function advance_step(sim::AbstractSim)
     return advance_step(sim, sim.driver.integrator)
 end
-
-
-
-
-
-
-
-
-
