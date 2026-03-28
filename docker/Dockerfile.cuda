@@ -1,4 +1,5 @@
-FROM ghcr.io/juliagpu/cuda.jl:dev-julia1.11-cuda12
+#FROM ghcr.io/juliagpu/cuda.jl:dev-julia1.10-cuda12
+FROM ghcr.nju.edu.cn/juliagpu/cuda.jl:dev-julia1.10-cuda12
 
 LABEL org.opencontainers.image.authors="Weiwei Wang" \
       org.opencontainers.image.description="MicroMagnetic.jl with CUDA support" \
@@ -6,9 +7,36 @@ LABEL org.opencontainers.image.authors="Weiwei Wang" \
       org.opencontainers.image.source="https://github.com/MagneticSimulation/MicroMagnetic.jl" \
       org.opencontainers.image.licenses="MIT"
 
-# Install MicroMagnetic.jl and common dependencies
-RUN julia -e 'using Pkg; Pkg.add(url="https://github.com/MagneticSimulation/MicroMagnetic.jl.git", rev="master"); using MicroMagnetic'
+RUN umask 022
 
+ENV JULIA_DEPOT_PATH=/usr/local/share/julia
+ENV JULIA_PKG_SERVER=https://mirrors.nju.edu.cn/julia
+RUN mv /usr/local/share/julia/config/startup.jl /usr/local/share/julia/config/startup.jl.bak 2>/dev/null || true
+
+RUN julia -e 'using Pkg; Pkg.add(["NPZ", "CUDSS"])' && \
+    find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
+
+RUN curl -L -o ffmpeg.tar.gz https://github.com/MagneticSimulation/julia-packages/releases/download/ffmpeg/ffmpeg.tar.gz && \
+    tar -xzf ffmpeg.tar.gz -C /usr/local/bin/ && \
+    chmod +x /usr/local/bin/ffmpeg && \
+    rm ffmpeg.tar.gz
+
+RUN curl -L -o Makie.tar https://github.com/MagneticSimulation/julia-packages/releases/download/makie/Makie.tar && \
+    tar -xf Makie.tar -C $JULIA_DEPOT_PATH && \
+    rm Makie.tar
+
+# Install MicroMagnetic.jl and common dependencies
+RUN julia -e 'using Pkg; Pkg.add(url="https://github.com/MagneticSimulation/MicroMagnetic.jl.git", rev="master"); using MicroMagnetic' && \
+            find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
+
+RUN julia -e 'using Pkg; \
+              Pkg.develop(path="/usr/local/share/julia/ComputePipeline"); \
+              Pkg.develop(path="/usr/local/share/julia/Makie"); \
+              Pkg.develop(path="/usr/local/share/julia/CairoMakie");' && \
+              find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
+
+
+RUN mv /usr/local/share/julia/config/startup.jl.bak /usr/local/share/julia/config/startup.jl 2>/dev/null || true
 
 # Set the working directory
 WORKDIR /workspace
