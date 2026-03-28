@@ -40,6 +40,37 @@ Access our complete web resources including documentation, tutorials and example
 ### QQ group support 
 We have a QQ group. If you have any questions related to Micromagnetic.jl, please join the QQ group (1065654259).
 
+## Docker / Singularity Quick Start
+
+We provide a pre-built [container](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl) image with MicroMagnetic.jl and CUDA support.
+
+### Run with Docker
+
+```bash
+# Pull the image
+docker pull ghcr.io/magneticsimulation/micromagnetic.jl:latest
+
+# Interactive session (with GPU)
+docker run -it --rm --gpus all -v "$(pwd):/workspace" \
+  ghcr.io/magneticsimulation/micromagnetic.jl:latest
+```
+
+### Run with Singularity (HPC clusters)
+
+```bash
+# Pull the image as a SIF file
+singularity pull micromagnetic.sif docker://ghcr.io/magneticsimulation/micromagnetic.jl:latest
+
+# Create a writable directory for Julia cache (required)
+mkdir -p ~/julia_depot
+
+# Interactive session (with GPU)
+singularity shell --bind ~/julia_depot:/depot --nv micromagnetic.sif
+```
+
+For advanced usage, see the [full documentation](https://magneticsimulation.github.io/MicroMagnetic.jl/dev/docker).
+```
+
 ## Installation
 
 Install MicroMagnetic is straightforward as long as Julia (<http://julialang.org/downloads/>) is installed, and it is equally easy in Windows, Linux and Mac.  
