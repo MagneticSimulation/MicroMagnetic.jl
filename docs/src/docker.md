@@ -4,11 +4,11 @@ This guide covers using the MicroMagnetic.jl container with Docker and Singulari
 
 ## Image Overview
 
-The [container image](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl) `ghcr.io/magneticsimulation/micromagnetic.jl:latest` includes:
+The [container image](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl) includes:
 
 - Julia 1.10 with CUDA.jl pre-installed
 - MicroMagnetic.jl (development version from `master`)
-- CairoMakie for visualization
+- CairoMakie (simplied version) for visualization
 
 **Image size**: ~4.2 GB
 
@@ -24,6 +24,12 @@ The [container image](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkg
 **Pull the image:**
 ```bash
 docker pull ghcr.io/magneticsimulation/micromagnetic.jl:latest
+```
+
+Alternatively, you can pull the image from `ghcr.nju.edu.cn` to speed up the download:
+
+```bash
+docker pull ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
 ```
 
 **Run a simulation script:**
@@ -71,6 +77,11 @@ Singularity/Apptainer is the standard container runtime on HPC clusters. It runs
 **Pull the image:**
 ```bash
 singularity pull micromagnetic.sif docker://ghcr.io/magneticsimulation/micromagnetic.jl:latest
+```
+
+Alternatively, you can pull the image from `ghcr.nju.edu.cn` to speed up the download:
+```bash
+singularity pull micromagnetic.sif docker://ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
 ```
 
 **Run a script (with required depot binding):**
@@ -128,3 +139,7 @@ singularity exec --bind ~/julia_depot:/depot ...
 - **Docker**: Ensure `--gpus all` is included
 - **Singularity**: Ensure `--nv` is included
 - Verify NVIDIA drivers are installed on the host system
+
+### singularity not found in HPC clusters
+- try `module load singularity` to load the Singularity module
+- install it by following the instructions on the https://apptainer.org/
