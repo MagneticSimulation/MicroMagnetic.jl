@@ -50,6 +50,9 @@ We provide a pre-built [container](https://github.com/MagneticSimulation/MicroMa
 # Pull the image
 docker pull ghcr.io/magneticsimulation/micromagnetic.jl:latest
 
+# Alternatively, you can pull the image from `ghcr.nju.edu.cn` to speed up the download:
+docker pull docker://ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
+
 # Interactive session (with GPU)
 docker run -it --rm --gpus all -v "$(pwd):/workspace" \
   ghcr.io/magneticsimulation/micromagnetic.jl:latest
@@ -60,6 +63,9 @@ docker run -it --rm --gpus all -v "$(pwd):/workspace" \
 ```bash
 # Pull the image as a SIF file
 singularity pull micromagnetic.sif docker://ghcr.io/magneticsimulation/micromagnetic.jl:latest
+
+# Alternatively, you can pull the image from `ghcr.nju.edu.cn` to speed up the download:
+singularity pull micromagnetic.sif docker://ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
 
 # Create a writable directory for Julia cache (required)
 mkdir -p ~/julia_depot
