@@ -725,7 +725,13 @@ function add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1, name=
 end
 
 @doc raw"""
-    add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction, sigma_sa::TupleOrArrayOrFunction; a1=(1,0,0), a2=(0,1,0), beta=0, name="she")
+    add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction;
+                    sigma_sa1::TupleOrArrayOrFunction=(0,0,0),
+                    sigma_sa2::TupleOrArrayOrFunction=(0,0,0),
+                    a1::TupleOrArrayOrFunction=(1, 0, 0), 
+                    a2::TupleOrArrayOrFunction=(0, 0, 1),
+                    a3::TupleOrArrayOrFunction=(0, 0, 1),
+                    beta=0, name="she")
 
 Add an effective field to represent the torque due to spin anomalous Hall effect, which is given by 
 
@@ -740,49 +746,51 @@ The equivalent effective field is
 ```
 where 
 ```math
-\boldsymbol{\sigma}_{x y}^\mathrm{S H E}=\widetilde{\boldsymbol{\sigma}}_\mathrm{S} \times \hat{\mathbf{a}}_2
--\left({\mathbf{m}} \cdot\left(\hat{\mathbf{a}}_2 \times \hat{\mathbf{a}}_1\right)\right)^2\left(\widetilde{\boldsymbol{\sigma}}_\mathrm{SA} \times \hat{\mathbf{a}}_2\right)
+\boldsymbol{\sigma}_{x y}^\mathrm{S H E}=\widetilde{\boldsymbol{\sigma}}_\mathrm{s} \times \hat{\mathbf{a}}_1
+-\left(\mathbf{m} \cdot \hat{\mathbf{a}}_2\right)^2\left(\widetilde{\boldsymbol{\sigma}}_\mathrm{sa1} \times \hat{\mathbf{a}}_1\right)
++ (\mathbf{m} \cdot \hat{\mathbf{a}}_3) \widetilde{\boldsymbol{\sigma}}_\mathrm{sa2} \odot \mathbf{m}
 ```
 
 ### Example
 ```julia
-    add_sahe_torque(sim, (0.1, 0.2, 0.3), (0.3, 0.4, 0.5), beta=0.1)
+    add_sahe_torque(sim, (0.1, 0.2, 0.3), beta=0.1)
 ```
-
 """
-function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction,
-                         sigma_sa::TupleOrArrayOrFunction; a1=(1, 0, 0), a2=(0, 1, 0),
+function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction;
+                         sigma_sa1::TupleOrArrayOrFunction=(0,0,0),
+                         sigma_sa2::TupleOrArrayOrFunction=(0,0,0),
+                         a1::TupleOrArrayOrFunction=(1, 0, 0), 
+                         a2::TupleOrArrayOrFunction=(0, 0, 1),
+                         a3::TupleOrArrayOrFunction=(0, 0, 1),
                          beta=0, name="she")
     n_total = sim.n_total
     mesh = sim.mesh
 
     T = Float[]
     field = create_zeros(T, 3 * n_total)
-    sigma_s3 = zeros(T, 3 * n_total)
-    sigma_sa3 = zeros(T, 3 * n_total)
+    sv = zeros(T, 3 * n_total)
+    sa1v = zeros(T, 3 * n_total)
+    sa2v = zeros(T, 3 * n_total)
+    a1v = zeros(T, 3 * n_total)
+    a2v = zeros(T, 3 * n_total)
+    a3v = zeros(T, 3 * n_total)
 
-    init_vector!(sigma_s3, sim.mesh, sigma_s)
-    init_vector!(sigma_sa3, sim.mesh, sigma_sa)
+    init_vector!(sv, sim.mesh, sigma_s)
+    init_vector!(sa1v, sim.mesh, sigma_sa1)
+    init_vector!(sa2v, sim.mesh, sigma_sa2)
+    init_vector!(a1v, sim.mesh, a1)
+    init_vector!(a2v, sim.mesh, a2)
+    init_vector!(a3v, sim.mesh, a3)
 
-    for i in 1:mesh.n_total
-        j = 3*(i-1) + 1
-        a = sigma_s3[j]
-        b = sigma_s3[j+1]
-        c = sigma_s3[j+2]
-        sigma_s3[j] = cross_x(a, b, c, a2[1], a2[2], a2[3])
-        sigma_s3[j+1] = cross_y(a, b, c, a2[1], a2[2], a2[3])
-        sigma_s3[j+2] = cross_z(a, b, c, a2[1], a2[2], a2[3])
-
-        a = sigma_sa3[j]
-        b = sigma_sa3[j+1]
-        c = sigma_sa3[j+2]
-        sigma_sa3[j] = cross_x(a, b, c, a2[1], a2[2], a2[3])
-        sigma_sa3[j+1] = cross_y(a, b, c, a2[1], a2[2], a2[3])
-        sigma_sa3[j+2] = cross_z(a, b, c, a2[1], a2[2], a2[3])
-    end
-
-    c2 = cross_product(a2, a1)
-    torque = SAHETorqueField(kernel_array(sigma_s3), c2, kernel_array(sigma_sa3), T(beta),
+    sigma_s_a1 = cross_product(sv, a1v, n_total)
+    sigma_sa1_a1 = cross_product(sa1v, a1v, n_total)
+    
+    torque = SAHETorqueField(kernel_array(sigma_s_a1), 
+                             kernel_array(sigma_sa1_a1), 
+                             kernel_array(sa2v), 
+                             kernel_array(a2v),
+                             kernel_array(a3v),
+                             T(beta),
                              field, name)
 
     push!(sim.interactions, torque)

@@ -29,7 +29,11 @@ docker pull ghcr.io/magneticsimulation/micromagnetic.jl:latest
 Alternatively, you can pull the image from `ghcr.nju.edu.cn` to speed up the download:
 
 ```bash
+<<<<<<< HEAD
 docker pull ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
+=======
+docker pull  docker://ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
+>>>>>>> 33832f35f6700d5947e12a8dd596d2a3003a38cb
 ```
 
 **Run a simulation script:**

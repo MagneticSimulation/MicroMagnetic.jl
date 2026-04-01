@@ -75,7 +75,7 @@ singularity shell --bind ~/julia_depot:/depot --nv micromagnetic.sif
 ```
 
 For advanced usage, see the [full documentation](https://magneticsimulation.github.io/MicroMagnetic.jl/dev/docker).
-```
+
 
 ## Installation
 
@@ -125,7 +125,6 @@ Precompiling CUDAExt
   1 dependency successfully precompiled in 8 seconds. 383 already precompiled.
 [ Info: Switch the backend to CUDA.CUDAKernels.CUDABackend(false, false)
 ```
-
 
 ## Quick start -- Standard Problem 4
 

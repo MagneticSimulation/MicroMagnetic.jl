@@ -18,12 +18,14 @@ function test_sahe_torque(integrator="DormandPrince")
 
     add_zeeman(sim, (0, 0, 1e5))
 
-    t = add_sahe_torque(sim, (0.1, 0.2, 0.3), (0.3, 0.4, 0.5), a1=(0.1, 0.2, 0.8), a2=(0.5, -0.9, 0.2), beta=0.135)
+    t = add_sahe_torque(sim, (0.1, 0.2, 0.3), sigma_sa1=(0.3, 0.4, 0.5), 
+                             sigma_sa2=(0.6, 0.7, 0.8), beta=0.135)
 
     init_m0(sim, (-0.3, 0.4, 0.8), norm=false)
+    println(t)
     
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
-    expected = [-5.619678515837106, 8.710639746606335, -7.754204488687782]
+    expected = [2.01628959, 3.74389140, 3.30678733]
     @test isapprox(Array(t.field)*1e7, expected, rtol=1e-6)
 end
 
@@ -40,12 +42,13 @@ function test_sahe_torque_atomistic(integrator="DormandPrince")
 
     add_zeeman(sim, (0, 0, 1e5))
 
-    t = add_sahe_torque(sim, (0.1, 0.2, 0.3), (0.3, 0.4, 0.5), a1=(0.1, 0.2, 0.8), a2=(0.5, -0.9, 0.2), beta=0.135)
+    t = add_sahe_torque(sim, (0.1, 0.2, 0.3), sigma_sa1=(0.3, 0.4, 0.5), 
+                             sigma_sa2=(0.6, 0.7, 0.8), beta=0.135)
 
     init_m0(sim, (-0.3, 0.4, 0.8), norm=false)
     
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
-    expected = [-5.619678515837106, 8.710639746606335, -7.754204488687782]
+    expected = [2.01628959, 3.74389140, 3.30678733]
     @test isapprox(Array(t.field)*1e7/mu_0, expected, rtol=1e-6)
 end
 

@@ -479,11 +479,12 @@ end
 """
 The kernel sahe_torque_kernel! compute the effective field defined as 
         (1/gamma)*(beta*sigma + m x sigma)
-and sigma = c1 - (m.c2)^2 c3
+and sigma = sigma_s_a1 - (m.a2)^2 sigma_sa1_a1 + (m.a3) sigma_s2 ⊙ m
 """
-@kernel function sahe_torque_kernel!(@Const(m), h, @Const(mu0_Ms), gamma::T, beta::T,
-                                     @Const(c1), c2x::T, c2y::T, c2z::T,
-                                     @Const(c3)) where {T<:AbstractFloat}
+@kernel function sahe_torque_kernel!(@Const(m), h, @Const(mu0_Ms), 
+                                     @Const(sigma_s_a1), @Const(sigma_sa1_a1),
+                                     @Const(sigma_sa2), @Const(a2), @Const(a3),
+                                     gamma::T, beta::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
@@ -494,13 +495,15 @@ and sigma = c1 - (m.c2)^2 c3
         @inbounds h[j + 2] = 0
         @inbounds h[j + 3] = 0
     else
-        @inbounds sa = m[j + 1] * c2x + m[j + 2] * c2y + m[j + 3] * c2z
-        @inbounds sx = (c1[j + 1] - sa * sa * c3[j + 1]) / gamma
-        @inbounds sy = (c1[j + 2] - sa * sa * c3[j + 2]) / gamma
-        @inbounds sz = (c1[j + 3] - sa * sa * c3[j + 3]) / gamma
-        @inbounds h[j + 1] = beta*sx + cross_x(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
-        @inbounds h[j + 2] = beta*sy + cross_y(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
-        @inbounds h[j + 3] = beta*sz + cross_z(m[j + 1], m[j + 2], m[j + 3], sx, sy, sz)
+        @inbounds mx, my, mz = m[j+1], m[j+2], m[j+3]
+        @inbounds ma2 = (mx * a2[j + 1] + my * a2[j + 2] + mz * a2[j + 3])^2
+        @inbounds ma3 = mx * a3[j + 1] + my * a3[j + 2] + mz * a3[j + 3]
+        @inbounds sx = sigma_s_a1[j + 1] - ma2 * sigma_sa1_a1[j + 1] + ma3 * sigma_sa2[j + 1] * mx
+        @inbounds sy = sigma_s_a1[j + 2] - ma2 * sigma_sa1_a1[j + 2] + ma3 * sigma_sa2[j + 2] * my 
+        @inbounds sz = sigma_s_a1[j + 3] - ma2 * sigma_sa1_a1[j + 3] + ma3 * sigma_sa2[j + 3] * mz
+        @inbounds h[j + 1] = (beta*sx + cross_x(mx, my, mz, sx, sy, sz) ) / gamma
+        @inbounds h[j + 2] = (beta*sy + cross_y(mx, my, mz, sx, sy, sz) ) / gamma  
+        @inbounds h[j + 3] = (beta*sz + cross_z(mx, my, mz, sx, sy, sz) ) / gamma
     end
 end
 

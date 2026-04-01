@@ -292,10 +292,10 @@ function effective_field(torque::SAHETorqueField, sim::AbstractSim,
     gamma = sim.driver.gamma
 
     back = default_backend[]
-    c2x, c2y, c2z = torque.c2[1], torque.c2[2], torque.c2[3]
     ms = isa(sim, MicroSim) ? sim.mu0_Ms : sim.mu_s
-    sahe_torque_kernel!(back, groupsize[])(spin, torque.field, ms, gamma, torque.beta,
-                                           torque.c1, T(c2x), T(c2y), T(c2z), torque.c3;
+    sahe_torque_kernel!(back, groupsize[])(spin, torque.field, ms, torque.sigma_s_a1, torque.sigma_sa1_a1,
+                                           torque.sigma_sa2, torque.a2, torque.a3,
+                                           gamma, torque.beta;
                                            ndrange=N)
 
     return nothing

@@ -32,6 +32,19 @@ end
     return (-x3*y2 + x2*y3, x3*y1 - x1*y3, -x2*y1 + x1*y2)
 end
 
+@inline function cross_product(x::Array{T,1}, y::Array{T,1}, n_total::Int) where {T<:AbstractFloat}
+    x = reshape(x, 3, n_total)
+    y = reshape(y, 3, n_total)
+    result = similar(x)
+    @inbounds for i in 1:n_total
+        result[1, i] = -x[3, i] * y[2, i] + x[2, i] * y[3, i]
+        result[2, i] =  x[3, i] * y[1, i] - x[1, i] * y[3, i]
+        result[3, i] = -x[2, i] * y[1, i] + x[1, i] * y[2, i]
+    end
+    result = reshape(result, 3 * n_total)
+    return result
+end
+
 @inline function cross_product(x::Array{T,1}, y::Array{T,1}) where {T<:AbstractFloat}
     return [-x[3]*y[2] + x[2]*y[3], x[3]*y[1] - x[1]*y[3], -x[2]*y[1] + x[1]*y[2]]
 end

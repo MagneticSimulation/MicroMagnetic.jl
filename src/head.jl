@@ -314,9 +314,11 @@ mutable struct SlonczewskiTorque{T<:AbstractFloat} <: MicroEnergy
 end
 
 mutable struct SAHETorqueField{T<:AbstractFloat} <: MicroEnergy
-    c1::AbstractArray{T,1} # = sigma_s x a2
-    c2::Tuple{Real,Real,Real} # = a2 x a1
-    c3::AbstractArray{T,1} # = sigma_sa x a2
+    sigma_s_a1::AbstractArray{T,1} # = sigma_s x a1
+    sigma_sa1_a1::AbstractArray{T,1} # = sigma_sa1 x a1 
+    sigma_sa2::AbstractArray{T,1}
+    a2::AbstractArray{T,1}  
+    a3::AbstractArray{T,1}
     beta::T
     field::AbstractArray{T,1}
     name::String
