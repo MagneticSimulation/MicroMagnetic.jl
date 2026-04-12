@@ -8,19 +8,19 @@ This example demonstrates how to simulate a hysteresis loop for a thin disk usin
 
 Import necessary modules and enable GPU acceleration (optional).    
 
-```julia
+````julia
 using MicroMagnetic
 using CairoMakie
 
 #@using_gpu()
 #using CUDSS # we need CUDSS to solve the linear system
-```
+````
 
 ## Step 1: Define the System Geometry
 
 Create a cylindrical thin disk with radius 100 nm and thickness 20 nm using netgen:
 
-```julia
+````julia
 algebraic3d
 
 solid fincyl = cylinder ( 0, 0, 1; 0, 0, -1; 100.0 )
@@ -28,7 +28,7 @@ solid fincyl = cylinder ( 0, 0, 1; 0, 0, -1; 100.0 )
     and plane (0, 0, 10; 0, 0, 1) -maxh = 5;
 
 tlo fincyl;
-```
+````
 
 ## Step 2: Set Up the Simulation
 
@@ -36,7 +36,7 @@ Create a simulation with LLG driver and initialize the system with a uniform mag
 
 We recommend using BS23 or GPSM integrator. The code below uses BS23:
 
-```julia
+````julia
 function setup_simulation()
     mesh = FEMesh("./meshes/nanodot.mesh", unit_length=1e-9)
     sim = Sim(mesh, driver="LLG", integrator="BS23", name="disk")
@@ -60,11 +60,11 @@ end
 
 # Create simulation instance
 sim = setup_simulation();
-```
+````
 
 Typical setup for GPSM integrator:
 
-```julia
+````julia
 function setup_simulation()
     mesh = FEMesh("./meshes/nanodot.mesh", unit_length=1e-9)
     sim = Sim(mesh, driver="LLG", integrator="GPSM", name="disk")
@@ -88,42 +88,38 @@ end
 
 # Create simulation instance
 sim = setup_simulation();
-```
+````
 
 ## Step 3: Compute Hysteresis Loop
 
 Apply a magnetic field sweep from -150 mT to 150 mT along the x-direction.
 
-```julia
+````julia
 # Define field sweep (from -150 mT to 100 mT in 5 mT steps)
 Hs = [i*mT for i=-150:5:150]
 
 # Compute hysteresis loop
 hysteresis(sim, Hs, direction=(1, 0, 0), full_loop=false, stopping_dmdt=0.05, output="vtu")
 nothing #hide
-```
+````
 
 ## Step 4: Visualize the Results
 
 Plot the hysteresis loop using the data generated from the simulation.
 
-```@example
+````@example
 using CairoMakie
 fig = plot_ts("disk_llg.txt", x_key="Hx", ["m_x"], x_unit=1/mT, xlabel="H (mT)", ylabel="m", mirror_loop=true);
-```
+````
 
-```@raw
+````@raw html
 <img src="../figures/disk_loop.png" width="70%">
-```
+````
 
 You can download the complete simulation script used in this example:
 
-```@raw
+```@raw html
 <a href="https://raw.githubusercontent.com/MagneticSimulation/MicroMagnetic.jl/master/docs/src/fem/hysteresis.jl" download>Download hysteresis.jl</a>
 ```
-
-
-
-
 
 The finite difference version is available at https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/docs/tutorials/hysteresis/loop.jl
