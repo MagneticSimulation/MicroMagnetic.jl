@@ -40,7 +40,7 @@ function initialize!(integrator::GPSM, sim::AbstractSim)
     if integrator.initialized
         return nothing
     end
-    idx = findfirst(x -> isa(x, ExchangeFE) || isa(x, UniformExchange), sim.interactions)
+    idx = findfirst(x -> isa(x, ExchangeFE) || isa(x, UniformExchange) || isa(x, SpatialExchange), sim.interactions) 
     if idx !== nothing
         integrator.exch = splice!(sim.interactions, idx)
     else

@@ -28,6 +28,16 @@ function init_m_fun_fem(x, y, z)
     return (0, sin(r), cos(r))
 end
 
+function spatial_A(i,j,k,dx,dy,dz)
+    if i<=5
+        return 1.3e-11
+    elseif i>=8
+        return 2e-10
+    else
+        return 0
+    end
+end
+
 function test_Laplaian(;fem=true)
     if fem
         filepath = joinpath(@__DIR__, "fem/meshes/cylinder.mesh")
@@ -45,7 +55,7 @@ function test_Laplaian(;fem=true)
         init_m0(sim, init_m0_function)
     end
 
-    exch = add_exch(sim, 1.3e-11)
+    exch = add_exch(sim, spatial_A)
     M = MicroMagnetic.build_exch_matrix(exch, sim)
 
     m = Array(sim.spin)
@@ -97,6 +107,6 @@ function relax_system()
 end
 
 
-test_Laplaian()
+test_Laplaian(fem=false)
 #relax_system()
 

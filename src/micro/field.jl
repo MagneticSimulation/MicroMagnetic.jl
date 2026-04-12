@@ -531,3 +531,62 @@ function build_exch_matrix(exch::UniformExchange, sim::MicroSim)
     
     return Laplaian
 end
+
+
+function build_exch_matrix(exch::SpatialExchange, sim::MicroSim)
+    mesh = sim.mesh
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    ngbs = Array(mesh.ngbs)
+    Ms = Array(sim.mu0_Ms)
+    A = exch.A  
+
+    ax = 2 / (dx * dx)
+    ay = 2 / (dy * dy)
+    az = 2 / (dz * dz)
+    nabla = (ax, ax, ay, ay, az, az) 
+
+    n_total = sim.n_total
+
+    I = Int64[]
+    J = Int64[]
+    V = Float64[]
+
+    safe_div(a, b) = b == 0.0 ? 0.0 : a / b
+
+    for i in 1:n_total
+        if Ms[i] == 0.0
+            continue
+        end
+
+        Ms_inv = 1.0 / Ms[i]
+        diag_sum = 0.0
+
+        for j in 1:6
+            id = ngbs[j, i]
+            if id > 0 && Ms[id] > 0.0
+                # Effective exchange stiffness for the pair (i, id)
+                A_eff = safe_div(2 * A[i] * A[id], A[i] + A[id])
+                coeff = A_eff * nabla[j] * Ms_inv
+
+                diag_sum -= coeff          # contribution to diagonal
+                # Off‑diagonal entry (i, id)
+                push!(I, i)
+                push!(J, id)
+                push!(V, coeff)
+            end
+        end
+
+        # Diagonal entry
+        push!(I, i)
+        push!(J, i)
+        push!(V, diag_sum)
+    end
+
+    Laplacian = sparse(I, J, V, n_total, n_total)
+
+    if default_backend[] != CPU()
+        Laplacian = GPUSparseMatrixCSR(Laplacian)
+    end
+
+    return Laplacian
+end
