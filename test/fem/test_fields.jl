@@ -77,7 +77,11 @@ function test_anis_field()
 
     init_m0(sim, init_m_fun)
 
-    z = add_anis(sim, 5.2e5; axis=(0, 0.6, 0.8))
+    function spatial_axis(x,y,z)
+        return (0, 0.6, 0.8)
+    end
+
+    z = add_anis(sim, 5.2e5; axis=spatial_axis)
 
     MicroMagnetic.effective_field(z, sim, sim.spin, 0.0)
 

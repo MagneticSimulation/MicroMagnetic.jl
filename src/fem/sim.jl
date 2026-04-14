@@ -51,15 +51,49 @@ function average_m(sim::MicroSimFE)
 end
 
 """
-    add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis=(0,0,1), name="anis")
+    add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis::TupleOrArrayOrFunction=(0, 0, 1), name="anis")
 
-Add Anisotropy to the system, where the energy density is given by
+Add uniaxial anisotropy to a FEM simulation.
 
 ```math
 E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
 ```
+
+# Arguments
+- `sim::MicroSimFE`: The FEM simulation object.
+- `Ku::NumberOrArrayOrFunction`: The anisotropy constant in J/m³. Can be:
+  - A single number (uniform anisotropy)
+  - An array of shape (3, n_materials) for material-dependent anisotropy
+  - A function `f(x, y, z)` that returns the anisotropy constant at position (x, y, z)
+- `axis::TupleOrArrayOrFunction=(0, 0, 1)`: The anisotropy axis. Can be:
+  - A tuple (x, y, z) for uniform axis
+  - An array of shape (3, n_materials) for material-dependent axes
+  - A function `f(x, y, z)` that returns the axis vector at position (x, y, z)
+- `name::String="anis"`: The name of the anisotropy interaction.
+
+# Examples
+```julia
+# Add uniform uniaxial anisotropy with axis along z-direction
+add_anis(sim, 1e5)
+
+# Add material-dependent anisotropy
+Ku = [1e5, 2e5]  # Different Ku for each material
+axis = [0 0; 0 1; 1 0]  # Different axes for each material
+add_anis(sim, Ku, axis=axis)
+
+# Add position-dependent anisotropy
+Ku_func(x, y, z) = 1e5 * (1 + 0.5 * sin(x))
+axis_func(x, y, z) = (sin(x), cos(y), 1.0)
+add_anis(sim, Ku_func, axis=axis_func, name="position_dependent_anis")
+```
+
+# Notes
+- The function automatically normalizes the anisotropy axis if it's not already normalized.
+- For material-dependent anisotropy, the `axis` array should be of shape (3, n_materials), where n_materials is the number of materials in the mesh.
+- The function assembles the anisotropy matrix automatically after creating the interaction.
+- If `sim.save_data` is true, the total anisotropy energy will be saved during the simulation.
 """
-function add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
+function add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis::TupleOrArrayOrFunction=(0, 0, 1),
                   name="anis")
     mesh = sim.mesh
     Kus = zeros(Float64, sim.n_cells)
@@ -88,6 +122,11 @@ function add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis=(0, 0, 1),
             axes[3 * (i - 1) + 2] = axis[2, id]
             axes[3 * (i - 1) + 3] = axis[3, id]
         end
+    else
+        @info "The spatial anisotropy axes are used in the simulation!"
+        axes = zeros(Float64, 3 * sim.n_cells)
+        init_vector_cells!(axes, sim.mesh, axis)
+        normalise(axes, sim.n_cells)
     end
 
     K_matrix = spzeros(3 * N, 3 * N)

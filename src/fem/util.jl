@@ -217,19 +217,24 @@ function compute_normal(x1::Array{Float64,1}, x2::Array{Float64,1}, x3::Array{Fl
     return v / norm2(v)
 end
 
-
-function init_vector!(v::Array{T,1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
-    N = mesh.number_nodes
-    b = reshape(v, 3, N)
-
-    for i in 1:N
-        x, y, z = mesh.coordinates[:, i]
-        b[:, i] .= init(x, y, z)
+function init_scalar!(v::Array{T,1}, mesh::FEMesh, init::Number) where {T<:AbstractFloat}
+    for i in 1:(mesh.number_cells)
+        v[i] = init
     end
+    return nothing
+end
 
-    if NaN in v
-        error("NaN is given by the input function.")
+function init_scalar!(v::Array{T,1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
+    for i in 1:(mesh.number_cells)
+        material_id = mesh.material_ids[i]
+        v[i] = init(i, material_id)
     end
+    return nothing
+end
+
+function init_scalar!(v::Array{T,1}, mesh::FEMesh,
+                      init::Array{T,1}) where {T<:AbstractFloat}
+    v[:] = init[:]
     return nothing
 end
 
@@ -247,6 +252,21 @@ function init_scalar_nodes!(v::Array{T,1}, mesh::FEMesh, init::Function) where {
     return nothing
 end
 
+
+function init_vector!(v::Array{T,1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
+    N = mesh.number_nodes
+    b = reshape(v, 3, N)
+
+    for i in 1:N
+        x, y, z = mesh.coordinates[:, i]
+        b[:, i] .= init(x, y, z)
+    end
+
+    if NaN in v
+        error("NaN is given by the input function.")
+    end
+    return nothing
+end
 
 function init_vector!(v::AbstractArray{T,1}, mesh::FEMesh, init_fun) where {T<:AbstractFloat}
     init_v = zeros(T, 3 * mesh.number_nodes)
@@ -272,25 +292,18 @@ function init_vector!(v::Array{T,1}, mesh::FEMesh,
     return nothing
 end
 
-function init_scalar!(v::Array{T,1}, mesh::FEMesh, init::Number) where {T<:AbstractFloat}
-    for i in 1:(mesh.number_cells)
-        v[i] = init
-    end
-    return nothing
-end
+function init_vector_cells!(v::AbstractArray{T,1}, mesh::FEMesh, init_fun) where {T<:AbstractFloat}
+    init_v = zeros(T, 3 * mesh.number_cells)
+    centers = compute_tetrahedron_centers(mesh)
 
-function init_scalar!(v::Array{T,1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
-    for i in 1:(mesh.number_cells)
-        material_id = mesh.material_ids[i]
-        v[i] = init(i, material_id)
+    N = mesh.number_cells
+    b = reshape(init_v, 3, N)
+    for i in 1:N
+        x, y, z = centers[:, i]
+        b[:, i] .= init_fun(x, y, z)
     end
-    return nothing
-end
-
-function init_scalar!(v::Array{T,1}, mesh::FEMesh,
-                      init::Array{T,1}) where {T<:AbstractFloat}
-    v[:] = init[:]
-    return nothing
+    copyto!(v, init_v)
+    return true
 end
 
 function assemble_mass_matirx(mesh)
