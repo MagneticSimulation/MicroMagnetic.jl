@@ -224,11 +224,25 @@ function init_scalar!(v::Array{T,1}, mesh::FEMesh, init::Number) where {T<:Abstr
     return nothing
 end
 
-function init_scalar!(v::Array{T,1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
-    for i in 1:(mesh.number_cells)
-        material_id = mesh.material_ids[i]
-        v[i] = init(i, material_id)
+function init_scalar!(v::Array{T,1}, mesh::FEMesh, init_fun::Function) where {T<:AbstractFloat}
+    nargs = methods(init_fun)[1].nargs - 1
+    if nargs == 1
+        for i in 1:(mesh.number_cells)
+            v[i] = init_fun(mesh.region_ids[i])
+        end
+    elseif nargs == 2  #TODO: shall we allow two parameters?
+        for i in 1:(mesh.number_cells)
+            v[i] = init_fun(i, mesh.region_ids[i])
+        end
+    elseif nargs == 3
+        centers = compute_tetrahedron_centers(mesh)
+        N = mesh.number_cells
+        for i in 1:N
+            x, y, z = centers[:, i]
+            v[i] .= init_fun(x, y, z)
+        end
     end
+        
     return nothing
 end
 
@@ -253,13 +267,19 @@ function init_scalar_nodes!(v::Array{T,1}, mesh::FEMesh, init::Function) where {
 end
 
 
-function init_vector!(v::Array{T,1}, mesh::FEMesh, init::Function) where {T<:AbstractFloat}
+function init_vector!(v::Array{T,1}, mesh::FEMesh, init_fun::Function) where {T<:AbstractFloat}
     N = mesh.number_nodes
     b = reshape(v, 3, N)
-
-    for i in 1:N
-        x, y, z = mesh.coordinates[:, i]
-        b[:, i] .= init(x, y, z)
+    nargs = methods(init_fun)[1].nargs - 1
+    if nargs == 1
+        for i in 1:N
+            b[:, i] .= init_fun(mesh.region_ids[i])
+        end
+    elseif nargs == 3
+        for i in 1:N
+            x, y, z = mesh.coordinates[:, i]
+            b[:, i] .= init_fun(x, y, z)
+        end
     end
 
     if NaN in v
