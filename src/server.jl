@@ -385,6 +385,56 @@ function handle_get_request(http, req, message_handlers)
         catch e
             # Client closed connection
         end
+    elseif req.target == "/api/snippets"
+        # Serve snippets.json file
+        snippets_path = joinpath(@__DIR__, "../gui", "snippets.json")
+        
+        if isfile(snippets_path)
+            try
+                content = read(snippets_path)
+                HTTP.setstatus(http, 200)
+                HTTP.setheader(http, "Content-Type" => "application/json")
+                HTTP.startwrite(http)
+                HTTP.write(http, content)
+            catch e
+                # Client closed connection
+            end
+        else
+            # Snippets file not found
+            HTTP.setstatus(http, 404)
+            HTTP.setheader(http, "Content-Type" => "text/plain")
+            try
+                HTTP.startwrite(http)
+                HTTP.write(http, "Snippets file not found")
+            catch e
+                # Client closed connection
+            end
+        end
+    elseif req.target == "/api/examples"
+        # Serve examples.json file
+        examples_path = joinpath(@__DIR__, "../gui", "examples.json")
+        
+        if isfile(examples_path)
+            try
+                content = read(examples_path)
+                HTTP.setstatus(http, 200)
+                HTTP.setheader(http, "Content-Type" => "application/json")
+                HTTP.startwrite(http)
+                HTTP.write(http, content)
+            catch e
+                # Client closed connection
+            end
+        else
+            # Examples file not found
+            HTTP.setstatus(http, 404)
+            HTTP.setheader(http, "Content-Type" => "text/plain")
+            try
+                HTTP.startwrite(http)
+                HTTP.write(http, "Examples file not found")
+            catch e
+                # Client closed connection
+            end
+        end
     else
         # Serve static files (including root path "/")
         file_path = lstrip(req.target, '/')

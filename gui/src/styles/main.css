@@ -37,12 +37,6 @@ body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f0f0; ove
 }
 
 /* Lil-GUI Panel Styles */
-.visualization-section {
-    flex: 1;
-    position: relative;
-    background-color: #ffffff;
-}
-
 .lilgui-panel {
     position: absolute;
     top: 5px;
@@ -55,8 +49,6 @@ body { margin: 0; font-family: Arial, sans-serif; background-color: #f0f0f0; ove
     --name-width: 32%; 
     --spacing: 4px; 
 }
-
-
 
 /* Main Controls Panel */
 #controls-panel {

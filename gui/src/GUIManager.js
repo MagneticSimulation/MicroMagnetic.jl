@@ -1,5 +1,5 @@
 import WebSocketClient from './client.js';
-import { createExampleTaskManager, examples } from './tasks.js';
+
 
 /**
  * GUIManager class for handling user interactions and WebSocket communication
@@ -15,6 +15,8 @@ class GUIManager {
         this.taskType = 'relax';
         this.example = '';
         this.taskManager = null;
+        this.simStatePanel = null;
+        this.codeEditorPanel = null;
     }
 
     /**
@@ -129,10 +131,7 @@ class GUIManager {
             }
         });
         
-        // Initialize simulation type and task type selections
-        this.initSimulationTypeSelection();
-        this.initTaskTypeSelection();
-        this.initExampleSelection();
+
     }
 
     /**
@@ -162,66 +161,7 @@ class GUIManager {
         }
     }
 
-    /**
-     * Initialize simulation type selection
-     */
-    initSimulationTypeSelection() {
-        const selectElement = document.getElementById('simulation-type');
-        
-        selectElement.addEventListener('change', (event) => {
-            const selectedType = event.target.value;
-            console.log('Selected simulation type:', selectedType);
-            // Store selected simulation type
-            this.simulationType = selectedType;
-        });
-        
-        // Set default simulation type
-        this.simulationType = 'fd';
-    }
 
-    /**
-     * Initialize task type selection
-     */
-    initTaskTypeSelection() {
-        const selectElement = document.getElementById('task-type');
-        
-        selectElement.addEventListener('change', (event) => {
-            const selectedType = event.target.value;
-            console.log('Selected task type:', selectedType);
-            // Store selected task type
-            this.taskType = selectedType;
-        });
-        
-        // Set default task type
-        this.taskType = 'relax';
-    }
-
-    /**
-     * Initialize example selection
-     */
-    initExampleSelection() {
-        const selectElement = document.getElementById('example-selector');
-        
-        selectElement.addEventListener('change', (event) => {
-            const selectedExample = event.target.value;
-            console.log('Selected example:', selectedExample);
-            // Store selected example
-            this.example = selectedExample;
-            
-            // If a valid example is selected, create a task manager for it
-            if (selectedExample && examples[selectedExample]) {
-                this.taskManager = createExampleTaskManager('#cells-container', selectedExample, this);
-                
-                // Pass wsClient to taskManager if needed
-                if (this.taskManager && this.wsClient) {
-                    this.taskManager.wsClient = this.wsClient;
-                }
-            }
-        });
-        
-        // Set default example
-        this.example = '';
-    }
 
     /**
      * Handle command response from Julia server
@@ -235,24 +175,18 @@ class GUIManager {
             if (response.success) {
                 this.updateExecutionUI('success', 'Execution completed', response.stdout || 'No output');
             } else {
-                this.updateExecutionUI('error', 'Execution failed', response.error || 'Unknown error occurred');
+                this.updateExecutionUI('error', 'Execution failed', response.stderr || 'Unknown error occurred');
             }
         }
-
-        // Handle different response types with validation
-        if (response.type === 'fd_mesh_data') {
-           if (this.visualization && response.fd_mesh_data) {
-               this.visualization.displayFDMesh(response.fd_mesh_data);
-           }
-        } else if (response.type === 'Ms_data') {
-            if (this.visualization && response.Ms_data) {
-                this.visualization.displayCustomSurface(response.Ms_data);
-            }
-        } else if (response.type === 'm_data') {
-            if (this.visualization && response.m_data) {
-                this.visualization.updateMagnetization(response.m_data);
-            }
+        
+        // Update CodeEditorPanel output if available
+        if (this.codeEditorPanel) {
+            const outputText = response.stdout || response.stderr || '';
+            this.codeEditorPanel.showOutput(outputText, !response.success);
         }
+        
+        // Note: Visualization updates are now handled by the visualization_update event
+        // Mesh and magnetization data are no longer sent through run_code_response
     }
 
     /**
@@ -300,6 +234,13 @@ class GUIManager {
                 `;
             }
         }
+    }
+    
+    /**
+     * Set CodeEditorPanel reference
+     */
+    setCodeEditorPanel(panel) {
+        this.codeEditorPanel = panel;
     }
 
     /**

@@ -1,168 +1,465 @@
-/* FDMesh panel container - popup style */
-#fdmesh-panel {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1000;
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    overflow: hidden;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-    width: 320px;
-    max-width: 90vw;
-    max-height: 90vh;
+/* Sim State Panel */
+#sim-state-panel {
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #333;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.sim-state-empty {
+    color: #999;
+    text-align: center;
+    padding: 16px;
+}
+.sim-state-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.sim-state-row {
+    display: flex;
+    align-items: baseline;
+    line-height: 1.5;
+}
+.sim-state-key {
+    font-weight: 600;
+    color: #495057;
+    min-width: 100px;
+    margin-right: 8px;
+}
+.sim-interaction-list {
+    margin: 4px 0 0 0;
+    padding-left: 20px;
+    list-style: square;
+    color: #555;
 }
 
-#fdmesh-panel.expanded {
-    opacity: 1;
-    visibility: visible;
+/* Snippet Panel */
+.snippet-panel {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
 }
-
-/* FDMesh panel header */
-#fdmesh-header {
+.snippet-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
+    align-items: baseline;
+    margin-bottom: 8px;
 }
-
-/* FDMesh panel title */
-#fdmesh-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
+.snippet-header h4 {
     margin: 0;
+    font-size: 14px;
+    color: #333;
+}
+#snippet-search {
+    width: 140px;
+    padding: 4px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 12px;
+}
+.snippet-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+.snippet-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: #e9ecef;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+    color: #495057;
+}
+.snippet-tag.active {
+    background: #007bff;
+    color: #fff;
+}
+.snippet-list {
+    overflow-y: auto;
+    flex: 1;
+}
+.snippet-item {
+    border: 1px solid #f0f0f0;
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    background: #fafafa;
+}
+.snippet-item:hover {
+    background: #eef5ff;
+    border-color: #007bff;
+}
+.snippet-title {
+    font-weight: 600;
+    font-size: 12px;
+    color: #333;
+}
+.snippet-desc {
+    font-size: 11px;
+    color: #666;
+    margin: 2px 0;
+}
+.snippet-code-preview {
+    font-size: 10px;
+    color: #888;
+    font-family: monospace;
+    white-space: pre-wrap;
+    margin-top: 4px;
+}
+.snippet-empty, .snippet-error {
+    padding: 12px;
+    color: #999;
+    text-align: center;
 }
 
-/* FDMesh panel close button */
-#fdmesh-close {
-    background: none;
-    border: none;
-    font-size: 18px;
-    color: #999;
-    cursor: pointer;
-    padding: 0;
-    width: 24px;
-    height: 24px;
+/* Snippet Arguments Dialog */
+.snippet-args-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.3);
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 2000;
+}
+.snippet-args-dialog {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    width: 300px;
+    max-width: 90%;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+.snippet-args-dialog h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+}
+.snippet-args-dialog label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #555;
+}
+.snippet-args-dialog input {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid #ced4da;
     border-radius: 4px;
+    margin-top: 2px;
+}
+.args-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+/* Code Editor Panel */
+.code-editor-panel {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+}
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+}
+.editor-header h4 {
+    margin: 0;
+    font-size: 14px;
+    color: #333;
+}
+.editor-controls {
+    display: flex;
+    gap: 4px;
+}
+.run-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+}
+.run-btn:hover {
+    background-color: #45a049;
+}
+.toggle-btn {
+    background-color: #e9ecef;
+    color: #495057;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.toggle-btn:hover {
+    background-color: #dee2e6;
+}
+.editor-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+#editor-container {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    min-height: 300px;
+    max-height: 500px;
+    overflow: hidden;
+}
+.editor-output {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+}
+.history-panel {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    padding: 8px;
+}
+.history-panel.hidden {
+    display: none;
+}
+.history-panel h5 {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    color: #333;
+}
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.history-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: #fff;
+    cursor: pointer;
+    font-size: 11px;
+}
+.history-item:hover {
+    background-color: #eef5ff;
+    border-color: #007bff;
+}
+.history-index {
+    font-weight: 600;
+    color: #666;
+    min-width: 20px;
+    text-align: right;
+}
+.history-code {
+    flex: 1;
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #333;
+}
+.history-empty {
+    text-align: center;
+    color: #999;
+    padding: 12px;
+    font-size: 12px;
+}
+.editor-error {
+    text-align: center;
+    color: #dc3545;
+    padding: 20px;
+    font-size: 13px;
+}
+
+/* Snippet Panel Tabs */
+.snippet-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.snippet-tab {
+    padding: 4px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px 4px 0 0;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: #495057;
     transition: all 0.2s ease;
 }
 
-#fdmesh-close:hover {
+.snippet-tab:hover {
     background-color: #e9ecef;
-    color: #666;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    #fdmesh-panel {
-        width: 95vw;
-    }
-    
-    .fdmesh-input-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .fdmesh-pbc-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-    }
-    
-    .fdmesh-checkbox-group {
-        flex-direction: column;
-        gap: 6px;
-    }
+.snippet-tab.active {
+    background-color: #fff;
+    border-bottom-color: #fff;
+    font-weight: 600;
+    color: #007bff;
 }
 
-/* FDMesh panel content */
-#fdmesh-content {
-    padding: 12px;
-}
-
-/* FDMesh panel section */
-.fdmesh-section {
-    margin-bottom: 10px;
-}
-
-/* FDMesh label */
-.fdmesh-label {
-    display: block;
-    margin-bottom: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    color: #555;
-    line-height: 1.2;
-}
-
-/* FDMesh input grid */
-.fdmesh-input-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-}
-
-/* FDMesh input */
-.fdmesh-input {
-    padding: 6px 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 13px;
+/* Example Modal */
+.example-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
     width: 100%;
-    box-sizing: border-box;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: auto;
 }
 
-.fdmesh-input:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+.example-modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
 }
 
-/* FDMesh PBC row */
-.fdmesh-pbc-row {
+.example-modal-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #dee2e6;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
 }
 
-/* FDMesh PBC label - special case */
-.fdmesh-pbc-row .fdmesh-label {
-    display: inline-block;
-    margin-bottom: 0;
-    vertical-align: middle;
-}
-
-/* FDMesh checkbox group */
-.fdmesh-checkbox-group {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-/* FDMesh checkbox label */
-.fdmesh-checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13px;
-    color: #333;
-    cursor: pointer;
-    line-height: 1.2;
-}
-
-/* FDMesh checkbox */
-.fdmesh-checkbox-label input[type="checkbox"] {
+.example-modal-header h4 {
     margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.example-modal-close {
+    font-size: 24px;
+    font-weight: bold;
+    color: #666;
     cursor: pointer;
+}
+
+.example-modal-close:hover {
+    color: #333;
+}
+
+.example-modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.example-modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.example-modal-footer button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.example-modal-footer button:hover {
+    background-color: #0056b3;
+}
+
+/* Example Steps */
+.example-step {
+    margin-bottom: 16px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px;
+    background-color: #f8f9fa;
+}
+
+.example-step-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 8px;
+}
+
+.example-step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background-color: #007bff;
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.example-step-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.example-step-code {
+    margin: 0;
+    padding: 10px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-x: auto;
+}
+
+/* Snippet Steps Count */
+.snippet-steps-count {
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 4px;
+    font-style: italic;
 }

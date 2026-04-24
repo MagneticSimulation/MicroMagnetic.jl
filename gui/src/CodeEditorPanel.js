@@ -1,0 +1,260 @@
+class CodeEditorPanel {
+    constructor(containerId, guiManager) {
+        this.container = document.getElementById(containerId);
+        this.guiManager = guiManager;
+        this.editor = null;
+        this.history = [];
+        this.outputElement = null;
+        this.outputVisible = true;
+        this.historyVisible = false;
+        
+        if (!this.container) {
+            console.error(`CodeEditorPanel container with ID '${containerId}' not found.`);
+            return;
+        }
+        
+        this.buildUI();
+        this.initEditor();
+        this.bindEvents();
+    }
+    
+    buildUI() {
+        this.container.innerHTML = `
+            <div class="code-editor-panel">
+                <div class="editor-header">
+                    <h4>Code Editor</h4>
+                    <div class="editor-controls">
+                        <button id="run-button" class="run-btn">Run</button>
+                        <button id="toggle-output" class="toggle-btn">Hide Output</button>
+                        <button id="toggle-history" class="toggle-btn">History</button>
+                        <button id="clear-history" class="toggle-btn">Clear</button>
+                    </div>
+                </div>
+                
+                <div class="editor-content">
+                    <div id="editor-container"></div>
+                    
+                    <div id="editor-output" class="editor-output">
+                        <div class="output-placeholder">Run code to see output here</div>
+                    </div>
+                    
+                    <div id="history-panel" class="history-panel hidden">
+                        <h5>History</h5>
+                        <div id="history-list" class="history-list"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        this.runButton = this.container.querySelector('#run-button');
+        this.toggleOutputButton = this.container.querySelector('#toggle-output');
+        this.toggleHistoryButton = this.container.querySelector('#toggle-history');
+        this.clearHistoryButton = this.container.querySelector('#clear-history');
+        this.editorContainer = this.container.querySelector('#editor-container');
+        this.outputElement = this.container.querySelector('#editor-output');
+        this.historyPanel = this.container.querySelector('#history-panel');
+        this.historyList = this.container.querySelector('#history-list');
+    }
+    
+    initEditor() {
+        // Check if CodeMirror is available
+        if (typeof CodeMirror === 'undefined') {
+            console.error('CodeMirror is not loaded. Please include the CodeMirror library.');
+            this.editorContainer.innerHTML = '<div class="editor-error">CodeMirror library not found.</div>';
+            return;
+        }
+        
+        // Create CodeMirror instance
+        this.editor = CodeMirror(this.editorContainer, {
+            mode: 'julia',
+            theme: 'default',
+            lineNumbers: true,
+            lineWrapping: false,
+            viewportMargin: Infinity,
+            indentUnit: 4,
+            smartIndent: true,
+            value: '',
+            placeholder: 'Enter Julia code here...',
+            extraKeys: {
+                'Ctrl-Enter': () => this.runCode(),
+                'Shift-Enter': () => this.runCurrentLine()
+            }
+        });
+        
+        // Set initial size
+        this.editor.setSize('100%', '300px');
+        
+        // Focus the editor
+        setTimeout(() => {
+            this.editor.focus();
+        }, 100);
+    }
+    
+    bindEvents() {
+        // Run button click
+        if (this.runButton) {
+            this.runButton.addEventListener('click', () => this.runCode());
+        }
+        
+        // Toggle output visibility
+        if (this.toggleOutputButton) {
+            this.toggleOutputButton.addEventListener('click', () => this.toggleOutput());
+        }
+        
+        // Toggle history visibility
+        if (this.toggleHistoryButton) {
+            this.toggleHistoryButton.addEventListener('click', () => this.toggleHistory());
+        }
+        
+        // Clear history
+        if (this.clearHistoryButton) {
+            this.clearHistoryButton.addEventListener('click', () => this.clearHistory());
+        }
+    }
+    
+    runCode() {
+        const code = this.editor.getValue().trim();
+        if (!code) return;
+        
+        // Add to history
+        this.addToHistory(code);
+        
+        // Show loading message
+        this.showOutput('Running...', false);
+        
+        // Run the code using GUIManager
+        if (this.guiManager && this.guiManager.runCode) {
+            this.guiManager.runCode(code, 'relax');
+        } else {
+            this.showOutput('Error: GUIManager not available', true);
+        }
+    }
+    
+    runCurrentLine() {
+        const cursor = this.editor.getDoc().getCursor();
+        const line = this.editor.getLine(cursor.line);
+        const code = line.trim();
+        
+        if (code) {
+            // Add to history
+            this.addToHistory(code);
+            
+            // Run the line
+            if (this.guiManager && this.guiManager.runCode) {
+                this.guiManager.runCode(code, 'relax');
+            }
+        }
+    }
+    
+    showOutput(text, isError = false) {
+        if (!this.outputElement) return;
+        
+        this.outputElement.innerHTML = '';
+        
+        if (text) {
+            const outputDiv = document.createElement('div');
+            outputDiv.className = isError ? 'output-error' : 'output-success';
+            outputDiv.innerHTML = `<pre>${this.escapeHtml(text)}</pre>`;
+            this.outputElement.appendChild(outputDiv);
+        } else {
+            const placeholder = document.createElement('div');
+            placeholder.className = 'output-placeholder';
+            placeholder.textContent = 'Run code to see output here';
+            this.outputElement.appendChild(placeholder);
+        }
+        
+        // Ensure output is visible when new output arrives
+        if (!this.outputVisible) {
+            this.toggleOutput();
+        }
+    }
+    
+    toggleOutput() {
+        if (!this.outputElement || !this.toggleOutputButton) return;
+        
+        this.outputVisible = !this.outputVisible;
+        this.outputElement.style.display = this.outputVisible ? 'block' : 'none';
+        this.toggleOutputButton.textContent = this.outputVisible ? 'Hide Output' : 'Show Output';
+    }
+    
+    toggleHistory() {
+        if (!this.historyPanel || !this.toggleHistoryButton) return;
+        
+        this.historyVisible = !this.historyVisible;
+        this.historyPanel.classList.toggle('hidden', !this.historyVisible);
+        this.toggleHistoryButton.textContent = this.historyVisible ? 'Hide History' : 'History';
+        
+        // Update history list when showing
+        if (this.historyVisible) {
+            this.renderHistory();
+        }
+    }
+    
+    addToHistory(code) {
+        // Add to history array (avoid duplicates)
+        if (this.history.length === 0 || this.history[this.history.length - 1] !== code) {
+            this.history.push(code);
+            
+            // Limit history to 50 items
+            if (this.history.length > 50) {
+                this.history.shift();
+            }
+        }
+        
+        // Update history panel if visible
+        if (this.historyVisible) {
+            this.renderHistory();
+        }
+    }
+    
+    renderHistory() {
+        if (!this.historyList) return;
+        
+        if (this.history.length === 0) {
+            this.historyList.innerHTML = '<div class="history-empty">No history available</div>';
+            return;
+        }
+        
+        this.historyList.innerHTML = this.history.map((code, index) => {
+            const truncatedCode = code.length > 80 ? code.substring(0, 80) + '...' : code;
+            return `
+                <div class="history-item" data-index="${index}">
+                    <div class="history-index">${index + 1}</div>
+                    <div class="history-code">${this.escapeHtml(truncatedCode)}</div>
+                </div>
+            `;
+        }).join('');
+        
+        // Bind click events to history items
+        this.historyList.querySelectorAll('.history-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const index = parseInt(item.dataset.index);
+                const code = this.history[index];
+                this.editor.setValue(code);
+                this.editor.focus();
+            });
+        });
+    }
+    
+    clearHistory() {
+        this.history = [];
+        this.renderHistory();
+    }
+    
+    insertAtCursor(text) {
+        if (!this.editor) return;
+        
+        const doc = this.editor.getDoc();
+        const cursor = doc.getCursor();
+        doc.replaceRange(text, cursor);
+        this.editor.focus();
+    }
+    
+    escapeHtml(str) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+}
+
+export default CodeEditorPanel;

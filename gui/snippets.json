@@ -1,0 +1,93 @@
+[
+  {
+    "title": "Create FD Mesh",
+    "description": "Create a finite difference mesh with given dimensions",
+    "tags": ["mesh"],
+    "code": "mesh = FDMesh(; nx=${nx}, ny=${ny}, nz=${nz}, dx=${dx}e-9, dy=${dy}e-9, dz=${dz}e-9)",
+    "arguments": [
+      { "name": "nx", "default": "100" },
+      { "name": "ny", "default": "100" },
+      { "name": "nz", "default": "1" },
+      { "name": "dx", "default": "2.5" },
+      { "name": "dy", "default": "2.5" },
+      { "name": "dz", "default": "2.5" }
+    ]
+  },
+  {
+    "title": "Set Constant Ms",
+    "description": "Set uniform saturation magnetization",
+    "tags": ["Ms"],
+    "code": "set_Ms(sim, ${Ms})",
+    "arguments": [
+      { "name": "Ms", "default": "8e5" }
+    ]
+  },
+  {
+    "title": "Create Simulation",
+    "description": "Create a new micromagnetic simulation with given mesh",
+    "tags": ["Sim"],
+    "code": "sim = create_sim(mesh)",
+    "arguments": []
+  },
+  {
+    "title": "Initialize Magnetization",
+    "description": "Set initial magnetization in the +z direction",
+    "tags": ["m0"],
+    "code": "init_m0(sim, (0, 0, 1))",
+    "arguments": []
+  },
+  {
+    "title": "Add Exchange Interaction",
+    "description": "Add exchange interaction with given constant",
+    "tags": ["exch", "interaction"],
+    "code": "add_exch(sim, ${A})",
+    "arguments": [
+      { "name": "A", "default": "1.3e-11" }
+    ]
+  },
+  {
+    "title": "Add Demagnetization",
+    "description": "Add demagnetization field calculation",
+    "tags": ["demag", "interaction"],
+    "code": "add_demag(sim)",
+    "arguments": []
+  },
+  {
+    "title": "Add Zeeman Field",
+    "description": "Add external magnetic field",
+    "tags": ["zeeman", "interaction"],
+    "code": "add_zeeman(sim, (${Hx}, ${Hy}, ${Hz}))",
+    "arguments": [
+      { "name": "Hx", "default": "0.0" },
+      { "name": "Hy", "default": "0.0" },
+      { "name": "Hz", "default": "1e5" }
+    ]
+  },
+  {
+    "title": "Relax Simulation",
+    "description": "Relax the system to equilibrium state",
+    "tags": ["relax", "simulation"],
+    "code": "relax(sim; stopping_dmdt=0.001)",
+    "arguments": []
+  },
+  {
+    "title": "Run Dynamic Simulation",
+    "description": "Run dynamic simulation for given time and time step",
+    "tags": ["dynamic", "simulation"],
+    "code": "run_until(sim, ${t}; dt=${dt})",
+    "arguments": [
+      { "name": "t", "default": "1e-9" },
+      { "name": "dt", "default": "1e-12" }
+    ]
+  },
+  {
+    "title": "Set Ms for Region",
+    "description": "Set saturation magnetization for a specific region",
+    "tags": ["Ms", "region"],
+    "code": "set_Ms(sim, ${Ms}; region_id=${region_id})",
+    "arguments": [
+      { "name": "Ms", "default": "8e5" },
+      { "name": "region_id", "default": "2" }
+    ]
+  }
+]

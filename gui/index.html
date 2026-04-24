@@ -46,51 +46,15 @@
                         </div>
                     </div>
                 </div>
+
+                <div id="sim-state-panel" class="control-section"></div>
+               <div id="snippet-panel" class="control-section"></div>
                 
-                <!-- Simulation Type and Task Type Section -->
-                <div class="control-section">
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <select id="simulation-type" style="padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff; flex: 1; min-width: 120px;">
-                            <option value="fd" selected>Finite Difference (FD)</option>
-                            <option value="fe">Finite Element (FE)</option>
-                            <option value="atomistic">Atomistic</option>
-                        </select>
-                        
-                        <div style="margin: 0; font-weight: 500; color: #333333; width: 80px;">Sim Type:</div>
-                        <select id="task-type" style="padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff; flex: 1; min-width: 120px;">
-                            <option value="demo">Demo</option>
-                            <option value="relax" selected>Relax</option>
-                            <option value="relax_dyn">Dynamics</option>
-                            <option value="hysteresis">Hysteresis</option>
-                        </select>
-                    </div>
-                </div>
+
                 
-                <!-- Example Selection Section -->
+                <!-- Code Editor Section -->
                 <div class="control-section">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="margin: 0; font-weight: 500; color: #333333; width: 100px;">Example:</div>
-                        <select id="example-selector" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff;">
-                            <option value="" selected>-- Select Example --</option>
-                            <option value="vortex">Vortex</option>
-                            <option value="std4">Standard 4</option>
-                            <option value="std5">Standard 5</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- Cell Section -->
-                <div class="control-section">
-                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                        <button id="add-cell-btn">Add Cell</button>
-                        <select id="cell-selector" style="flex: 1; padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff;">
-                            <option value="">-- Select Cell --</option>
-                        </select>
-                        <button id="show-panel-btn" style="padding: 6px 10px; border: 1px solid #e0e0e0; border-radius: 4px; font-size: 14px; background-color: #ffffff; cursor: pointer;">
-                            Show Panel
-                        </button>
-                    </div>
-                    <div id="cells-container"></div>
+                    <div id="code-editor-panel"></div>
                 </div>
                 
                 <!-- Execution Panel Section (Combined Status Bar and Output) -->
