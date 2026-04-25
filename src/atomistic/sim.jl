@@ -166,6 +166,8 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
                          o::AbstractSim -> sum(exch.energy))
         push!(sim.saver.items, item)
     end
+    @info "Exchange has been added."
+    send_sim_state(sim)
     return exch
 end
 
@@ -204,7 +206,8 @@ function add_exch_bq(sim::AtomisticSim, K::NumberOrArray; name="exch_bq")
                          o::AbstractSim -> sum(exch.energy))
         push!(sim.saver.items, item)
     end
-
+    @info "Biquadratic Exchange has been added."
+    send_sim_state(sim)
     return exch
 end
 
@@ -286,6 +289,8 @@ function add_exch(sim::AtomisticSim, Jfun::Function; name="exch")
                          o::AbstractSim -> sum(exch.energy))
         push!(sim.saver.items, item)
     end
+    @info "Spatial Exchange has been added."
+    send_sim_state(sim)
     return exch
 end
 
@@ -395,6 +400,8 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
                          o::AbstractSim -> sum(dmi.energy))
         push!(sim.saver.items, item)
     end
+    @info "DMI has been added."
+    send_sim_state(sim)
     return dmi
 end
 
@@ -442,6 +449,8 @@ function add_dmi(sim::AtomisticSim, Dij::Array{<:Real,2}; name="dmi")
                          o::AbstractSim -> sum(dmi.energy))
         push!(sim.saver.items, item)
     end
+    @info "DMI has been added."
+    send_sim_state(sim)
     return dmi
 end
 
@@ -525,6 +534,8 @@ function add_dmi(sim::AtomisticSim, Dfun::Function; name="dmi")
                          o::AbstractSim -> sum(dmi.energy))
         push!(sim.saver.items, item)
     end
+    @info "Spatial DMI has been added."
+    send_sim_state(sim)
     return dmi
 end
 
@@ -569,6 +580,8 @@ function add_anis_kagome(sim::AtomisticSim, Ku::Float64; ax1=(-0.5, -sqrt(3) / 2
                          o::AbstractSim -> sum(anis.energy))
         push!(sim.saver.items, item)
     end
+    @info "Anisotropy for Kagome system has been added."
+    send_sim_state(sim)
     return anis
 end
 
@@ -604,6 +617,8 @@ function add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
                          o::AbstractSim -> sum(anis.energy))
         push!(sim.saver.items, item)
     end
+    @info "Uniaxial Anisotropy for CylindricalTubeMesh has been added."
+    send_sim_state(sim)
     return anis
 end
 
@@ -644,6 +659,8 @@ function add_magnetoelectric_laser(sim::AtomisticSim, lambda::Float64, E::Float6
                          o::AbstractSim -> sum(laser.energy))
         push!(sim.saver.items, item)
     end
+    @info "Magnetoelectric Laser has been added."
+    send_sim_state(sim)
     return laser
 end
 
@@ -666,5 +683,7 @@ function add_demag(sim::AtomisticSim; name="demag", Nx=0, Ny=0, Nz=0)
                          o::AbstractSim -> sum(demag.energy))
         push!(sim.saver.items, item)
     end
+    @info "Dipolar Interaction has been added."
+    send_sim_state(sim)
     return demag
 end

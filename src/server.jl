@@ -19,7 +19,8 @@ function run_code(code::String)
     result = nothing
     try
         result = redirect_stdio(stdout=stdout_pipe, stderr=stderr_pipe) do
-            eval(Meta.parseall(code))
+            Core.eval(Main, Meta.parseall(code))
+            #eval(Meta.parseall(code))
         end
     catch e
         success = false
@@ -41,6 +42,68 @@ function run_code(code::String)
     end
         
     return result, success, stdout_str, stderr_str
+end
+
+"""
+Extract visualization data from the current simulation state
+"""
+function send_visualization_data(;mesh=nothing, spin=nothing, Ms=nothing)
+    data = Dict()
+    
+    # Check if mesh is defined in Main scope
+    if mesh != nothing
+        if mesh isa FDMesh
+            data["mesh"] = Dict(
+                "nx" => mesh.nx, "ny" => mesh.ny, "nz" => mesh.nz,
+                "dx" => mesh.dx*1e9, "dy" => mesh.dy*1e9, "dz" => mesh.dz*1e9
+            )
+        end
+    end
+
+    # Check if spin is defined in Main scope
+    if spin != nothing
+        data["spin"] = Array(spin)
+    end
+    
+    # Check if Ms is defined in Main scope
+    if Ms != nothing
+        data["Ms"] = Array(Ms)
+    end
+    
+    if global_client != nothing
+        send_message(global_client, "visualization_update", data)
+    end
+end
+
+"""
+Send simulation state update if it has changed
+"""
+function send_sim_state(sim)
+    if global_client == nothing
+        return
+    end
+
+    state = Dict()
+    mesh = sim.mesh
+    if mesh isa FDMesh
+        state["mesh"] = "FDMesh (nx=$(mesh.nx), ny=$(mesh.ny), nz=$(mesh.nz))"
+    end
+        
+    # Add simulation info
+    state["sim_name"] = typeof(sim).name.wrapper
+        
+    # Add interactions info
+    if isdefined(sim, :interactions) && !isempty(sim.interactions)
+        interactions = []
+        for interaction in sim.interactions
+            push!(interactions, typeof(interaction).name.wrapper)
+        end
+        state["interactions"] = interactions
+    end
+    
+    if  global_client != nothing
+        send_message(global_client, "sim_state_update", state)
+    end
 end
 
 """
@@ -77,41 +140,18 @@ function init_default_handlers()
     register_handler("run_code") do ws, data
         code = get(data, "code", "")
         command_id = get(data, "id", "")
-        description = get(data, "desc", "")
         
-        log_message("Received run_code command (ID: $command_id, Desc: $description)")
+        log_message("Received run_code command (ID: $command_id)")
         
         result, success, stdout_str, stderr_str = run_code(code)
         response = Dict(
             "id" => command_id,
             "success" => success,
             "stdout" => stdout_str,       
-            "stderr" => stderr_str,
-            "type" => description
+            "stderr" => stderr_str
         )
 
-        if isa(result, FDMesh)
-            response["type"] = "fd_mesh_data"
-            response["fd_mesh_data"] = Dict(
-                "nx" => result.nx,
-                "ny" => result.ny,
-                "nz" => result.nz,
-                "dx" => result.dx*1e9,
-                "dy" => result.dy*1e9,
-                "dz" => result.dz*1e9,
-            )
-        elseif isa(result, MicroSim)
-           global global_sim = result
-        end
-
-        if description == "ms" && global_sim !== nothing
-            response["type"] = "Ms_data"
-            response["Ms_data"] = global_sim.mu0_Ms
-        elseif (description == "m0" || description == "relax") && global_sim !== nothing
-            response["type"] = "m_data"
-            response["m_data"] = Array(global_sim.spin)
-        end
-
+        # Send command response
         send_message(ws, "run_code_response", response)
     end
     
@@ -244,7 +284,6 @@ function handle_websocket(ws, client_id::String)
         end
     finally
         global global_client = nothing
-        global global_sim = nothing
         log_message("Connection closed: $client_id")
     end
 end

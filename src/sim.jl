@@ -104,22 +104,7 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
         @info "AtomisticSim has been created."
     end
 
-    if global_client != nothing && isa(mesh, FDMesh)
-        response = Dict(
-            "type" => "fd_mesh_data",
-            "success" => success,
-            "fd_mesh_data" => Dict(
-                "nx" => mesh.nx,
-                "ny" => mesh.ny,
-                "nz" => mesh.nz,
-                "dx" => mesh.dx*1e9,
-                "dy" => mesh.dy*1e9,
-                "dz" => mesh.dz*1e9,
-            )
-        )
-        send_message(global_client, "run_code_response", response)
-    end
-
+    send_sim_state(sim)
     return sim
 end
 
@@ -154,6 +139,8 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
 
     Ms_a .*= mu_0  #we convert A/m to Tesla
     copyto!(sim.mu0_Ms, Ms_a)
+    @info "Saturation magnetization has been set."
+    send_visualization_data(Ms=Ms_a)
     return true
 end
 
@@ -164,6 +151,8 @@ Set the saturation magnetization Ms within the Shape.
 """
 function set_Ms(sim::AbstractSim, shape::CSGShape, Ms::Number)
     init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms * mu_0)
+    @info "Saturation magnetization has been set."
+    send_visualization_data(Ms=Array(sim.mu0_Ms))
     return true
 end
 

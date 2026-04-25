@@ -90,8 +90,11 @@ function FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open", x0=-n
     regions = zeros(Int32, n_total)
 
     T = Float[]
-    return FDMesh(T(dx), T(dy), T(dz), T(x0), T(y0), T(z0), nx, ny, nz, xperiodic,
+    mesh = FDMesh(T(dx), T(dy), T(dz), T(x0), T(y0), T(z0), nx, ny, nz, xperiodic,
                   yperiodic, zperiodic, n_total, T(volume), ngbs_kb, regions)
+
+    send_visualization_data(mesh=mesh) 
+    return mesh
 end
 
 @inline function _x_plus_one(i::Int64, index::Int64, nx::Int64, ny::Int64, nz::Int64,

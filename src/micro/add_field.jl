@@ -41,6 +41,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
     end
 
     @info "Static Zeeman has been added."
+    send_sim_state(sim)
 
     return zeeman
 end
@@ -191,6 +192,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
               SaverItem(string("E_", name), "J",
                         o::AbstractSim -> sum(zee.energy)))
     end
+    send_sim_state(sim)
     return zee
 end
 
@@ -255,6 +257,7 @@ function add_exch(sim::MicroSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
                         o::AbstractSim -> sum(exch.energy)))
     end
     @info "Exchange has been added."
+    send_sim_state(sim)
     return exch
 end
 
@@ -327,6 +330,7 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(dmi.energy)))
     end
+    send_sim_state(sim)
     return dmi
 end
 
@@ -350,6 +354,7 @@ function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true)
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(demag.energy)))
     end
+    send_sim_state(sim)
     return demag
 end
 
@@ -395,6 +400,7 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction;
     end
 
     @info "Uniaxial Anisotropy has been added."
+    send_sim_state(sim)
     return anis
 end
 
@@ -427,6 +433,7 @@ function add_anis(sim::AbstractSim, geo::Shape, Ku::Number; axis=(0, 0, 1), name
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(anis.energy)))
     end
+    send_sim_state(sim)
     return anis
 end
 
@@ -501,6 +508,8 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(anis.energy)))
     end
+    @info "Hexagonal Anisotropy has been added."
+    send_sim_state(sim)
     return anis
 end
 
@@ -532,6 +541,8 @@ function add_hex_anis(sim::AbstractSim; K1=0, K2=0, K3=0, name="hex")
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(anis.energy)))
     end
+    @info "Hexagonal Anisotropy has been added."
+    send_sim_state(sim)
     return anis
 end
 
@@ -638,6 +649,8 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
                         o::AbstractSim -> thermal.mean_temperature *
                                           thermal.scaling_factor))
     end
+    @info "Thermal Noise has been added."
+    send_sim_state(sim)
     return thermal
 end
 
@@ -682,6 +695,8 @@ function add_exch_int(sim::MicroSim, J::NumberOrArrayOrFunction; k1=1, k2=-1,
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(exch.energy)))
     end
+    @info "RKKY Exchange has been added."
+    send_sim_state(sim)
     return exch
 end
 
@@ -721,6 +736,8 @@ function add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1, name=
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(dmi.energy)))
     end
+    @info "Interlayer DMI has been added."
+    send_sim_state(sim)
     return dmi
 end
 
@@ -795,6 +812,8 @@ function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction;
 
     push!(sim.interactions, torque)
 
+    @info "Spin-Anomalous Hall Effect has been added."
+    send_sim_state(sim)
     return torque
 end
 
@@ -867,6 +886,8 @@ function add_torque(sim::AbstractSim, fun::Function; name="torque")
     torque = TorqueField(fun, field, name)
 
     push!(sim.interactions, torque)
+    @info "Torque has been added."
+    send_sim_state(sim)
     return torque
 end
 
@@ -1050,7 +1071,8 @@ function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
     torque = ZhangLiTorque(xi_kb, bJ, field, ft, name)
 
     push!(sim.interactions, torque)
-
+    @info "Zhang-Li Spin Transfer Torque has been added."
+    send_sim_state(sim)
     return torque
 end
 
@@ -1085,7 +1107,8 @@ function add_slonczewski_torque(sim::AbstractSim, name, params::Dict)
                                J, field, ft, name)
 
     push!(sim.interactions, torque)
-
+    @info "Slonczewski Spin Transfer Torque has been added."
+    send_sim_state(sim)
     return torque
 end
 
@@ -1160,4 +1183,7 @@ function rm_demag_charges(sim::MicroSim, Ms; x::Tuple=(0, 0), y::Tuple=(0, 0), z
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(zeeman.energy)))
     end
+    @info "Demagnetization Charges have been removed."
+    send_sim_state(sim)
+    return zeeman
 end

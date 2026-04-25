@@ -19,6 +19,8 @@ function set_Ms(sim::MicroSimFE, Ms::NumberOrArrayOrFunction; region_id=-1)
 
     sim.mu0_Ms .= mu0_Ms
     compute_L_Ms!(sim.L_mu, mesh, sim.mu0_Ms)
+    @info "Saturation magnetization has been set."
+    send_visualization_data(Ms=mu0_Ms)
     return true
 end
 
@@ -141,6 +143,8 @@ function add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis::TupleOrArr
               SaverItem(string("E_", name), "J",
                         o::MicroSimFE -> sum(anis.energy)))
     end
+    @info "Uniaxial Anisotropy has been added."
+    send_sim_state(sim)
     return anis
 end
 
@@ -178,6 +182,8 @@ function add_exch(sim::MicroSimFE, A::NumberOrArrayOrFunction; name="exch", meth
                         o::MicroSimFE -> sum(exch.energy)))
     end
 
+    @info "Exchange has been added."
+    send_sim_state(sim)
     return exch
 end
 
@@ -199,7 +205,8 @@ function add_demag(sim::MicroSimFE; name="demag", method="bem", kwargs...)
               SaverItem(string("E_", name), "J",
                         o::MicroSimFE -> sum(demag.energy)))
     end
-
+    @info "Demagnetization has been added."
+    send_sim_state(sim)
     return demag
 end
 
@@ -245,6 +252,8 @@ function add_exch_int(sim::MicroSimFE, J::Number; k1=1, k2=2, name="exch_int")
     if sim.save_data
         push!(sim.saver.items, SaverItem(string("E_", name), "<J>", o::AbstractSim -> sum(rkky.energy)))
     end
+    @info "RKKY Exchange Interaction has been added."
+    send_sim_state(sim)
     return rkky
 end
 

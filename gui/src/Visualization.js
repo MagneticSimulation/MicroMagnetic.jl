@@ -585,6 +585,34 @@ class Visualization {
 
         console.log('Visualization disposed');
     }
+
+    /**
+     * Update visualization from combined visualization data
+     * @param {Object} visData - Visualization data containing mesh, spin, Ms, etc.
+     */
+    updateFromVisData(visData) {
+        // Handle mesh update
+        if (visData.mesh) {
+            this.displayFDMesh(visData.mesh);
+        }
+        
+        // Handle magnetization data update
+        if (visData.spin) {
+            this.updateMagnetization(visData.spin);
+        }
+        
+        // Handle Ms data update for volume visualization
+        if (visData.Ms) {
+            // Use existing volume visualization to display Ms data
+            if (this.volumeVisualization) {
+                // Get grid info from fdMeshVisualization
+                const gridInfo = this.fdMeshVisualization.getGridInfo();
+                if (gridInfo) {
+                    this.volumeVisualization.displayVolume(visData.Ms, gridInfo.gridSize, gridInfo.dimensions);
+                }
+            }
+        }
+    }
 }
 
 export default Visualization;
