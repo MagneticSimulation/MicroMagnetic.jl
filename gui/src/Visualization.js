@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GUI } from 'lil-gui';
 import FDMeshVisualization from './FDMeshVisualization.js';
+import FEMeshVisualization from './FEMeshVisualization.js';
 import VolumeVisualization from './VolumeVisualization.js';
 import ArrowVisualization from './ArrowVisualization.js';
 import SurfaceVisualization from './SurfaceVisualization.js';
@@ -23,6 +24,7 @@ class Visualization {
         
         // Visualizers
         this.fdMeshVisualization = null;
+        this.femMeshVisualization = null;
         this.volumeVisualization = null;
         this.arrowVisualization = null;
         this.surfaceVisualization = null;
@@ -105,6 +107,9 @@ class Visualization {
         this.fdMeshVisualization = new FDMeshVisualization(this.scene);
         this.fdMeshVisualization._visible = true;
         
+        this.femMeshVisualization = new FEMeshVisualization(this.scene);
+        this.femMeshVisualization._visible = true;
+        
         this.volumeVisualization = new VolumeVisualization(this.scene);
         this.volumeVisualization._visible = true;
         
@@ -118,8 +123,11 @@ class Visualization {
 
         // Initialize with data if provided
         if (data) {
-            if (data.type === 'mesh') {
+            if (data.type === 'fd') {
                 this.displayFDMesh(data);
+            }
+            else if  (data.type === 'fe'){
+                this.displayFEMesh(data);
             } else if (data.type === 'magnetization') {
                 this.updateMagnetization(data);
             }
@@ -587,13 +595,36 @@ class Visualization {
     }
 
     /**
-     * Update visualization from combined visualization data
+     * Display FE Mesh
+     * @param {Object} meshData - FEMesh data containing coordinates, cell_verts, region_ids
+     */
+    displayFEMesh(meshData) {
+        this.clearAllVisualizations();
+        
+        this.femMeshVisualization.displayFEMesh(meshData);
+        
+        // Adjust camera to fit the mesh
+        // Note: We'll need to implement this in FEMeshVisualization if needed
+        
+        // Update other visualizations with FEMesh information
+        // This would require extending arrow and surface visualizations
+        // to support FEMesh data, which is beyond the scope of this implementation
+    }
+    
+    /**
+     * Update visualization from comprehensive visualization data
      * @param {Object} visData - Visualization data containing mesh, spin, Ms, etc.
      */
     updateFromVisData(visData) {
-        // Handle mesh update
+        // Handle mesh update - detect type (FD or FE)
         if (visData.mesh) {
-            this.displayFDMesh(visData.mesh);
+            if (visData.mesh.type === 'fem' || visData.mesh.coordinates) {
+                // This is FEMesh data with coordinates and cell_verts
+                this.displayFEMesh(visData.mesh);
+            } else {
+                // This is traditional FDMesh data
+                this.displayFDMesh(visData.mesh);
+            }
         }
         
         // Handle magnetization data update
@@ -605,10 +636,23 @@ class Visualization {
         if (visData.Ms) {
             // Use existing volume visualization to display Ms data
             if (this.volumeVisualization) {
-                // Get grid info from fdMeshVisualization
-                const gridInfo = this.fdMeshVisualization.getGridInfo();
+                // Get grid info from the appropriate mesh visualization
+                let gridInfo;
+                if (this.fdMeshVisualization && this.fdMeshVisualization.getGridInfo) {
+                    gridInfo = this.fdMeshVisualization.getGridInfo();
+                } else if (this.femMeshVisualization && this.femMeshVisualization.getGridInfo) {
+                    gridInfo = this.femMeshVisualization.getGridInfo();
+                }
+                
                 if (gridInfo) {
-                    this.volumeVisualization.displayVolume(visData.Ms, gridInfo.gridSize, gridInfo.dimensions);
+                    if (gridInfo.type === 'fem') {
+                        // For FEMesh, we would need to implement special handling
+                        // This is beyond the current scope but could be added later
+                        console.log('FEMesh Ms visualization not yet implemented');
+                    } else {
+                        // For FDMesh, use the existing volume visualization
+                        this.volumeVisualization.displayVolume(visData.Ms, gridInfo.gridSize, gridInfo.dimensions);
+                    }
                 }
             }
         }

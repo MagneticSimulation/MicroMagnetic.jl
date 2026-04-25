@@ -54,8 +54,26 @@ function send_visualization_data(;mesh=nothing, spin=nothing, Ms=nothing)
     if mesh != nothing
         if mesh isa FDMesh
             data["mesh"] = Dict(
+                "type" => "fd",
                 "nx" => mesh.nx, "ny" => mesh.ny, "nz" => mesh.nz,
                 "dx" => mesh.dx*1e9, "dy" => mesh.dy*1e9, "dz" => mesh.dz*1e9
+            )
+        elseif mesh isa FEMesh
+            # For FEMesh, send coordinates, cell_verts, and region_ids
+            # Convert Julia arrays to frontend-friendly format
+            coordinates = [mesh.coordinates[:,i] for i in 1:mesh.number_nodes]
+            # Convert from 4xN to Nx4 array for cell vertices
+            cell_verts = [mesh.cell_verts[:,i] for i in 1:mesh.number_cells]
+            # Convert from 1-based to 0-based indices for JavaScript
+            cell_verts = [v .- 1 for v in cell_verts]
+            
+            data["mesh"] = Dict(
+                "type" => "fe",
+                "number_nodes" => mesh.number_nodes,
+                "number_cells" => mesh.number_cells,
+                "coordinates" => coordinates,
+                "cell_verts" => cell_verts,
+                "region_ids" => mesh.region_ids
             )
         end
     end

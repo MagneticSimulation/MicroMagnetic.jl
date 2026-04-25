@@ -273,6 +273,7 @@ function FEMesh(fname::String; unit_length=1e-9)
     compute_L_inv_neg!(mesh)
     #build_boundary_surfaces!(mesh)
     build_boundary_maps!(mesh)
+    send_visualization_data(mesh=mesh)
     return mesh
 end
 
