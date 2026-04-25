@@ -295,6 +295,16 @@ class FEMeshVisualization {
     }
     
     /**
+     * Set visibility of all mesh components
+     * @param {boolean} visible - Whether the mesh should be visible
+     */
+    setVisible(visible) {
+        this.toggleNodes(visible);
+        this.toggleEdges(visible);
+        this.toggleFaces(visible);
+    }
+    
+    /**
      * Get grid information for other components
      */
     getGridInfo() {

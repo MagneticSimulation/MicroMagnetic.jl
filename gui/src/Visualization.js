@@ -3,7 +3,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GUI } from 'lil-gui';
 import FDMeshVisualization from './FDMeshVisualization.js';
 import FEMeshVisualization from './FEMeshVisualization.js';
-import VolumeVisualization from './VolumeVisualization.js';
 import ArrowVisualization from './ArrowVisualization.js';
 import SurfaceVisualization from './SurfaceVisualization.js';
 import { getAvailableColormaps } from './colormaps.js';
@@ -25,13 +24,16 @@ class Visualization {
         // Visualizers
         this.fdMeshVisualization = null;
         this.femMeshVisualization = null;
-        this.volumeVisualization = null;
         this.arrowVisualization = null;
         this.surfaceVisualization = null;
         
         // Grid helper
         this.gridHelper = null;
         this._showGrid = true;
+        
+        // Mesh and volume visibility settings
+        this.showMesh = true;
+        this.showVolume = true;
         
         // Arrow configuration (sampling settings)
         this.arrowConfig = {
@@ -110,9 +112,6 @@ class Visualization {
         this.femMeshVisualization = new FEMeshVisualization(this.scene);
         this.femMeshVisualization._visible = true;
         
-        this.volumeVisualization = new VolumeVisualization(this.scene);
-        this.volumeVisualization._visible = true;
-        
         this.arrowVisualization = new ArrowVisualization(this.scene);
         this.surfaceVisualization = new SurfaceVisualization(this.scene);
 
@@ -169,7 +168,14 @@ class Visualization {
         this.fdMesh = meshData;
         this.clearAllVisualizations()
 
-        this.fdMeshVisualization.displayFDMesh(meshData);
+        // Ensure consistent scale factor between FD and FE meshes
+        if (this.femMeshVisualization) {
+            // Use FE mesh scale factor if it exists, otherwise use FD mesh scale factor
+            const scaleFactor = this.femMeshVisualization.scaleFactor;
+            this.fdMeshVisualization.setScaleFactor(scaleFactor);
+        }
+
+        this.fdMeshVisualization.updateMesh(meshData);
         
         // Adjust grid helper position
         const gridInfo = this.fdMeshVisualization.getGridInfo();
@@ -407,12 +413,12 @@ class Visualization {
             this.arrowVisualization.clearArrows();
         }
         
-        if (this.volumeVisualization) {
-            this.volumeVisualization.clearVolume();
+        if (this.fdMeshVisualization) {
+            this.fdMeshVisualization.clearCells();
         }
         
-        if (this.fdMeshVisualization) {
-            this.fdMeshVisualization.clearMesh();
+        if (this.femMeshVisualization) {
+            this.femMeshVisualization.clearMesh();
         }
 
         if (this.surfaceVisualization) {
@@ -429,7 +435,7 @@ class Visualization {
             dimensions: this.fdMeshVisualization.getGridInfo().dimensions,
             cells: this.fdMeshVisualization.getGridInfo().gridSize,
             arrowCount: this.arrowVisualization ? this.arrowVisualization.arrows.length : 0,
-            meshElementCount: this.fdMeshVisualization.meshGroup.children.length
+            meshElementCount: this.fdMeshVisualization.cellGroup.children.length
         };
     }
 
@@ -451,12 +457,34 @@ class Visualization {
                 this.gridHelper.visible = value;
             }
         });
-        displayFolder.add(this.fdMeshVisualization, '_visible', true).name('Show Mesh').onChange((value) => {
-            this.fdMeshVisualization.setVisible(value);
-        });
-        displayFolder.add(this.volumeVisualization, '_visible', true).name('Show Volume').onChange((value) => {
-            this.volumeVisualization.setVisible(value);
-        });
+        // Show Mesh toggle
+        this.gui.showMesh = displayFolder.add(this, 'showMesh', true).name('Show Mesh')
+            .onChange((value) => {
+                // Control visibility for both FD and FE meshes
+                if (this.fdMeshVisualization) {
+                    this.fdMeshVisualization.setVisible(value);
+                }
+                if (this.femMeshVisualization) {
+                    this.femMeshVisualization.setVisible(value);
+                }
+            });
+        
+        // Colormap selection
+        const colormapFolder = displayFolder.addFolder('Colormap');
+        this.gui.colormap = colormapFolder.add(this.fdMeshVisualization, 'colormap', ['viridis', 'plasma', 'inferno', 'jet', 'hsv', 'coolwarm', 'gray'])
+            .name('Colormap')
+            .onChange((value) => {
+                this.fdMeshVisualization.setColormap(value);
+            });
+        
+        // Threshold slider
+        this.gui.threshold = colormapFolder.add(this.fdMeshVisualization, 'threshold', 0, 1e6, 1e3)
+            .name('Threshold')
+            .onChange((value) => {
+                this.fdMeshVisualization.setThreshold(value);
+            });
+        
+        colormapFolder.open();
         displayFolder.open();
 
         // Magnetization display settings
@@ -601,6 +629,13 @@ class Visualization {
     displayFEMesh(meshData) {
         this.clearAllVisualizations();
         
+        // Ensure consistent scale factor between FD and FE meshes
+        if (this.fdMeshVisualization) {
+            // Use FD mesh scale factor if it exists, otherwise use FE mesh scale factor
+            const scaleFactor = this.fdMeshVisualization.scaleFactor;
+            this.femMeshVisualization.setScaleFactor(scaleFactor);
+        }
+        
         this.femMeshVisualization.displayFEMesh(meshData);
         
         // Adjust camera to fit the mesh
@@ -632,28 +667,13 @@ class Visualization {
             this.updateMagnetization(visData.spin);
         }
         
-        // Handle Ms data update for volume visualization
-        if (visData.Ms) {
-            // Use existing volume visualization to display Ms data
-            if (this.volumeVisualization) {
-                // Get grid info from the appropriate mesh visualization
-                let gridInfo;
-                if (this.fdMeshVisualization && this.fdMeshVisualization.getGridInfo) {
-                    gridInfo = this.fdMeshVisualization.getGridInfo();
-                } else if (this.femMeshVisualization && this.femMeshVisualization.getGridInfo) {
-                    gridInfo = this.femMeshVisualization.getGridInfo();
-                }
-                
-                if (gridInfo) {
-                    if (gridInfo.type === 'fem') {
-                        // For FEMesh, we would need to implement special handling
-                        // This is beyond the current scope but could be added later
-                        console.log('FEMesh Ms visualization not yet implemented');
-                    } else {
-                        // For FDMesh, use the existing volume visualization
-                        this.volumeVisualization.displayVolume(visData.Ms, gridInfo.gridSize, gridInfo.dimensions);
-                    }
-                }
+        // Handle Ms data update for cell coloring
+        if (visData.Ms && this.fdMeshVisualization && this.fdMeshVisualization.updateMesh) {
+            if (this.fdMesh) {
+                // If mesh exists, update it with new Ms data
+                this.fdMeshVisualization.updateMesh(this.fdMesh, visData.Ms);
+            } else {
+                console.warn('No mesh available to update with Ms data');
             }
         }
     }
