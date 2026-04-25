@@ -1,11 +1,14 @@
+import TreeView from './TreeView.js';
+
 class SimStatePanel {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
-        this.defaultHtml = '<div class="state-empty">No simulation loaded.</div>';
+        this.defaultHtml = '<div class="sim-state-empty">No simulation loaded.</div>';
         
-        // Only set innerHTML if container exists
+        // Only initialize if container exists
         if (this.container) {
             this.container.innerHTML = this.defaultHtml;
+            this.treeView = new TreeView(this.container);
         } else {
             console.error(`SimStatePanel container with ID '${containerId}' not found.`);
         }
@@ -23,33 +26,8 @@ class SimStatePanel {
             return;
         }
         
-        let html = '<div class="state-list">';
-        if (state.mesh) {
-            html += `<div class="state-row"><span class="state-key">Mesh:</span> ${state.mesh}</div>`;
-        }
-        if (state.sim_name) {
-            html += `<div class="state-row"><span class="state-key">Simulation:</span> ${state.sim_name}</div>`;
-        }
-        if (state.driver) {
-            html += `<div class="state-row"><span class="state-key">Driver:</span> ${state.driver}</div>`;
-        }
-        if (state.Ms_max !== undefined) {
-            const msVal = Number(state.Ms_max).toExponential(2);
-            html += `<div class="state-row"><span class="state-key">Ms max:</span> ${msVal} A/m</div>`;
-        }
-        if (state.m0) {
-            html += `<div class="state-row"><span class="state-key">Initial M:</span> ${state.m0}</div>`;
-        }
-        if (state.interactions && state.interactions.length > 0) {
-            html += '<div class="state-row"><span class="state-key">Interactions:</span><ul class="interaction-list">';
-            state.interactions.forEach(inter => {
-                html += `<li>${inter}</li>`;
-            });
-            html += '</ul></div>';
-        }
-        html += '</div>';
-        
-        this.container.innerHTML = html;
+        // Use TreeView to render the state data
+        this.treeView.render(state);
     }
 }
 

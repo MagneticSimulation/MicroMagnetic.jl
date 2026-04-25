@@ -94,6 +94,34 @@ function send_visualization_data(;mesh=nothing, spin=nothing, Ms=nothing)
 end
 
 """
+Extract driver information for different driver types
+"""
+function extract_driver_info(driver)
+    info = Dict{String, Any}("type" => Base.nameof(typeof(driver)) |> string)
+    # Extract key parameters based on driver type
+    if driver isa Main.MicroMagnetic.LLG
+        info["alpha"] = driver.alpha
+        info["gamma"] = driver.gamma
+        info["integrator"] = Base.nameof(typeof(driver.integrator)) |> string
+        info["tol"] = driver.tol
+    elseif driver isa Main.MicroMagnetic.InertialLLG
+        info["alpha"] = driver.alpha
+        info["gamma"] = driver.gamma
+        info["tau"] = driver.tau
+        info["integrator"] = Base.nameof(typeof(driver.integrator)) |> string
+        info["tol"] = driver.tol
+    elseif driver isa Main.MicroMagnetic.SD
+        info["max_tau"] = driver.max_tau
+        info["min_tau"] = driver.min_tau
+    elseif driver isa Main.MicroMagnetic.SpatialLLG
+        info["gamma"] = driver.gamma
+        info["integrator"] = Base.nameof(typeof(driver.integrator)) |> string
+        info["tol"] = driver.tol
+    end
+    return info
+end
+
+"""
 Send simulation state update if it has changed
 """
 function send_sim_state(sim)
@@ -101,27 +129,52 @@ function send_sim_state(sim)
         return
     end
 
-    state = Dict()
+    state = Dict{String, Any}()
+    
+    # Mesh information
     mesh = sim.mesh
     if mesh isa FDMesh
-        state["mesh"] = "FDMesh (nx=$(mesh.nx), ny=$(mesh.ny), nz=$(mesh.nz))"
+        mesh_str = "FDMesh ($(mesh.nx)×$(mesh.ny)×$(mesh.nz))"
+        mesh_str *= ", dx=$(mesh.dx*1e9)nm, dy=$(mesh.dy*1e9)nm, dz=$(mesh.dz*1e9)nm"
+    else
+        mesh_str = string(Base.nameof(typeof(mesh)))
     end
-        
-    # Add simulation info
-    state["sim_name"] = typeof(sim).name.wrapper
-        
-    # Add interactions info
-    if isdefined(sim, :interactions) && !isempty(sim.interactions)
-        interactions = []
-        for interaction in sim.interactions
-            push!(interactions, typeof(interaction).name.wrapper)
-        end
-        state["interactions"] = interactions
-    end
+    state["Mesh"] = mesh_str
+
+    # Ms maximum value
+    ms_arr = sim.mu0_Ms
+    max_ms = maximum(abs.(ms_arr))
+    state["Ms max"] = max_ms > 1e-10 ? "$(round(max_ms/mu_0, sigdigits=3)) A/m" : "Not initialized"
+
+    # Driver information
+    driver_type_str = Base.nameof(typeof(sim.driver)) |> string
+    driver_key = driver_type_str * " Driver"
     
-    if  global_client != nothing
-        send_message(global_client, "sim_state_update", state)
+    # Add driver parameters for LLG family drivers
+    if driver_type_str in ["LLG", "InertialLLG", "SpatialLLG"]
+        state[driver_key] = extract_driver_info(sim.driver)
+    elseif driver_type_str == "SD"
+        # Optional: Add brief SD information
+        sd = sim.driver
+        state[driver_key] = Dict{String, Any}("max_tau" => sd.max_tau, "min_tau" => sd.min_tau)
     end
+
+    # Interactions list
+    interactions_list = []
+    if isdefined(sim, :interactions) && !isempty(sim.interactions)
+        for inter in sim.interactions
+            name = Base.nameof(typeof(inter)) |> string
+            push!(interactions_list, name)
+        end
+    end
+    state["Interactions"] = isempty(interactions_list) ? "None" : interactions_list
+
+    # Save data flag
+    state["Save data"] = sim.save_data
+
+    # Use sim.name as root node
+    root = Dict(sim.name => state)
+    send_message(global_client, "sim_state_update", root)
 end
 
 """
