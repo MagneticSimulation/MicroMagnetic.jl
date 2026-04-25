@@ -4,8 +4,6 @@ class CodeEditorPanel {
         this.guiManager = guiManager;
         this.editor = null;
         this.history = [];
-        this.outputElement = null;
-        this.outputVisible = true;
         this.historyVisible = false;
         
         if (!this.container) {
@@ -24,19 +22,14 @@ class CodeEditorPanel {
                 <div class="editor-header">
                     <h4>Code Editor</h4>
                     <div class="editor-controls">
-                        <button id="run-button" class="run-btn">Run</button>
-                        <button id="toggle-output" class="toggle-btn">Hide Output</button>
-                        <button id="toggle-history" class="toggle-btn">History</button>
-                        <button id="clear-history" class="toggle-btn">Clear</button>
-                    </div>
+                    <button id="run-button" class="run-btn">Run</button>
+                    <button id="toggle-history" class="toggle-btn">History</button>
+                    <button id="clear-history" class="toggle-btn">Clear</button>
+                </div>
                 </div>
                 
                 <div class="editor-content">
                     <div id="editor-container"></div>
-                    
-                    <div id="editor-output" class="editor-output">
-                        <div class="output-placeholder">Run code to see output here</div>
-                    </div>
                     
                     <div id="history-panel" class="history-panel hidden">
                         <h5>History</h5>
@@ -47,11 +40,9 @@ class CodeEditorPanel {
         `;
         
         this.runButton = this.container.querySelector('#run-button');
-        this.toggleOutputButton = this.container.querySelector('#toggle-output');
         this.toggleHistoryButton = this.container.querySelector('#toggle-history');
         this.clearHistoryButton = this.container.querySelector('#clear-history');
         this.editorContainer = this.container.querySelector('#editor-container');
-        this.outputElement = this.container.querySelector('#editor-output');
         this.historyPanel = this.container.querySelector('#history-panel');
         this.historyList = this.container.querySelector('#history-list');
     }
@@ -96,10 +87,7 @@ class CodeEditorPanel {
             this.runButton.addEventListener('click', () => this.runCode());
         }
         
-        // Toggle output visibility
-        if (this.toggleOutputButton) {
-            this.toggleOutputButton.addEventListener('click', () => this.toggleOutput());
-        }
+
         
         // Toggle history visibility
         if (this.toggleHistoryButton) {
@@ -119,14 +107,11 @@ class CodeEditorPanel {
         // Add to history
         this.addToHistory(code);
         
-        // Show loading message
-        this.showOutput('Running...', false);
-        
         // Run the code using GUIManager
         if (this.guiManager && this.guiManager.runCode) {
-            this.guiManager.runCode(code, 'relax');
+            this.guiManager.runCode(code);
         } else {
-            this.showOutput('Error: GUIManager not available', true);
+            console.error('Error: GUIManager not available');
         }
     }
     
@@ -146,36 +131,7 @@ class CodeEditorPanel {
         }
     }
     
-    showOutput(text, isError = false) {
-        if (!this.outputElement) return;
-        
-        this.outputElement.innerHTML = '';
-        
-        if (text) {
-            const outputDiv = document.createElement('div');
-            outputDiv.className = isError ? 'output-error' : 'output-success';
-            outputDiv.innerHTML = `<pre>${this.escapeHtml(text)}</pre>`;
-            this.outputElement.appendChild(outputDiv);
-        } else {
-            const placeholder = document.createElement('div');
-            placeholder.className = 'output-placeholder';
-            placeholder.textContent = 'Run code to see output here';
-            this.outputElement.appendChild(placeholder);
-        }
-        
-        // Ensure output is visible when new output arrives
-        if (!this.outputVisible) {
-            this.toggleOutput();
-        }
-    }
-    
-    toggleOutput() {
-        if (!this.outputElement || !this.toggleOutputButton) return;
-        
-        this.outputVisible = !this.outputVisible;
-        this.outputElement.style.display = this.outputVisible ? 'block' : 'none';
-        this.toggleOutputButton.textContent = this.outputVisible ? 'Hide Output' : 'Show Output';
-    }
+
     
     toggleHistory() {
         if (!this.historyPanel || !this.toggleHistoryButton) return;

@@ -203,11 +203,7 @@ class GUIManager {
             }
         }
         
-        // Update CodeEditorPanel output if available
-        if (this.codeEditorPanel) {
-            const outputText = response.stdout || response.stderr || '';
-            this.codeEditorPanel.showOutput(outputText, !response.success);
-        }
+
         
         // Note: Visualization updates are now handled by the visualization_update event
         // Mesh and magnetization data are no longer sent through run_code_response
