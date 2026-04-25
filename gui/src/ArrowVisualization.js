@@ -14,6 +14,7 @@ class ArrowVisualization {
         this.gridSize = null;
         this.dimensions = null;
         this.cellSize = null;
+        this.needsResample = true;
         
         // Store initial positions for optimization in updateArrowInstances
         this.initialCylinderPositions = null;
@@ -45,13 +46,15 @@ class ArrowVisualization {
         ];
         this.settings.radius = Math.min(dimensions[1], dimensions[0]) / 2.0;
         this.settings.radius -= Math.max(this.cellSize[0], this.cellSize[1]) / 2;
+        
+        this.needsResample = true;
     }
 
     updateMagnetization(data, updatePosition=false, options = {}) {
         if (!data || !this.gridSize || !this.dimensions) {
             return;
         }
-                
+               
         const [nx, ny, nz] = this.gridSize;
         
         if (data.length !== nx * ny * nz * 3) {
@@ -59,6 +62,15 @@ class ArrowVisualization {
         }
         
         this.data = data;
+
+        if (this.needsResample || updatePosition || !this.arrowPositions) {
+            this.calculateArrowPositions();
+            this.needsResample = false;
+            this.initialCylinderPositions = null;
+            this.initialConePositions = null;
+            this.initialArrowScale = null;
+        }
+
         this.settings.sampling = options.sampling;
         if (options.sampling === 'cartesian') {
             this.settings.sampleNx = options.sampleNx;
@@ -104,16 +116,31 @@ class ArrowVisualization {
 
         this.arrowPositions = [];
         const { sampling, sampleNz } = this.settings;
-        const stepZ = (nz - 1) / Math.max(1, sampleNz - 1);
+        
+        // Calculate Z sampling with boundary protection
+        const clampedSampleNz = Math.max(1, Math.min(sampleNz, nz));
+        const stepZ = nz / clampedSampleNz;
+        const startZ = clampedSampleNz <= 1 ? (nz - 1) / 2 : stepZ / 2;
 
         if (sampling === 'cylindrical') {
             const { radius, ringNum, ringStep } = this.settings;
-            for (let k = 0; k < sampleNz; k++) {
-                       
-                const gridK = (sampleNz === 1) ? (nz - 1) / 2 : k * stepZ;
-                const z = (gridK - (nz - 1) / 2) * cellSize[2];
+            for (let k = 0; k < clampedSampleNz; k++) {
+                // Ensure gridZ is within [0, nz-1]
+                let gridZ = startZ + k * stepZ;
+                gridZ = Math.max(0, Math.min(nz - 1, gridZ));
                 
-                this.arrowPositions.push([0, 0, z]);
+                const z = (gridZ - (nz - 1) / 2) * cellSize[2];
+                
+                // Center point - ensure it's within bounds
+                let centerX = (nx - 1) / 2;
+                let centerY = (ny - 1) / 2;
+                centerX = Math.max(0, Math.min(nx - 1, centerX));
+                centerY = Math.max(0, Math.min(ny - 1, centerY));
+                
+                this.arrowPositions.push({
+                    grid: [centerX, centerY, gridZ],
+                    world: [0, 0, z]
+                });
                 
                 const dR = radius / ringNum;
                 for (let ring = 1; ring <= ringNum; ring++) {
@@ -123,27 +150,56 @@ class ArrowVisualization {
 
                     for (let j = 0; j < num; j++) {
                         const theta = dTheta * j;
-                        this.arrowPositions.push([r * Math.cos(theta), r * Math.sin(theta), z]);
+                        const wx = r * Math.cos(theta);
+                        const wy = r * Math.sin(theta);
+                        let gx = wx / cellSize[0] + (nx - 1) / 2;
+                        let gy = wy / cellSize[1] + (ny - 1) / 2;
+                        
+                        // Ensure gx and gy are within bounds
+                        gx = Math.max(0, Math.min(nx - 1, gx));
+                        gy = Math.max(0, Math.min(ny - 1, gy));
+                        
+                        this.arrowPositions.push({
+                            grid: [gx, gy, gridZ],
+                            world: [wx, wy, z]
+                        });
                     }
                 }
             }
         } else {
             const { sampleNx, sampleNy } = this.settings;
-            const stepX = (nx - 1) / Math.max(1, sampleNx - 1);
-            const stepY = (ny - 1) / Math.max(1, sampleNy - 1);
+            
+            // Calculate X sampling with boundary protection
+            const clampedSampleNx = Math.max(1, Math.min(sampleNx, nx));
+            const stepX = nx / clampedSampleNx;
+            const startX = clampedSampleNx <= 1 ? (nx - 1) / 2 : stepX / 2;
+            
+            // Calculate Y sampling with boundary protection
+            const clampedSampleNy = Math.max(1, Math.min(sampleNy, ny));
+            const stepY = ny / clampedSampleNy;
+            const startY = clampedSampleNy <= 1 ? (ny - 1) / 2 : stepY / 2;
 
-            for (let i = 0; i < sampleNx; i++) {
-                for (let j = 0; j < sampleNy; j++) {
-                    for (let k = 0; k < sampleNz; k++) {
-                        const gridI = (sampleNx === 1) ? (nx - 1) / 2 : i * stepX;
-                        const gridJ = (sampleNy === 1) ? (ny - 1) / 2 : j * stepY;
-                        const gridK = (sampleNz === 1) ? (nz - 1) / 2 : k * stepZ;
+            for (let i = 0; i < clampedSampleNx; i++) {
+                for (let j = 0; j < clampedSampleNy; j++) {
+                    for (let k = 0; k < clampedSampleNz; k++) {
+                        // Calculate grid coordinates
+                        let gridX = startX + i * stepX;
+                        let gridY = startY + j * stepY;
+                        let gridZ = startZ + k * stepZ;
+                        
+                        // Ensure all grid coordinates are within valid bounds
+                        gridX = Math.max(0, Math.min(nx - 1, gridX));
+                        gridY = Math.max(0, Math.min(ny - 1, gridY));
+                        gridZ = Math.max(0, Math.min(nz - 1, gridZ));
                     
-                        const x = (gridI - (nx - 1) / 2) * cellSize[0];
-                        const y = (gridJ - (ny - 1) / 2) * cellSize[1];
-                        const z = (gridK - (nz - 1) / 2) * cellSize[2];
-                    
-                        this.arrowPositions.push([x, y, z]);
+                        this.arrowPositions.push({
+                            grid: [gridX, gridY, gridZ],
+                            world: [
+                                (gridX - (nx - 1) / 2) * cellSize[0],
+                                (gridY - (ny - 1) / 2) * cellSize[1],
+                                (gridZ - (nz - 1) / 2) * cellSize[2]
+                            ]
+                        });
                     }
                 }
             }
@@ -151,75 +207,48 @@ class ArrowVisualization {
     }
 
     trilinearInterpolation(x, y, z) {
-        // Store frequently accessed values in local variables
-        const gridSize = this.gridSize;
         const data = this.data;
+        const [nx, ny, nz] = this.gridSize;
+    
+        const ix = Math.max(0, Math.min(nx - 1, Math.floor(x)));
+        const iy = Math.max(0, Math.min(ny - 1, Math.floor(y)));
+        const iz = Math.max(0, Math.min(nz - 1, Math.floor(z)));
+    
+        const ix1 = Math.min(ix + 1, nx - 1);
+        const iy1 = Math.min(iy + 1, ny - 1);
+        const iz1 = Math.min(iz + 1, nz - 1);
         
-        const nx = gridSize[0];
-        const ny = gridSize[1];
-        const nz = gridSize[2];
-        
-        const nx1 = nx - 1;
-        const ny1 = ny - 1;
-        const nz1 = nz - 1;
-        
-        // Inline clamp function to reduce function calls
-        const xClamped = Math.max(0, Math.min(nx1 - 1e-10, x));
-        const yClamped = Math.max(0, Math.min(ny1 - 1e-10, y));
-        const zClamped = Math.max(0, Math.min(nz1 - 1e-10, z));
-        
-        const x0 = Math.floor(xClamped);
-        const x1 = Math.min(x0 + 1, nx1);
-        const y0 = Math.floor(yClamped);
-        const y1 = Math.min(y0 + 1, ny1);
-        const z0 = Math.floor(zClamped);
-        const z1 = Math.min(z0 + 1, nz1);
-        
-        const dx = xClamped - x0;
-        const dy = yClamped - y0;
-        const dz = zClamped - z0;
+        const tx = ix1 === ix ? 0 : (x - ix);
+        const ty = iy1 === iy ? 0 : (y - iy);
+        const tz = iz1 === iz ? 0 : (z - iz);
         
         const nxy = nx * ny;
-        
-        // Calculate indices once
-        const idx000 = (z0 * nxy + y0 * nx + x0) * 3;
-        const idx001 = (z1 * nxy + y0 * nx + x0) * 3;
-        const idx010 = (z0 * nxy + y1 * nx + x0) * 3;
-        const idx011 = (z1 * nxy + y1 * nx + x0) * 3;
-        const idx100 = (z0 * nxy + y0 * nx + x1) * 3;
-        const idx101 = (z1 * nxy + y0 * nx + x1) * 3;
-        const idx110 = (z0 * nxy + y1 * nx + x1) * 3;
-        const idx111 = (z1 * nxy + y1 * nx + x1) * 3;
-        
-        // Pre-allocate result array
+        const stride = 3;
         const result = [0, 0, 0];
-        
-        // Unroll the loop for better performance
+    
         for (let comp = 0; comp < 3; comp++) {
-            // Get values for this component
-            const v000 = data[idx000 + comp];
-            const v001 = data[idx001 + comp];
-            const v010 = data[idx010 + comp];
-            const v011 = data[idx011 + comp];
-            const v100 = data[idx100 + comp];
-            const v101 = data[idx101 + comp];
-            const v110 = data[idx110 + comp];
-            const v111 = data[idx111 + comp];
-            
-            // Interpolate along z-axis
-            const c00 = v000 + (v001 - v000) * dz;
-            const c01 = v010 + (v011 - v010) * dz;
-            const c10 = v100 + (v101 - v100) * dz;
-            const c11 = v110 + (v111 - v110) * dz;
-            
-            // Interpolate along y-axis
-            const c0 = c00 + (c01 - c00) * dy;
-            const c1 = c10 + (c11 - c10) * dy;
-            
-            // Interpolate along x-axis
-            result[comp] = c0 + (c1 - c0) * dx;
-        }
+            const base = (iz * nxy + iy * nx + ix) * stride + comp;
         
+            const v000 = data[base];
+            const v001 = data[(iz1 * nxy + iy  * nx + ix ) * stride + comp];
+            const v010 = data[(iz  * nxy + iy1 * nx + ix ) * stride + comp];
+            const v011 = data[(iz1 * nxy + iy1 * nx + ix ) * stride + comp];
+            const v100 = data[(iz  * nxy + iy  * nx + ix1) * stride + comp];
+            const v101 = data[(iz1 * nxy + iy  * nx + ix1) * stride + comp];
+            const v110 = data[(iz  * nxy + iy1 * nx + ix1) * stride + comp];
+            const v111 = data[(iz1 * nxy + iy1 * nx + ix1) * stride + comp];
+        
+            const c00 = v000 + (v001 - v000) * tz;
+            const c01 = v010 + (v011 - v010) * tz;
+            const c10 = v100 + (v101 - v100) * tz;
+            const c11 = v110 + (v111 - v110) * tz;
+        
+            const c0 = c00 + (c01 - c00) * ty;
+            const c1 = c10 + (c11 - c10) * ty;
+        
+            result[comp] = c0 + (c1 - c0) * tx;
+        }
+    
         return result;
     }
 
@@ -229,30 +258,19 @@ class ArrowVisualization {
             return [];
         }
         
-        // Pre-allocate array space to reduce memory allocation
         const arrowData = [];
         
-        const [nx, ny, nz] = this.gridSize;    
-        const centerIdxX = (nx - 1) / 2;
-        const centerIdxY = (ny - 1) / 2;
-        const centerIdxZ = (nz - 1) / 2;
-        
         for (let i = 0; i < this.arrowPositions.length; i++) {
-            const pos = this.arrowPositions[i];
-            const gridX = pos[0] / this.cellSize[0] + centerIdxX;
-            const gridY = pos[1] / this.cellSize[1] + centerIdxY;
-            const gridZ = pos[2] / this.cellSize[2] + centerIdxZ;
+            const { grid, world } = this.arrowPositions[i];
+            const vector = this.trilinearInterpolation(grid[0], grid[1], grid[2]);
             
-            const vector = this.trilinearInterpolation(gridX, gridY, gridZ);
-            
-            // Calculate vector length
             const length = Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]);
             if (length < 0.5) {
                 continue;
             }
             
             arrowData.push({
-                position: pos,
+                position: world,
                 direction: vector
             });
         }
@@ -260,11 +278,15 @@ class ArrowVisualization {
     }
 
     createArrowInstances(arrowData, arrowScale) {
-        const coneGeometry = new THREE.ConeGeometry(0.05, 0.2, 32);
-        coneGeometry.translate(0, -0.2, 0);
-        
-        const cylinderGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.2, 32);
-        cylinderGeometry.translate(0, -0.2, 0);
+        const cylinderHeight = 0.5;
+        const cylinderGeometry = new THREE.CylinderGeometry(0.06, 0.06, cylinderHeight, 32);
+        cylinderGeometry.translate(0, -cylinderHeight/2, 0); // Move the top to origin
+
+        const coneHeight = 0.3;
+        const coneGeometry = new THREE.ConeGeometry(0.15, coneHeight, 32);
+        coneGeometry.rotateX(Math.PI); // Rotate 180 degrees to point downward
+        coneGeometry.translate(0, -cylinderHeight, 0); // Align cone base with cylinder top
+        const totalLength = cylinderHeight + coneHeight; // Total length is 0.8
         
         const material = new THREE.MeshStandardMaterial({ 
             metalness: 0.3,
@@ -276,9 +298,7 @@ class ArrowVisualization {
         
         const coneMatrix = new THREE.Matrix4();
         const cylinderMatrix = new THREE.Matrix4();
-        const arrowLength = 0.6 * arrowScale;
-        const offset = arrowLength * 0.5;
-        
+                
         // Store initial positions for optimization
         this.initialCylinderPositions = new Array(arrowData.length);
         this.initialConePositions = new Array(arrowData.length);
@@ -290,7 +310,9 @@ class ArrowVisualization {
         const tempQuat = new THREE.Quaternion();
         const tempColor = new THREE.Color();
         const upVector = new THREE.Vector3(0, 1, 0);
-        const offsetVector = new THREE.Vector3();
+
+        const arrowLength = totalLength * arrowScale; 
+        const halfLength = arrowLength / 2;
         
         for (let i = 0; i < arrowData.length; i++) {
             const { position, direction } = arrowData[i];
@@ -301,20 +323,26 @@ class ArrowVisualization {
             
             tempQuat.setFromUnitVectors(upVector, tempDir);
             
-            offsetVector.copy(tempDir).multiplyScalar(offset);
+
+            const startOfArrow = tempPos.clone().addScaledVector(tempDir, -halfLength);
             
-            const cylinderPos = tempPos.clone().sub(offsetVector).add(tempDir.clone().multiplyScalar(0.2 * arrowScale));
+            // The cylinder's local origin is at its top, so position the cylinder top at startOfArrow + cylinderHeight * direction * arrowScale
+            // This makes the cylinder extend from startOfArrow to startOfArrow + cylinderHeight * direction * arrowScale
+            const cylinderPos = startOfArrow.clone().addScaledVector(tempDir, cylinderHeight * arrowScale);
+            
+            // The cone's local origin is at its base, so position the cone base at startOfArrow + cylinderHeight * direction * arrowScale
+            // This makes the cone extend from the end of the cylinder to startOfArrow + totalLength * direction * arrowScale
+            const conePos = startOfArrow.clone().addScaledVector(tempDir, cylinderHeight * arrowScale);
+    
             this.initialCylinderPositions[i] = cylinderPos.clone();
             cylinderMatrix.compose(cylinderPos, tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
             cylinderMesh.setMatrixAt(i, cylinderMatrix);
-            
-            const conePos = tempPos.clone().sub(offsetVector).add(tempDir.clone().multiplyScalar(0.4 * arrowScale));
+    
             this.initialConePositions[i] = conePos.clone();
             coneMatrix.compose(conePos, tempQuat, new THREE.Vector3(arrowScale, arrowScale, arrowScale));
-            coneMesh.setMatrixAt(i, coneMatrix);
-            
+            coneMesh.setMatrixAt(i, coneMatrix);    
+    
             const normalizedValue = (direction[componentIndex] + 1) / 2;
-            
             const color = getColor(normalizedValue, this.colormap);
             tempColor.setRGB(color.r, color.g, color.b);
             coneMesh.setColorAt(i, tempColor);
@@ -342,29 +370,35 @@ class ArrowVisualization {
         const tempQuat = new THREE.Quaternion();
         const tempColor = new THREE.Color();
         const upVector = new THREE.Vector3(0, 1, 0);
-        const offsetVector = new THREE.Vector3();
         const tempScale = new THREE.Vector3();
         
+        // Arrow dimensions (match createArrowInstances)
+        const cylinderHeight = 0.5;
+        const coneHeight = 0.3;
+        const totalLength = cylinderHeight + coneHeight;
+        
         for (let i = 0; i < arrowData.length; i++) {
-            const { direction } = arrowData[i];
+            const { position, direction } = arrowData[i];
             
             // Use temporary objects instead of creating new ones
             tempDir.set(...direction).normalize();
+            tempPos.set(...position);
             
             tempQuat.setFromUnitVectors(upVector, tempDir);
             
             if (hasScaleChanged) {
-                // Scale changed - need to recalculate positions
-                const arrowLength = 0.6 * arrowScale;
-                const offset = arrowLength * 0.5;
+                // Scale changed - need to recalculate positions using the same logic as createArrowInstances
+                const arrowLength = totalLength * arrowScale;
+                const halfLength = arrowLength / 2;
                 
-                const { position } = arrowData[i];
-                tempPos.set(...position);
+                // Calculate the start position of the arrow (the entire arrow is centered at tempPos)
+                const startOfArrow = tempPos.clone().addScaledVector(tempDir, -halfLength);
                 
-                offsetVector.copy(tempDir).multiplyScalar(offset);
+                // The cylinder's local origin is at its top, so position the cylinder top at startOfArrow + cylinderHeight * direction * arrowScale
+                const cylinderPos = startOfArrow.clone().addScaledVector(tempDir, cylinderHeight * arrowScale);
                 
-                const cylinderPos = tempPos.clone().sub(offsetVector).add(tempDir.clone().multiplyScalar(0.2 * arrowScale));
-                const conePos = tempPos.clone().sub(offsetVector).add(tempDir.clone().multiplyScalar(0.4 * arrowScale));
+                // The cone's local origin is at its base, so position the cone base at startOfArrow + cylinderHeight * direction * arrowScale
+                const conePos = startOfArrow.clone().addScaledVector(tempDir, cylinderHeight * arrowScale);
                 
                 tempScale.set(arrowScale, arrowScale, arrowScale);
                 
@@ -385,7 +419,21 @@ class ArrowVisualization {
             coneMesh.setMatrixAt(i, coneMatrix);
             
             const normalizedValue = (direction[componentIndex] + 1) / 2;
-            const color = getColor(normalizedValue, this.colormap);
+            
+            // Use the same safety check for color as in createArrowInstances
+            let color;
+            try {
+                color = getColor(normalizedValue, this.colormap);
+                // Ensure color has r, g, b properties
+                if (!color || typeof color !== 'object' || 
+                    color.r === undefined || color.g === undefined || color.b === undefined) {
+                    // Fallback to white if color is invalid
+                    color = { r: 1, g: 1, b: 1 };
+                }
+            } catch (error) {
+                console.error('Error getting color:', error);
+                color = { r: 1, g: 1, b: 1 };
+            }
             tempColor.setRGB(color.r, color.g, color.b);
             coneMesh.setColorAt(i, tempColor);
             cylinderMesh.setColorAt(i, tempColor);

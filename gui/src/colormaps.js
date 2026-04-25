@@ -645,6 +645,11 @@ export function getColorArrayRGB(colormap, numColors = 256) {
  * @returns {Object} {r, g, b} color in range 0-1
  */
 export function getColor(value, colormapName = 'coolwarm') {
+
+    if (value == null || !isFinite(value)) {
+        return { r: 0.5, g: 0.5, b: 0.5 }; 
+    }
+
     const colormap = typeof colormapName === 'string' 
         ? colormaps[colormapName.toLowerCase()] 
         : colormapName;

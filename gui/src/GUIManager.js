@@ -65,7 +65,6 @@ class GUIManager {
         });
         
         // Data events
-        this.wsClient.on('m_data', this.handleMagnetizationData.bind(this));
         this.wsClient.on('visualization_update', this.handleVisualizationUpdate.bind(this));
         this.wsClient.on('sim_state_update', this.handleSimStateUpdate.bind(this));
         this.wsClient.on('run_code_response', this.handleCommandResponse.bind(this));
@@ -90,18 +89,6 @@ class GUIManager {
         console.log('Sim state update:', data);
         if (this.simStatePanel) {
             this.simStatePanel.update(data);
-        }
-    }
-
-    /**
-     * Handle magnetization data message (legacy)
-     * @param {Object} data - Magnetization data
-     */
-    handleMagnetizationData(data) {
-        console.log('Received magnetization data:', data);
-        
-        if (this.visualization && data.m_data) {
-            this.visualization.updateMagnetization(data.m_data);
         }
     }
 

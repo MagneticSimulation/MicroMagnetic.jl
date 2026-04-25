@@ -140,7 +140,7 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     Ms_a .*= mu_0  #we convert A/m to Tesla
     copyto!(sim.mu0_Ms, Ms_a)
     @info "Saturation magnetization has been set."
-    send_visualization_data(Ms=Ms_a)
+    send_visualization_data(mesh=sim.mesh, Ms=Ms_a)
     return true
 end
 
@@ -152,7 +152,7 @@ Set the saturation magnetization Ms within the Shape.
 function set_Ms(sim::AbstractSim, shape::CSGShape, Ms::Number)
     init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms * mu_0)
     @info "Saturation magnetization has been set."
-    send_visualization_data(Ms=Array(sim.mu0_Ms))
+    send_visualization_data(mesh=sim.mesh, Ms=Array(sim.mu0_Ms))
     return true
 end
 
@@ -463,11 +463,7 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         current_time = time()
         if update_time > 0 && (current_time - last_update_time >= update_time || stop_flag)
             if global_client != nothing
-                response = Dict(
-                    "type" => "m_data",
-                    "m_data" => Array(sim.spin),
-                )
-                send_message(global_client, "m_data", response)
+                send_visualization_data(spin=sim.spin)
                 last_update_time = current_time
             end
         end
@@ -922,11 +918,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
         current_time = time()
         if update_time > 0 && (current_time - last_update_time >= update_time || i == steps)
             if global_client != nothing
-                response = Dict(
-                    "type" => "m_data",
-                    "m_data" => Array(sim.spin),
-                )
-                send_message(global_client, "m_data", response)
+                send_visualization_data(spin=sim.spin)
                 last_update_time = current_time
             end
         end

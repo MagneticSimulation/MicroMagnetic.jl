@@ -23,7 +23,7 @@ class Visualization {
         
         // Visualizers
         this.fdMeshVisualization = null;
-        this.femMeshVisualization = null;
+        this.feMeshVisualization = null;
         this.arrowVisualization = null;
         this.surfaceVisualization = null;
         
@@ -109,8 +109,8 @@ class Visualization {
         this.fdMeshVisualization = new FDMeshVisualization(this.scene);
         this.fdMeshVisualization._visible = true;
         
-        this.femMeshVisualization = new FEMeshVisualization(this.scene);
-        this.femMeshVisualization._visible = true;
+        this.feMeshVisualization = new FEMeshVisualization(this.scene);
+        this.feMeshVisualization._visible = true;
         
         this.arrowVisualization = new ArrowVisualization(this.scene);
         this.surfaceVisualization = new SurfaceVisualization(this.scene);
@@ -127,8 +127,6 @@ class Visualization {
             }
             else if  (data.type === 'fe'){
                 this.displayFEMesh(data);
-            } else if (data.type === 'magnetization') {
-                this.updateMagnetization(data);
             }
         }
 
@@ -169,9 +167,9 @@ class Visualization {
         this.clearAllVisualizations()
 
         // Ensure consistent scale factor between FD and FE meshes
-        if (this.femMeshVisualization) {
+        if (this.feMeshVisualization) {
             // Use FE mesh scale factor if it exists, otherwise use FD mesh scale factor
-            const scaleFactor = this.femMeshVisualization.scaleFactor;
+            const scaleFactor = this.feMeshVisualization.scaleFactor;
             this.fdMeshVisualization.setScaleFactor(scaleFactor);
         }
 
@@ -417,8 +415,8 @@ class Visualization {
             this.fdMeshVisualization.clearCells();
         }
         
-        if (this.femMeshVisualization) {
-            this.femMeshVisualization.clearMesh();
+        if (this.feMeshVisualization) {
+            this.feMeshVisualization.clearMesh();
         }
 
         if (this.surfaceVisualization) {
@@ -464,8 +462,8 @@ class Visualization {
                 if (this.fdMeshVisualization) {
                     this.fdMeshVisualization.setVisible(value);
                 }
-                if (this.femMeshVisualization) {
-                    this.femMeshVisualization.setVisible(value);
+                if (this.feMeshVisualization) {
+                    this.feMeshVisualization.setVisible(value);
                 }
             });
         
@@ -633,10 +631,10 @@ class Visualization {
         if (this.fdMeshVisualization) {
             // Use FD mesh scale factor if it exists, otherwise use FE mesh scale factor
             const scaleFactor = this.fdMeshVisualization.scaleFactor;
-            this.femMeshVisualization.setScaleFactor(scaleFactor);
+            this.feMeshVisualization.setScaleFactor(scaleFactor);
         }
         
-        this.femMeshVisualization.displayFEMesh(meshData);
+        this.feMeshVisualization.displayFEMesh(meshData);
         
         // Adjust camera to fit the mesh
         // Note: We'll need to implement this in FEMeshVisualization if needed
@@ -653,7 +651,7 @@ class Visualization {
     updateFromVisData(visData) {
         // Handle mesh update - detect type (FD or FE)
         if (visData.mesh) {
-            if (visData.mesh.type === 'fem' || visData.mesh.coordinates) {
+            if (visData.mesh.type === 'fe' || visData.mesh.coordinates) {
                 // This is FEMesh data with coordinates and cell_verts
                 this.displayFEMesh(visData.mesh);
             } else {
