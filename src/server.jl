@@ -44,6 +44,73 @@ function run_code(code::String)
     return result, success, stdout_str, stderr_str
 end
 
+function parse_example_file(filepath)
+    lines = readlines(filepath)
+    meta = Dict{String, Any}()
+    steps = []
+    in_meta = true
+    current_step = nothing
+    code_lines = String[]
+    
+    for line in lines
+        stripped = strip(line)
+        if in_meta && startswith(stripped, "# @title")
+            meta["title"] = replace(stripped, "# @title" => "") |> strip
+        elseif in_meta && startswith(stripped, "# @description")
+            meta["description"] = replace(stripped, "# @description" => "") |> strip
+        elseif in_meta && startswith(stripped, "# @tags")
+            meta["tags"] = split(replace(stripped, "# @tags" => ""))
+        elseif in_meta && !startswith(stripped, "# @")
+            in_meta = false
+            # Start parsing code
+            push!(code_lines, line)
+        elseif !in_meta
+            push!(code_lines, line)
+        end
+    end
+    
+    # Split code into steps based on comments starting with '#'
+    code = join(code_lines, "\n")
+    code_blocks = split(code, r"\n#\s*")
+    
+    for (i, block) in enumerate(code_blocks)
+        if isempty(strip(block))
+            continue
+        end
+        lines = split(block, "\n")
+        if length(lines) > 0
+            # First line is the step title
+            title = strip(lines[1])
+            # Remaining lines are code
+            code_content = join(lines[2:end], "\n") |> strip
+            if !isempty(title) || !isempty(code_content)
+                push!(steps, Dict("title" => title, "code" => code_content))
+            end
+        end
+    end
+    
+    # If no steps were found, create a single step
+    if isempty(steps) && !isempty(code)
+        push!(steps, Dict("title" => "Code", "code" => code))
+    end
+    
+    meta["steps"] = steps
+    meta["code"] = code
+    return meta
+end
+
+function load_all_examples(dir="examples")
+    examples = []
+    if isdir(dir)
+        for file in readdir(dir)
+            if endswith(file, ".jl")
+                push!(examples, parse_example_file(joinpath(dir, file)))
+            end
+        end
+    end
+    return examples
+end
+
 function send_visualization_data(;mesh=nothing, spin=nothing, Ms=nothing)
     data = Dict()
     
@@ -90,22 +157,6 @@ function send_visualization_data(;mesh=nothing, spin=nothing, Ms=nothing)
     end
 end
 
-function send_visualization_data(sim::AbstractSim)
-    if global_client == nothing
-        return
-    end
-
-    if sim isa AtomisticSim
-        Ms = Array(sim.mu_s)
-        mu_status = get_mu_s_status(ms)
-        if mu_status == :mu_B
-            Ms ./= mu_B
-        end
-    else
-        Ms = Array(sim.mu0_Ms)
-    end
-    send_visualization_data(Ms = Ms, mesh=sim.mesh)
-end
 
 """
 Extract driver information for different driver types
@@ -550,30 +601,13 @@ function handle_get_request(http, req, message_handlers)
             end
         end
     elseif req.target == "/api/examples"
-        # Serve examples.json file
-        examples_path = joinpath(@__DIR__, "../gui", "examples.json")
-        
-        if isfile(examples_path)
-            try
-                content = read(examples_path)
-                HTTP.setstatus(http, 200)
-                HTTP.setheader(http, "Content-Type" => "application/json")
-                HTTP.startwrite(http)
-                HTTP.write(http, content)
-            catch e
-                # Client closed connection
-            end
-        else
-            # Examples file not found
-            HTTP.setstatus(http, 404)
-            HTTP.setheader(http, "Content-Type" => "text/plain")
-            try
-                HTTP.startwrite(http)
-                HTTP.write(http, "Examples file not found")
-            catch e
-                # Client closed connection
-            end
-        end
+        # Load examples from .jl files
+        examples_dir = joinpath(@__DIR__, "../examples")
+        examples = load_all_examples(examples_dir)
+        HTTP.setstatus(http, 200)
+        HTTP.setheader(http, "Content-Type" => "application/json")
+        HTTP.startwrite(http)
+        HTTP.write(http, JSON.json(examples))
     else
         # Serve static files (including root path "/")
         file_path = lstrip(req.target, '/')

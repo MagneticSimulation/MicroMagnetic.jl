@@ -851,3 +851,20 @@ end
 function advance_step(sim::AbstractSim)
     return advance_step(sim, sim.driver.integrator)
 end
+
+function send_visualization_data(sim::AbstractSim)
+    if global_client == nothing
+        return
+    end
+
+    if sim isa AtomisticSim
+        Ms = Array(sim.mu_s)
+        mu_status = get_mu_s_status(ms)
+        if mu_status == :mu_B
+            Ms ./= mu_B
+        end
+    else
+        Ms = Array(sim.mu0_Ms)
+    end
+    send_visualization_data(Ms = Ms, mesh=sim.mesh)
+end

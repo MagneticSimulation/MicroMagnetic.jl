@@ -1,7 +1,7 @@
 class SnippetPanel {
     constructor(containerId, codeEditor) {
         this.container = document.getElementById(containerId);
-        this.codeEditor = codeEditor; // CodeEditorPanel 实例，用于插入代码
+        this.codeEditor = codeEditor;
         this.snippets = [];
         this.examples = [];
         this.activeTag = 'all';
@@ -202,15 +202,13 @@ class SnippetPanel {
     async handleSnippetClick(snippet) {
         let finalCode = snippet.code;
         if (snippet.arguments && snippet.arguments.length > 0) {
-            // 弹出参数表单（可实现在模态框或简易 prompt）
             const values = await this.showArgsDialog(snippet);
-            if (!values) return; // 用户取消
-            // 替换占位符
+            if (!values) return; 
             for (const [key, val] of Object.entries(values)) {
                 finalCode = finalCode.replace(new RegExp(`\\$\\{${key}\\}|\\$${key}`, 'g'), val);
             }
         }
-        // 插入到编辑器（假设 CodeEditorPanel 提供了 insertAtCursor 方法）
+        
         if (this.codeEditor && this.codeEditor.insertAtCursor) {
             this.codeEditor.insertAtCursor(finalCode);
         } else {
