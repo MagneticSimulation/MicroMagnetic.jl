@@ -34,6 +34,12 @@ function set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
     Ms = zeros(T, sim.n_total)
     init_scalar!(Ms, sim.mesh, init)
     copyto!(sim.mu_s, Ms)
+
+    mu_status = get_mu_s_status(Ms)
+    if mu_status == :mu_B
+        Ms ./= mu_B
+    end
+    send_visualization_data(Ms = Ms, mesh=sim.mesh)
     return true
 end
 
@@ -686,4 +692,23 @@ function add_demag(sim::AtomisticSim; name="demag", Nx=0, Ny=0, Nz=0)
     @info "Dipolar Interaction has been added."
     send_sim_state(sim)
     return demag
+end
+
+
+"""
+Determine if mu_s array is initialized and return its status
+Returns: (:uninitialized, :mu_B, :dimensionless)
+"""
+function get_mu_s_status(mu_s)
+    max_val = maximum(mu_s)
+
+    if max_val < 1e-10*mu_B
+        return :uninitialized
+    end
+
+    if max_val > 0.001*mu_B && max_val < 1000*mu_B
+        return :mu_B
+    end
+
+    return :dimensionless
 end

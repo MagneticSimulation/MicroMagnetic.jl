@@ -39,7 +39,7 @@ class FDMeshVisualization {
 
     /**
      * Set display type
-     * @param {string} type - Display type: 'cells', 'outline', or 'box'
+     * @param {string} type - Display type: 'outline', 'cells', or 'box'
      */
     setDisplayType(type) {
         if (this.displayType === type) return;
@@ -112,8 +112,9 @@ class FDMeshVisualization {
                 console.warn('Ms data length does not match grid size');
                 return;
             }
-            minMs = Math.min(...msData);
-            maxMs = Math.max(...msData);
+            // Use reduce instead of spread to avoid maximum call stack size exceeded
+            //minMs = msData.reduce((min, val) => Math.min(min, val), Infinity);
+            maxMs = msData.reduce((max, val) => Math.max(max, val), -Infinity);
         }
 
         // Default color
@@ -263,7 +264,7 @@ class FDMeshVisualization {
     }
 
     /**
-     * Display a transparent box surface
+     * Display a transparent box surface (light gray)
      */
     displayTransparentBox(width, height, depth) {
         const geometry = new THREE.BoxGeometry(width, height, depth);

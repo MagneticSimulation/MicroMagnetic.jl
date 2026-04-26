@@ -52,7 +52,7 @@ function send_visualization_data(;mesh=nothing, spin=nothing, Ms=nothing)
     
     # Check if mesh is defined in Main scope
     if mesh != nothing
-        if mesh isa FDMesh
+        if mesh isa FDMesh || mesh isa CubicMesh
             data["mesh"] = Dict(
                 "type" => "fd",
                 "nx" => mesh.nx, "ny" => mesh.ny, "nz" => mesh.nz,
@@ -133,18 +133,33 @@ function send_sim_state(sim)
     
     # Mesh information
     mesh = sim.mesh
-    if mesh isa FDMesh
-        mesh_str = "FDMesh ($(mesh.nx)×$(mesh.ny)×$(mesh.nz))"
-        mesh_str *= ", dx=$(mesh.dx*1e9)nm, dy=$(mesh.dy*1e9)nm, dz=$(mesh.dz*1e9)nm"
+    mesh_key = string(Base.nameof(typeof(mesh)))
+    if mesh isa FDMesh || mesh isa CubicMesh
+        mesh_info = Dict("Grid"      => "$(mesh.nx) × $(mesh.ny) × $(mesh.nz)",
+                         "Cell size" => "$(mesh.dx*1e9) × $(mesh.dy*1e9) × $(mesh.dz*1e9) nm³",
+                         "Periodic"  => "$(mesh.xperiodic) $(mesh.yperiodic) $(mesh.zperiodic)")
+        state[mesh_key] = mesh_info
     else
-        mesh_str = string(Base.nameof(typeof(mesh)))
+        state[mesh_key] = mesh_key
     end
-    state["Mesh"] = mesh_str
-
+    
     # Ms maximum value
-    ms_arr = sim.mu0_Ms
-    max_ms = maximum(abs.(ms_arr))
-    state["Ms max"] = max_ms > 1e-10 ? "$(round(max_ms/mu_0, sigdigits=3)) A/m" : "Not initialized"
+    if sim isa AtomisticSim
+        ms_arr = sim.mu_s
+        mu_status = get_mu_s_status(ms_arr)
+        if mu_status == :uninitialized
+            state["mu_s max"] = "Not initialized"
+        elseif mu_status == :mu_B
+            state["mu_s max"] = "$(round(maximum(ms_arr), sigdigits=3)) μB"
+        elseif mu_status == :dimensionless
+            state["mu_s max"] = "$(round(maximum(ms_arr), sigdigits=3)) (dimensionless)"
+        end
+    else
+        ms_arr = sim.mu0_Ms
+        max_ms = maximum(abs.(ms_arr))
+        state["Ms max"] = max_ms > 1e-10 ? "$(round(max_ms/mu_0, sigdigits=3)) A/m" : "Not initialized"
+    end
+
 
     # Driver information
     driver_type_str = Base.nameof(typeof(sim.driver)) |> string

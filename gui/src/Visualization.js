@@ -220,16 +220,16 @@ class Visualization {
         }
 
         if (isCartesian) {
-            this.gui.sampleNx?.max(this.fdMesh.nx);
+            this.gui.sampleNx?.max(this.fdMesh.nx).min(1);
             this.gui.sampleNx?.setValue(sampling(this.fdMesh.nx));
             
-            this.gui.sampleNy?.max(this.fdMesh.ny);
+            this.gui.sampleNy?.max(this.fdMesh.ny).min(1);
             this.gui.sampleNy?.setValue(sampling(this.fdMesh.ny));
             
-            this.gui.sampleNz?.max(this.fdMesh.nz);
+            this.gui.sampleNz?.max(this.fdMesh.nz).min(1);
             this.gui.sampleNz?.setValue(sampling(this.fdMesh.nz));
         } else {
-            this.gui.sampleNx?.max(30).setValue(8);
+            this.gui.sampleNx?.max(30).min(1).setValue(8);
             this.gui.sampleNy?.max(20).min(4).setValue(8);
         }
     }

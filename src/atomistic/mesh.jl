@@ -176,8 +176,12 @@ function CubicMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open")
 
     ngbs = kernel_array(ngbs)
     empty_ngbs = Array{Int32}(undef, 1, 0)
-    return CubicMesh(dx, dy, dz, nx, ny, nz, n_total, 6, 12, 8, 6, ngbs, empty_ngbs,
+
+    mesh = CubicMesh(dx, dy, dz, nx, ny, nz, n_total, 6, 12, 8, 6, ngbs, empty_ngbs,
                      empty_ngbs, empty_ngbs, pbc_x, pbc_y, pbc_z)
+                     
+    send_visualization_data(mesh=mesh) 
+    return mesh
 end
 
 """

@@ -103,14 +103,16 @@ end
 
 """
     set_region(mesh::FDMesh, region_id::Int, shape::CSGShape)
+    set_region(mesh::FDMesh, shape::CSGShape; region_id=1)
 
 Set the region ID for cells inside the specified shape.
+
 Parameters:
 - mesh: The mesh to set regions for
-- region_id: The ID to assign to cells inside the shape
+- region_id: The ID to assign to cells inside the shape (default: 1)
 - shape: The shape defining the region
 
-# Example
+# Examples
 ```julia
 # Create a finite difference mesh
 mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=10, ny=10, nz=10)
@@ -118,8 +120,14 @@ mesh = FDMesh(dx=2e-9, dy=2e-9, dz=2e-9, nx=10, ny=10, nz=10)
 # Create a spherical shape centered at (10e-9, 10e-9, 0) with radius 10e-9
 sphere = Sphere(radius=10e-9, center=(10e-9, 10e-9, 0))
 
-# Set all cells inside the sphere to region ID 1
+# Option 1: With positional region_id (backward compatible)
 set_region(mesh, 1, sphere)
+
+# Option 2: With keyword region_id (more readable)
+set_region(mesh, sphere; region_id=1)
+
+# Option 3: With default region_id
+set_region(mesh, sphere)  # Uses region_id=1
 ```
 """
 function set_region(mesh::FDMesh, region_id::Int, shape::CSGShape)
@@ -140,6 +148,11 @@ function set_region(mesh::FDMesh, region_id::Int, shape::CSGShape)
     
     isa(mesh.regions, Array) || copyto!(mesh.regions, a)
     return true
+end
+
+# Overloaded method with shape first and optional region_id
+function set_region(mesh::FDMesh, shape::CSGShape; region_id::Int=1)
+    return set_region(mesh, region_id, shape)
 end
 
 """
