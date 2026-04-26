@@ -859,7 +859,7 @@ function send_visualization_data(sim::AbstractSim)
 
     if sim isa AtomisticSim
         Ms = Array(sim.mu_s)
-        mu_status = get_mu_s_status(ms)
+        mu_status = get_mu_s_status(Ms)
         if mu_status == :mu_B
             Ms ./= mu_B
         end

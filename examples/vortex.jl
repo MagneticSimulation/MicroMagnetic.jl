@@ -1,4 +1,4 @@
-# @title Vortex
+# @title Magnetic Vortex
 # @description Create and relax a magnetic vortex
 # @tags vortex tutorial
 

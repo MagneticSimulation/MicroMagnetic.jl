@@ -5,6 +5,7 @@ using CairoMakie
 
 Atomistic = ["Magnetic skyrmion" => "atomistic/skyrmion.md",
              "Skyrmion lattice" => "atomistic/skyrmion_lattice.md",
+             "Magnetic hopfion" => "atomistic/hopfion.md",
              "AFM skyrmion" => "atomistic/skyrmion_afm.md",
              "Stochastic LLG" => "atomistic/sllg.md",
              "Phase diagram" => "atomistic/phase_diagram.md"];

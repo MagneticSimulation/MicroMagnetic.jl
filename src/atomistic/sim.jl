@@ -131,6 +131,7 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
         else
             @error("J2 should be a number or an array with length $(mesh.n_ngbs2)!")
         end
+        compute_2nd_ngbs(sim.mesh)
     end
 
     Js3 = T[]
@@ -143,6 +144,7 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
         else
             @error("J3 should be a number or an array with length $(mesh.n_ngbs3)!")
         end
+        compute_3rd_ngbs(mesh)
     end
 
     Js4 = T[]
@@ -155,6 +157,7 @@ function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0,
         else
             @error("J4 should be a number or an array with length $(mesh.n_ngbs4)!")
         end
+        compute_4th_ngbs(mesh)
     end
 
     N = sim.n_total
