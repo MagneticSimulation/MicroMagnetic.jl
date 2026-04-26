@@ -14,31 +14,150 @@
     ]
   },
   {
+    "title": "Create FD Mesh with PBC",
+    "description": "Create a mesh with periodic boundary conditions",
+    "tags": ["mesh", "pbc"],
+    "code": "mesh = FDMesh(; nx=${nx}, ny=${ny}, nz=${nz}, dx=${dx}e-9, dy=${dy}e-9, dz=${dz}e-9, pbc=\"${pbc}\")",
+    "arguments": [
+      { "name": "nx", "default": "100" },
+      { "name": "ny", "default": "100" },
+      { "name": "nz", "default": "1" },
+      { "name": "dx", "default": "2.5" },
+      { "name": "dy", "default": "2.5" },
+      { "name": "dz", "default": "2.5" },
+      { "name": "pbc", "default": "xy" }
+    ]
+  },
+  {
+    "title": "Create Simulation (SD)",
+    "description": "Create simulation with steepest descent driver for energy minimization",
+    "tags": ["sim", "sd"],
+    "code": "sim = Sim(mesh; driver=\"SD\", name=\"${name}\")",
+    "arguments": [
+      { "name": "name", "default": "std" }
+    ]
+  },
+  {
+    "title": "Create Simulation (LLG)",
+    "description": "Create simulation with LLG driver and DormandPrince integrator",
+    "tags": ["sim", "llg"],
+    "code": "sim = Sim(mesh; driver=\"LLG\", name=\"${name}\", integrator=\"DormandPrince\", save_data=true)\nsim.driver.alpha = ${alpha}\nsim.driver.gamma = ${gamma}\nsim.driver.integrator.tol = ${tol}",
+    "arguments": [
+      { "name": "name", "default": "dyn" },
+      { "name": "alpha", "default": "0.05" },
+      { "name": "gamma", "default": "2.21e5" },
+      { "name": "tol", "default": "1e-6" }
+    ]
+  },
+  {
     "title": "Set Constant Ms",
-    "description": "Set uniform saturation magnetization",
-    "tags": ["Ms"],
+    "description": "Set uniform saturation magnetization (A/m)",
+    "tags": ["ms"],
     "code": "set_Ms(sim, ${Ms})",
     "arguments": [
       { "name": "Ms", "default": "8e5" }
     ]
   },
   {
-    "title": "Create Simulation",
-    "description": "Create a new micromagnetic simulation with given mesh",
-    "tags": ["Sim"],
-    "code": "sim = create_sim(mesh)",
-    "arguments": []
+    "title": "Set Ms within Shape",
+    "description": "Set saturation magnetization inside a geometric shape (only the cells within the shape will have non-zero Ms)",
+    "tags": ["ms", "shape"],
+    "code": "set_Ms(sim, ${shape}, ${Ms})",
+    "arguments": [
+      { "name": "shape", "default": "Cylinder(radius=50e-9)" },
+      { "name": "Ms", "default": "8e5" }
+    ]
   },
   {
-    "title": "Initialize Magnetization",
-    "description": "Set initial magnetization in the +z direction",
+    "title": "Set Ms by Region Map",
+    "description": "Set Ms values for different regions using region_map",
+    "tags": ["ms", "region"],
+    "code": "set_region(mesh, ${shape1}, 1)\nset_region(mesh, ${shape2}, 2)\nset_Ms(sim, region_map(1 => ${Ms1}, 2 => ${Ms2}))",
+    "arguments": [
+      { "name": "shape1", "default": "Sphere((0, 0, 0), 100e-9)" },
+      { "name": "shape2", "default": "Box((0, 0, 0), (200e-9, 200e-9, 100e-9))" },
+      { "name": "Ms1", "default": "8e5" },
+      { "name": "Ms2", "default": "4e5" }
+    ]
+  },
+  {
+    "title": "Init Magnetization (Constant)",
+    "description": "Set initial magnetization to a uniform direction",
     "tags": ["m0"],
-    "code": "init_m0(sim, (0, 0, 1))",
-    "arguments": []
+    "code": "init_m0(sim, (${mx}, ${my}, ${mz}))",
+    "arguments": [
+      { "name": "mx", "default": "1" },
+      { "name": "my", "default": "0.25" },
+      { "name": "mz", "default": "0.1" }
+    ]
+  },
+  {
+    "title": "Set Ms (Spatial Function)",
+    "description": "Define a spatially varying saturation magnetization using a coordinate function",
+    "tags": ["ms"],
+    "code": "function circular_Ms(x, y, z)\n    if x^2 + y^2 <= (${radius}e-9)^2\n        return ${Ms}\n    end\n    return 0.0\nend\nset_Ms(sim, circular_Ms)",
+    "arguments": [
+      { "name": "radius", "default": "50" },
+      { "name": "Ms", "default": "8e5" }
+    ]
+  },
+  {
+    "title": "Init Vortex",
+    "description": "Initialize a magnetic vortex with given polarity and chirality",
+    "tags": ["m0"],
+    "code": "init_m0(sim, vortex(p=${p}, c=${c}))",
+    "arguments": [
+      { "name": "p", "default": "1" },
+      { "name": "c", "default": "-1" }
+    ]
+  },
+  {
+    "title": "Init Skyrmion",
+    "description": "Initialize a magnetic skyrmion",
+    "tags": ["m0"],
+    "code": "init_m0(sim, skyrmion(p=${p}, v=${v}, phi=${phi}))",
+    "arguments": [
+      { "name": "p", "default": "1" },
+      { "name": "v", "default": "-1" },
+      { "name": "phi", "default": "pi/2" }
+    ]
+  },
+  {
+    "title": "Init Bubble",
+    "description": "Initialize a magnetic bubble domain",
+    "tags": ["m0"],
+    "code": "init_m0(sim, bubble2d(R=${R}e-9, p=${p}, v=${v}, phi=${phi}))",
+    "arguments": [
+      { "name": "R", "default": "40" },
+      { "name": "p", "default": "1" },
+      { "name": "v", "default": "1" },
+      { "name": "phi", "default": "0.0" }
+    ]
+  },
+  {
+    "title": "Init Spatial m0 (Grid Function)",
+    "description": "Initialize magnetization using a grid-based (i,j,k) function",
+    "tags": ["m0"],
+    "code": "function init_fun(i, j, k, dx, dy, dz)\n    x = i - ${center_x}\n    y = j - ${center_y}\n    r = sqrt(x^2 + y^2)\n    if r < ${r0}\n        return (0, 0, 1)\n    end\n    return (-y / r, x / r, 0)\nend\ninit_m0(sim, init_fun)",
+    "arguments": [
+      { "name": "center_x", "default": "50" },
+      { "name": "center_y", "default": "50" },
+      { "name": "r0", "default": "10" }
+    ]
+  },
+  {
+    "title": "Init Spatial m0 (Coordinate Function)",
+    "description": "Initialize magnetization using a spatial (x,y,z) function",
+    "tags": ["m0"],
+    "code": "function init_fun(x, y, z)\n    r = sqrt(x^2 + y^2)\n    if r < ${r0}e-9\n        return (0, 0, 1)\n    end\n    return (sin(pi*x/${pitch}e-9), 0, cos(pi*x/${pitch}e-9))\nend\ninit_m0(sim, init_fun)",
+    "arguments": [
+      { "name": "r0", "default": "20" },
+      { "name": "pitch", "default": "20" }
+    ]
   },
   {
     "title": "Add Exchange Interaction",
-    "description": "Add exchange interaction with given constant",
+    "description": "Add isotropic exchange interaction with constant A (J/m)",
     "tags": ["exch", "interaction"],
     "code": "add_exch(sim, ${A})",
     "arguments": [
@@ -47,14 +166,25 @@
   },
   {
     "title": "Add Demagnetization",
-    "description": "Add demagnetization field calculation",
+    "description": "Add demagnetization (dipole-dipole) field calculation using FFT",
     "tags": ["demag", "interaction"],
     "code": "add_demag(sim)",
     "arguments": []
   },
   {
-    "title": "Add Zeeman Field",
-    "description": "Add external magnetic field",
+    "title": "Add Demagnetization with Macro BC",
+    "description": "Add demagnetization with macro boundary conditions (Nx, Ny, Nz repetitions)",
+    "tags": ["demag", "interaction"],
+    "code": "add_demag(sim; Nx=${Nx}, Ny=${Ny}, Nz=${Nz})",
+    "arguments": [
+      { "name": "Nx", "default": "0" },
+      { "name": "Ny", "default": "0" },
+      { "name": "Nz", "default": "2" }
+    ]
+  },
+  {
+    "title": "Add Static Zeeman",
+    "description": "Add uniform static external magnetic field (A/m)",
     "tags": ["zeeman", "interaction"],
     "code": "add_zeeman(sim, (${Hx}, ${Hy}, ${Hz}))",
     "arguments": [
@@ -64,30 +194,303 @@
     ]
   },
   {
-    "title": "Relax Simulation",
-    "description": "Relax the system to equilibrium state",
-    "tags": ["relax", "simulation"],
-    "code": "relax(sim; stopping_dmdt=0.001)",
-    "arguments": []
-  },
-  {
-    "title": "Run Dynamic Simulation",
-    "description": "Run dynamic simulation for given time and time step",
-    "tags": ["dynamic", "simulation"],
-    "code": "run_until(sim, ${t}; dt=${dt})",
+    "title": "Add Time-Varying Zeeman",
+    "description": "Add time-dependent external magnetic field H0 * f(t)",
+    "tags": ["zeeman", "interaction"],
+    "code": "function field_pulse(t)\n    return exp(-t / ${tau})\nend\nadd_zeeman(sim, (${Hx}, ${Hy}, ${Hz}), field_pulse)",
     "arguments": [
-      { "name": "t", "default": "1e-9" },
-      { "name": "dt", "default": "1e-12" }
+      { "name": "Hx", "default": "0.0" },
+      { "name": "Hy", "default": "0.0" },
+      { "name": "Hz", "default": "1e5" },
+      { "name": "tau", "default": "1e-9" }
     ]
   },
   {
-    "title": "Set Ms for Region",
-    "description": "Set saturation magnetization for a specific region",
-    "tags": ["Ms", "region"],
-    "code": "set_Ms(sim, ${Ms}; region_id=${region_id})",
+    "title": "Add Uniaxial Anisotropy",
+    "description": "Add uniaxial magnetocrystalline anisotropy",
+    "tags": ["anis", "interaction"],
+    "code": "add_anis(sim, ${Ku}; axis=(${ax}, ${ay}, ${az}))",
     "arguments": [
+      { "name": "Ku", "default": "1e5" },
+      { "name": "ax", "default": "0" },
+      { "name": "ay", "default": "0" },
+      { "name": "az", "default": "1" }
+    ]
+  },
+  {
+    "title": "Add Cubic Anisotropy",
+    "description": "Add cubic magnetocrystalline anisotropy",
+    "tags": ["anis", "interaction"],
+    "code": "add_cubic_anis(sim, ${Kc}; axis1=(${ax1}, ${ay1}, ${az1}), axis2=(${ax2}, ${ay2}, ${az2}))",
+    "arguments": [
+      { "name": "Kc", "default": "1e3" },
+      { "name": "ax1", "default": "1" }, { "name": "ay1", "default": "0" }, { "name": "az1", "default": "0" },
+      { "name": "ax2", "default": "0" }, { "name": "ay2", "default": "1" }, { "name": "az2", "default": "0" }
+    ]
+  },
+  {
+    "title": "Add Hexagonal Anisotropy",
+    "description": "Add hexagonal anisotropy (K1, K2, K3)",
+    "tags": ["anis", "interaction"],
+    "code": "add_hex_anis(sim; K1=${K1}, K2=${K2}, K3=${K3})",
+    "arguments": [
+      { "name": "K1", "default": "1e3" },
+      { "name": "K2", "default": "0" },
+      { "name": "K3", "default": "0" }
+    ]
+  },
+  {
+    "title": "Add Bulk DMI",
+    "description": "Add bulk Dzyaloshinskii-Moriya interaction",
+    "tags": ["dmi", "interaction"],
+    "code": "add_dmi(sim, (${Dx}, ${Dy}, ${Dz}); type=\"bulk\")",
+    "arguments": [
+      { "name": "Dx", "default": "1e-3" },
+      { "name": "Dy", "default": "1e-3" },
+      { "name": "Dz", "default": "0" }
+    ]
+  },
+  {
+    "title": "Add Interfacial DMI",
+    "description": "Add interfacial DMI (spatially varying D)",
+    "tags": ["dmi", "interaction"],
+    "code": "add_dmi(sim, ${D}; type=\"interfacial\")",
+    "arguments": [
+      { "name": "D", "default": "3e-3" }
+    ]
+  },
+  {
+    "title": "Add Interlayer DMI",
+    "description": "Add interlayer DMI between two layers k1 and k2",
+    "tags": ["dmi", "interaction", "interlayer"],
+    "code": "add_dmi_int(sim, (${Dx}, ${Dy}, ${Dz}); k1=${k1}, k2=${k2})",
+    "arguments": [
+      { "name": "Dx", "default": "0" },
+      { "name": "Dy", "default": "0" },
+      { "name": "Dz", "default": "1e-3" },
+      { "name": "k1", "default": "1" },
+      { "name": "k2", "default": "-1" }
+    ]
+  },
+  {
+    "title": "Add Interlayer Exchange (RKKY)",
+    "description": "Add RKKY-type interlayer exchange coupling between layers",
+    "tags": ["exch", "interaction", "interlayer", "rkky"],
+    "code": "add_exch_int(sim, ${J}; k1=${k1}, k2=${k2})",
+    "arguments": [
+      { "name": "J", "default": "1e-3" },
+      { "name": "k1", "default": "1" },
+      { "name": "k2", "default": "-1" }
+    ]
+  },
+  {
+    "title": "Add Spin-Orbit Torque (SOT)",
+    "description": "Add damping-like and field-like spin-orbit torque",
+    "tags": ["sot", "interaction", "torque"],
+    "code": "add_sot(sim, ${aj}, ${bj}, (${px}, ${py}, ${pz}))",
+    "arguments": [
+      { "name": "aj", "default": "1e11" },
+      { "name": "bj", "default": "0" },
+      { "name": "px", "default": "0" },
+      { "name": "py", "default": "1" },
+      { "name": "pz", "default": "0" }
+    ]
+  },
+  {
+    "title": "Add Spin Transfer Torque (Zhang-Li)",
+    "description": "Add Zhang-Li spin transfer torque for in-plane currents",
+    "tags": ["stt", "interaction", "torque"],
+    "code": "add_stt(sim, model=:zhang_li, P=${P}, Ms=${Ms}, xi=${xi}, J=(${Jx}, ${Jy}, ${Jz}))",
+    "arguments": [
+      { "name": "P", "default": "0.5" },
       { "name": "Ms", "default": "8e5" },
-      { "name": "region_id", "default": "2" }
+      { "name": "xi", "default": "0.05" },
+      { "name": "Jx", "default": "1e12" },
+      { "name": "Jy", "default": "0" },
+      { "name": "Jz", "default": "0" }
+    ]
+  },
+  {
+    "title": "Add Spin Transfer Torque (Slonczewski)",
+    "description": "Add Slonczewski STT for perpendicular current in MTJs",
+    "tags": ["stt", "interaction", "torque", "mtj"],
+    "code": "add_stt(sim, model=:slonczewski, J=${J}, tf=${tf}, Ms=${Ms}, p=(${px}, ${py}, ${pz}), P=${P}, Lambda=${Lambda})",
+    "arguments": [
+      { "name": "J", "default": "5e10" },
+      { "name": "tf", "default": "1e-9" },
+      { "name": "Ms", "default": "8e5" },
+      { "name": "px", "default": "0" },
+      { "name": "py", "default": "0" },
+      { "name": "pz", "default": "1" },
+      { "name": "P", "default": "0.5" },
+      { "name": "Lambda", "default": "2.0" }
+    ]
+  },
+  {
+    "title": "Add SAHE Torque",
+    "description": "Add spin anomalous Hall effect torque",
+    "tags": ["torque", "interaction", "sahe"],
+    "code": "add_sahe_torque(sim, (${sx}, ${sy}, ${sz}); beta=${beta})",
+    "arguments": [
+      { "name": "sx", "default": "0.1" },
+      { "name": "sy", "default": "0.2" },
+      { "name": "sz", "default": "0.3" },
+      { "name": "beta", "default": "0.1" }
+    ]
+  },
+  {
+    "title": "Add Custom Torque",
+    "description": "Add a user-defined torque function T(m, t) to the LLG equation",
+    "tags": ["torque", "interaction"],
+    "code": "function custom_torque(y, m, t)\n    y .= 0\n    y[1:3:end] .= ${amp} .* sin(${omega} .* t)\nend\nadd_torque(sim, custom_torque)",
+    "arguments": [
+      { "name": "amp", "default": "0.1" },
+      { "name": "omega", "default": "2π*1e9" }
+    ]
+  },
+  {
+    "title": "Add Thermal Noise",
+    "description": "Add stochastic thermal noise at temperature T (K)",
+    "tags": ["interaction", "temperature"],
+    "code": "add_thermal_noise(sim, ${T})",
+    "arguments": [
+      { "name": "T", "default": "300.0" }
+    ]
+  },
+  {
+    "title": "Add Pulsed Thermal Noise",
+    "description": "Add thermal noise with time-dependent scaling",
+    "tags": ["interaction", "temperature"],
+    "code": "add_thermal_noise(sim, ${T}; scaling=t -> ${scale_func})",
+    "arguments": [
+      { "name": "T", "default": "300.0" },
+      { "name": "scale_func", "default": "exp(-t/1e-9)" }
+    ]
+  },
+  {
+    "title": "Set Region by Index",
+    "description": "Assign region ID to specific grid indices",
+    "tags": ["region", "mesh"],
+    "code": "set_region(mesh, ${region_id}; i=${i_range}, j=${j_range}, k=${k_range})",
+    "arguments": [
+      { "name": "region_id", "default": "1" },
+      { "name": "i_range", "default": ":" },
+      { "name": "j_range", "default": ":" },
+      { "name": "k_range", "default": ":" }
+    ]
+  },
+  {
+    "title": "Set Region by Shape",
+    "description": "Assign region ID to cells within a geometric shape",
+    "tags": ["region", "mesh", "shape"],
+    "code": "set_region(mesh, ${shape}; region_id=${region_id})",
+    "arguments": [
+      { "name": "shape", "default": "Sphere((0, 0, 0), 50e-9)" },
+      { "name": "region_id", "default": "1" }
+    ]
+  },
+  {
+    "title": "Create Voronoi Grains",
+    "description": "Generate Voronoi tessellation for polycrystalline microstructures",
+    "tags": ["region", "mesh", "voronoi", "grains"],
+    "code": "grain_ids, gb_mask, seeds = voronoi(mesh; min_dist=${min_dist}, seed=${seed}, threshold=${threshold})\nfunction spatial_Ms(i,j,k,dx,dy,dz)\n    if gb_mask[i,j,k]\n        return 0\n    end\n    return ${Ms}\nend\nset_Ms(sim, spatial_Ms)",
+    "arguments": [
+      { "name": "min_dist", "default": "20" },
+      { "name": "seed", "default": "100" },
+      { "name": "threshold", "default": "0.28" },
+      { "name": "Ms", "default": "8e5" }
+    ]
+  },
+  {
+    "title": "Create Sphere Shape",
+    "description": "Create a sphere with center and radius for CSG operations",
+    "tags": ["shape", "csg"],
+    "code": "Sphere((${cx}e-9, ${cy}e-9, ${cz}e-9), ${radius}e-9)",
+    "arguments": [
+      { "name": "cx", "default": "0" },
+      { "name": "cy", "default": "0" },
+      { "name": "cz", "default": "0" },
+      { "name": "radius", "default": "50" }
+    ]
+  },
+  {
+    "title": "Create Box Shape",
+    "description": "Create a box with center and size for CSG operations",
+    "tags": ["shape", "csg"],
+    "code": "Box((${cx}e-9, ${cy}e-9, ${cz}e-9), (${wx}e-9, ${wy}e-9, ${wz}e-9))",
+    "arguments": [
+      { "name": "cx", "default": "0" }, { "name": "cy", "default": "0" }, { "name": "cz", "default": "0" },
+      { "name": "wx", "default": "100" }, { "name": "wy", "default": "100" }, { "name": "wz", "default": "50" }
+    ]
+  },
+  {
+    "title": "Create Cylinder Shape",
+    "description": "Create a cylinder for CSG operations",
+    "tags": ["shape", "csg"],
+    "code": "Cylinder(center=(${cx}e-9, ${cy}e-9, ${cz}e-9), radius=${radius}e-9)",
+    "arguments": [
+      { "name": "cx", "default": "0" }, { "name": "cy", "default": "0" }, { "name": "cz", "default": "0" },
+      { "name": "radius", "default": "50" }
+    ]
+  },
+  {
+    "title": "Set Driver (LLG)",
+    "description": "Change simulation driver to LLG with specific parameters",
+    "tags": ["driver", "llg"],
+    "code": "set_driver(sim; driver=\"LLG\", alpha=${alpha}, gamma=${gamma})",
+    "arguments": [
+      { "name": "alpha", "default": "0.02" },
+      { "name": "gamma", "default": "2.211e5" }
+    ]
+  },
+  {
+    "title": "Set Driver (Inertial LLG)",
+    "description": "Change to inertial Landau-Lifshitz-Gilbert driver",
+    "tags": ["driver", "llg"],
+    "code": "set_driver(sim; driver=\"InertialLLG\", alpha=${alpha}, gamma=${gamma})",
+    "arguments": [
+      { "name": "alpha", "default": "0.01" },
+      { "name": "gamma", "default": "2.21e5" }
+    ]
+  },
+  {
+    "title": "Set Driver (Spatial LLG)",
+    "description": "Change to spatial LLG driver with position-dependent alpha",
+    "tags": ["driver", "llg"],
+    "code": "set_driver(sim; driver=\"SpatialLLG\", gamma=${gamma})",
+    "arguments": [
+      { "name": "gamma", "default": "2.21e5" }
+    ]
+  },
+  {
+    "title": "Relax Simulation",
+    "description": "Relax the system to equilibrium using SD driver",
+    "tags": ["relax", "sim"],
+    "code": "relax(sim; stopping_dmdt=${stopping_dmdt})",
+    "arguments": [
+      { "name": "stopping_dmdt", "default": "0.001" }
+    ]
+  },
+  {
+    "title": "Run Dynamic Simulation (Steps)",
+    "description": "Run LLG dynamics for a specified number of steps",
+    "tags": ["sim", "llg"],
+    "code": "run_sim(sim; steps=${steps}, dt=${dt}, save_m_every=${save_every})",
+    "arguments": [
+      { "name": "steps", "default": "100" },
+      { "name": "dt", "default": "1e-11" },
+      { "name": "save_every", "default": "1" }
+    ]
+  },
+  {
+    "title": "Save OVF to Movie",
+    "description": "Generate a movie (.gif) from saved OVF data",
+    "tags": ["tools"],
+    "code": "ovf2movie(\"${name}\"; output=\"${output}.gif\", component='${component}')",
+    "arguments": [
+      { "name": "name", "default": "std4_LLG" },
+      { "name": "output", "default": "sim" },
+      { "name": "component", "default": "x" }
     ]
   }
 ]

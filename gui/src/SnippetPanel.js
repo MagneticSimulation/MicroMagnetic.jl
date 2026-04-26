@@ -4,7 +4,8 @@ class SnippetPanel {
         this.codeEditor = codeEditor;
         this.snippets = [];
         this.examples = [];
-        this.activeTag = 'all';
+        this.snippetsActiveTag = 'all';
+        this.examplesActiveTag = 'all';
         this.mode = 'snippets'; // 'snippets' or 'examples'
         this.buildUI();
         this.loadSnippets();
@@ -120,17 +121,22 @@ class SnippetPanel {
 
     renderTags() {
         const items = this.mode === 'snippets' ? this.snippets : this.examples;
+        const activeTag = this.mode === 'snippets' ? this.snippetsActiveTag : this.examplesActiveTag;
         const tagsSet = new Set();
         items.forEach(item => item.tags.forEach(tag => tagsSet.add(tag)));
         const tags = ['all', ...Array.from(tagsSet).sort()];
         
         this.tagsContainer.innerHTML = tags.map(tag =>
-            `<span class="snippet-tag ${this.activeTag===tag?'active':''}" data-tag="${tag}">${tag}</span>`
+            `<span class="snippet-tag ${activeTag===tag?'active':''}" data-tag="${tag}">${tag}</span>`
         ).join('');
         
         this.tagsContainer.querySelectorAll('.snippet-tag').forEach(el => {
             el.addEventListener('click', () => {
-                this.activeTag = el.dataset.tag;
+                if (this.mode === 'snippets') {
+                    this.snippetsActiveTag = el.dataset.tag;
+                } else {
+                    this.examplesActiveTag = el.dataset.tag;
+                }
                 this.filterAndRender();
             });
         });
@@ -139,9 +145,10 @@ class SnippetPanel {
     filterAndRender() {
         const query = this.searchInput.value.toLowerCase();
         const items = this.mode === 'snippets' ? this.snippets : this.examples;
+        const activeTag = this.mode === 'snippets' ? this.snippetsActiveTag : this.examplesActiveTag;
         
         const filtered = items.filter(item => {
-            if (this.activeTag !== 'all' && !item.tags.includes(this.activeTag)) return false;
+            if (activeTag !== 'all' && !item.tags.includes(activeTag)) return false;
             if (query && !item.title.toLowerCase().includes(query) && !item.description.toLowerCase().includes(query)) return false;
             return true;
         });
@@ -161,7 +168,7 @@ class SnippetPanel {
                     <div class="snippet-code-preview"><code>${this.escapeHtml(s.code.substring(0, 80))}${s.code.length>80?'...':''}</code></div>
                 </div>
             `).join('');
-            
+
             // Bind click events for snippets
             this.listContainer.querySelectorAll('.snippet-item').forEach(el => {
                 el.addEventListener('click', () => {
@@ -195,20 +202,30 @@ class SnippetPanel {
         
         // Sync tag highlighting
         this.tagsContainer.querySelectorAll('.snippet-tag').forEach(el => {
-            el.classList.toggle('active', el.dataset.tag === this.activeTag);
+            el.classList.toggle('active', el.dataset.tag === activeTag);
         });
     }
 
     async handleSnippetClick(snippet) {
         let finalCode = snippet.code;
         if (snippet.arguments && snippet.arguments.length > 0) {
-            const values = await this.showArgsDialog(snippet);
-            if (!values) return; 
+            const result = await this.showArgsDialog(snippet);
+            if (!result) return;
+            const { action, values } = result;
             for (const [key, val] of Object.entries(values)) {
                 finalCode = finalCode.replace(new RegExp(`\\$\\{${key}\\}|\\$${key}`, 'g'), val);
             }
+            if (action === 'replace') {
+                if (this.codeEditor && this.codeEditor.clearEditor) {
+                    this.codeEditor.clearEditor();
+                }
+            } else {
+                finalCode = "\n" + finalCode;
+            }
+        } else {
+            finalCode = "\n" + finalCode;
         }
-        
+
         if (this.codeEditor && this.codeEditor.insertAtCursor) {
             this.codeEditor.insertAtCursor(finalCode);
         } else {
@@ -230,12 +247,14 @@ class SnippetPanel {
             formHtml += `
                 <div class="args-buttons">
                     <button id="args-cancel">Cancel</button>
+                    <button id="args-replace">Replace</button>
                     <button id="args-ok">Insert</button>
                 </div></div>`;
             overlay.innerHTML = formHtml;
             document.body.appendChild(overlay);
             const cancel = overlay.querySelector('#args-cancel');
             const ok = overlay.querySelector('#args-ok');
+            const replace = overlay.querySelector('#args-replace');
             cancel.onclick = () => { document.body.removeChild(overlay); resolve(null); };
             ok.onclick = () => {
                 const values = {};
@@ -243,7 +262,15 @@ class SnippetPanel {
                     values[arg.name] = overlay.querySelector(`#arg-${arg.name}`).value;
                 });
                 document.body.removeChild(overlay);
-                resolve(values);
+                resolve({ action: 'insert', values });
+            };
+            replace.onclick = () => {
+                const values = {};
+                snippet.arguments.forEach(arg => {
+                    values[arg.name] = overlay.querySelector(`#arg-${arg.name}`).value;
+                });
+                document.body.removeChild(overlay);
+                resolve({ action: 'replace', values });
             };
         });
     }
@@ -276,14 +303,15 @@ class SnippetPanel {
         if (!this.currentExample || !this.codeEditor || !this.codeEditor.insertAtCursor) {
             return;
         }
-        
-        // Combine all steps with double newlines between them
+
+        if (this.codeEditor.clearEditor) {
+            this.codeEditor.clearEditor();
+        }
+
         const allCode = this.currentExample.steps.map(step => step.code).join('\n\n');
-        
-        // Insert into code editor
+
         this.codeEditor.insertAtCursor(allCode);
-        
-        // Close modal
+
         this.modal.style.display = 'none';
     }
 

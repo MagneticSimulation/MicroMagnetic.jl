@@ -152,7 +152,7 @@
 }
 .snippet-title {
     font-weight: 600;
-    font-size: 12px;
+    font-size: 11px;
     color: #333;
 }
 .snippet-desc {
@@ -393,18 +393,18 @@
 
 .example-modal-content {
     background-color: #fff;
-    margin: 5% auto;
+    margin: 3% auto;
     border: 1px solid #dee2e6;
     border-radius: 8px;
-    width: 90%;
-    max-width: 800px;
-    max-height: 80vh;
+    width: 50%;
+    max-width: 700px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
 }
 
 .example-modal-header {
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-bottom: 1px solid #dee2e6;
     display: flex;
     justify-content: space-between;
@@ -413,7 +413,7 @@
 
 .example-modal-header h4 {
     margin: 0;
-    font-size: 16px;
+    font-size: 14px;
     color: #333;
 }
 
@@ -429,16 +429,17 @@
 }
 
 .example-modal-body {
-    padding: 16px;
+    padding: 12px;
     overflow-y: auto;
     flex: 1;
 }
 
 .example-modal-footer {
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-top: 1px solid #dee2e6;
     display: flex;
     justify-content: flex-end;
+    gap: 10px;
 }
 
 .example-modal-footer button {
@@ -458,17 +459,17 @@
 
 /* Example Steps */
 .example-step {
-    margin-bottom: 16px;
+    margin-bottom: 10px;
     border: 1px solid #dee2e6;
     border-radius: 6px;
-    padding: 12px;
+    padding: 10px;
     background-color: #f8f9fa;
 }
 
 .example-step-header {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     gap: 8px;
 }
 
@@ -476,30 +477,30 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     background-color: #007bff;
     color: white;
     border-radius: 50%;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
 }
 
 .example-step-title {
     margin: 0;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: #333;
 }
 
 .example-step-code {
     margin: 0;
-    padding: 10px;
+    padding: 8px;
     background-color: #fff;
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     font-family: monospace;
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.4;
     overflow-x: auto;
 }

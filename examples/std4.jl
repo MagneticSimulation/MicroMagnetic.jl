@@ -2,6 +2,10 @@
 # @description Standard micromagnetic simulation with LLG dynamics
 # @tags std4 tutorial
 
+# Import MicroMagnetic
+using MicroMagnetic
+@using_gpu()
+
 # Create Mesh
 mesh = FDMesh(; nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9);
 

@@ -205,7 +205,13 @@ class CodeEditorPanel {
         doc.replaceRange(text, cursor);
         this.editor.focus();
     }
-    
+
+    clearEditor() {
+        if (!this.editor) return;
+        this.editor.setValue("");
+        this.editor.focus();
+    }
+
     escapeHtml(str) {
         const div = document.createElement('div');
         div.appendChild(document.createTextNode(str));
