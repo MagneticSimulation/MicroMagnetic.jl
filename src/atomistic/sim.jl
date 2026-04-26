@@ -35,11 +35,7 @@ function set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
     init_scalar!(Ms, sim.mesh, init)
     copyto!(sim.mu_s, Ms)
 
-    mu_status = get_mu_s_status(Ms)
-    if mu_status == :mu_B
-        Ms ./= mu_B
-    end
-    send_visualization_data(Ms = Ms, mesh=sim.mesh)
+    send_visualization_data(sim)
     return true
 end
 

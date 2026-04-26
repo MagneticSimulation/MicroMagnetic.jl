@@ -68,6 +68,7 @@ class GUIManager {
         this.wsClient.on('visualization_update', this.handleVisualizationUpdate.bind(this));
         this.wsClient.on('sim_state_update', this.handleSimStateUpdate.bind(this));
         this.wsClient.on('run_code_response', this.handleCommandResponse.bind(this));
+        this.wsClient.on('plot_data', this.handlePlotData.bind(this));
     }
 
     /**
@@ -89,6 +90,17 @@ class GUIManager {
         console.log('Sim state update:', data);
         if (this.simStatePanel) {
             this.simStatePanel.update(data);
+        }
+    }
+
+    /**
+     * Handle plot data message
+     * @param {Object} data - Plot data from backend
+     */
+    handlePlotData(data) {
+        console.log('Plot data received:', data);
+        if (this.plotPanel) {
+            this.plotPanel.update(data);
         }
     }
 

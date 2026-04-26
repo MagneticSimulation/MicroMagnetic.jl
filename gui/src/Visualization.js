@@ -11,7 +11,7 @@ import { getAvailableColormaps } from './colormaps.js';
  * Main Visualization class coordinating all visualizers
  */
 class Visualization {
-    constructor(containerId) {
+    constructor(containerId, plotPanel = null) {
         this.scene = null;
         this.camera = null;
         this.renderer = null;
@@ -64,6 +64,9 @@ class Visualization {
         // GUI references
         this.gui = null;
         this.container = document.getElementById(containerId);
+
+        // Plot panel reference
+        this.plotPanel = plotPanel;
         
         if (this.container) {
             this.init(this.container);
@@ -599,6 +602,14 @@ class Visualization {
         }
 
         magnetizationFolder.open();
+
+        // Plot Panel controls
+        if (this.plotPanel) {
+            const plotFolder = this.gui.addFolder('Plot Panel');
+            plotFolder.add(this.plotPanel, 'mirrorLoop').name('Mirror Loop').onChange((value) => {
+                this.plotPanel.setMirrorLoop(value);
+            });
+        }
     }
 
     /**

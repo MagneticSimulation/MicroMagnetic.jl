@@ -140,7 +140,7 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     Ms_a .*= mu_0  #we convert A/m to Tesla
     copyto!(sim.mu0_Ms, Ms_a)
     @info "Saturation magnetization has been set."
-    send_visualization_data(mesh=sim.mesh, Ms=Ms_a)
+    send_visualization_data(sim)
     return true
 end
 
@@ -152,7 +152,7 @@ Set the saturation magnetization Ms within the Shape.
 function set_Ms(sim::AbstractSim, shape::CSGShape, Ms::Number)
     init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms * mu_0)
     @info "Saturation magnetization has been set."
-    send_visualization_data(mesh=sim.mesh, Ms=Array(sim.mu0_Ms))
+    send_visualization_data(sim)
     return true
 end
 
@@ -362,6 +362,12 @@ function set_driver_arguments(sim::AbstractSim, args::Dict)
     end
 end
 
+function send_visualization_data(sim)
+    if sim isa AtomisticSim
+        send_visualization_data()
+    end
+end
+
 """
     relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=0, 
            save_m_every=0, using_time_factor=true, output="ovf", update_time=1.0)
@@ -389,6 +395,8 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         @warn "The parameter 'maxsteps' is deprecated. Please use 'max_steps' in relax function."
         max_steps = maxsteps
     end
+
+    send_visualization_data(sim)
 
     # to dertermine which driver is used.
     llg_driver = isa(sim.driver, LLG)
@@ -648,7 +656,8 @@ hysteresis(sim, Hs, direction=(0, 1, 0))
 ```
 
 Note that `Hs` can be an array of numbers, tuples of 3 numbers, arrays, or even functions,
-because the `update_zeeman` function accepts `TupleOrArrayOrFunction`. In such cases, the `direction` parameter is ignored.
+because the `update_zeeman` function accepts `TupleOrArrayOrFunction`. In such cases, 
+the `direction` parameter is ignored.
 
 ```julia
 # Create hysteresis loop with field sweep from -100 mT to 100 mT along y-direction
@@ -665,14 +674,44 @@ function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0
     
     norm = (direction[1]^2 + direction[2]^2 + direction[3]^2)^0.5
     stage = 1
+    
+    # Data for hysteresis plot
+    H_values = Float64[]
+    m_values = Float64[]
+    
+    # Function to send hysteresis data to frontend
+    function send_hysteresis_data(H_vals, m_vals)
+        if global_client != nothing
+            plot_data = Dict(
+                "title" => "Hysteresis Loop",
+                "traces" => [Dict(
+                    "x" => H_vals,
+                    "y" => m_vals,
+                    "mode" => "lines+markers",
+                    "name" => "Hysteresis"
+                )],
+                "layout" => Dict(
+                    "xaxis" => Dict("title" => "Magnetic Field (mT)"),
+                    "yaxis" => Dict("title" => "Magnetization (normalized)")
+                )
+            )
+            # Use send_message directly with global_client
+            send_message(global_client, "plot_data", plot_data)
+        end
+    end
+    
     for (i, H) in enumerate(Hs)
         if isa(H, Number)
             Hx = H * direction[1] / norm
             Hy = H * direction[2] / norm
             Hz = H * direction[3] / norm
             update_zeeman(sim, (Hx, Hy, Hz))
+            # Store H value for plot
+            push!(H_values, H / mT)
         else
             update_zeeman(sim, H, H_output=H_output[i])
+            # Store H value for plot (use norm of H)
+            push!(H_values, (H[1]^2 + H[2]^2 + H[3]^2)^0.5 / mT)
         end
         
         relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, save_m_every=-1)
@@ -681,7 +720,17 @@ function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0
         elseif output == "vts" || output == "vtu"
             save_vtk(sim, joinpath(output_folder, @sprintf("m_%08d", stage)))
         end
+        
+        # Compute average magnetization and store for plot
+        m_avg = average_m(sim)
+        # Get the component along the field direction
+        m_component = m_avg[1] * direction[1] / norm + m_avg[2] * direction[2] / norm + m_avg[3] * direction[3] / norm
+        push!(m_values, m_component)
+        
         stage += 1
+        
+        # Send data to frontend for real-time plotting
+        send_hysteresis_data(H_values, m_values)
     end
 
     if !full_loop
@@ -695,8 +744,12 @@ function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0
             Hy = H * direction[2] / norm
             Hz = H * direction[3] / norm
             update_zeeman(sim, (Hx, Hy, Hz))
+            # Store H value for plot
+            push!(H_values, H / mT)
         else
             update_zeeman(sim, H, H_output=H_output_rev[i])
+            # Store H value for plot (use norm of H)
+            push!(H_values, (H[1]^2 + H[2]^2 + H[3]^2)^0.5 / mT)
         end
         relax(sim; stopping_dmdt=stopping_dmdt, max_steps=max_steps, save_m_every=-1)
         if output == "ovf"
@@ -704,7 +757,17 @@ function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0
         elseif output == "vts" || output == "vtu"
             save_vtk(sim, joinpath(output_folder, @sprintf("m_%08d", stage)))
         end
+        
+        # Compute average magnetization and store for plot
+        m_avg = average_m(sim)
+        # Get the component along the field direction
+        m_component = m_avg[1] * direction[1] / norm + m_avg[2] * direction[2] / norm + m_avg[3] * direction[3] / norm
+        push!(m_values, m_component)
+        
         stage += 1
+        
+        # Send data to frontend for real-time plotting
+        send_hysteresis_data(H_values, m_values)
     end
     
 end
@@ -748,6 +811,8 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
             push!(sim.saver.items, item)
         end
     end
+
+    send_visualization_data(sim)
 
     output_folder = @sprintf("%s_%s", sim.name, nameof(typeof(sim.driver)))
     if save_m_every >= 0

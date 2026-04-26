@@ -44,9 +44,6 @@ function run_code(code::String)
     return result, success, stdout_str, stderr_str
 end
 
-"""
-Extract visualization data from the current simulation state
-"""
 function send_visualization_data(;mesh=nothing, spin=nothing, Ms=nothing)
     data = Dict()
     
@@ -91,6 +88,23 @@ function send_visualization_data(;mesh=nothing, spin=nothing, Ms=nothing)
     if global_client != nothing
         send_message(global_client, "visualization_update", data)
     end
+end
+
+function send_visualization_data(sim::AbstractSim)
+    if global_client == nothing
+        return
+    end
+
+    if sim isa AtomisticSim
+        Ms = Array(sim.mu_s)
+        mu_status = get_mu_s_status(ms)
+        if mu_status == :mu_B
+            Ms ./= mu_B
+        end
+    else
+        Ms = Array(sim.mu0_Ms)
+    end
+    send_visualization_data(Ms = Ms, mesh=sim.mesh)
 end
 
 """
