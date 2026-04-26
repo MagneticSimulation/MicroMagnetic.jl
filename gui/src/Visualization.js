@@ -465,6 +465,20 @@ class Visualization {
                 if (this.feMeshVisualization) {
                     this.feMeshVisualization.setVisible(value);
                 }
+                // Show/hide display type selection based on Show Mesh toggle
+                if (this.gui.displayTypeController) {
+                    this.gui.displayTypeController.domElement.style.display = value ? '' : 'none';
+                }
+            });
+        
+        // Display type selection
+        this.gui.displayType = 'outline';
+        this.gui.displayTypeController = displayFolder.add(this.gui, 'displayType', ['outline', 'cells', 'box'])
+            .name('Display Type')
+            .onChange((value) => {
+                if (this.fdMeshVisualization) {
+                    this.fdMeshVisualization.setDisplayType(value);
+                }
             });
         
         // Colormap selection
