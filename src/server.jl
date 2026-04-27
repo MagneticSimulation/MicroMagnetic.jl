@@ -6,7 +6,7 @@ using Sockets
 export start_server, gui
 
 # global variables for managing single connection
-global_sim = nothing
+# global_sim = nothing
 global_client = nothing
 # Message handlers
 message_handlers = Dict{String, Function}()
@@ -322,6 +322,17 @@ function init_default_handlers()
             log_message("Closed connection for client $client_id")
         catch e
             log_message("Error closing connection for client $client_id: $e")
+        end
+    end
+    
+    register_handler("get_visualization_data") do ws, data
+        log_message("Received get_visualization_data request")
+
+        if isdefined(Main, :sim)
+            send_visualization_data(Main.sim)
+            send_sim_state(Main.sim)
+        elseif isdefined(Main, :mesh)
+            send_visualization_data(mesh=Main.mesh)
         end
     end
 end

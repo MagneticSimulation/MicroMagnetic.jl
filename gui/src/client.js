@@ -58,6 +58,10 @@ class WebSocketClient {
                     console.log('WebSocket connection established');
                     this.connected = true;
                     this.emit('connect', event);
+                    
+                    // Request visualization data when connected
+                    this.sendMessage('get_visualization_data');
+                    
                     resolve(event);
                 };                
                 this.ws.onmessage = (event) => {

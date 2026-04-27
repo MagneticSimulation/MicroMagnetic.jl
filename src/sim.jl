@@ -398,8 +398,6 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         max_steps = maxsteps
     end
 
-    send_visualization_data(sim)
-
     # to dertermine which driver is used.
     llg_driver = isa(sim.driver, LLG)
     if isa(sim, MicroSimFE)
@@ -813,8 +811,6 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
             push!(sim.saver.items, item)
         end
     end
-
-    send_visualization_data(sim)
 
     output_folder = @sprintf("%s_%s", sim.name, nameof(typeof(sim.driver)))
     if save_m_every >= 0
