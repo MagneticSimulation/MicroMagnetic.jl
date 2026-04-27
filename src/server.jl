@@ -521,19 +521,33 @@ function handle_http_request(http::HTTP.Stream)
 end
 
 """
-    start_server(;port::Int=10056, host::String=nothing, async::Bool=true, lan::Bool=true)
+    start_server(;port=10056, host=nothing, async=true, lan=true)
 
-Start MicroMagnetic server
-  - `port`: Port number to listen on (default: 10056)
-  - `host`: Host address to bind to (default: "127.0.0.1" for lan=false, Sockets.getipaddr() for lan=true)
-  - `async`: Whether to run the server asynchronously (default: true)
-  - `lan`: Whether to allow LAN access (default: true)
+Start a WebSocket server for GUI communication.
 
-Examples:
+# Arguments
+- `port::Int`: Server port (default: 10056)
+- `host`: Server address. If `nothing` (default), auto-detect based on `lan`:
+  - If `lan=true`: uses local IP address (accessible from LAN)
+  - If `lan=false`: uses localhost
+- `async::Bool`: Run server asynchronously (default: true)
+- `lan::Bool`: Allow LAN access (default: true)
+
+# Returns
+- If `async=true`: returns the server task
+- If `async=false`: returns `nothing` when server exits
+
+
+# Examples
 ```julia
-    MicroMagnetic.start_server()
-    MicroMagnetic.start_server(port=10057, lan=false)
-    MicroMagnetic.start_server(port=10057, host="192.168.10.11")
+# Start server on default port (10056), accessible from LAN
+start_server()
+
+# Start server on custom port, localhost only
+start_server(port=8080, lan=false)
+
+# Start server synchronously (blocks until server stops)
+start_server(async=false)
 ```
 """
 function start_server(;port::Int=10056, host=nothing, async::Bool=true, lan::Bool=true)
@@ -558,12 +572,25 @@ function start_server(;port::Int=10056, host=nothing, async::Bool=true, lan::Boo
 end
 
 """
-Start MicroMagnetic GUI 
+    gui(;port=10056, host=nothing, lan=true)
+
+Start MicroMagnetic GUI (alias for [`start_server`](@ref)). This is a convenience alias for [`start_server`](@ref) that runs the server asynchronously in the background.
+
+# Examples
+```julia
+# Start GUI on default port
+gui()
+
+# Start GUI accessible from LAN only
+gui(lan=true)
+
+# Start GUI on custom port
+gui(port=8080)
+```
+
+See also: [`start_server`](@ref)
 """
-function gui(;port::Int=10056, host::String="127.0.0.1", lan::Bool=false)
-    println("Starting MicroMagnetic GUI...")
-    start_server(port=port, host=host, lan=lan, async=false)
-end
+const gui = start_server
 
 """
 Handle HTTP GET requests

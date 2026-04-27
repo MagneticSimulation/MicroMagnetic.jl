@@ -18,6 +18,7 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 ### Features
 
 - Supports classical spin dynamics and micromagnetic simulations.
+- An interactive web-based GUI for real-time visualization of magnetization dynamics.
 - Compatible with CPU and multiple GPU platforms, including NVIDIA, AMD, Intel, and Apple GPUs.
 - Supports both double and single precision.
 - Supports Monte Carlo simulations for atomistic models.
@@ -42,40 +43,7 @@ We have a QQ group. If you have any questions related to Micromagnetic.jl, pleas
 
 ## Docker / Singularity Quick Start
 
-We provide a pre-built [container](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl) image with MicroMagnetic.jl and CUDA support.
-
-### Run with Docker
-
-```bash
-# Pull the image
-docker pull ghcr.io/magneticsimulation/micromagnetic.jl:latest
-
-# Alternatively, you can pull the image from `ghcr.nju.edu.cn` to speed up the download:
-docker pull ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
-
-# Interactive session (with GPU)
-docker run -it --rm --gpus all -v "$(pwd):/workspace" \
-  ghcr.io/magneticsimulation/micromagnetic.jl:latest
-```
-
-### Run with Singularity (HPC clusters)
-
-```bash
-# Pull the image as a SIF file
-singularity pull micromagnetic.sif docker://ghcr.io/magneticsimulation/micromagnetic.jl:latest
-
-# Alternatively, you can pull the image from `ghcr.nju.edu.cn` to speed up the download:
-singularity pull micromagnetic.sif docker://ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
-
-# Create a writable directory for Julia cache (required)
-mkdir -p ~/julia_depot
-
-# Interactive session (with GPU)
-singularity shell --bind ~/julia_depot:/depot --nv micromagnetic.sif
-```
-
-For advanced usage, see the [full documentation](https://magneticsimulation.github.io/MicroMagnetic.jl/dev/docker).
-
+We provide a pre-built [container](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl) image with MicroMagnetic.jl and CUDA support, see the [full documentation](https://magneticsimulation.github.io/MicroMagnetic.jl/dev/docker).
 
 ## Installation
 

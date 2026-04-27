@@ -115,6 +115,13 @@ ovf2movie
 ```
 
 
+## Server/GUI
+
+```@docs
+start_server
+gui
+```
+
 ## Others
 
 ```@docs
