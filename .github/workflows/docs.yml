@@ -18,7 +18,7 @@ jobs:
       statuses: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.10'
@@ -39,7 +39,7 @@ jobs:
         branch: [master, gh-pages] 
     steps:
       - name: Checkout ${{ matrix.branch }}
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with: 
           ref: ${{ matrix.branch }}
           fetch-depth: 0
