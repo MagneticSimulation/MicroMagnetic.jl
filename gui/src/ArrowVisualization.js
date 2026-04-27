@@ -109,6 +109,25 @@ class ArrowVisualization {
         }
     }
 
+    symmetricSampling(nTotal, nSamples) {
+        // Single point case - place at center
+        if (nSamples <= 1) {
+            return {
+                start: (nTotal + 1) / 2 - 1, 
+                step: 1.0,
+                count: 1
+            };
+        }
+
+        const step = nTotal / nSamples;
+        const start = step / 2 + 0.5 - 1;
+        return {
+            start: start,
+            step: step,
+            count: nSamples
+        };
+    }
+
     calculateArrowPositions() {
         const [nx, ny, nz] = this.gridSize;
         const [dimX, dimY, dimZ] = this.dimensions;
@@ -117,14 +136,14 @@ class ArrowVisualization {
         this.arrowPositions = [];
         const { sampling, sampleNz } = this.settings;
         
-        // Calculate Z sampling with boundary protection
+        // Calculate Z sampling
         const clampedSampleNz = Math.max(1, Math.min(sampleNz, nz));
-        const stepZ = nz / clampedSampleNz;
-        const startZ = clampedSampleNz <= 1 ? (nz - 1) / 2 : stepZ / 2;
+        const zSampling = this.symmetricSampling(nz, clampedSampleNz);
+        const { start: startZ, step: stepZ, count: clampedSampleNzFinal } = zSampling;
 
         if (sampling === 'cylindrical') {
             const { radius, ringNum, ringStep } = this.settings;
-            for (let k = 0; k < clampedSampleNz; k++) {
+            for (let k = 0; k < clampedSampleNzFinal; k++) {
                 // Ensure gridZ is within [0, nz-1]
                 let gridZ = startZ + k * stepZ;
                 gridZ = Math.max(0, Math.min(nz - 1, gridZ));
@@ -169,19 +188,19 @@ class ArrowVisualization {
         } else {
             const { sampleNx, sampleNy } = this.settings;
             
-            // Calculate X sampling with boundary protection
+            // Calculate X sampling
             const clampedSampleNx = Math.max(1, Math.min(sampleNx, nx));
-            const stepX = nx / clampedSampleNx;
-            const startX = clampedSampleNx <= 1 ? (nx - 1) / 2 : stepX / 2;
+            const xSampling = this.symmetricSampling(nx, clampedSampleNx);
+            const { start: startX, step: stepX, count: clampedSampleNxFinal } = xSampling;
             
-            // Calculate Y sampling with boundary protection
+            // Calculate Y sampling
             const clampedSampleNy = Math.max(1, Math.min(sampleNy, ny));
-            const stepY = ny / clampedSampleNy;
-            const startY = clampedSampleNy <= 1 ? (ny - 1) / 2 : stepY / 2;
+            const ySampling = this.symmetricSampling(ny, clampedSampleNy);
+            const { start: startY, step: stepY, count: clampedSampleNyFinal } = ySampling;
 
-            for (let i = 0; i < clampedSampleNx; i++) {
-                for (let j = 0; j < clampedSampleNy; j++) {
-                    for (let k = 0; k < clampedSampleNz; k++) {
+            for (let i = 0; i < clampedSampleNxFinal; i++) {
+                for (let j = 0; j < clampedSampleNyFinal; j++) {
+                    for (let k = 0; k < clampedSampleNzFinal; k++) {
                         // Calculate grid coordinates
                         let gridX = startX + i * stepX;
                         let gridY = startY + j * stepY;
