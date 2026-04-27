@@ -69,18 +69,18 @@ Mathematical formulation:
     
     Topological charge: Q = p * v
 
-Parameters:
-    center      :: Tuple{Float64,Float64}  - (x,y) center position of the texture
-    R           :: Float64                 - Bubble radius (distance where Θ = π/2)
-    width       :: Float64                 - Domain wall width (controls transition sharpness)
-    p           :: Int                     - Polarity (+1: up at center, -1: down at center)
-    v           :: Int                     - Vorticity/winding number (S in literature)
-    phi         :: Float64                 - Helicity angle (radians) - phase offset
+# Arguments
+- `center::Tuple{Float64,Float64}`: (x,y) center position of the texture
+- `R::Float64`: Bubble radius (distance where Θ = π/2)
+- `w::Float64`: Domain wall width (controls transition sharpness)
+- `p::Int`: Polarity (+1: up at center, -1: down at center)
+- `v::Int`: Vorticity/winding number (S in literature)
+- `phi::Float64`: Helicity angle (radians) - phase offset
 
-Returns:
-    A function f(x,y,z) -> (m_x, m_y, m_z) that returns normalized magnetization vector at position (x,y,z)
+# Returns
+A function f(x,y,z) -> (m_x, m_y, m_z) that returns normalized magnetization vector at position (x,y,z)
 
-Examples:
+# Examples
 ```julia
     bubble = bubble2d(p=1, v=1, phi=0, w=5e-9, R=40e-9)
     init_m0(sim, bubble)
@@ -126,14 +126,14 @@ end
 
 Create a skyrmion function that can be invoked from `init_m0`.
 
-Parameters:
-    center      :: Tuple{Float64,Float64}  - (x,y) center position of the texture
-    R           :: Float64                 - Skyrmion radius (distance where Θ = π/2)
-    p           :: Int                     - Polarity (+1: up at center, -1: down at center)
-    v           :: Int                     - Vorticity/winding number (S in literature)
-    phi         :: Float64                 - Helicity angle (radians) - phase offset
+# Arguments
+- `center::Tuple{Float64,Float64}`: (x,y) center position of the texture
+- `R::Float64`: Skyrmion radius (distance where Θ = π/2)
+- `p::Int`: Polarity (+1: up at center, -1: down at center)
+- `v::Int`: Vorticity/winding number (S in literature)
+- `phi::Float64`: Helicity angle (radians) - phase offset
 
-Example:
+# Examples
 ```julia
     # Néel skyrmion with upward center
     neel_skyrmion = skyrmion(p=1, v=1, phi=0.0)
@@ -166,16 +166,16 @@ end
 
 Create a function that returns magnetization for a skyrmion lattice.
 
-Parameters:
-    lambda    :: Float64     - Skyrmion lattice period (m)
-    p         :: Int         - polarity: +1 (up) or -1 (down)
-    c         :: Int         - chirality - +1 (clockwise) or -1 (counterclockwise)
-    type      :: Symbol      - :bloch or :neel
+# Arguments
+- `lambda::Float64`: Skyrmion lattice period (m)
+- `p::Int`: polarity: +1 (up) or -1 (down)
+- `c::Int`: chirality - +1 (clockwise) or -1 (counterclockwise)
+- `type::Symbol`: :bloch or :neel
 
-Returns:
-    A function f(x, y, z) -> (m_x, m_y, m_z) that returns normalized magnetization.
+# Returns
+A function f(x, y, z) -> (m_x, m_y, m_z) that returns normalized magnetization.
 
-Examples:
+# Examples
 ```julia
     lattice = skyrmion_lattice(50e-9, p=-1, c=1, type=:bloch)
     init_m0(sim, lattice)
@@ -224,16 +224,16 @@ end
 
 Create a Hopfion texture function that returns magnetization (mx, my, mz) at a given point.
 
-Parameters:
-    center      :: Tuple{Float64,Float64,Float64} - Center of the hopfion (x,y,z)
-    R           :: Float64                        - Hopfion radius (characteristic size)
-    p           :: Int                            - Numerator topological index (power of Z1)
-    q           :: Int                            - Denominator topological index (power of Z0)
+# Arguments
+- `center::Tuple{Float64,Float64,Float64}`: Center of the hopfion (x,y,z)
+- `R::Float64`: Hopfion radius (characteristic size)
+- `p::Int`: Numerator topological index (power of Z1)
+- `q::Int`: Denominator topological index (power of Z0)
 
-Returns:
-    A function f(x,y,z) -> (mx, my, mz) representing the normalized magnetization.
+# Returns
+A function f(x,y,z) -> (mx, my, mz) representing the normalized magnetization.
 
-Example:
+# Examples
 ```julia
     # Hopfion with indices (p=1, q=1)
     hopf = hopfion(R=20e-9, p=1, q=1)
