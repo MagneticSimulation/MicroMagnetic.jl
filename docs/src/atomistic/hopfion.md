@@ -2,7 +2,7 @@
 ShareDefaultModule = true
 ```
 
-# Skyrmion lattice
+# Magnetic hopfion
 
 In this example, we demostrate how to get a magnetic hopfion using MicroMagnetic.jl. We use the parameters given in PRL **124**, 127204 (2020).
 
@@ -24,9 +24,11 @@ function relax_system()
     J1 = 1
     add_exch(sim, J1; name="exch", J2=-0.164, J3=0, J4=-0.082)
 
-    relax(sim; max_steps=50000, stopping_dmdt=1e-5, using_time_factor=false)
+    relax(sim; max_steps=50000, stopping_dmdt=1e-3, using_time_factor=false)
     
     MicroMagnetic.save_vtk_points(sim, "hopfion")
+
+    return sim
 end
 ````
 
@@ -37,7 +39,7 @@ sim = relax_system()
 nothing #hide
 ````
 
-After obtain the hopfion, we use the following script to plot the hopfion
+After obtain the hopfion, we plot the hopfion
 
 ````@example
 plot_m(sim, k=16)

@@ -353,33 +353,3 @@ graph TD
     J --> K[RGB Color]
     K --> L[Render]
 ```
-
-### Notes
-
-1. **Data Format**: Spin data format is `[mx, my, mz, mx, my, mz, ...]`, 3 elements per position
-2. **Grid Size**: Index range is `[0, n-1]`
-3. **Units**: Length converted to nm, energy remains in SI units
-4. **Performance**: InstancedMesh used for efficient rendering of many arrows
-5. **Memory**: Textures and geometries are properly disposed to prevent memory leaks
-6. **Reconnection**: Client automatically requests visualization data upon reconnection
-
-### Visualization Update Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant GUI
-    participant Client
-    participant Server
-    participant Julia
-    
-    User->>GUI: Change settings (colormap, position, etc.)
-    GUI->>GUI: Update config
-    GUI->>Client: Send get_visualization_data
-    Client->>Server: Request data
-    Server->>Julia: Extract current state
-    Julia-->>Server: Return mesh, spin, Ms
-    Server-->>Client: visualization_update
-    Client-->>GUI: Update visualization
-    GUI-->>User: Render new view
-```

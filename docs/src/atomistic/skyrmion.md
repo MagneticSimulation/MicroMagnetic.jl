@@ -62,7 +62,7 @@ sim = relax_system();
 nothing #hide
 ````
 
-After obtain the skyrmion, we use the following script to plot the skyrmion
+After obtain the skyrmion, we plot the skyrmion
 
 ````@example
 plot_m(sim)

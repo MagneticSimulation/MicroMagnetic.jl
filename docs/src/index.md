@@ -60,6 +60,7 @@ features:
 <h1> Features </h1>
 <ul>
   <li>Supports classical spin dynamics and micromagnetic simulations.</li>
+  <li>An interactive web-based GUI for real-time visualization of magnetization dynamics.</li>
   <li>Compatible with CPU and multiple GPU platforms, including NVIDIA, AMD, Intel, and Apple GPUs.</li>
   <li>Supports both double and single precision.</li>
   <li>Supports Monte Carlo simulations for atomistic models.</li>
