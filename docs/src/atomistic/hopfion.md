@@ -10,18 +10,7 @@ In this example, we demostrate how to get a magnetic hopfion using MicroMagnetic
 using MicroMagnetic
 using CairoMakie
 
-mesh = CubicMesh(nx=64, ny=64, nz=32, dx=1e-9, dy=1e-9, dz=1e-9)
-
-function init_hopfion(x, y, z)
-    r = sqrt(x^2+y^2)
-    d = 10e-9
-    sinf = 2*r*d/(r^2+d^2)
-    cosf = sqrt(1-sinf^2)
-    mx = x/r*2*sinf*cosf + y*z/r^2*sinf^2
-    my = y/r*2*sinf*cosf - x*z/r^2*sinf^2
-    mz = cosf^2-sinf^2 + 2*z^2/r^2*sinf^2
-    return (mx, my, mz)
-end
+mesh = CubicMesh(nx=64, ny=64, nz=32, dx=1e-9, dy=1e-9, dz=1e-9, pbc="xyz")
 
 function relax_system()
     
@@ -29,12 +18,13 @@ function relax_system()
 
     set_mu_s(sim, 1)
 
-    init_m0(sim, init_hopfion)
-
+    hopf = hopfion(R=20e-9, p=1, q=1)
+    init_m0(sim, hopf)
+    
     J1 = 1
     add_exch(sim, J1; name="exch", J2=-0.164, J3=0, J4=-0.082)
 
-    relax(sim; max_steps=50000, stopping_dmdt=5e-3, using_time_factor=false)
+    relax(sim; max_steps=50000, stopping_dmdt=1e-5, using_time_factor=false)
     
     MicroMagnetic.save_vtk_points(sim, "hopfion")
 end
@@ -50,5 +40,5 @@ nothing #hide
 After obtain the hopfion, we use the following script to plot the hopfion
 
 ````@example
-fig = plot_m(sim, k=32)
+plot_m(sim, k=16)
 ````

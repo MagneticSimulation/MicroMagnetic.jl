@@ -31,6 +31,26 @@ function normalize(x::Tuple{Real,Real,Real})
     return x ./ length
 end
 
+"""
+    Plane(; point::Tuple=(0.0, 0.0, 0.0), normal::Tuple=(0.0, 0.0, 1.0))
+
+Create a Plane shape.
+
+Parameters
+----------
+- point: A point on the plane
+- normal: Normal vector of the plane (will be normalized automatically)
+
+Examples
+--------
+```julia
+# Create a plane at origin with normal along z-axis
+plane = Plane()
+
+# Create a plane at (1, 2, 3) with normal (1, 1, 1)
+plane = Plane(point=(1, 2, 3), normal=(1, 1, 1))
+```
+"""
 struct Plane <: CSGShape
     point::Tuple{Real,Real,Real} # A point in the plane
     normal::Tuple{Real,Real,Real} # the normal of the plane
@@ -40,6 +60,26 @@ struct Plane <: CSGShape
     end
 end
 
+"""
+    Sphere(; center::Tuple=(0.0, 0.0, 0.0), radius=1.0)
+
+Create a Sphere shape.
+
+Parameters
+----------
+- center: Center of the sphere
+- radius: Radius of the sphere
+
+Examples
+--------
+```julia
+# Create a sphere at origin with radius 1.0
+sphere = Sphere()
+
+# Create a sphere at (2, 0, 0) with radius 5.0
+sphere = Sphere(center=(2, 0, 0), radius=5.0)
+```
+"""
 struct Sphere <: CSGShape # A sphere
     center::Tuple{Real,Real,Real}
     radius::Float64
@@ -50,9 +90,26 @@ struct Sphere <: CSGShape # A sphere
 end
 
 """
-    Cylinder(;center = (0.0, 0.0, 0.0), radius = 1.0, height= Inf, normal = (0.0, 0.0, 1.0))
+    Cylinder(; center=(0.0, 0.0, 0.0), radius=1.0, height=Inf, normal=(0.0, 0.0, 1.0))
 
-Create a Cylinder shape. 
+Create a Cylinder shape.
+
+Parameters
+----------
+- center: Center of the cylinder
+- radius: Radius of the cylinder
+- height: Height of the cylinder (default: Inf, meaning infinite length)
+- normal: Direction of the cylinder axis (will be normalized automatically)
+
+Examples
+--------
+```julia
+# Create an infinite cylinder along z-axis
+cylinder = Cylinder()
+
+# Create a finite cylinder along y-axis
+cylinder = Cylinder(center=(0, 0, 0), radius=2.0, height=10.0, normal=(0, 1, 0))
+```
 """
 struct Cylinder <: Shape
     center::Tuple{Real,Real,Real}
@@ -68,9 +125,25 @@ struct Cylinder <: Shape
 end
 
 """
-    Box(;center::Tuple=(0.0, 0.0, 0.0), size::Tuple=(1.0,1.0,1.0), theta=0.0)
+    Box(; center::Tuple=(0.0, 0.0, 0.0), size::Tuple=(1.0, 1.0, 1.0), theta=0.0)
 
 Create a Box shape.
+
+Parameters
+----------
+- center: Center of the box
+- size: Size of the box in (x, y, z) directions
+- theta: Rotation angle around z-axis (in radians)
+
+Examples
+--------
+```julia
+# Create a unit box at origin
+box = Box()
+
+# Create a larger box with rotation
+box = Box(center=(1, 1, 1), size=(2, 3, 4), theta=pi/4)
+```
 """
 struct Box <: CSGShape
     center::Tuple{Real,Real,Real}
@@ -85,6 +158,22 @@ end
     Torus(; center::Tuple=(0.0, 0.0, 0.0), R=1.0, r=0.2)
 
 Create a Torus shape.
+
+Parameters
+----------
+- center: Center of the torus
+- R: Major radius (distance from center of torus to center of tube)
+- r: Minor radius (radius of the tube)
+
+Examples
+--------
+```julia
+# Create a torus with major radius 1.0 and minor radius 0.2
+ torus = Torus()
+
+# Create a torus with custom dimensions
+ torus = Torus(center=(0, 0, 0), R=5.0, r=1.0)
+```
 """
 struct Torus <: CSGShape
     center::Tuple{Real,Real,Real} # Center of the torus

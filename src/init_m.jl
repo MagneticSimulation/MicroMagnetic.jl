@@ -1,6 +1,6 @@
 using Random
 
-export init_m0_random, vortex, skyrmion, bubble2d, skyrmion_lattice
+export init_m0_random, vortex, skyrmion, bubble2d, skyrmion_lattice, hopfion
 
 """
     init_m0_random(sim::MicroSim; seed=nothing)
@@ -215,4 +215,64 @@ function skyrmion_lattice(lambda::Float64; p=-1, c=1, type=:bloch)
     end
     
     return lattice_function
+end
+
+
+
+"""
+    hopfion(; center=(0,0,0), R=10e-9, p::Int=1, q::Int=1)
+
+Create a Hopfion texture function that returns magnetization (mx, my, mz) at a given point.
+
+Parameters:
+    center      :: Tuple{Float64,Float64,Float64} - Center of the hopfion (x,y,z)
+    R           :: Float64                        - Hopfion radius (characteristic size)
+    p           :: Int                            - Numerator topological index (power of Z1)
+    q           :: Int                            - Denominator topological index (power of Z0)
+
+Returns:
+    A function f(x,y,z) -> (mx, my, mz) representing the normalized magnetization.
+
+Example:
+```julia
+    # Hopfion with indices (p=1, q=1)
+    hopf = hopfion(R=20e-9, p=1, q=1)
+    init_m0(sim, hopf)
+
+    # Hopfion with (p=2, q=1)
+    hopf2 = hopfion(R=20e-9, p=2, q=1)
+```
+"""
+function hopfion(; center=(0.0,0.0,0.0), R=10e-9, p::Int=1, q::Int=1)
+    cx, cy, cz = center[1], center[2], center[3]
+    
+    function hopfion_fun(x, y, z)
+        dx = x - cx
+        dy = y - cy
+        dz = z - cz
+        r = sqrt(dx^2 + dy^2 + dz^2)
+        
+        if r == 0.0
+            return (0.0, 0.0, 1.0)
+        end
+        if r > R
+            return (0.0, 0.0, 1.0)
+        end
+        
+        f = pi * (R - r) / R   # f=π at center, f=0 at r=R
+        
+        Z1 = sin(f) * Complex(dx/r, dy/r)
+        Z0 = Complex(cos(f), -sin(f)*dz/r)
+        
+        w = (Z1^p) / (Z0^q)
+        w_abs = abs(w)
+        
+        sx = 2 * real(w) / (1 + w_abs^2)
+        sy = 2 * imag(w) / (1 + w_abs^2)
+        sz = (1 - w_abs^2) / (1 + w_abs^2)
+        
+        return (sx, sy, sz)
+    end
+    
+    return hopfion_fun
 end

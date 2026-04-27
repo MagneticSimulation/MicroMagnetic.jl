@@ -866,5 +866,5 @@ function send_visualization_data(sim::AbstractSim)
     else
         Ms = Array(sim.mu0_Ms)
     end
-    send_visualization_data(Ms = Ms, mesh=sim.mesh)
+    send_visualization_data(Ms = Ms, mesh=sim.mesh, spin=sim.spin)
 end

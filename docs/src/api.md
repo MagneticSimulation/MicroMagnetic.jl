@@ -18,9 +18,21 @@ CylindricalTubeMesh()
 
 ## Shapes
 ```@docs
+Plane
+Sphere
 Cylinder
 Box
 Torus
+```
+
+## Magnetization Initialization
+```@docs
+init_m0_random
+vortex
+skyrmion
+bubble2d
+skyrmion_lattice
+hopfion
 ```
 
 ## Interfaces 
@@ -35,8 +47,6 @@ NEB
 set_driver
 set_alpha(sim::AbstractSim, alpha::ArrayOrFunction)
 init_m0
-init_m0_random
-init_m0_skyrmion
 add_zeeman
 add_anis
 add_cubic_anis
@@ -52,7 +62,6 @@ create_sim
 relax
 run_sim
 hysteresis
-#compute_guiding_center
 ```
 
 ## Interfaces -- MicroMagnetic 
