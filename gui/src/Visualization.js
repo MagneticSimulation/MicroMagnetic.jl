@@ -52,7 +52,7 @@ class Visualization {
             type: 'surface',      // 'surface' | 'isosurface'
             component: 'mx',      // 'mx' | 'my' | 'mz'
             isoValue: 0.5,
-            position: 0,          // surface position
+            position: 1,          // surface position (1-based)
             direction: 'z',       // 'x' | 'y' | 'z'
             visible: true,
             colormap: 'viridis',  // colormap name
@@ -200,10 +200,10 @@ class Visualization {
     updateSurfacePositionRange() {
         if (!this.gui || !this.fdMesh) return;
         if (this.gui.posSurface) {
-            const maxValue = this.surfaceConfig.direction === 'x' ? this.fdMesh.nx - 1 :
-                             this.surfaceConfig.direction === 'y' ? this.fdMesh.ny - 1 :
-                             this.fdMesh.nz - 1;
-            this.gui.posSurface.max(maxValue);
+            const maxValue = this.surfaceConfig.direction === 'x' ? this.fdMesh.nx :
+                             this.surfaceConfig.direction === 'y' ? this.fdMesh.ny :
+                             this.fdMesh.nz;
+            this.gui.posSurface.max(maxValue).min(1);
         }
     }
     
@@ -312,10 +312,10 @@ class Visualization {
         if (config.direction !== undefined) {
             this.surfaceConfig.direction = config.direction;
             
-            // Reset position to 0 when direction changes
-            this.surfaceConfig.position = 0;
+            // Reset position to 1 (1-based) when direction changes
+            this.surfaceConfig.position = 1;
             if (this.gui?.posSurface) {
-                this.gui.posSurface.setValue(0);
+                this.gui.posSurface.setValue(1);
             }
             
             // Update position range for new direction
@@ -323,7 +323,14 @@ class Visualization {
             
         }
         if (config.position !== undefined) {
-            this.surfaceConfig.position = config.position;
+            // Ensure position is within valid range (1-based)
+            let maxValue = 1;
+            if (this.fdMesh) {
+                maxValue = this.surfaceConfig.direction === 'x' ? this.fdMesh.nx :
+                         this.surfaceConfig.direction === 'y' ? this.fdMesh.ny :
+                         this.fdMesh.nz;
+            }
+            this.surfaceConfig.position = Math.min(Math.max(config.position, 1), maxValue);
         }
         if (config.colormap !== undefined) {
             this.surfaceConfig.colormap = config.colormap;

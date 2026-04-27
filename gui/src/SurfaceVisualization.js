@@ -19,7 +19,7 @@ class SurfaceVisualization {
         this.currentType = 'surface'; // 'surface' or 'isosurface'
         this.currentComponent = 'mx'; // 'mx', 'my', 'mz'
         this.isoValue = 0.5; // For isosurface
-        this.position = 1; // For surface index
+        this.position = 1; // For surface index (1-based)
         this.surfaceAxis = 'z'; // 'x', 'y', 'z'
         this.currentColormap = 'viridis'; // Colormap name
         this.colorMode = 'inplane-angle'; // 'mx', 'my', 'mz', 'inplane-angle'
@@ -77,7 +77,8 @@ class SurfaceVisualization {
         const [dimX, dimY, dimZ] = this.dimensions;
 
         const componentIndex = this.getComponentIndex(this.currentComponent);
-        const sliceIndex = Math.min(Math.max(this.position, 0),
+        // Convert 1-based position to 0-based index
+        const sliceIndex = Math.min(Math.max(this.position - 1, 0),
             this.surfaceAxis === 'x' ? nx - 1 :
                 this.surfaceAxis === 'y' ? ny - 1 : nz - 1);
 
@@ -226,16 +227,16 @@ class SurfaceVisualization {
         // Position the surface
         if (this.surfaceAxis === 'x') {
             const cellSize = dimX / nx;
-            this.currentMesh.position.x = (this.position - (nx - 1) / 2) * cellSize;
+            this.currentMesh.position.x = ((this.position - 1) - (nx - 1) / 2) * cellSize;
             this.currentMesh.rotation.z = Math.PI / 2;
             this.currentMesh.rotation.y = Math.PI / 2;
         } else if (this.surfaceAxis === 'y') {
             const cellSize = dimY / ny;
-            this.currentMesh.position.y = (this.position - (ny - 1) / 2) * cellSize;
+            this.currentMesh.position.y = ((this.position - 1) - (ny - 1) / 2) * cellSize;
             this.currentMesh.rotation.x = Math.PI / 2; 
         } else {
             const cellSize = dimZ / nz;
-            this.currentMesh.position.z = (this.position - (nz - 1) / 2) * cellSize;
+            this.currentMesh.position.z = ((this.position - 1) - (nz - 1) / 2) * cellSize;
         }
 
         this.surfaceGroup.add(this.currentMesh);
