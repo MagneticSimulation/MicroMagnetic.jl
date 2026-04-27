@@ -305,6 +305,8 @@ function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
         set_initial_condition!(sim, sim.driver.integrator)
     end
 
+    send_visualization_data(spin=sim.spin)
+
     return true
 end
 

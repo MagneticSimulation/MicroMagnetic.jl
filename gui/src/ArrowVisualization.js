@@ -278,14 +278,13 @@ class ArrowVisualization {
     }
 
     createArrowInstances(arrowData, arrowScale) {
-        const cylinderHeight = 0.5;
+        const cylinderHeight = 0.4;
         const cylinderGeometry = new THREE.CylinderGeometry(0.06, 0.06, cylinderHeight, 32);
         cylinderGeometry.translate(0, -cylinderHeight/2, 0); // Move the top to origin
 
         const coneHeight = 0.3;
         const coneGeometry = new THREE.ConeGeometry(0.15, coneHeight, 32);
-        coneGeometry.rotateX(Math.PI); // Rotate 180 degrees to point downward
-        coneGeometry.translate(0, -cylinderHeight, 0); // Align cone base with cylinder top
+        coneGeometry.translate(0, coneHeight/2, 0); // Move the base to origin
         const totalLength = cylinderHeight + coneHeight; // Total length is 0.8
         
         const material = new THREE.MeshStandardMaterial({ 
@@ -349,16 +348,16 @@ class ArrowVisualization {
             cylinderMesh.setColorAt(i, tempColor);
         }
         
-        this.arrowGroup.add(coneMesh);
         this.arrowGroup.add(cylinderMesh);
-        this.arrows.push(coneMesh, cylinderMesh);
+        this.arrowGroup.add(coneMesh);
+        this.arrows.push(cylinderMesh, coneMesh);
     }
 
     updateArrowInstances(arrowData, arrowScale) {
         if (this.arrows.length < 2) return;
         
-        const coneMesh = this.arrows[0];
-        const cylinderMesh = this.arrows[1];
+        const cylinderMesh = this.arrows[0];
+        const coneMesh = this.arrows[1];
         const coneMatrix = new THREE.Matrix4();
         const cylinderMatrix = new THREE.Matrix4();
         

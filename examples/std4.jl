@@ -1,6 +1,6 @@
 # @title Standard Problem 4
 # @description Standard micromagnetic simulation with LLG dynamics
-# @tags std4 tutorial
+# @tags std tutorial
 
 # Import MicroMagnetic
 using MicroMagnetic

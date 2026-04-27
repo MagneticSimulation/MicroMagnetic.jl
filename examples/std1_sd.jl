@@ -1,6 +1,6 @@
 # @title Standard Problem 1 SD
 # @description Standard micromagnetic problem 1 using SD driver
-# @tags std1 hysteresis
+# @tags std hysteresis
 
 # Standard Problem 1, see Fig1 in JAP. 116, 123908 (2014)
 
