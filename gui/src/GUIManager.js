@@ -91,6 +91,12 @@ class GUIManager {
         if (this.simStatePanel) {
             this.simStatePanel.update(data);
         }
+        if (this.plotPanel) {
+            this.plotPanel.clear();
+        }
+        if (this.visualization) {
+            this.visualization.hidePlotFolder();
+        }
     }
 
     /**
@@ -101,6 +107,9 @@ class GUIManager {
         console.log('Plot data received:', data);
         if (this.plotPanel) {
             this.plotPanel.update(data);
+        }
+        if (this.visualization) {
+            this.visualization.showPlotFolder();
         }
     }
 

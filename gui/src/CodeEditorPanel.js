@@ -23,8 +23,8 @@ class CodeEditorPanel {
                     <h4>Code Editor</h4>
                     <div class="editor-controls">
                     <button id="run-button" class="run-btn">Run</button>
+                    <button id="clear-editor" class="toggle-btn">Clear Editor</button>
                     <button id="toggle-history" class="toggle-btn">History</button>
-                    <button id="clear-history" class="toggle-btn">Clear</button>
                 </div>
                 </div>
                 
@@ -40,8 +40,8 @@ class CodeEditorPanel {
         `;
         
         this.runButton = this.container.querySelector('#run-button');
+        this.clearEditorButton = this.container.querySelector('#clear-editor');
         this.toggleHistoryButton = this.container.querySelector('#toggle-history');
-        this.clearHistoryButton = this.container.querySelector('#clear-history');
         this.editorContainer = this.container.querySelector('#editor-container');
         this.historyPanel = this.container.querySelector('#history-panel');
         this.historyList = this.container.querySelector('#history-list');
@@ -87,16 +87,14 @@ class CodeEditorPanel {
             this.runButton.addEventListener('click', () => this.runCode());
         }
         
-
+        // Clear editor button
+        if (this.clearEditorButton) {
+            this.clearEditorButton.addEventListener('click', () => this.clearEditor());
+        }
         
         // Toggle history visibility
         if (this.toggleHistoryButton) {
             this.toggleHistoryButton.addEventListener('click', () => this.toggleHistory());
-        }
-        
-        // Clear history
-        if (this.clearHistoryButton) {
-            this.clearHistoryButton.addEventListener('click', () => this.clearHistory());
         }
     }
     

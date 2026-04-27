@@ -183,10 +183,6 @@ class SnippetPanel {
                 <div class="snippet-item" data-example-id="${example.title}">
                     <div class="snippet-title">${example.title}</div>
                     <div class="snippet-desc">${example.description}</div>
-                    <div class="snippet-code-preview">
-                        <code>${example.steps.length} steps: ${this.escapeHtml(example.steps[0].code.substring(0, 60))}${example.steps[0].code.length>60?'...':''}</code>
-                    </div>
-                    <div class="snippet-steps-count">${example.steps.length} steps</div>
                 </div>
             `).join('');
             

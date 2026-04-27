@@ -618,10 +618,28 @@ class Visualization {
 
         // Plot Panel controls
         if (this.plotPanel) {
-            const plotFolder = this.gui.addFolder('Plot Panel');
-            plotFolder.add(this.plotPanel, 'mirrorLoop').name('Mirror Loop').onChange((value) => {
+            this.plotFolder = this.gui.addFolder('Hysteresis Loop');
+            this.plotFolderVisible = this.plotFolder.add(this.plotPanel, 'visible').name('Show');
+            this.plotPanel._guiController = this.plotFolderVisible;
+            this.plotFolder.add(this.plotPanel, 'mirrorLoop').name('Mirror Loop').onChange((value) => {
                 this.plotPanel.setMirrorLoop(value);
             });
+            this.plotFolder.hide();
+        }
+    }
+
+    hidePlotFolder() {
+        if (this.plotFolder) {
+            this.plotFolder.hide();
+        }
+    }
+
+    showPlotFolder() {
+        if (this.plotFolder) {
+            this.plotFolder.show();
+        }
+        if (this.plotFolderVisible) {
+            this.plotFolderVisible.updateDisplay();
         }
     }
 

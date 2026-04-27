@@ -12,9 +12,26 @@ class PlotPanel {
         this.dragOffset = { x: 0, y: 0 };
         this.currentData = null;
         this.mirrorLoop = false;
+        this._visible = false;
 
         this.createDOM();
         this.setupEventListeners();
+    }
+
+    get visible() {
+        return this._visible;
+    }
+
+    set visible(value) {
+        this._visible = value;
+        if (value) {
+            this.show();
+        } else {
+            this.hide();
+        }
+        if (this._guiController) {
+            this._guiController.updateDisplay();
+        }
     }
 
     createDOM() {
@@ -91,16 +108,24 @@ class PlotPanel {
     }
 
     show() {
+        this._visible = true;
         this.container.style.display = 'flex';
     }
 
     hide() {
+        this._visible = false;
         this.container.style.display = 'none';
     }
 
     setMirrorLoop(enabled) {
         this.mirrorLoop = enabled;
         if (this.currentData) this.update(this.currentData);
+    }
+
+    clear() {
+        this.currentData = null;
+        this._visible = false;
+        this.hide();
     }
 
     update(data) {
