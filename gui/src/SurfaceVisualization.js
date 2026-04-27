@@ -22,6 +22,7 @@ class SurfaceVisualization {
         this.position = 1; // For surface index
         this.surfaceAxis = 'z'; // 'x', 'y', 'z'
         this.currentColormap = 'viridis'; // Colormap name
+        this.colorMode = 'inplane-angle'; // 'mx', 'my', 'mz', 'inplane-angle'
 
         // Visual elements
         this.currentMesh = null;
@@ -52,6 +53,7 @@ class SurfaceVisualization {
         this.position = options.position || 1;
         this.surfaceAxis = options.direction || 'z';
         this.currentColormap = options.colormap || 'viridis'; 
+        this.colorMode = options.colorMode || 'inplane-angle'; 
 
         this.clearSurface();
 
@@ -250,7 +252,7 @@ class SurfaceVisualization {
         const [dimX, dimY, dimZ] = this.dimensions;
         const totalPoints = nx * ny * nz;
 
-        // Extract data
+        // Extract data for isosurface generation
         const componentIndex = this.getComponentIndex(this.currentComponent);
         const field = new Float32Array(totalPoints);
 
@@ -265,19 +267,20 @@ class SurfaceVisualization {
         const resolution = Math.max(nx, ny, nz);
 
         const material = new THREE.MeshPhongMaterial({
-            color: 0xff0000,
+            color: 0xffffff,
             specular: 0x111111,
             shininess: 30,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.7
+            opacity: 0.7,
+            vertexColors: true
         });
 
         const marchingCubes = new MarchingCubes(
             resolution,
             material,
             false,   // enableUvs
-            false,   // enableColors
+            true,    // enableColors
             100000   // maxPolyCount
         );
 
@@ -302,6 +305,9 @@ class SurfaceVisualization {
                 this.tryDifferentIsolation(marchingCubes, field, nx, ny, nz, resolution);
                 return;
             }
+
+            // Apply colors to vertices based on colorMode
+            this.applyVertexColors(marchingCubes, nx, ny, nz, resolution);
         }
 
         // Scale and position
@@ -356,6 +362,74 @@ class SurfaceVisualization {
         console.log(`Filled ${cellsFilled} cells`);
     }
 
+
+    /**
+     * Apply colors to vertices based on colorMode
+     */
+    applyVertexColors(marchingCubes, nx, ny, nz, resolution) {
+        const geometry = marchingCubes.geometry;
+        const positions = geometry.attributes.position;
+        const vertexCount = positions.count;
+
+        // Create color attribute
+        const colors = new Float32Array(vertexCount * 3);
+
+        // Get colormap
+        const colormap = getColormap(this.currentColormap);
+        const colormapArray = getColorArrayRGB(colormap, 256);
+
+        for (let i = 0; i < vertexCount; i++) {
+            const x = positions.getX(i);
+            const y = positions.getY(i);
+            const z = positions.getZ(i);
+
+            // Convert from normalized coordinates to grid indices
+            const gridX = Math.floor((x + 0.5) * resolution);
+            const gridY = Math.floor((y + 0.5) * resolution);
+            const gridZ = Math.floor((z + 0.5) * resolution);
+
+            // Clamp to valid range
+            const clampedX = Math.max(0, Math.min(nx - 1, gridX));
+            const clampedY = Math.max(0, Math.min(ny - 1, gridY));
+            const clampedZ = Math.max(0, Math.min(nz - 1, gridZ));
+
+            // Get spin data at this position
+            const spinIdx = clampedX + nx * (clampedY + ny * clampedZ);
+            const mx = this.spin[spinIdx * 3 + 0];
+            const my = this.spin[spinIdx * 3 + 1];
+            const mz = this.spin[spinIdx * 3 + 2];
+
+            // Calculate color value based on colorMode
+            let value;
+            if (this.colorMode === 'mx') {
+                value = mx;
+            } else if (this.colorMode === 'my') {
+                value = my;
+            } else if (this.colorMode === 'mz') {
+                value = mz;
+            } else if (this.colorMode === 'inplane-angle') {
+                // Calculate in-plane angle: atan2(my, mx)
+                value = Math.atan2(my, mx) / Math.PI; // Normalize to [-1, 1]
+            } else {
+                value = mx;
+            }
+
+            // Normalize to [0, 1]
+            const normalized = (value + 1) / 2;
+
+            // Map to colormap index (0-255)
+            const cmapIdx = Math.min(255, Math.max(0, Math.floor(normalized * 255)));
+
+            // Get color from colormap
+            const colorIdx = cmapIdx * 3;
+            colors[i * 3 + 0] = colormapArray[colorIdx + 0]; // R
+            colors[i * 3 + 1] = colormapArray[colorIdx + 1]; // G
+            colors[i * 3 + 2] = colormapArray[colorIdx + 2]; // B
+        }
+
+        // Set color attribute
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    }
 
     /**
      * Get component index from component name

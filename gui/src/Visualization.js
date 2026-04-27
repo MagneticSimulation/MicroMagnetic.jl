@@ -55,7 +55,8 @@ class Visualization {
             position: 0,          // surface position
             direction: 'z',       // 'x' | 'y' | 'z'
             visible: true,
-            colormap: 'viridis'   // colormap name
+            colormap: 'viridis',  // colormap name
+            colorMode: 'inplane-angle' // 'mx' | 'my' | 'mz' | 'inplane-angle'
         };
         
         // State flag
@@ -573,6 +574,11 @@ class Visualization {
         surfaceFolder.add(this.surfaceConfig, 'component', ['mx', 'my', 'mz'])
             .name('Component')
             .onChange((value) => this.updateSurfaceConfig({ component: value }));
+
+        // Color mode for isosurface
+        surfaceFolder.add(this.surfaceConfig, 'colorMode', ['mx', 'my', 'mz', 'inplane-angle'])
+            .name('Color Mode')
+            .onChange((value) => this.updateSurfaceConfig({ colorMode: value }));
 
         this.gui.posSurface = surfaceFolder.add(this.surfaceConfig, 'position', 0, 10, 1)
             .name('Position Index')
