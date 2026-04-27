@@ -73,7 +73,7 @@ class CodeEditorPanel {
         });
         
         // Set initial size
-        this.editor.setSize('100%', '300px');
+        this.editor.setSize('100%', '250px');
         
         // Focus the editor
         setTimeout(() => {
