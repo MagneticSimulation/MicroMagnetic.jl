@@ -15,6 +15,9 @@ function set_cuda_backend()
     return nothing
 end
 
+set_cuda_backend()
+MicroMagnetic.setup_workload()
+
 function __init__()
     return set_cuda_backend()
 end

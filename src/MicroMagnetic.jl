@@ -253,6 +253,8 @@ include("eigen/util.jl")
 include("eigen/eigen.jl")
 
 include("tools/ltem.jl")
+include("precompile.jl")
+setup_workload()
 
 function __init__() end
 

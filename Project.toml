@@ -20,6 +20,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 
 [compat]
 julia = "1.11"
@@ -33,6 +34,7 @@ StaticArrays = "1.9"
 PoissonDiskSampling = "0.11"
 HTTP = "1.10"
 JSON = "1"
+PrecompileTools = "1"
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
