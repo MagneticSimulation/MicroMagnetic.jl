@@ -246,12 +246,32 @@ mutable struct BulkDMI{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
+mutable struct TimeBulkDMI{T<:AbstractFloat} <: MicroEnergy
+    Dx::Real
+    Dy::Real
+    Dz::Real    
+    time_D::Function
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    name::String
+end
+
+
 mutable struct SpatialBulkDMI{T<:AbstractFloat} <: MicroEnergy
     D::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
 end
+
+mutable struct TimeSpatialBulkDMI{T<:AbstractFloat} <: MicroEnergy
+    D::AbstractArray{T,1}
+    time_D::Function
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    name::String
+end
+
 
 mutable struct InterfacialDMI{T<:AbstractFloat} <: MicroEnergy
     D::AbstractArray{T,1}

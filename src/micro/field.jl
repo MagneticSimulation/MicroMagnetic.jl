@@ -129,6 +129,26 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
     return nothing
 end
 
+function effective_field(dmi::TimeBulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    mesh = sim.mesh
+    volume = T(mesh.volume)
+    Dx =dmi.time_D(t)*dmi.Dx
+    Dy =dmi.time_D(t)*dmi.Dy
+    Dz =dmi.time_D(t)*dmi.Dz
+    
+
+    dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+    back = default_backend[]
+    bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                                            Dx, Dy, Dz, dx, dy,
+                                            dz, mesh.ngbs, volume; ndrange=N)
+
+    return nothing
+    
+end
+
 function effective_field(dmi::SpatialBulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
@@ -142,6 +162,22 @@ function effective_field(dmi::SpatialBulkDMI, sim::MicroSim, spin::AbstractArray
                                                ndrange=N)
 
     return nothing
+end
+
+function effective_field(dmi::TimeSpatialBulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
+        N = sim.n_total
+        mesh =sim.mesh
+        volume = T(mesh.volume)
+        D = dmi.time_D(t)*dmi.D
+        dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+        back = default_backend[]
+        spatial_bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                                                   D, dx, dy, dz, mesh.ngbs, volume;
+                                                   ndrange=N)
+
+        return nothing
+
 end
 
 function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::AbstractArray{T,1},
