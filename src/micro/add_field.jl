@@ -334,6 +334,45 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
     return dmi
 end
 
+"time_dmi-only support bulk DMI!   Add changes similar to Zeeman field "
+
+function add_dmi(sim::MicroSim,D::NumberOrTupleOrArrayOrFunction, ft::Function; name="time_dmi")
+    n_total = sim.n_total
+    T = Float[]
+    field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
+    energy = KernelAbstractions.zeros(default_backend[], T, n_total)
+    if isa(D, Number)
+            dmi = TimeBulkDMI(T(D), T(D), T(D), ft, field, energy, name)
+    elseif isa(D, Tuple) && length(D) == 3
+            dmi = TimeBulkDMI(T(D[1]), T(D[2]), T(D[3]), ft, field, energy, name)
+    else
+            Spatial_D = zeros(T, sim.n_total)
+            init_scalar!(Spatial_D, sim.mesh, D)
+
+            D_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
+            copyto!(D_kb, Spatial_D)
+
+            dmi = TimeSpatialBulkDMI(D_kb, ft, field, energy, name)
+    end
+
+    push!(sim.interactions, dmi)
+
+    if sim.save_data
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "<J>",
+                        o::AbstractSim -> sum(dmi.energy)))
+        "Changes in the value of the ft function "
+        push!(sim.saver.items,
+              SaverItem(string("time_D", name), "<J/m^2>",
+                        o::AbstractSim ->(dmi.time_D(o.driver.integrator.t))))
+     
+    end
+    send_sim_state(sim)
+    return dmi
+end
+
+
+
 """
     add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true)
 
