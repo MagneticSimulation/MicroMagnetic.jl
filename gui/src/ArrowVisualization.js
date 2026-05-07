@@ -114,14 +114,7 @@ class ArrowVisualization {
         
         this.data = data;
 
-        if (this.needsResample || updatePosition || !this.arrowPositions) {
-            this.calculateArrowPositions();
-            this.needsResample = false;
-            this.initialCylinderPositions = null;
-            this.initialConePositions = null;
-            this.initialArrowScale = null;
-        }
-
+        // Apply options FIRST before calculating positions
         this.settings.sampling = options.sampling || this.settings.sampling;
         if (options.sampleNx !== undefined) this.settings.sampleNx = options.sampleNx;
         if (options.sampleNy !== undefined) this.settings.sampleNy = options.sampleNy;
@@ -130,6 +123,15 @@ class ArrowVisualization {
         if (options.component !== undefined) this.component = options.component;
         if (options.colormap !== undefined) this.colormap = options.colormap;
         
+        // Now calculate positions with updated settings
+        if (this.needsResample || updatePosition || !this.arrowPositions) {
+            this.calculateArrowPositions();
+            this.needsResample = false;
+            this.initialCylinderPositions = null;
+            this.initialConePositions = null;
+            this.initialArrowScale = null;
+        }
+
         const arrowData = this.collectArrowData();
         if (arrowData.length === 0) {
             return;

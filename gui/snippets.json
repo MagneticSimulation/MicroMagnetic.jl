@@ -71,7 +71,7 @@
   {
     "title": "Set Ms by Region Map",
     "description": "Set Ms values for different regions using region_map",
-    "tags": ["ms", "region"],
+    "tags": ["ms"],
     "code": "set_region(mesh, ${shape1}, 1)\nset_region(mesh, ${shape2}, 2)\nset_Ms(sim, region_map(1 => ${Ms1}, 2 => ${Ms2}))",
     "arguments": [
       { "name": "shape1", "default": "Sphere((0, 0, 0), 100e-9)" },
@@ -83,7 +83,7 @@
   {
     "title": "Init Magnetization (Constant)",
     "description": "Set initial magnetization to a uniform direction",
-    "tags": ["m0"],
+    "tags": ["init_m0"],
     "code": "init_m0(sim, (${mx}, ${my}, ${mz}))",
     "arguments": [
       { "name": "mx", "default": "1" },
@@ -104,7 +104,7 @@
   {
     "title": "Init Vortex",
     "description": "Initialize a magnetic vortex with given polarity and chirality",
-    "tags": ["m0"],
+    "tags": ["init_m0"],
     "code": "init_m0(sim, vortex(p=${p}, c=${c}))",
     "arguments": [
       { "name": "p", "default": "1" },
@@ -114,7 +114,7 @@
   {
     "title": "Init Skyrmion",
     "description": "Initialize a magnetic skyrmion",
-    "tags": ["m0"],
+    "tags": ["init_m0"],
     "code": "init_m0(sim, skyrmion(p=${p}, v=${v}, phi=${phi}))",
     "arguments": [
       { "name": "p", "default": "1" },
@@ -125,7 +125,7 @@
   {
     "title": "Init Bubble",
     "description": "Initialize a magnetic bubble domain",
-    "tags": ["m0"],
+    "tags": ["init_m0"],
     "code": "init_m0(sim, bubble2d(R=${R}e-9, p=${p}, v=${v}, phi=${phi}))",
     "arguments": [
       { "name": "R", "default": "40" },
@@ -137,7 +137,7 @@
   {
     "title": "Init Spatial m0 (Grid Function)",
     "description": "Initialize magnetization using a grid-based (i,j,k) function",
-    "tags": ["m0"],
+    "tags": ["init_m0"],
     "code": "function init_fun(i, j, k, dx, dy, dz)\n    x = i - ${center_x}\n    y = j - ${center_y}\n    r = sqrt(x^2 + y^2)\n    if r < ${r0}\n        return (0, 0, 1)\n    end\n    return (-y / r, x / r, 0)\nend\ninit_m0(sim, init_fun)",
     "arguments": [
       { "name": "center_x", "default": "50" },
@@ -148,7 +148,7 @@
   {
     "title": "Init Spatial m0 (Coordinate Function)",
     "description": "Initialize magnetization using a spatial (x,y,z) function",
-    "tags": ["m0"],
+    "tags": ["init_m0"],
     "code": "function init_fun(x, y, z)\n    r = sqrt(x^2 + y^2)\n    if r < ${r0}e-9\n        return (0, 0, 1)\n    end\n    return (sin(pi*x/${pitch}e-9), 0, cos(pi*x/${pitch}e-9))\nend\ninit_m0(sim, init_fun)",
     "arguments": [
       { "name": "r0", "default": "20" },
@@ -158,7 +158,7 @@
   {
     "title": "Add Exchange Interaction",
     "description": "Add isotropic exchange interaction with constant A (J/m)",
-    "tags": ["exch", "interaction"],
+    "tags": ["interaction"],
     "code": "add_exch(sim, ${A})",
     "arguments": [
       { "name": "A", "default": "1.3e-11" }
@@ -167,14 +167,14 @@
   {
     "title": "Add Demagnetization",
     "description": "Add demagnetization (dipole-dipole) field calculation using FFT",
-    "tags": ["demag", "interaction"],
+    "tags": ["interaction"],
     "code": "add_demag(sim)",
     "arguments": []
   },
   {
     "title": "Add Demagnetization with Macro BC",
     "description": "Add demagnetization with macro boundary conditions (Nx, Ny, Nz repetitions)",
-    "tags": ["demag", "interaction"],
+    "tags": ["interaction"],
     "code": "add_demag(sim; Nx=${Nx}, Ny=${Ny}, Nz=${Nz})",
     "arguments": [
       { "name": "Nx", "default": "0" },
@@ -185,7 +185,7 @@
   {
     "title": "Add Static Zeeman",
     "description": "Add uniform static external magnetic field (A/m)",
-    "tags": ["zeeman", "interaction"],
+    "tags": ["interaction"],
     "code": "add_zeeman(sim, (${Hx}, ${Hy}, ${Hz}))",
     "arguments": [
       { "name": "Hx", "default": "0.0" },
@@ -196,7 +196,7 @@
   {
     "title": "Add Time-Varying Zeeman",
     "description": "Add time-dependent external magnetic field H0 * f(t)",
-    "tags": ["zeeman", "interaction"],
+    "tags": ["interaction"],
     "code": "function field_pulse(t)\n    return exp(-t / ${tau})\nend\nadd_zeeman(sim, (${Hx}, ${Hy}, ${Hz}), field_pulse)",
     "arguments": [
       { "name": "Hx", "default": "0.0" },
@@ -208,7 +208,7 @@
   {
     "title": "Add Uniaxial Anisotropy",
     "description": "Add uniaxial magnetocrystalline anisotropy",
-    "tags": ["anis", "interaction"],
+    "tags": ["interaction"],
     "code": "add_anis(sim, ${Ku}; axis=(${ax}, ${ay}, ${az}))",
     "arguments": [
       { "name": "Ku", "default": "1e5" },
@@ -220,7 +220,7 @@
   {
     "title": "Add Cubic Anisotropy",
     "description": "Add cubic magnetocrystalline anisotropy",
-    "tags": ["anis", "interaction"],
+    "tags": ["interaction"],
     "code": "add_cubic_anis(sim, ${Kc}; axis1=(${ax1}, ${ay1}, ${az1}), axis2=(${ax2}, ${ay2}, ${az2}))",
     "arguments": [
       { "name": "Kc", "default": "1e3" },
@@ -231,7 +231,7 @@
   {
     "title": "Add Hexagonal Anisotropy",
     "description": "Add hexagonal anisotropy (K1, K2, K3)",
-    "tags": ["anis", "interaction"],
+    "tags": ["interaction"],
     "code": "add_hex_anis(sim; K1=${K1}, K2=${K2}, K3=${K3})",
     "arguments": [
       { "name": "K1", "default": "1e3" },
@@ -242,7 +242,7 @@
   {
     "title": "Add Bulk DMI",
     "description": "Add bulk Dzyaloshinskii-Moriya interaction",
-    "tags": ["dmi", "interaction"],
+    "tags": ["interaction"],
     "code": "add_dmi(sim, (${Dx}, ${Dy}, ${Dz}); type=\"bulk\")",
     "arguments": [
       { "name": "Dx", "default": "1e-3" },
@@ -253,7 +253,7 @@
   {
     "title": "Add Interfacial DMI",
     "description": "Add interfacial DMI (spatially varying D)",
-    "tags": ["dmi", "interaction"],
+    "tags": ["interaction"],
     "code": "add_dmi(sim, ${D}; type=\"interfacial\")",
     "arguments": [
       { "name": "D", "default": "3e-3" }
@@ -262,7 +262,7 @@
   {
     "title": "Add Interlayer DMI",
     "description": "Add interlayer DMI between two layers k1 and k2",
-    "tags": ["dmi", "interaction", "interlayer"],
+    "tags": ["interaction"],
     "code": "add_dmi_int(sim, (${Dx}, ${Dy}, ${Dz}); k1=${k1}, k2=${k2})",
     "arguments": [
       { "name": "Dx", "default": "0" },
@@ -275,7 +275,7 @@
   {
     "title": "Add Interlayer Exchange (RKKY)",
     "description": "Add RKKY-type interlayer exchange coupling between layers",
-    "tags": ["exch", "interaction", "interlayer", "rkky"],
+    "tags": ["interaction"],
     "code": "add_exch_int(sim, ${J}; k1=${k1}, k2=${k2})",
     "arguments": [
       { "name": "J", "default": "1e-3" },
@@ -286,7 +286,7 @@
   {
     "title": "Add Spin-Orbit Torque (SOT)",
     "description": "Add damping-like and field-like spin-orbit torque",
-    "tags": ["sot", "interaction", "torque"],
+    "tags": ["interaction", "torque"],
     "code": "add_sot(sim, ${aj}, ${bj}, (${px}, ${py}, ${pz}))",
     "arguments": [
       { "name": "aj", "default": "1e11" },
@@ -299,7 +299,7 @@
   {
     "title": "Add Spin Transfer Torque (Zhang-Li)",
     "description": "Add Zhang-Li spin transfer torque for in-plane currents",
-    "tags": ["stt", "interaction", "torque"],
+    "tags": ["interaction", "torque"],
     "code": "add_stt(sim, model=:zhang_li, P=${P}, Ms=${Ms}, xi=${xi}, J=(${Jx}, ${Jy}, ${Jz}))",
     "arguments": [
       { "name": "P", "default": "0.5" },
@@ -313,7 +313,7 @@
   {
     "title": "Add Spin Transfer Torque (Slonczewski)",
     "description": "Add Slonczewski STT for perpendicular current in MTJs",
-    "tags": ["stt", "interaction", "torque", "mtj"],
+    "tags": ["interaction", "torque"],
     "code": "add_stt(sim, model=:slonczewski, J=${J}, tf=${tf}, Ms=${Ms}, p=(${px}, ${py}, ${pz}), P=${P}, Lambda=${Lambda})",
     "arguments": [
       { "name": "J", "default": "5e10" },
@@ -329,7 +329,7 @@
   {
     "title": "Add SAHE Torque",
     "description": "Add spin anomalous Hall effect torque",
-    "tags": ["torque", "interaction", "sahe"],
+    "tags": ["torque", "interaction"],
     "code": "add_sahe_torque(sim, (${sx}, ${sy}, ${sz}); beta=${beta})",
     "arguments": [
       { "name": "sx", "default": "0.1" },
@@ -370,7 +370,7 @@
   {
     "title": "Set Region by Index",
     "description": "Assign region ID to specific grid indices",
-    "tags": ["region", "mesh"],
+    "tags": ["mesh"],
     "code": "set_region(mesh, ${region_id}; i=${i_range}, j=${j_range}, k=${k_range})",
     "arguments": [
       { "name": "region_id", "default": "1" },
@@ -382,7 +382,7 @@
   {
     "title": "Set Region by Shape",
     "description": "Assign region ID to cells within a geometric shape",
-    "tags": ["region", "mesh", "shape"],
+    "tags": ["mesh", "shape"],
     "code": "set_region(mesh, ${shape}; region_id=${region_id})",
     "arguments": [
       { "name": "shape", "default": "Sphere((0, 0, 0), 50e-9)" },
@@ -392,7 +392,7 @@
   {
     "title": "Create Voronoi Grains",
     "description": "Generate Voronoi tessellation for polycrystalline microstructures",
-    "tags": ["region", "mesh", "voronoi", "grains"],
+    "tags": ["mesh", "voronoi"],
     "code": "grain_ids, gb_mask, seeds = voronoi(mesh; min_dist=${min_dist}, seed=${seed}, threshold=${threshold})\nfunction spatial_Ms(i,j,k,dx,dy,dz)\n    if gb_mask[i,j,k]\n        return 0\n    end\n    return ${Ms}\nend\nset_Ms(sim, spatial_Ms)",
     "arguments": [
       { "name": "min_dist", "default": "20" },
@@ -491,6 +491,260 @@
       { "name": "name", "default": "std4_LLG" },
       { "name": "output", "default": "sim" },
       { "name": "component", "default": "x" }
+    ]
+  },
+  {
+    "title": "Set Float Precision (Float64)",
+    "description": "Set simulation to use Float64 (double precision)",
+    "tags": ["precision", "config"],
+    "code": "set_precision(Float64)",
+    "arguments": []
+  },
+  {
+    "title": "Set Float Precision (Float32)",
+    "description": "Set simulation to use Float32 (single precision, faster on GPU)",
+    "tags": ["precision", "config"],
+    "code": "set_precision(Float32)",
+    "arguments": []
+  },
+  {
+    "title": "Set Backend to CUDA",
+    "description": "Switch compute backend to NVIDIA CUDA GPU",
+    "tags": ["gpu", "config"],
+    "code": "set_backend(\"cuda\")",
+    "arguments": []
+  },
+  {
+    "title": "Set Backend to CPU",
+    "description": "Switch compute backend to CPU",
+    "tags": ["config"],
+    "code": "set_backend(\"cpu\")",
+    "arguments": []
+  },
+  {
+    "title": "Set Backend to AMD GPU",
+    "description": "Switch compute backend to AMD GPU",
+    "tags": ["gpu", "config"],
+    "code": "set_backend(\"amd\")",
+    "arguments": []
+  },
+  {
+    "title": "Set Backend to Metal",
+    "description": "Switch compute backend to Apple Metal GPU",
+    "tags": ["gpu", "config"],
+    "code": "set_backend(\"metal\")",
+    "arguments": []
+  },
+  {
+    "title": "Set mu_s (Atomistic)",
+    "description": "Set magnetic moment per site for atomistic simulations",
+    "tags": ["mu_s", "atomistic", "ms"],
+    "code": "set_mu_s(sim, ${mu_s})",
+    "arguments": [
+      { "name": "mu_s", "default": "2e-23" }
+    ]
+  },
+  {
+    "title": "Set mu_s (with mu_B)",
+    "description": "Set magnetic moment using Bohr magneton",
+    "tags": ["mu_s", "atomistic"],
+    "code": "set_mu_s(sim, ${n} * mu_B)",
+    "arguments": [
+      { "name": "n", "default": "2" }
+    ]
+  },
+  {
+    "title": "Add Interfacial DMI (scalar)",
+    "description": "Add interfacial DMI with scalar constant",
+    "tags": ["dmi", "interaction"],
+    "code": "add_dmi(sim, ${D}; type=\"interfacial\")",
+    "arguments": [
+      { "name": "D", "default": "3e-3" }
+    ]
+  },
+  {
+    "title": "Add Bulk DMI (scalar)",
+    "description": "Add bulk DMI with scalar constant",
+    "tags": ["dmi", "interaction"],
+    "code": "add_dmi(sim, ${D}; type=\"bulk\")",
+    "arguments": [
+      { "name": "D", "default": "1e-3" }
+    ]
+  },
+  {
+    "title": "Create CubicMesh",
+    "description": "Create atomistic cubic mesh",
+    "tags": ["mesh", "atomistic"],
+    "code": "mesh = CubicMesh(nx=${nx}, ny=${ny}, nz=${nz}, a=${a}e-10)",
+    "arguments": [
+      { "name": "nx", "default": "20" },
+      { "name": "ny", "default": "20" },
+      { "name": "nz", "default": "1" },
+      { "name": "a", "default": "2.5" }
+    ]
+  },
+  {
+    "title": "Create TriangularMesh",
+    "description": "Create triangular lattice mesh for 2D atomistic simulations",
+    "tags": ["mesh", "atomistic"],
+    "code": "mesh = TriangularMesh(nx=${nx}, ny=${ny}, pbc=\"${pbc}\")",
+    "arguments": [
+      { "name": "nx", "default": "100" },
+      { "name": "ny", "default": "100" },
+      { "name": "pbc", "default": "xy" }
+    ]
+  },
+  {
+    "title": "Init m0 Random",
+    "description": "Initialize spins with random directions",
+    "tags": ["init_m0"],
+    "code": "init_m0_random(sim; seed=${seed})",
+    "arguments": [
+      { "name": "seed", "default": "42" }
+    ]
+  },
+  {
+    "title": "Save OVF File",
+    "description": "Save magnetization to OVF format file",
+    "tags": ["postprocess"],
+    "code": "save_ovf(sim, \"${filename}.ovf\")",
+    "arguments": [
+      { "name": "filename", "default": "output" }
+    ]
+  },
+  {
+    "title": "Save VTK File",
+    "description": "Save magnetization to VTK format file",
+    "tags": ["postprocess"],
+    "code": "save_vtk(sim, \"${filename}\")",
+    "arguments": [
+      { "name": "filename", "default": "output" }
+    ]
+  },
+  {
+    "title": "Read OVF File",
+    "description": "Read magnetization from OVF file",
+    "tags": ["postprocess"],
+    "code": "ovf = read_ovf(\"${filename}.ovf\")",
+    "arguments": [
+      { "name": "filename", "default": "input" }
+    ]
+  },
+  {
+    "title": "Read Simulation Data",
+    "description": "Read saved simulation data table",
+    "tags": ["postprocess"],
+    "code": "data, units = read_table(\"${filename}.txt\")",
+    "arguments": [
+      { "name": "filename", "default": "std4_sd" }
+    ]
+  },
+  {
+    "title": "Compute Energy",
+    "description": "Compute system energy after simulation",
+    "tags": ["postprocess"],
+    "code": "compute_system_energy(sim, sim.spin, 0.0)\nE_total = sum(sim.energy)",
+    "arguments": []
+  },
+  {
+    "title": "Compute Skyrmion Number",
+    "description": "Compute skyrmion number from simulation",
+    "tags": ["postprocess"],
+    "code": "Q = compute_skyrmion_number(sim)",
+    "arguments": []
+  },
+  {
+    "title": "Compute Guiding Center",
+    "description": "Compute vortex/skyrmion guiding center position",
+    "tags": ["postprocess"],
+    "code": "Rx, Ry = compute_guiding_center(sim)",
+    "arguments": []
+  },
+  {
+    "title": "Create Cylinder with Height",
+    "description": "Create a finite-height cylinder",
+    "tags": ["shape", "csg"],
+    "code": "Cylinder(center=(${cx}e-9, ${cy}e-9, ${cz}e-9), radius=${r}e-9, height=${h}e-9)",
+    "arguments": [
+      { "name": "cx", "default": "0" },
+      { "name": "cy", "default": "0" },
+      { "name": "cz", "default": "0" },
+      { "name": "r", "default": "50" },
+      { "name": "h", "default": "20" }
+    ]
+  },
+  {
+    "title": "Create Torus",
+    "description": "Create a torus shape",
+    "tags": ["shape", "csg"],
+    "code": "Torus(center=(${cx}e-9, ${cy}e-9, ${cz}e-9), R=${R}e-9, r=${r}e-9)",
+    "arguments": [
+      { "name": "cx", "default": "0" },
+      { "name": "cy", "default": "0" },
+      { "name": "cz", "default": "0" },
+      { "name": "R", "default": "60" },
+      { "name": "r", "default": "20" }
+    ]
+  },
+  {
+    "title": "Create Plane",
+    "description": "Create an infinite plane",
+    "tags": ["shape", "csg"],
+    "code": "Plane(point=(${cx}e-9, ${cy}e-9, ${cz}e-9), normal=(${nx}, ${ny}, ${nz}))",
+    "arguments": [
+      { "name": "cx", "default": "0" },
+      { "name": "cy", "default": "0" },
+      { "name": "cz", "default": "0" },
+      { "name": "nx", "default": "0" },
+      { "name": "ny", "default": "0" },
+      { "name": "nz", "default": "1" }
+    ]
+  },
+  {
+    "title": "Run Until Time",
+    "description": "Run simulation until specified time",
+    "tags": ["run", "sim"],
+    "code": "run_until(sim, ${time})",
+    "arguments": [
+      { "name": "time", "default": "1e-9" }
+    ]
+  },
+  {
+    "title": "Run Hysteresis Loop",
+    "description": "Compute hysteresis loop with field sweep",
+    "tags": ["hysteresis", "sim"],
+    "code": "Hs = [i * mT for i in ${H_min}:${step}:${H_max}]\nhysteresis(sim, Hs; direction=(${dx}, ${dy}, ${dz}), stopping_dmdt=${stopping_dmdt}, full_loop=${full_loop})",
+    "arguments": [
+      { "name": "H_min", "default": "-100" },
+      { "name": "H_max", "default": "100" },
+      { "name": "step", "default": "10" },
+      { "name": "dx", "default": "1" },
+      { "name": "dy", "default": "0" },
+      { "name": "dz", "default": "0" },
+      { "name": "stopping_dmdt", "default": "0.1" },
+      { "name": "full_loop", "default": "true" }
+    ]
+  },
+  {
+    "title": "Init Skyrmion Lattice",
+    "description": "Initialize skyrmion lattice",
+    "tags": ["init_m0"],
+    "code": "init_m0(sim, skyrmion_lattice(${a}e-9, p=${p}, c=${c}))",
+    "arguments": [
+      { "name": "a", "default": "50" },
+      { "name": "p", "default": "-1" },
+      { "name": "c", "default": "1" }
+    ]
+  },
+  {
+    "title": "Init Hopfion",
+    "description": "Initialize 3D hopfion",
+    "tags": ["init_m0"],
+    "code": "init_m0(sim, hopfion(R=${R}e-9, p=${p}, q=${q}))",
+    "arguments": [
+      { "name": "R", "default": "20" },
+      { "name": "p", "default": "1" },
+      { "name": "q", "default": "1" }
     ]
   }
 ]
