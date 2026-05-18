@@ -31,6 +31,8 @@ end
     j = 3 * (id - 1)
     @inbounds inner = x1[j + 1] * x2[j + 1] + x1[j + 2] * x2[j + 2] + x1[j + 3] * x2[j + 3]
 
+    inner = clamp(inner, -1.0, 1.0)
+
     theta = acos(inner)
     if !(theta == 0.0)
         sin_theta = sin(theta)
