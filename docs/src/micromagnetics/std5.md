@@ -81,7 +81,7 @@ add_stt(sim, model=:zhang_li, P=1.0, Ms=8e5, xi=0.05, J=(1e12, 0, 0))
 
 # we add a SaverItem to save the guiding center each step
 center = SaverItem(("cx", "cy"), ("<m>", "<m>"), compute_guiding_center)
-run_sim(sim, steps=100, dt=5e-11, saver_item=center)
+run_sim(sim, steps=100, dt=5e-11, saver_item=center, save_m_every=1)
 ````
 
 We plot the vortex center as a function of time.
@@ -93,3 +93,9 @@ fig = plot_ts("std5_llg.txt", ["cx", "cy"]; xlabel="Time (ns)", ylabel="Vortex c
 ```@setup
 save("../public/std5_center.png", fig)  #Save the plot
 ```
+
+````@example
+ovf2movie("std5_LLG"; output="../public/std5.mp4", component='x');
+nothing #hide
+````
+![](../public/std5.mp4)

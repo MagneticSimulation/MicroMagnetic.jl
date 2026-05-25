@@ -94,7 +94,7 @@ set_driver(sim; driver="LLG", alpha=0.02, gamma=2.211e5)
 add_zeeman(sim, (-24.6mT, 4.3mT, 0))                # Stage 2: Apply external magnetic field
 run_sim(sim; steps=100, dt=1e-11, save_m_every=1)   # Run the simulation for 100 steps
 
-ovf2movie("std4_LLG"; output="std4.gif", component='x'); # Generate a movie
+ovf2movie("std4_LLG"; output="std4.mp4", component='x'); # Generate a movie
 ```
 
 <h2> Structure of MicroMagnetic.jl </h2>

@@ -58,10 +58,10 @@ fig = plot_ts("std4_llg.txt", ["m_x", "m_y", "m_z"];  xlabel="Time (ns)", ylabel
 
 Generate a movie from the simulation ovfs stored in folder `std4_LLG`:
 ````@example
-ovf2movie("std4_LLG"; output="../public/std4.gif", component='x');
+ovf2movie("std4_LLG"; output="../public/std4.mp4", component='x');
 nothing #hide
 ````
-![](../public/std4.gif)
+![](../public/std4.mp4)
 
 ```@setup
 save("../public/std4.png", fig)

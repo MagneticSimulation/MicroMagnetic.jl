@@ -37,7 +37,7 @@ We set the initial magnetization configuration to a skyrmion at position (200nm,
 Note that the initialized magnetization is a roughly guessing for the skyrimon.
 
 ````@example
-init_m0_skyrmion(sim, (200e-9, 80e-9), 2e-8)
+init_m0(sim, skyrmion(center=(200e-9, 80e-9), R=2e-8))
 ````
 
 We relax the system to obtain the skyrmion profile.

@@ -59,9 +59,8 @@ sim_with(args);
 ```
 
 Generate a movie for the vortex dynamics.
-
 ```julia
-jld2movie("std5.jld2"; output="assets/std5.mp4", component='z', figsize=(400, 400))
+ovf2movie("std5_LLG"; output="../public/std5.mp4", component='x');
 ```
 
-
+![](../public/std5.mp4)

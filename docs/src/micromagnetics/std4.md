@@ -90,6 +90,6 @@ By default, `run_sim` generates a `std4_LLG` folder, which stores the magnetizat
 Generate a movie based on the simulation results
 
 ```julia
-ovf2movie("std4_LLG"; output="../public/std4.gif", component='x');
+ovf2movie("std4_LLG"; output="../public/std4.mp4", component='x');
 ```
-![](../public/std4.gif)
+![](../public/std4.mp4)

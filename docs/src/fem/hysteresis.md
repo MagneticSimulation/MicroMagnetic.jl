@@ -108,6 +108,7 @@ nothing #hide
 Plot the hysteresis loop using the data generated from the simulation.
 
 ````@example
+using MicroMagnetic
 using CairoMakie
 fig = plot_ts("disk_llg.txt", x_key="Hx", ["m_x"], x_unit=1/mT, xlabel="H (mT)", ylabel="m", mirror_loop=true);
 ````

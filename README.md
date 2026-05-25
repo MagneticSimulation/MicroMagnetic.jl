@@ -116,41 +116,10 @@ set_driver(sim; driver="LLG", alpha=0.02, gamma=2.211e5)
 add_zeeman(sim, (-24.6mT, 4.3mT, 0))                # Stage 2: Apply external magnetic field
 run_sim(sim; steps=100, dt=1e-11, save_m_every=1)   # Run the simulation for 100 steps
 
-ovf2movie("std4_LLG"; output="std4.gif", component='x'); # Generate a movie
+ovf2movie("std4_LLG"; output="std4.mp4", component='x'); # Generate a movie
 ```
 
-![std4](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/gh-pages/dev/std4.gif)
-
-## Running MicroMagnetic.jl from Python
-
-Thanks to [PythonCall.jl](https://github.com/JuliaPy/PythonCall.jl), running MicroMagnetic.jl from Python is seamless.
-
-Below is an example setup for **Standard Problem #4**:
-
-```python
-from juliacall import Main as jl
-jl.seval("using MicroMagnetic")
-
-# Define simulation parameters
-args = {
-    "name": "std4",
-    "task_s": ["relax", "dynamics"],                   # List of tasks to perform
-    "mesh": jl.FDMesh(nx=200, ny=50, nz=1, dx=2.5e-9, dy=2.5e-9, dz=3e-9),  # Julia FDMesh object
-    "Ms": 8e5,                                         # Saturation magnetization (A/m)
-    "A": 1.3e-11,                                      # Exchange stiffness constant (J/m)
-    "demag": True,                                     # Enable demagnetization
-    "m0": (1, 0.25, 0.1),                              # Initial magnetization vector
-    "alpha": 0.02,                                     # Gilbert damping coefficient
-    "steps": 100,                                      # Number of dynamic simulation steps
-    "dt": 0.01 * jl.ns,                                # Time step size (0.01 ns)
-    "stopping_dmdt": 0.01,                             # Stopping criterion for relaxation
-    "dynamic_m_interval": 1,                           # Save magnetization at each step
-    "H_s": [(0, 0, 0), (-24.6 * jl.mT, 4.3 * jl.mT, 0)]  # Sequence of applied magnetic fields
-}
-
-# Run the simulation
-sim = jl.sim_with(**args)
-```
+![std4](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/gh-pages/dev/std4.mp4)
 
 ## Questions and Contributions
 
