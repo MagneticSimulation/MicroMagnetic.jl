@@ -1,0 +1,1 @@
+import{c as i,U as a,j as n,m as t}from"./chunks/framework.CCNA4Re0.js";const g=JSON.parse('{"title":"GUI","description":"","frontmatter":{},"headers":[],"relativePath":"gui.md","filePath":"gui.md","lastUpdated":null}'),e={name:"gui.md"};function l(h,s,p,r,k,o){return a(),n("div",null,[...s[0]||(s[0]=[t("",13)])])}const c=i(e,[["render",l]]);export{g as __pageData,c as default};
