@@ -119,8 +119,6 @@ run_sim(sim; steps=100, dt=1e-11, save_m_every=1)   # Run the simulation for 100
 ovf2movie("std4_LLG"; output="std4.mp4", component='x'); # Generate a movie
 ```
 
-![std4](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/gh-pages/dev/std4.mp4)
-
 ## Questions and Contributions
 
 If you have any questions about usage, please join the conversation on our [GitHub Discussions page](https://github.com/magneticsimulation/MicroMagnetic.jl/discussions). 
