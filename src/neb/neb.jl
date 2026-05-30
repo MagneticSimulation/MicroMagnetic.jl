@@ -30,7 +30,7 @@ end
 
 """
     NEB(sim::AbstractSim, init_images::TupleOrArray, frames_between_images::TupleOrArray; 
-        name="NEB", spring_constant=1.0e5, driver="LLG", clib_image=-1)
+        name="NEB", spring_constant=1.0e5, driver="LLG", integrator="BS23", clib_image=-1)
 
 Create a NEB instance.
 
@@ -43,6 +43,9 @@ Create a NEB instance.
 - `spring_constant::Float64=1.0e5`: Spring constant used in the NEB simulation.
 - `driver::String="LLG"`: Driver for the NEB simulation. Options are `"SD"` or `"LLG"`.
 - `clib_image::Int=-1`: Optional parameter for specifying a particular image in the library (default is -1).
+- `integrator::String="BS23"`: Time integration method. Options:
+    - Fixed step methods: `"Heun"`, `"RungeKutta"`, `"RungeKuttaCayley"`
+    - Adaptive step methods: `"DormandPrince"` (DOPRI54), `"BS23"`, `"CashKarp54"`, `"Fehlberg54"` (RKF54)
 
 # Returns
 
@@ -84,7 +87,7 @@ relax(neb; stopping_dmdt=0.1, save_vtk_every=1000, max_steps=5000)
 """
 function NEB(sim::AbstractSim, given_images::TupleOrArray,
              frames_between_images::TupleOrArray; name="NEB", spring_constant=1.0e5,
-             driver="LLG", clib_image=-1)
+             driver="LLG", integrator="BS23", clib_image=-1)
     n_total = sim.mesh.nx * sim.mesh.ny * sim.mesh.nz
     n_images = sum(frames_between_images) + length(given_images) - 2
 
@@ -140,11 +143,12 @@ function NEB(sim::AbstractSim, given_images::TupleOrArray,
     effective_field_energy(neb, neb.spin)
 
     init_saver(neb)
-    neb.driver = create_driver(driver, "DormandPrince", neb.n_total)
+    neb.driver = create_driver(driver, integrator, neb.n_total)
     if driver == "LLG"
         neb.driver.tol = 1e-5
         neb.driver.precession = false
         neb.driver.alpha = 0.2
+        set_initial_condition!(neb, neb.driver.integrator)
     end
 
     return neb
@@ -292,6 +296,11 @@ function relax(sim::NEB; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
         @timeit timer "run_step" run_step(sim, driver)
 
         sim.nsteps += 1
+
+        # Sync spin state from integrator for LLG driver with AdaptiveRK
+        if llg_driver && isa(driver.integrator, AdaptiveRK)
+            copyto!(sim.spin, driver.integrator.y_current)
+        end
 
         step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
 
