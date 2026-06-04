@@ -168,6 +168,63 @@ The kernel hexagonal_anisotropy_kernel! works for both the micromagnetic and ato
     end
 end
 
+@kernel function twin_monoclinic_anisotropy_kernel!(@Const(m), h, energy,
+                                                    @Const(axis_a), @Const(axis_b),
+                                                    @Const(axis_u111), @Const(mu0_Ms),
+                                                    Ka::T, Kb::T, Kaa::T, Kbb::T,
+                                                    Kab::T, Ku::T,
+                                                    volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu0_Ms[id]
+
+    if Ms_local == T(0)
+        @inbounds energy[id] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        @inbounds mx = m[j + 1]
+        @inbounds my = m[j + 2]
+        @inbounds mz = m[j + 3]
+
+        @inbounds ax = axis_a[j + 1]
+        @inbounds ay = axis_a[j + 2]
+        @inbounds az = axis_a[j + 3]
+        @inbounds bx = axis_b[j + 1]
+        @inbounds by = axis_b[j + 2]
+        @inbounds bz = axis_b[j + 3]
+        @inbounds ux = axis_u111[j + 1]
+        @inbounds uy = axis_u111[j + 2]
+        @inbounds uz = axis_u111[j + 3]
+
+        alpha_a = mx * ax + my * ay + mz * az
+        alpha_b = mx * bx + my * by + mz * bz
+        alpha_u = mx * ux + my * uy + mz * uz
+
+        alpha_a2 = alpha_a * alpha_a
+        alpha_b2 = alpha_b * alpha_b
+
+        dE_da = 2 * Ka * alpha_a + 4 * Kaa * alpha_a2 * alpha_a +
+                2 * Kab * alpha_a * alpha_b2
+        dE_db = 2 * Kb * alpha_b + 4 * Kbb * alpha_b2 * alpha_b +
+                2 * Kab * alpha_b * alpha_a2
+        dE_du = -2 * Ku * alpha_u
+
+        Ms_inv::T = 1 / Ms_local
+        @inbounds h[j + 1] = -Ms_inv * (dE_da * ax + dE_db * bx + dE_du * ux)
+        @inbounds h[j + 2] = -Ms_inv * (dE_da * ay + dE_db * by + dE_du * uy)
+        @inbounds h[j + 3] = -Ms_inv * (dE_da * az + dE_db * bz + dE_du * uz)
+
+        @inbounds energy[id] = (Ka * alpha_a2 + Kb * alpha_b2 +
+                                Kaa * alpha_a2 * alpha_a2 +
+                                Kbb * alpha_b2 * alpha_b2 +
+                                Kab * alpha_a2 * alpha_b2 -
+                                Ku * alpha_u * alpha_u) * volume
+    end
+end
+
 @kernel function exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(A), dx::T,
                                   dy::T, dz::T, @Const(ngbs),
                                   volume::T) where {T<:AbstractFloat}

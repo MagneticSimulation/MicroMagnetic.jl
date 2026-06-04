@@ -85,6 +85,19 @@ function effective_field(anis::HexagonalAnisotropy, sim::MicroSim, spin::Abstrac
     return nothing
 end
 
+function effective_field(anis::TwinMonoclinicAnisotropy, sim::MicroSim,
+                         spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    volume = T(sim.mesh.volume)
+
+    twin_monoclinic_anisotropy_kernel!(default_backend[], groupsize[])(
+        spin, anis.field, anis.energy, anis.axis_a, anis.axis_b, anis.axis_u111,
+        sim.mu0_Ms, T(anis.Ka), T(anis.Kb), T(anis.Kaa), T(anis.Kbb),
+        T(anis.Kab), T(anis.Ku), volume; ndrange=N)
+
+    return nothing
+end
+
 function effective_field(exch::SpatialExchange, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     n_total = sim.n_total

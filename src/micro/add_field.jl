@@ -1,4 +1,5 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
+       add_twin_mono_anis,
        add_exch, add_dmi, add_sahe_torque, add_demag, add_dmi_int, add_exch_int,
        add_thermal_noise, add_sot, add_stt, add_torque, rm_demag_charges
 
@@ -581,6 +582,62 @@ function add_hex_anis(sim::AbstractSim; K1=0, K2=0, K3=0, name="hex")
                         o::AbstractSim -> sum(anis.energy)))
     end
     @info "Hexagonal Anisotropy has been added."
+    send_sim_state(sim)
+    return anis
+end
+
+@doc raw"""
+    add_twin_mono_anis(sim::AbstractSim; Ka=0, Kb=0, Kaa=0, Kbb=0, Kab=0, Ku=0,
+                       axis_a=(1, 0, 0), axis_b=(0, 1, 0), axis_u111=(0, 0, 1),
+                       name="twin_mono_anis")
+
+Add a local monoclinic anisotropy whose crystallographic axes can vary in space, for
+example across Verwey twin domains.
+
+The energy density is defined as:
+
+```math
+E = K_a \alpha_a^2 + K_b \alpha_b^2 + K_{aa} \alpha_a^4
+  + K_{bb} \alpha_b^4 + K_{ab} \alpha_a^2 \alpha_b^2
+  - K_u \alpha_{111}^2
+```
+
+where ``\alpha_a = \mathbf{m}\cdot\mathbf{a}``,
+``\alpha_b = \mathbf{m}\cdot\mathbf{b}``, and
+``\alpha_{111} = \mathbf{m}\cdot\mathbf{u}_{111}``.
+"""
+function add_twin_mono_anis(sim::AbstractSim; Ka=0, Kb=0, Kaa=0, Kbb=0, Kab=0, Ku=0,
+                            axis_a::TupleOrArrayOrFunction=(1, 0, 0),
+                            axis_b::TupleOrArrayOrFunction=(0, 1, 0),
+                            axis_u111::TupleOrArrayOrFunction=(0, 0, 1),
+                            name="twin_mono_anis")
+    n_total = sim.n_total
+
+    T = Float[]
+    axes_a = zeros(T, 3 * n_total)
+    axes_b = zeros(T, 3 * n_total)
+    axes_u111 = zeros(T, 3 * n_total)
+
+    init_vector!(axes_a, sim.mesh, axis_a)
+    init_vector!(axes_b, sim.mesh, axis_b)
+    init_vector!(axes_u111, sim.mesh, axis_u111)
+    normalise(axes_a, n_total)
+    normalise(axes_b, n_total)
+    normalise(axes_u111, n_total)
+
+    anis = TwinMonoclinicAnisotropy(T(Ka), T(Kb), T(Kaa), T(Kbb), T(Kab), T(Ku),
+                                    kernel_array(axes_a), kernel_array(axes_b),
+                                    kernel_array(axes_u111), create_zeros(3 * n_total),
+                                    create_zeros(n_total), name)
+    push!(sim.interactions, anis)
+
+    if sim.save_data
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "<J>",
+                        o::AbstractSim -> sum(anis.energy)))
+    end
+
+    @info "Twin monoclinic anisotropy has been added."
     send_sim_state(sim)
     return anis
 end
