@@ -201,6 +201,21 @@ mutable struct HexagonalAnisotropy{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
+mutable struct TwinMonoclinicAnisotropy{T<:AbstractFloat} <: MicroEnergy
+    Ka::T
+    Kb::T
+    Kaa::T
+    Kbb::T
+    Kab::T
+    Ku::T
+    axis_a::AbstractArray{T,1}
+    axis_b::AbstractArray{T,1}
+    axis_u111::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    name::String
+end
+
 mutable struct SpatialExchange{T<:AbstractFloat} <: MicroEnergy
     A::AbstractArray{T,1}
     field::AbstractArray{T,1}
