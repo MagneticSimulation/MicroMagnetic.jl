@@ -69,6 +69,7 @@ hysteresis
 set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
 set_Ms(sim::AbstractSim, shape::Shape, Ms::Number)
 add_exch(sim::MicroSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
+add_twin_mono_anis
 add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
 add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true)
 add_exch_int(sim::MicroSimFE, J::Number; k1=1, k2=2, name="exch_int")
