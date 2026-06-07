@@ -481,16 +481,18 @@ end
         @inbounds h[k1 + 1] = Ms_inv * mty
         @inbounds h[k1 + 2] = Ms_inv * mtz
         @inbounds energy[id1] = -0.5 *
-                                (h[k1] * mbx + h[k1 + 1] * mby + h[k1 + 2] * mbz) *
-                                volume
+                        Ms1 *
+                        (h[k1] * mbx + h[k1 + 1] * mby + h[k1 + 2] * mbz) *
+                        volume
 
         Ms_inv = J / (Ms2 * dz)
         @inbounds h[k2] = Ms_inv * mbx
         @inbounds h[k2 + 1] = Ms_inv * mby
         @inbounds h[k2 + 2] = Ms_inv * mbz
         @inbounds energy[id2] = -0.5 *
-                                (h[k2] * mtx + h[k2 + 1] * mty + h[k2 + 2] * mtz) *
-                                volume
+                        Ms2 *
+                        (h[k2] * mtx + h[k2 + 1] * mty + h[k2 + 2] * mtz) *
+                        volume
     end
 end
 
