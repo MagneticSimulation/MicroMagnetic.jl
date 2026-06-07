@@ -506,6 +506,7 @@ end
 
     k1 = 3 * id1 - 2
     k2 = 3 * id2 - 2
+
     @inbounds mbx = m[k1]
     @inbounds mby = m[k1 + 1]
     @inbounds mbz = m[k1 + 2]
@@ -516,20 +517,25 @@ end
 
     @inbounds Ms1 = mu0_Ms[id1]
     @inbounds Ms2 = mu0_Ms[id2]
+
     if Ms1 > 0 && Ms2 > 0
         Ms_inv = 1.0 / (Ms1 * dz)
-        @inbounds h[k1] = Ms_inv * cross_x(Dx, Dy, Dz, mtx, mty, mtz)
+        @inbounds h[k1]     = Ms_inv * cross_x(Dx, Dy, Dz, mtx, mty, mtz)
         @inbounds h[k1 + 1] = Ms_inv * cross_y(Dx, Dy, Dz, mtx, mty, mtz)
         @inbounds h[k1 + 2] = Ms_inv * cross_z(Dx, Dy, Dz, mtx, mty, mtz)
+
         @inbounds energy[id1] = -0.5 *
+                                Ms1 *
                                 (h[k1] * mbx + h[k1 + 1] * mby + h[k1 + 2] * mbz) *
                                 volume
 
         Ms_inv = -1.0 / (Ms2 * dz)
-        @inbounds h[k2] = Ms_inv * cross_x(Dx, Dy, Dz, mbx, mby, mbz)
+        @inbounds h[k2]     = Ms_inv * cross_x(Dx, Dy, Dz, mbx, mby, mbz)
         @inbounds h[k2 + 1] = Ms_inv * cross_y(Dx, Dy, Dz, mbx, mby, mbz)
         @inbounds h[k2 + 2] = Ms_inv * cross_z(Dx, Dy, Dz, mbx, mby, mbz)
+
         @inbounds energy[id2] = -0.5 *
+                                Ms2 *
                                 (h[k2] * mtx + h[k2 + 1] * mty + h[k2 + 2] * mtz) *
                                 volume
     end
