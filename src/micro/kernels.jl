@@ -697,3 +697,109 @@ The kernel zhangli_torque_kernel! compute the effective field defined as
     @inbounds h[j + 1] = cross_y(mx, my, mz, fx, fy, fz) + xi[I] * fy
     @inbounds h[j + 2] = cross_z(mx, my, mz, fx, fy, fz) + xi[I] * fz
 end
+
+"""
+Magnetoelastic kernel (tensor model).
+General 6-component stress tensor.
+
+Energy density: E = -1.5 * lambda_s * sigma_ij * m_i * m_j
+    = -1.5 * lambda_s * (σxx*mx² + σyy*my² + σzz*mz² + 2σxy*mx*my + 2σxz*mx*mz + 2σyz*my*mz)
+Effective field: H_i = (3 * lambda_s / (mu0 * Ms)) * sigma_ij * m_j
+"""
+@kernel function magnetoelastic_tensor_kernel!(@Const(m), h, energy, @Const(sigma), lambda_s::T,
+                                                  @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+    s = 6 * (id - 1)  # stress index (6 components)
+    
+    @inbounds Ms_local = mu0_Ms[id]
+    
+    if Ms_local == T(0)
+        @inbounds energy[id] = T(0)
+        @inbounds h[j + 1] = T(0)
+        @inbounds h[j + 2] = T(0)
+        @inbounds h[j + 3] = T(0)
+    else
+        # Get stress components (Voigt: xx, yy, zz, xy, xz, yz)
+        @inbounds σxx = sigma[s + 1]
+        @inbounds σyy = sigma[s + 2]
+        @inbounds σzz = sigma[s + 3]
+        @inbounds σxy = sigma[s + 4]
+        @inbounds σxz = sigma[s + 5]
+        @inbounds σyz = sigma[s + 6]
+        
+        # Get magnetization
+        @inbounds mx = m[j + 1]
+        @inbounds my = m[j + 2]
+        @inbounds mz = m[j + 3]
+        
+        # Energy density: E = -1.5 * lambda_s * (σxx*mx² + σyy*my² + σzz*mz² + 2σxy*mx*my + 2σxz*mx*mz + 2σyz*my*mz)
+        @inbounds energy[id] = -T(1.5) * lambda_s * (
+            σxx * mx * mx + σyy * my * my + σzz * mz * mz +
+            T(2) * σxy * mx * my + T(2) * σxz * mx * mz + T(2) * σyz * my * mz
+        ) * volume
+        
+        # Effective field: H_i = 3*λs/(μ₀*Ms) * σ_ij * m_j
+        factor = T(3) * lambda_s / Ms_local
+        @inbounds h[j + 1] = factor * (σxx * mx + σxy * my + σxz * mz)
+        @inbounds h[j + 2] = factor * (σxy * mx + σyy * my + σyz * mz)
+        @inbounds h[j + 3] = factor * (σxz * mx + σyz * my + σzz * mz)
+    end
+end
+
+"""
+Magnetoelastic kernel (cubic crystal model).
+Fixed strain (no elastic feedback).
+
+Energy density: 
+E = B1*(εxx*mx² + εyy*my² + εzz*mz²) + 2*B2*(εxy*mx*my + εxz*mx*mz + εyz*my*mz)
+
+Effective field:
+H_x = -2/(μ₀*Ms) * [B1*εxx*mx + B2*(εxy*my + εxz*mz)]
+H_y = -2/(μ₀*Ms) * [B1*εyy*my + B2*(εxy*mx + εyz*mz)]
+H_z = -2/(μ₀*Ms) * [B1*εzz*mz + B2*(εxz*mx + εyz*my)]
+
+Note: Removed trace term (-trace/3) from original formula. The B2 term has factor 2.
+"""
+@kernel function magnetoelastic_cubic_kernel!(@Const(m), h, energy, @Const(strain), B1::T, B2::T,
+                                           @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+    s = 6 * (id - 1)  # strain index
+    
+    @inbounds Ms_local = mu0_Ms[id]
+    
+    if Ms_local == T(0)
+        @inbounds energy[id] = T(0)
+        @inbounds h[j + 1] = T(0)
+        @inbounds h[j + 2] = T(0)
+        @inbounds h[j + 3] = T(0)
+    else
+        # Get strain components (Voigt: xx, yy, zz, xy, xz, yz)
+        @inbounds eps_xx = strain[s + 1]
+        @inbounds eps_yy = strain[s + 2]
+        @inbounds eps_zz = strain[s + 3]
+        @inbounds eps_xy = strain[s + 4]
+        @inbounds eps_xz = strain[s + 5]
+        @inbounds eps_yz = strain[s + 6]
+        
+        # Get magnetization
+        @inbounds mx = m[j + 1]
+        @inbounds my = m[j + 2]
+        @inbounds mz = m[j + 3]
+        
+        # Energy density: E = B1*(εxx*mx² + εyy*my² + εzz*mz²) + 2*B2*(εxy*mx*my + εxz*mx*mz + εyz*my*mz)
+        @inbounds energy[id] = (
+            B1 * (eps_xx * mx * mx + eps_yy * my * my + eps_zz * mz * mz) +
+            T(2) * B2 * (eps_xy * mx * my + eps_xz * mx * mz + eps_yz * my * mz)
+        ) * volume
+        
+        # Prefactor: 2 / (mu0 * Ms)
+        factor = T(2) / Ms_local
+        
+        # Effective field components
+        @inbounds h[j + 1] = -factor * (B1 * eps_xx * mx + B2 * (eps_xy * my + eps_xz * mz))
+        @inbounds h[j + 2] = -factor * (B1 * eps_yy * my + B2 * (eps_xy * mx + eps_yz * mz))
+        @inbounds h[j + 3] = -factor * (B1 * eps_zz * mz + B2 * (eps_xz * mx + eps_yz * my))
+    end
+end
