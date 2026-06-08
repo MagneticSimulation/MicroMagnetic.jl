@@ -292,6 +292,28 @@ function effective_field(torque::TorqueField, sim::AbstractSim, spin::AbstractAr
     return nothing
 end
 
+function effective_field(me::Magnetoelastic, sim::MicroSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    volume = T(sim.mesh.volume)
+    
+    if me.model == :tensor
+        back = default_backend[]
+        magnetoelastic_tensor_kernel!(back, groupsize[])(spin, me.field, me.energy, me.field_data,
+                                                       T(me.lambda_s),
+                                                       sim.mu0_Ms, volume; ndrange=N)
+    elseif me.model == :cubic
+        back = default_backend[]
+        magnetoelastic_cubic_kernel!(back, groupsize[])(spin, me.field, me.energy, me.field_data,
+                                                  T(me.B1), T(me.B2),
+                                                  sim.mu0_Ms, volume; ndrange=N)
+    else
+        throw(ArgumentError("Unknown magnetoelastic model: $(me.model)"))
+    end
+
+    return nothing
+end
+
 function effective_field(torque::DFTorqueField, sim::AbstractSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total

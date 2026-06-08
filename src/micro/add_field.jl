@@ -1,7 +1,7 @@
 export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex_anis,
        add_twin_mono_anis,
        add_exch, add_dmi, add_sahe_torque, add_demag, add_dmi_int, add_exch_int,
-       add_thermal_noise, add_sot, add_stt, add_torque, rm_demag_charges
+       add_thermal_noise, add_sot, add_stt, add_torque, rm_demag_charges, add_magnetoelastic, add_mel
 
 """
     add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
@@ -1282,4 +1282,170 @@ function rm_demag_charges(sim::MicroSim, Ms; x::Tuple=(0, 0), y::Tuple=(0, 0), z
     @info "Demagnetization Charges have been removed."
     send_sim_state(sim)
     return zeeman
+end
+
+"""
+    add_magnetoelastic(sim::AbstractSim; model=:tensor, lambda_s=0.0, B1=0.0, B2=0.0, 
+                     stress_or_strain=nothing, name="magnetoelastic")
+
+Add magnetoelastic energy term (unified interface).
+
+# Arguments
+- `model::Symbol`: :tensor or :cubic (default: :tensor)
+- `lambda_s::Number`: saturation magnetostriction (dimensionless, e.g., 30e-6) - for :tensor model
+- `B1::Number`: magnetoelastic coupling B1 (J/m³) - for :cubic model
+- `B2::Number`: magnetoelastic coupling B2 (J/m³) - for :cubic model
+- `stress_or_strain`: input field (4D array or function)
+
+# Models:
+1. :tensor - Isotropic tensor model (lambda_s + 6-component stress)
+
+```math
+E = -\frac{3}{2} \lambda_s \sigma_{ij} m_i m_j
+```
+
+```math
+H_i = \frac{3 \lambda_s}{\mu_0 M_s} \sigma_{ij} m_j
+```
+
+2. :cubic - Cubic crystal model (B1, B2 + 6-component strain)
+
+```math
+E = B_1 (\varepsilon_{xx} m_x^2 + \varepsilon_{yy} m_y^2 + \varepsilon_{zz} m_z^2) + 2 B_2 (\varepsilon_{xy} m_x m_y + \varepsilon_{xz} m_x m_z + \varepsilon_{yz} m_y m_z)
+```
+
+```math
+H_x = -\frac{2}{\mu_0 M_s} \big[ B_1 \varepsilon_{xx} m_x + B_2 (\varepsilon_{xy} m_y + \varepsilon_{xz} m_z) \big]
+```
+
+# Example
+```julia
+# Tensor: general stress tensor
+sigma = zeros(nx, ny, nz, 6)  # 6-component stress
+add_magnetoelastic(sim; model=:tensor, lambda_s=30e-6, stress_or_strain=sigma)
+
+# Cubic: fixed strain
+strain = zeros(nx, ny, nz, 6)
+add_magnetoelastic(sim; model=:cubic, B1=1e6, B2=0.5e6, stress_or_strain=strain)
+```
+"""
+function add_magnetoelastic(sim::AbstractSim; 
+                      model::Symbol=:tensor,
+                      lambda_s::Number=0.0,
+                      B1::Number=0.0,
+                      B2::Number=0.0,
+                      stress_or_strain=nothing,
+                      name::String="magnetoelastic")
+    n_total = sim.n_total
+    T = eltype(sim.spin)
+    mesh = sim.mesh
+    
+    field = create_zeros(3 * n_total)
+    energy = create_zeros(n_total)
+    
+    if model == :tensor
+        # === Tensor Model ===
+        stress_kb = _init_six_component_field(mesh, stress_or_strain, T)
+        me = Magnetoelastic(:tensor, T(lambda_s), T(0), T(0), (T(0), T(0), T(0)), stress_kb, field, energy, name)
+        
+    elseif model == :cubic
+        # === Cubic Model ===
+        strain_kb = _init_six_component_field(mesh, stress_or_strain, T)
+        me = Magnetoelastic(:cubic, T(0), T(B1), T(B2), (T(0), T(0), T(0)), strain_kb, field, energy, name)
+        
+    else
+        throw(ArgumentError("Unknown model: $model. Use :tensor or :cubic"))
+    end
+    
+    push!(sim.interactions, me)
+    
+    if sim.save_data
+        push!(sim.saver.items,
+              SaverItem(string("E_", name), "<J>",
+                        o::AbstractSim -> sum(me.energy)))
+    end
+    
+    @info "Magnetoelastic added: model=$model"
+    send_sim_state(sim)
+    return me
+end
+
+# Short alias for add_magnetoelastic
+const add_mel = add_magnetoelastic
+
+# Helper: Initialize scalar field (constant, array, or function -> kernel_array)
+function _init_scalar_field(mesh, data, T)
+    Nx, Ny, Nz = mesh.nx, mesh.ny, mesh.nz
+    n_total = Nx * Ny * Nz
+    
+    if data isa Number
+        # Constant: broadcast to all cells
+        field = fill(T(data), n_total)
+        return kernel_array(field)
+    elseif data isa AbstractArray{<:Real, 3}
+        # 3D array: reshape to kernel_array
+        if size(data) != (Nx, Ny, Nz)
+            throw(ArgumentError("Array size must match mesh: ($Nx, $Ny, $Nz)"))
+        end
+        return kernel_array(reshape(data, n_total))
+    elseif data isa Function
+        # Function: evaluate at each cell
+        field = zeros(T, n_total)
+        for k in 1:Nz, j in 1:Ny, i in 1:Nx
+            idx = i + (j-1)*Nx + (k-1)*Nx*Ny
+            field[idx] = T(data(i, j, k))
+        end
+        return kernel_array(field)
+    elseif data === nothing || data == 0
+        # Zero field
+        return kernel_array(zeros(T, n_total))
+    else
+        throw(ArgumentError("stress_or_strain must be Number, 3D Array, Function, or nothing"))
+    end
+end
+
+# Helper: Initialize 6-component field (4D array or function -> kernel_array)
+function _init_six_component_field(mesh, data, T)
+    Nx, Ny, Nz = mesh.nx, mesh.ny, mesh.nz
+    n_total = Nx * Ny * Nz
+    field = zeros(T, n_total * 6)  # 每个格点的6分量连续
+    
+    if data isa AbstractArray{<:Real, 4}
+        # 4D array: (nx, ny, nz, 6) -> 每个格点的6分量连续
+        if size(data) != (Nx, Ny, Nz, 6)
+            throw(ArgumentError("Array size must be (nx, ny, nz, 6) = ($Nx, $Ny, $Nz, 6)"))
+        end
+        for k in 1:Nz, j in 1:Ny, i in 1:Nx
+            idx = i + (j-1)*Nx + (k-1)*Nx*Ny
+            for c in 1:6
+                field[(idx-1)*6 + c] = T(data[i, j, k, c])
+            end
+        end
+    elseif data isa Function
+        # Function: (i,j,k) -> 6-element vector
+        for k in 1:Nz, j in 1:Ny, i in 1:Nx
+            idx = i + (j-1)*Nx + (k-1)*Nx*Ny
+            vals = data(i, j, k)
+            for c in 1:6
+                field[(idx-1)*6 + c] = T(vals[c])
+            end
+        end
+    elseif data === nothing || data == 0
+        # Zero field (already zeros)
+    else
+        throw(ArgumentError("stress_or_strain must be 4D Array, Function, or nothing"))
+    end
+    
+    return kernel_array(field)  # shape (6*n_total,)
+end
+
+# Helper: Normalize stress axis
+function _normalize(axis::Tuple)
+    ux, uy, uz = axis
+    lt = sqrt(ux^2 + uy^2 + uz^2)
+    if lt > 0
+        return (ux/lt, uy/lt, uz/lt)
+    else
+        return (1.0, 0.0, 0.0)
+    end
 end

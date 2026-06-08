@@ -154,6 +154,28 @@ mutable struct Zeeman{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
+# Magnetoelastic energy term (unified interface)
+# 
+# Two models:
+# 1. :tensor - Isotropic tensor model (lambda_s + 6-component stress tensor)
+#    E = -1.5 * lambda_s * sigma_ij * m_i * m_j
+#    H_i = (3 * lambda_s / (mu0 * Ms)) * sigma_ij * m_j
+# 2. :cubic - Cubic crystal model (B1, B2 + 6-component strain)
+#    E = B1*(eps_xx*mx^2 + eps_yy*my^2 + eps_zz*mz^2) + 2*B2*(eps_xy*mx*my + eps_xz*mx*mz + eps_yz*my*mz)
+#    H_x = -2/(mu0*Ms)*(B1*eps_xx*mx + B2*(eps_xy*my + eps_xz*mz))
+#
+mutable struct Magnetoelastic{T<:AbstractFloat} <: MicroEnergy
+    model::Symbol                 # :tensor, :cubic
+    lambda_s::T                 # saturation magnetostriction (dimensionless, for :tensor)
+    B1::T                      # magnetoelastic coupling B1 (J/m^3, for :cubic)
+    B2::T                      # magnetoelastic coupling B2 (J/m^3, for :cubic)
+    u_axis::NTuple{3,T}         # (reserved)
+    field_data::Any
+    field::AbstractArray{T,1}   # effective field
+    energy::AbstractArray{T,1}     # energy density
+    name::String
+end
+
 mutable struct TimeZeeman{T<:AbstractFloat} <: MicroEnergy
     time_fx::T
     time_fy::T
