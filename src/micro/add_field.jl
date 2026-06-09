@@ -1353,12 +1353,12 @@ function add_magnetoelastic(sim::AbstractSim;
     if model == :tensor
         # === Tensor Model ===
         stress_kb = _init_six_component_field(mesh, sigma, T)
-        me = Magnetoelastic(:tensor, T(lambda_s), T(0), T(0), (T(0), T(0), T(0)), stress_kb, field, energy, name)
+        me = Magnetoelastic(:tensor, T(lambda_s), T(0), T(0), stress_kb, field, energy, name)
         
     elseif model == :cubic
         # === Cubic Model ===
         strain_kb = _init_six_component_field(mesh, strain, T)
-        me = Magnetoelastic(:cubic, T(0), T(B1), T(B2), (T(0), T(0), T(0)), strain_kb, field, energy, name)
+        me = Magnetoelastic(:cubic, T(0), T(B1), T(B2), strain_kb, field, energy, name)
         
     else
         throw(ArgumentError("Unknown model: $model. Use :tensor or :cubic"))
