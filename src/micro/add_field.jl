@@ -1284,7 +1284,7 @@ function rm_demag_charges(sim::MicroSim, Ms; x::Tuple=(0, 0), y::Tuple=(0, 0), z
     return zeeman
 end
 
-"""
+@doc raw"""
     add_magnetoelastic(sim::AbstractSim; model=:tensor, lambda_s=0.0, B1=0.0, B2=0.0, 
                      stress_or_strain=nothing, name="magnetoelastic")
 
@@ -1298,7 +1298,7 @@ Add magnetoelastic energy term (unified interface).
 - `stress_or_strain`: input field (4D array or function)
 
 # Models:
-1. :tensor - Isotropic tensor model (lambda_s + 6-component stress)
+1. :tensor - Isotropic tensor model
 
 ```math
 E = -\frac{3}{2} \lambda_s \sigma_{ij} m_i m_j
@@ -1308,7 +1308,7 @@ E = -\frac{3}{2} \lambda_s \sigma_{ij} m_i m_j
 H_i = \frac{3 \lambda_s}{\mu_0 M_s} \sigma_{ij} m_j
 ```
 
-2. :cubic - Cubic crystal model (B1, B2 + 6-component strain)
+2. :cubic - Cubic crystal model
 
 ```math
 E = B_1 (\varepsilon_{xx} m_x^2 + \varepsilon_{yy} m_y^2 + \varepsilon_{zz} m_z^2) + 2 B_2 (\varepsilon_{xy} m_x m_y + \varepsilon_{xz} m_x m_z + \varepsilon_{yz} m_y m_z)
