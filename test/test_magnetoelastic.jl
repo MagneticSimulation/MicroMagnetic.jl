@@ -23,7 +23,7 @@ function test_tensor()
     
     # Test: m = (1, 0, 0)
     init_m0(sim, (1, 0, 0))
-    me = add_mel(sim; model=:tensor, lambda_s=lambda_s, stress_or_strain=sigma)
+    me = add_mel(sim; model=:tensor, lambda_s=lambda_s, sigma=sigma)
     
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     
@@ -66,7 +66,7 @@ function test_cubic()
     
     # Test: m = (1, 0, 0)
     init_m0(sim, (1, 0, 0))
-    me = add_mel(sim; model=:cubic, B1=B1, B2=B2, stress_or_strain=strain)
+    me = add_mel(sim; model=:cubic, B1=B1, B2=B2, strain=strain)
     
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     
@@ -92,7 +92,7 @@ function test_cubic()
     sim2 = Sim(mesh)
     set_Ms(sim2, Ms)
     init_m0(sim2, (1/sqrt(2), 1/sqrt(2), 0))
-    me2 = add_mel(sim2; model=:cubic, B1=0, B2=B2, stress_or_strain=strain2)
+    me2 = add_mel(sim2; model=:cubic, B1=0, B2=B2, strain=strain2)
     
     MicroMagnetic.effective_field(sim2, sim2.spin, 0.0)
     
