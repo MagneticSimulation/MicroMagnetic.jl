@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as n,an as t}from"./chunks/framework.tNq5pN2u.js";const g=JSON.parse('{"title":"GUI","description":"","frontmatter":{},"headers":[],"relativePath":"gui.md","filePath":"gui.md","lastUpdated":null}'),e={name:"gui.md"};function l(h,s,p,r,k,o){return a(),n("div",null,[...s[0]||(s[0]=[t("",13)])])}const c=i(e,[["render",l]]);export{g as __pageData,c as default};
