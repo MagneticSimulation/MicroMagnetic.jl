@@ -101,6 +101,46 @@ function init_vector!(v::Array{T,1}, mesh::Mesh, init::Function) where {T<:Abstr
     return nothing
 end
 
+function init_vector6!(v::Array{T,1}, mesh::Mesh, init::Function) where {T<:AbstractFloat}
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    n_total = nx * ny * nz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    b = reshape(v, 6, n_total)
+
+    nargs = methods(init)[1].nargs - 1
+    if nargs == 6
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            vec_value = init(i, j, k, dx, dy, dz)
+            # ignore the values for specfic positions that the user do not want to provide or change.
+            if vec_value !== nothing
+                b[:, id] .= vec_value[:]
+            end
+        end
+
+    elseif nargs == 3
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            x = (i - 0.5 - nx / 2) * dx
+            y = (j - 0.5 - ny / 2) * dy
+            z = (k - 0.5 - nz / 2) * dz
+
+            vec_value = init(x, y, z)
+            # ignore the values for specfic positions that the user do not want to provide or change.
+            if vec_value !== nothing
+                b[:, id] .= vec_value[:]
+            end
+        end
+    else
+        error("The input function should have either 6 or 3 arguments.")
+    end
+
+    if NaN in v
+        error("NaN is given by the input function.")
+    end
+    return nothing
+end
+
 """
     set_region(mesh::FDMesh, region_id::Int, shape::CSGShape)
     set_region(mesh::FDMesh, shape::CSGShape, region_id=1)

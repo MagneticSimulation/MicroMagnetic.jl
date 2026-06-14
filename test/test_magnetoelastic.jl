@@ -17,9 +17,10 @@ function test_tensor()
     set_Ms(sim, Ms)
     
     # Create stress tensor: σxx = σ, others = 0
-    sigma = zeros(10, 1, 1, 6)
-    sigma[:, :, :, 1] .= 1e8  # σxx = 100 MPa
-    println("  DEBUG: input sigma[1,1,1,:] = ", sigma[1,1,1,:])
+    # Shape: (6, nx, ny, nz)
+    sigma = zeros(6, 10, 1, 1)
+    sigma[1, :, :, :] .= 1e8  # σxx = 100 MPa
+    println("  DEBUG: input sigma[1,:,1,1] = ", sigma[1, :, 1, 1])
     
     # Test: m = (1, 0, 0)
     init_m0(sim, (1, 0, 0))
@@ -59,10 +60,11 @@ function test_cubic()
     set_Ms(sim, Ms)
     
     # Create strain: εxx = ε, εyy = ε, others = 0
+    # Shape: (6, nx, ny, nz)
     eps = 1e-3
-    strain = zeros(10, 1, 1, 6)
-    strain[:, :, :, 1] .= eps  # εxx
-    strain[:, :, :, 2] .= eps  # εyy
+    strain = zeros(6, 10, 1, 1)
+    strain[1, :, :, :] .= eps  # εxx
+    strain[2, :, :, :] .= eps  # εyy
     
     # Test: m = (1, 0, 0)
     init_m0(sim, (1, 0, 0))
@@ -86,8 +88,8 @@ function test_cubic()
     println("  ✓ Energy and field correct for εxx strain")
     
     # Test: shear strain with B2
-    strain2 = zeros(10, 1, 1, 6)
-    strain2[:, :, :, 4] .= eps  # εxy
+    strain2 = zeros(6, 10, 1, 1)
+    strain2[4, :, :, :] .= eps  # εxy
     
     sim2 = Sim(mesh)
     set_Ms(sim2, Ms)
