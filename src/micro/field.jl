@@ -177,6 +177,21 @@ function effective_field(dmi::SpatialBulkDMI, sim::MicroSim, spin::AbstractArray
     return nothing
 end
 
+function effective_field(dmi::SpatialVectorBulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
+                         t::Float64) where {T<:AbstractFloat}
+    N = sim.n_total
+    mesh = sim.mesh
+    volume = T(mesh.volume)
+
+    dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+    back = default_backend[]
+    spatial_vector_bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                                               dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs, volume;
+                                               ndrange=N)
+
+    return nothing
+end
+
 function effective_field(dmi::TimeSpatialBulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
         N = sim.n_total

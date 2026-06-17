@@ -364,14 +364,11 @@ end
             @inbounds if id > 0 && mu0_Ms[id] > 0
                 k = 3 * id - 2
                 @inbounds D = safe_div(2 * Ds[I] * Ds[id], Ds[I] + Ds[id])
-                @inbounds fx += D *
-                                Dd[j] *
+                @inbounds fx += D * Dd[j] *
                                 cross_x(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-                @inbounds fy += D *
-                                Dd[j] *
+                @inbounds fy += D * Dd[j] *
                                 cross_y(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-                @inbounds fz += D *
-                                Dd[j] *
+                @inbounds fz += D * Dd[j] *
                                 cross_z(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
             end
         end
@@ -382,6 +379,85 @@ end
         @inbounds h[i + 2] = fz * Ms_inv
     end
 end
+
+@kernel function spatial_vector_bulkdmi_kernel!(
+        @Const(m), h, energy, @Const(mu0_Ms),
+        @Const(Dxs), @Const(Dys), @Const(Dzs),
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds Ms_local = mu0_Ms[I]
+
+    axes = (T(1/dx), T(-1/dx), T(1/dy), T(-1/dy), T(1/dz), T(-1/dz))
+
+    if Ms_local == T(0)
+        @inbounds energy[I] = 0
+        @inbounds h[i]   = 0
+        @inbounds h[i+1] = 0
+        @inbounds h[i+2] = 0
+    else
+        Dx_I = Dxs[I]
+        Dy_I = Dys[I]
+        Dz_I = Dzs[I]
+
+        fx, fy, fz = T(0), T(0), T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Dx_n = Dxs[id]
+                if Dx_I != 0 && Dx_n != 0
+                    k = 3*id - 2
+                    D_eff = 2 * Dx_I * Dx_n / (Dx_I + Dx_n)
+                    ax = axes[j]
+                    fy += D_eff * (-ax * m[k+2])
+                    fz += D_eff * ( ax * m[k+1])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Dy_n = Dys[id]
+                if Dy_I != 0 && Dy_n != 0
+                    k = 3*id - 2
+                    D_eff = 2 * Dy_I * Dy_n / (Dy_I + Dy_n)
+                    ay = axes[j]
+                    fx += D_eff * ( ay * m[k+2])
+                    fz += D_eff * (-ay * m[k]  )
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Dz_n = Dzs[id]
+                if Dz_I != 0 && Dz_n != 0
+                    k = 3*id - 2
+                    D_eff = 2 * Dz_I * Dz_n / (Dz_I + Dz_n)
+                    az = axes[j]
+                    fx += D_eff * (-az * m[k+1])
+                    fy += D_eff * ( az * m[k]  )
+                end
+            end
+        end
+
+        Ms_inv = 1.0 / Ms_local
+        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+
 
 @kernel function interfacial_dmi_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(Ds),
                                          dx::T, dy::T, dz::T, @Const(ngbs),
