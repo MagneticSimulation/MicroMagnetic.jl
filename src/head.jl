@@ -291,6 +291,15 @@ mutable struct SpatialBulkDMI{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
+mutable struct SpatialVectorBulkDMI{T<:AbstractFloat} <: MicroEnergy
+    Dx::AbstractArray{T,1}
+    Dy::AbstractArray{T,1}
+    Dz::AbstractArray{T,1}
+    field::AbstractArray{T,1}
+    energy::AbstractArray{T,1}
+    name::String
+end
+
 mutable struct TimeSpatialBulkDMI{T<:AbstractFloat} <: MicroEnergy
     D::AbstractArray{T,1}
     time_D::Function

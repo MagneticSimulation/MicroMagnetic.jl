@@ -281,6 +281,14 @@ or
    add_dmi(sim, (1e-3, 1e-3, 0), type="bulk")
 ```
 
+```julia
+    function D_fun(i, j, k, dx, dy, dz)
+        D = i < 10 ? 1e-3 : 0
+        return D
+    end
+   add_dmi(sim, (1e-3, D_fun, 0), type="bulk")
+```
+
 """
 function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
     n_total = sim.n_total
@@ -292,7 +300,22 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
         if isa(D, Number)
             dmi = BulkDMI(T(D), T(D), T(D), field, energy, name)
         elseif isa(D, Tuple) && length(D) == 3
-            dmi = BulkDMI(T(D[1]), T(D[2]), T(D[3]), field, energy, name)
+            if isa(D, NTuple{3, Number})
+                dmi = BulkDMI(T(D[1]), T(D[2]), T(D[3]), field, energy, name)
+            else
+                Dx = zeros(T, sim.n_total)
+                Dy = zeros(T, sim.n_total)
+                Dz = zeros(T, sim.n_total)
+                init_scalar!(Dx, sim.mesh, D[1])
+                init_scalar!(Dy, sim.mesh, D[2])
+                init_scalar!(Dz, sim.mesh, D[3])
+
+                Dx_kb = kernel_array(Dx)
+                Dy_kb = kernel_array(Dy)
+                Dz_kb = kernel_array(Dz)
+
+                dmi = SpatialVectorBulkDMI(Dx_kb, Dy_kb, Dz_kb, field, energy, name)
+            end
         else
             Spatial_D = zeros(T, sim.n_total)
             init_scalar!(Spatial_D, sim.mesh, D)

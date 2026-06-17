@@ -31,12 +31,18 @@ function test_bulk_dmi()
     dmi = add_dmi(sim, D)
     dmi2 = add_dmi(sim, D_fun; name="dmi2")
 
+    dmi3 = add_dmi(sim, (0.1*D, D, 0), name="dmi3")
+    dmi4 = add_dmi(sim, (0.1*D, D_fun, 0), name="dmi4")
+
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     f1 = Array(dmi.field)
     f2 = Array(dmi2.field)
+    f3 = Array(dmi3.field)
+    f4 = Array(dmi4.field)
 
     rtol =  MicroMagnetic.Float[] == Float64 ? 1e-8 : 1e-6 
     @test isapprox(f1, f2, rtol=rtol)
+    @test isapprox(f3, f4, rtol=rtol)
 
     if isa(sim.spin, Array{Float64})
         MicroMagnetic.effective_field_debug(dmi, sim, sim.spin, 0.0)
