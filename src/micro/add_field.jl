@@ -319,11 +319,8 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
         else
             Spatial_D = zeros(T, sim.n_total)
             init_scalar!(Spatial_D, sim.mesh, D)
-
-            D_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
-            copyto!(D_kb, Spatial_D)
-
-            dmi = SpatialBulkDMI(D_kb, field, energy, name)
+            D_kb = kernel_array(Spatial_D)
+            dmi = SpatialVectorBulkDMI(D_kb, D_kb, D_kb, field, energy, name)
         end
 
         @info "Bulk DMI has been added."
