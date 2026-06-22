@@ -1,5 +1,3 @@
-@inline safe_div(a, b) = b == 0 ? 0.0 : a / b
-
 @kernel function spatiotemporal_kernel!(output, dx::T, dy::T, dz::T, x0::T, y0::T, z0::T,
                                         t::T, f::Function) where {T<:AbstractFloat}
     i, j, k = @index(Global, NTuple)
@@ -225,43 +223,48 @@ end
     end
 end
 
-@kernel function exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(A), dx::T,
-                                  dy::T, dz::T, @Const(ngbs),
+@kernel function exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(A),
+                                  dx::T, dy::T, dz::T, @Const(ngbs),
                                   volume::T) where {T<:AbstractFloat}
     I = @index(Global)
-
     @inbounds Ms_local = mu0_Ms[I]
+    @inbounds A_I = A[I]
 
-    ax::T = 2 / (dx * dx)
-    ay::T = 2 / (dy * dy)
-    az::T = 2 / (dz * dz)
+    ax = T(2) / (dx * dx)
+    ay = T(2) / (dy * dy)
+    az = T(2) / (dz * dz)
     nabla = (ax, ax, ay, ay, az, az)
 
     i = 3 * I - 2
-    if Ms_local == T(0)
+    if Ms_local == T(0) || A_I == T(0)
         @inbounds energy[I] = 0
-        @inbounds h[i] = 0
-        @inbounds h[i + 1] = 0
-        @inbounds h[i + 2] = 0
+        @inbounds h[i]   = 0
+        @inbounds h[i+1] = 0
+        @inbounds h[i+2] = 0
     else
         fx, fy, fz = T(0), T(0), T(0)
         for j in 1:6
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
-                k = 3 * id - 2
-                @inbounds A_eff = safe_div(2 * A[I] * A[id], A[I] + A[id])
-                @inbounds fx += A_eff * nabla[j] * (m[k] - m[i])
-                @inbounds fy += A_eff * nabla[j] * (m[k + 1] - m[i + 1])
-                @inbounds fz += A_eff * nabla[j] * (m[k + 2] - m[i + 2])
+                A_nb = A[id]
+                if A_nb != T(0)
+                    k = 3*id - 2
+                    A_eff = 2 * A_I * A_nb / (A_I + A_nb)
+                    coeff = A_eff * nabla[j]
+                    fx += coeff * (m[k] - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
             end
         end
-        Ms_inv = 1.0 / (Ms_local)
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i + 1] + fz * m[i + 2]) * volume
-        @inbounds h[i] = fx * Ms_inv
-        @inbounds h[i + 1] = fy * Ms_inv
-        @inbounds h[i + 2] = fz * Ms_inv
+        Ms_inv = 1.0 / Ms_local
+        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
     end
 end
+
 
 @kernel function uniform_exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), Ax::T,
                                           Ay::T, Az::T, dx::T, dy::T, dz::T, @Const(ngbs),
@@ -340,45 +343,6 @@ end
     end
 end
 
-@kernel function spatial_bulkdmi_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(Ds),
-                                         dx::T, dy::T, dz::T, @Const(ngbs),
-                                         volume::T) where {T<:AbstractFloat}
-    I = @index(Global)
-    @inbounds Ms_local = mu0_Ms[I]
-
-    Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy), T(1 / dz), T(1 / dz))
-    ax = (T(1), T(-1), T(0), T(0), T(0), T(0))
-    ay = (T(0), T(0), T(1), T(-1), T(0), T(0))
-    az = (T(0), T(0), T(0), T(0), T(1), T(-1))
-
-    i = 3 * I - 2
-    if Ms_local == T(0)
-        @inbounds energy[I] = 0
-        @inbounds h[i] = 0
-        @inbounds h[i + 1] = 0
-        @inbounds h[i + 2] = 0
-    else
-        fx, fy, fz = T(0), T(0), T(0)
-        for j in 1:6
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
-                k = 3 * id - 2
-                @inbounds D = safe_div(2 * Ds[I] * Ds[id], Ds[I] + Ds[id])
-                @inbounds fx += D * Dd[j] *
-                                cross_x(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-                @inbounds fy += D * Dd[j] *
-                                cross_y(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-                @inbounds fz += D * Dd[j] *
-                                cross_z(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-            end
-        end
-        Ms_inv = 1.0 / Ms_local
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i + 1] + fz * m[i + 2]) * volume
-        @inbounds h[i] = fx * Ms_inv
-        @inbounds h[i + 1] = fy * Ms_inv
-        @inbounds h[i + 2] = fz * Ms_inv
-    end
-end
 
 @kernel function spatial_vector_bulkdmi_kernel!(
         @Const(m), h, energy, @Const(mu0_Ms),
@@ -464,6 +428,7 @@ end
                                          volume::T) where {T<:AbstractFloat}
     I = @index(Global)
     @inbounds Ms_local = mu0_Ms[I]
+    @inbounds D_I = Ds[I]
 
     Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy))
     ax = (T(0), T(0), T(-1), T(1))
@@ -471,36 +436,35 @@ end
     az = (T(0), T(0), T(0), T(0))
 
     i = 3 * I - 2
-    if Ms_local == T(0)
+    if Ms_local == T(0) || D_I == T(0)
         @inbounds energy[I] = 0
         @inbounds h[i] = 0
-        @inbounds h[i + 1] = 0
-        @inbounds h[i + 2] = 0
+        @inbounds h[i+1] = 0
+        @inbounds h[i+2] = 0
     else
         fx, fy, fz = T(0), T(0), T(0)
         for j in 1:4
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
-                k = 3 * id - 2
-                @inbounds D = safe_div(2 * Ds[I] * Ds[id], Ds[I] + Ds[id])
-                @inbounds fx += D *
-                                Dd[j] *
-                                cross_x(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-                @inbounds fy += D *
-                                Dd[j] *
-                                cross_y(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-                @inbounds fz += D *
-                                Dd[j] *
-                                cross_z(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
+                D_nb = Ds[id]
+                if D_nb != T(0)
+                    k = 3 * id - 2
+                    D_eff = 2 * D_I * D_nb / (D_I + D_nb)
+                    coeff = D_eff * Dd[j]
+                    fx += coeff * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    fy += coeff * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    fz += coeff * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                end
             end
         end
         Ms_inv = 1.0 / Ms_local
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i + 1] + fz * m[i + 2]) * volume
-        @inbounds h[i] = fx * Ms_inv
-        @inbounds h[i + 1] = fy * Ms_inv
-        @inbounds h[i + 2] = fz * Ms_inv
+        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
     end
 end
+
 
 @kernel function stochastic_field_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(eta),
                                           @Const(Temp), base_T::T, factor::T,
