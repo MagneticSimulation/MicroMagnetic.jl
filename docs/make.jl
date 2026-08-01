@@ -4,6 +4,7 @@ using DocumenterVitepress
 using CairoMakie
 
 Atomistic = ["Magnetic skyrmion" => "atomistic/skyrmion.md",
+             "Saddle-point search (SPS)" => "atomistic/saddle_point_search.md",
              "Skyrmion lattice" => "atomistic/skyrmion_lattice.md",
              "Magnetic hopfion" => "atomistic/hopfion.md",
              "AFM skyrmion" => "atomistic/skyrmion_afm.md",

@@ -23,6 +23,7 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 - Supports both double and single precision.
 - Supports Monte Carlo simulations for atomistic models.
 - Implements the Nudged-Elastic-Band method for energy barrier computations.
+- Supports systematic saddle-point search and geodesic NEB transition discovery.
 - Supports Spin-transfer torques, including Zhang-Li and Slonczewski models.
 - Incorporates various energy terms and thermal fluctuations.
 - Supports constructive solid geometry.
