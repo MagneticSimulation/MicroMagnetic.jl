@@ -462,4 +462,99 @@ function MicroMagnetic.plot_voronoi(grain_ids, points; dx=2, dy=2, output=nothin
     return fig
 end
 
+function _smooth_transition_profile(x, y, samples)
+    n = length(x)
+    n < 3 && return (x, y)
+    h = diff(x)
+    delta = diff(y) ./ h
+    slopes = zeros(Float64, n)
+    slopes[1], slopes[end] = delta[1], delta[end]
+    for i in 2:(n - 1)
+        if delta[i - 1] * delta[i] > 0
+            w1 = 2h[i] + h[i - 1]
+            w2 = h[i] + 2h[i - 1]
+            slopes[i] = (w1 + w2) /
+                        (w1 / delta[i - 1] + w2 / delta[i])
+        end
+    end
+    xs = collect(range(first(x), last(x); length=max(samples, n)))
+    ys = similar(xs)
+    for (k, value) in pairs(xs)
+        i = clamp(searchsortedlast(x, value), 1, n - 1)
+        t = (value - x[i]) / h[i]
+        h00, h10 = 2t^3 - 3t^2 + 1, t^3 - 2t^2 + t
+        h01, h11 = -2t^3 + 3t^2, t^3 - t^2
+        ys[k] = h00 * y[i] + h10 * h[i] * slopes[i] +
+                h01 * y[i + 1] + h11 * h[i] * slopes[i + 1]
+    end
+    return xs, ys
+end
+
+function MicroMagnetic.plot_transition_paths(
+    paths; labels=nothing, energy_unit=MicroMagnetic.meV, output=nothing,
+    energy_label=nothing,
+    size=(560, 380), title="Transition energy paths", markersize=7,
+    linewidth=2, smooth=true, samples=201)
+
+    path_list, path_labels = if paths isa MicroMagnetic.TransitionResult
+        (paths.transitions,
+         isnothing(labels) ?
+         ["transition $(i)" for i in eachindex(paths.transitions)] :
+         String.(labels))
+    elseif paths isa AbstractDict
+        (collect(values(paths)), String.(collect(keys(paths))))
+    elseif paths isa AbstractVector && !isempty(paths) && first(paths) isa Pair
+        ([pair.second for pair in paths], [string(pair.first) for pair in paths])
+    elseif paths isa AbstractVector
+        (collect(paths),
+         isnothing(labels) ?
+         ["transition $(i)" for i in eachindex(paths)] : String.(labels))
+    elseif paths isa MicroMagnetic.TransitionPath
+        ([paths], isnothing(labels) ? ["transition"] : String.(labels))
+    else
+        error("Unsupported transition path collection.")
+    end
+    isempty(path_list) && error("No transition paths were supplied.")
+    length(path_labels) == length(path_list) ||
+        error("labels must have the same length as paths.")
+    all(path -> path isa MicroMagnetic.TransitionPath, path_list) ||
+        error("Every plotted item must be a TransitionPath.")
+    energy_unit > 0 || error("energy_unit must be positive.")
+
+    inferred_unit = if isapprox(energy_unit, MicroMagnetic.meV)
+        "meV"
+    elseif isapprox(energy_unit, MicroMagnetic.eV)
+        "eV"
+    elseif isapprox(energy_unit, 1.0)
+        "J"
+    else
+        "scaled units"
+    end
+    ylabel = isnothing(energy_label) ?
+             "Energy ($(inferred_unit))" : string(energy_label)
+    fig = Figure(; size=size, backgroundcolor=:white)
+    ax = Axis(fig[1, 1]; xlabel="Reaction coordinate", ylabel=ylabel,
+              title=title, backgroundcolor=:white)
+    colors = [:dodgerblue3, :orangered2, :goldenrod2, :seagreen3,
+              :mediumpurple3, :deeppink3]
+    for (index, path) in enumerate(path_list)
+        relative_energy = (path.energies .- minimum(path.energies)) ./ energy_unit
+        color = colors[mod1(index, length(colors))]
+        xline, yline = smooth ?
+            _smooth_transition_profile(
+                path.reaction_coordinate, relative_energy, samples) :
+            (path.reaction_coordinate, relative_energy)
+        lines!(ax, xline, yline; label=path_labels[index], color=color,
+               linewidth=linewidth)
+        scatter!(ax, path.reaction_coordinate, relative_energy;
+                 color=color, markersize=markersize)
+        scatter!(ax, [path.reaction_coordinate[path.saddle_index]],
+                 [relative_energy[path.saddle_index]];
+                 color=color, marker=:diamond, markersize=1.5 * markersize)
+    end
+    axislegend(ax; position=:rt, framevisible=false)
+    isnothing(output) || save(output, fig)
+    return fig
+end
+
 end
