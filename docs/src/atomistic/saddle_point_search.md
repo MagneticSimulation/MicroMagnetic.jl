@@ -13,7 +13,7 @@ states and paths; they are not assigned to Hessian modes in advance.
 This example uses the atomistic skyrmion model from Müller *et al.* with an
 open ``40 × 40 × 1`` lattice, ``J = 1 meV``, ``D/J = 0.45``, and
 ``B_z = 0.8 D²/(μ_s J)``. The complete runnable script is
-[`examples/skyrmion_sps.jl`](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/examples/skyrmion_sps.jl).
+[`examples/skyrmion_sps.jl`](../../../examples/skyrmion_sps.jl).
 
 ## Define the model
 
