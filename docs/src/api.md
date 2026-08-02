@@ -95,6 +95,23 @@ add_anis_kagome(sim::AtomisticSim, Ku::Float64; ax1=(-0.5, -sqrt(3) / 2, 0), ax2
 add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
 ```
 
+## Saddle-point search and transition paths
+```@docs
+HessianModes
+SaddlePoint
+TransitionPath
+TransitionResult
+compute_hessian_modes
+find_saddle
+find_transitions
+GNEB
+relax_gneb!
+set_climbing_image!
+set_image_type!
+gneb_images
+plot_transition_paths
+```
+
 ## DataSaving
 
 ```@docs

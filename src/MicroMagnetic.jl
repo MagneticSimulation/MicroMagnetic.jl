@@ -252,6 +252,13 @@ include("neb/neb_kernels.jl")
 include("eigen/util.jl")
 include("eigen/eigen.jl")
 
+include("transition/hessian.jl")
+include("transition/symmetry.jl")
+include("transition/solvers.jl")
+include("transition/minimum_mode.jl")
+include("transition/gneb.jl")
+include("transition/transition.jl")
+
 include("tools/ltem.jl")
 include("precompile.jl")
 
