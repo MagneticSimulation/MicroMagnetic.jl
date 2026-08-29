@@ -237,12 +237,16 @@ end
 
     i = 3 * I - 2
     if Ms_local == T(0) || A_I == T(0)
-        @inbounds energy[I] = 0
-        @inbounds h[i]   = 0
-        @inbounds h[i+1] = 0
-        @inbounds h[i+2] = 0
+        Prom = typeof(m[i] + T(0))
+        @inbounds energy[I] = zero(Prom)
+        @inbounds h[i]   = zero(Prom)
+        @inbounds h[i+1] = zero(Prom)
+        @inbounds h[i+2] = zero(Prom)
     else
-        fx, fy, fz = T(0), T(0), T(0)
+        @inbounds s_i = (m[i], m[i+1], m[i+2])
+        fx = s_i[1] - s_i[1] + T(0)
+        fy = s_i[2] - s_i[2] + T(0)
+        fz = s_i[3] - s_i[3] + T(0)
         for j in 1:6
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
@@ -280,12 +284,15 @@ end
 
     i = 3 * I - 2
     if Ms_local == T(0)
-        @inbounds energy[I] = 0
-        @inbounds h[i] = 0
-        @inbounds h[i + 1] = 0
-        @inbounds h[i + 2] = 0
+        Prom = typeof(m[i] + T(0))
+        @inbounds energy[I] = zero(Prom)
+        @inbounds h[i] = zero(Prom)
+        @inbounds h[i + 1] = zero(Prom)
+        @inbounds h[i + 2] = zero(Prom)
     else
-        fx, fy, fz = T(0), T(0), T(0)
+        fx = m[i] - m[i] + T(0)
+        fy = m[i+1] - m[i+1] + T(0)
+        fz = m[i+2] - m[i+2] + T(0)
         for j in 1:6
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
@@ -317,12 +324,15 @@ end
 
     i = 3 * I - 2
     if Ms_local == T(0)
-        @inbounds energy[I] = 0
-        @inbounds h[i] = 0
-        @inbounds h[i + 1] = 0
-        @inbounds h[i + 2] = 0
+        Prom = typeof(m[i] + T(0))
+        @inbounds energy[I] = zero(Prom)
+        @inbounds h[i] = zero(Prom)
+        @inbounds h[i + 1] = zero(Prom)
+        @inbounds h[i + 2] = zero(Prom)
     else
-        fx, fy, fz = T(0), T(0), T(0)
+        fx = m[i] - m[i] + T(0)
+        fy = m[i+1] - m[i+1] + T(0)
+        fz = m[i+2] - m[i+2] + T(0)
         for j in 1:6
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
@@ -337,7 +347,7 @@ end
         end
         Ms_inv = 1.0 / Ms_local
         @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i + 1] + fz * m[i + 2]) * volume
-        @inbounds h[i] = fx * Ms_inv
+        @inbounds h[i]     = fx * Ms_inv
         @inbounds h[i + 1] = fy * Ms_inv
         @inbounds h[i + 2] = fz * Ms_inv
     end
@@ -357,16 +367,19 @@ end
     axes = (T(1/dx), T(-1/dx), T(1/dy), T(-1/dy), T(1/dz), T(-1/dz))
 
     if Ms_local == T(0)
-        @inbounds energy[I] = 0
-        @inbounds h[i]   = 0
-        @inbounds h[i+1] = 0
-        @inbounds h[i+2] = 0
+        Prom = typeof(m[i] + T(0))
+        @inbounds energy[I] = zero(Prom)
+        @inbounds h[i]   = zero(Prom)
+        @inbounds h[i+1] = zero(Prom)
+        @inbounds h[i+2] = zero(Prom)
     else
         Dx_I = Dxs[I]
         Dy_I = Dys[I]
         Dz_I = Dzs[I]
 
-        fx, fy, fz = T(0), T(0), T(0)
+        fx = m[i] - m[i] + T(0)
+        fy = m[i+1] - m[i+1] + T(0)
+        fz = m[i+2] - m[i+2] + T(0)
 
         # ---- (±x) ----
         for j in 1:2
@@ -437,12 +450,16 @@ end
 
     i = 3 * I - 2
     if Ms_local == T(0) || D_I == T(0)
-        @inbounds energy[I] = 0
-        @inbounds h[i] = 0
-        @inbounds h[i+1] = 0
-        @inbounds h[i+2] = 0
+        Prom = typeof(m[i] + T(0))
+        @inbounds energy[I] = zero(Prom)
+        @inbounds h[i] = zero(Prom)
+        @inbounds h[i+1] = zero(Prom)
+        @inbounds h[i+2] = zero(Prom)
     else
-        fx, fy, fz = T(0), T(0), T(0)
+        @inbounds s_i = (m[i], m[i+1], m[i+2])
+        fx = s_i[1] - s_i[1] + T(0)
+        fy = s_i[2] - s_i[2] + T(0)
+        fz = s_i[3] - s_i[3] + T(0)
         for j in 1:4
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
@@ -464,7 +481,6 @@ end
         @inbounds h[i+2] = fz * Ms_inv
     end
 end
-
 
 @kernel function stochastic_field_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(eta),
                                           @Const(Temp), base_T::T, factor::T,

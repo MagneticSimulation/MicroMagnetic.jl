@@ -47,6 +47,7 @@ include("transition/test_solvers.jl")
 include("eigen/test_cubic.jl")
 include("eigen/test_afm.jl")
 include("eigen/test_demag.jl")
+include("eigen/test_build_matrix_types.jl")
 
 include("fem/test_mesh.jl")
 include("fem/test_interpolate.jl")

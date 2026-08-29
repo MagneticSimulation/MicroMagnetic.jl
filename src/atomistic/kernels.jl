@@ -109,14 +109,17 @@ Note that the return value is h * alpha + h_ex
 
     @inbounds ms_local = mu_s[I]
     if ms_local == 0.0
-        @inbounds energy[I] = 0
-        @inbounds h[i + 0] = 0
-        @inbounds h[i + 1] = 0
-        @inbounds h[i + 2] = 0
+        Prom = typeof(m[i] + T(0))
+        @inbounds energy[I] = zero(Prom)
+        @inbounds h[i + 0] = zero(Prom)
+        @inbounds h[i + 1] = zero(Prom)
+        @inbounds h[i + 2] = zero(Prom)
     else
         ms_inv = T(1 / ms_local)
 
-        fx, fy, fz = T(0), T(0), T(0)
+        fx = m[i] - m[i] + T(0)
+        fy = m[i+1] - m[i+1] + T(0)
+        fz = m[i+2] - m[i+2] + T(0)
         for j in 1:n_ngbs
             @inbounds id = ngbs[j, I]
             if id > 0 && mu_s[id] > 0
