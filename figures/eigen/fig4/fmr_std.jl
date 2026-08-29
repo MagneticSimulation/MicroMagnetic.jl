@@ -1,6 +1,8 @@
 using MicroMagnetic
-
-#using LinearAlgebra
+using FFTW
+FFTW.set_num_threads(4)
+using LinearAlgebra
+LinearAlgebra.BLAS.set_num_threads(4)
 using SparseArrays
 using Arpack
 using CairoMakie
@@ -104,5 +106,5 @@ function plot(freqs, m)
     save("fig4.pdf", fig)
 end
 
-freqs, m = compute_eigen_values(op, sim, nev=10, which=:SM)
+freqs, m = compute_eigen_values(op, sim, nev=10, which=:LR)
 plot(freqs, m)

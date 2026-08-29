@@ -110,10 +110,35 @@ Base.convert(::Type{FlatTerm}, x::Real)     = FlatTerm(x)
 Base.convert(::Type{FlatTerm}, x::FlatTerm) = x
 
 # AbstractFloat requires: Epsilon <: AbstractFloat → Float64(Epsilon(...)) not defined.
-# Epsilon / FlatTerm pretend to be AbstractFloat but Julia's Base will try
-# `convert(T, x)` when dispatching; the following stubs satisfy it:
-(::Type{T})(x::Epsilon)  where {T<:AbstractFloat} = convert(T, x.value)  # used by Base kernels that do T(0) or convert from Real
-(::Type{T})(x::FlatTerm) where {T<:AbstractFloat} = convert(T, x.c)       # best-effort: drop ε tags
+# Epsilon / FlatTerm pretend to be AbstractFloat, but we REFUSE to silently
+# drop ε via `(::Type{T})(::Epsilon/FlatTerm) where T<:AbstractFloat`. The
+# previous stubs (returning `x.value` / `x.c`) were the enabler of the
+# KernelAbstractions CPU-backend silent-truncation bug: when a kernel
+# accumulator was lowered to a `Float64` stack slot, any `+=` of an
+# Epsilon/FlatTerm value went through `Float64(::FlatTerm)` and quietly
+# discarded every ε coefficient.  By throwing here we make every kernel
+# swallow point LOUD (MethodError), so the only way to extract the constant
+# part is the explicit `cpart(x)` accessor below — code that genuinely
+# wants to drop ε must ask for it by name.
+function (::Type{T})(x::Union{Epsilon,FlatTerm}) where {T<:AbstractFloat}
+    error("Refusing to convert $(typeof(x)) to $T — this would silently drop ε. " *
+          "Use cpart(x) for the constant term, or zero(T)/one(T) for type-correct init.")
+end
+
+"""
+    cpart(x) -> Float64
+
+Return the Float64 constant (ε⁰) part of a symbolic number.  Use this when
+you genuinely want to discard the ε coefficients (e.g. extracting a
+Float64 baseline from a symbolic field buffer).  For symbolic numbers
+stored in `Vector{AbstractFloat}` this is the safe way to materialise a
+`Vector{Float64}` without triggering the loud `convert` stub above.
+"""
+cpart(x::Real)       = Float64(x)
+cpart(x::Epsilon)    = 0.0
+cpart(x::FlatTerm)   = x.c
+cpart(xs::AbstractArray) = map(cpart, xs)
+export cpart
 
 # ---------------------------------------------------------------------------
 # Multiplication — ε_a * ε_b = 0; Real scales every coefficient

@@ -432,7 +432,12 @@ function _compute_baseline_local!(out::Vector{Float64}, sim, m0_F64::Vector{Floa
     local_spin = Vector{AbstractFloat}(undef, 3N)
     @inbounds for k in 1:(3N); local_spin[k] = m0_F64[k]; end
     effective_field_local(sim, local_spin)
-    copyto!(out, convert(Vector{Float64}, Array(sim.field)))
+    # Use cpart() rather than convert(Vector{Float64}, …): the latter would
+    # call Float64(::FlatTerm/Epsilon) per element and trigger the loud
+    # convert stub in src/eigen/util.jl.  In the baseline path field[k] is
+    # always Float64-typed at runtime, but cpart is the safe, future-proof
+    # accessor that documents intent ("extract the ε⁰ constant part").
+    copyto!(out, cpart(sim.field))
     nothing
 end
 
@@ -525,10 +530,10 @@ function _build_matrix_impl(sim; gamma, sparse, alpha)
           "pre_damp=$pre_damp  use_damping=$use_damping")
     local SymT = Union{Float64, Epsilon, AddExpr}
 
-    m0_F64::Vector{Float64} = convert(Vector{Float64}, Array(sim.spin))
+    m0_F64::Vector{Float64} = cpart(sim.spin)
     Ms_raw = isa(sim, MicroSim) ? Array(sim.mu0_Ms)::Vector{<:AbstractFloat} :
                                   Array(sim.mu_s)::Vector{<:AbstractFloat}
-    Ms_F64::Vector{Float64} = convert(Vector{Float64}, Ms_raw)
+    Ms_F64::Vector{Float64} = cpart(Ms_raw)
 
     Rs     = Vector{Matrix{Float64}}(undef, N)
     R_invs = similar(Rs)
@@ -770,10 +775,10 @@ Demag-only 2N×2N LLG Jacobian.  Pure Float64, zero symbolic overhead;
 function build_demag_matrix(demag, sim; gamma=2.21e5, sparse=false, alpha=0.01)
     @info("Building demag-only LLG Jacobian (impulse-columns, dense 2N×2N) ...")
     N = sim.n_total
-    m0_F64::Vector{Float64} = convert(Vector{Float64}, Array(sim.spin))
+    m0_F64::Vector{Float64} = cpart(sim.spin)
     Ms_raw = isa(sim, MicroSim) ? Array(sim.mu0_Ms)::Vector{<:AbstractFloat} :
                                   Array(sim.mu_s)::Vector{<:AbstractFloat}
-    Ms_F64::Vector{Float64} = convert(Vector{Float64}, Ms_raw)
+    Ms_F64::Vector{Float64} = cpart(Ms_raw)
 
     Rs     = [rotation_matrix(m0_F64[3i-2], m0_F64[3i-1], m0_F64[3i]) for i in 1:N]
     R_invs = map(R -> [R[1,1] R[2,1] R[3,1];
