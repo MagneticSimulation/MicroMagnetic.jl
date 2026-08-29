@@ -548,7 +548,7 @@ end
 
 function build_exch_matrix(exch::UniformExchange, sim::MicroSim)
     mesh = sim.mesh
-    dx, dy, dz = mesh.dx, mesh.dx, mesh.dz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
     ngbs = Array(mesh.ngbs)
     Ms = Array(sim.mu0_Ms)
     ax = 2 * exch.Ax / (dx * dx)

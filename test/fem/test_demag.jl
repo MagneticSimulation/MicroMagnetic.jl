@@ -66,5 +66,7 @@ function test_exch_sphere_air()
 end
 
 @using_gpu()
-test_functions("Test Demag (FE)", test_demag_field_sphere, precisions=[Float64])
+# FE demag needs CUDSS for sparse factorization on GPU backends; run CPU-only when it is unavailable.
+demag_platforms = isdefined(Main, :CUDSS) ? ["CPU", "CUDA", "AMDGPU", "oneAPI", "Metal"] : ["CPU"]
+test_functions("Test Demag (FE)", test_demag_field_sphere, precisions=[Float64], platforms=demag_platforms)
 test_functions("Test Exch Air (FE)", test_exch_sphere_air, precisions=[Float64])

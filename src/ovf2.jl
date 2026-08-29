@@ -66,11 +66,11 @@ end
 
 Save an ovf2 file by an OVF2 struct.
 """
-#FIXME: type is not used.
 function save_ovf(ovf::OVF2, fname::String; type::DataType = ovf.type)
     if !endswith(fname,".ovf")
         fname = fname* ".ovf"
     end
+    ovf.type = type
     io = open(fname, "w")
     write_ovf2_header(io, ovf)
     write_ovf2_data(io, ovf)
@@ -267,38 +267,36 @@ function read_ovf(fname::String; T::DataType=Float64)
 
     ovf = OVF2{T}()
 
-    io = open(fname, "r")
-    if !startswith(readline(io), "# OOMMF OVF 2")
-        error("Input is not a OVF2 file.")
-    end
+    open(fname, "r") do io
+        if !startswith(readline(io), "# OOMMF OVF 2")
+            error("Input is not a OVF2 file.")
+        end
 
-    for line in eachline(io)
-        if startswith(line, "# Title:")
-            ovf.name = line[10:end]
-        elseif startswith(line, "# xnodes:")
-            ovf.xnodes = parse(Int64, line[10:end])
-        elseif startswith(line, "# ynodes:")
-            ovf.ynodes = parse(Int64, line[10:end])
-        elseif startswith(line, "# znodes:")
-            ovf.znodes = parse(Int64, line[10:end])
-        elseif startswith(line, "# xstepsize:")
-            ovf.xstepsize = parse(Float64, line[13:end])
-        elseif startswith(line, "# ystepsize:")
-            ovf.ystepsize = parse(Float64, line[13:end])
-        elseif startswith(line, "# zstepsize:")
-            ovf.zstepsize = parse(Float64, line[13:end])
-        elseif startswith(line, "# Begin: Data")
-            if line[15:end] == "Binary 8"
-                read_ovf2_float64(io, ovf)
-                close(io)
-            elseif  line[15:end] == "Binary 4"
-                read_ovf2_float32(io, ovf)
-                close(io)
-            elseif lowercase(line[15:end]) == "text"
-                read_ovf2_string(io, ovf)
-                close(io)
-            else
-                error("Data format error!")
+        for line in eachline(io)
+            if startswith(line, "# Title:")
+                ovf.name = line[10:end]
+            elseif startswith(line, "# xnodes:")
+                ovf.xnodes = parse(Int64, line[10:end])
+            elseif startswith(line, "# ynodes:")
+                ovf.ynodes = parse(Int64, line[10:end])
+            elseif startswith(line, "# znodes:")
+                ovf.znodes = parse(Int64, line[10:end])
+            elseif startswith(line, "# xstepsize:")
+                ovf.xstepsize = parse(Float64, line[13:end])
+            elseif startswith(line, "# ystepsize:")
+                ovf.ystepsize = parse(Float64, line[13:end])
+            elseif startswith(line, "# zstepsize:")
+                ovf.zstepsize = parse(Float64, line[13:end])
+            elseif startswith(line, "# Begin: Data")
+                if line[15:end] == "Binary 8"
+                    read_ovf2_float64(io, ovf)
+                elseif  line[15:end] == "Binary 4"
+                    read_ovf2_float32(io, ovf)
+                elseif lowercase(line[15:end]) == "text"
+                    read_ovf2_string(io, ovf)
+                else
+                    error("Data format error!")
+                end
             end
         end
     end

@@ -327,7 +327,7 @@ function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
     if isa(sim.mesh, TriangularMesh)
         for i in 1:6
             theta = (i - 1) * 2 * pi / 6
-            Dij[:, i] .= [D * cos(theta), D * sin[theta], 0]
+            Dij[:, i] .= [D * cos(theta), D * sin(theta), 0]
         end
 
         if type == "interfacial"

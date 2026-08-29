@@ -175,4 +175,6 @@ test_init_m_function()
 test_functions("Test zeeman (FE)", test_zeeman_field, precisions=[Float64])
 test_functions("Test anisotropy (FE)", test_anis_field, precisions=[Float64])
 test_functions("Test exchange (FE)", test_exchange_field, precisions=[Float64])
-test_functions("Test demag (FE)", test_demag_field, precisions=[Float64])
+# FE demag needs CUDSS for sparse factorization on GPU backends; run CPU-only when it is unavailable.
+demag_platforms = isdefined(Main, :CUDSS) ? ["CPU", "CUDA", "AMDGPU", "oneAPI", "Metal"] : ["CPU"]
+test_functions("Test demag (FE)", test_demag_field, precisions=[Float64], platforms=demag_platforms)

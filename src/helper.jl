@@ -629,9 +629,9 @@ function compute_winding_number_3d(v::Array{T,1}, m::Array{T,1},
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
     ngbs = mesh.ngbs
-    vx = zeros(T, ny * ny * nz)
-    vy = zeros(T, ny * ny * nz)
-    vz = zeros(T, ny * ny * nz)
+    vx = zeros(T, nx * ny * nz)
+    vy = zeros(T, nx * ny * nz)
+    vz = zeros(T, nx * ny * nz)
     compute_winding_number_yz(vx, m, mesh)
     compute_winding_number_zx(vy, m, mesh)
     compute_skyrmion_number(vz, m, mesh) #compute_winding_number_xy

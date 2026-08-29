@@ -276,9 +276,9 @@ end
 @kernel function tube_bulk_dmi_kernel!(h, energy, D::T, @Const(Dij), @Const(m),
                                        @Const(mu_s), @Const(ngbs), n_ngbs,
                                        nr) where {T<:AbstractFloat}
-    i = @index(Global)
+    I = @index(Global)
     j = 3 * (I - 1)
-    @inbounds ms_local::T = mu_s[i]
+    @inbounds ms_local::T = mu_s[I]
     if ms_local == 0.0
         @inbounds energy[I] = 0
         @inbounds h[j + 1] = 0
@@ -291,10 +291,10 @@ end
 
         # the order of Dij is r_{n_r, 1}, r12, r23, ..., r_{(n_r-1)n_r},  r_{n_r, 1}
         # the left neighbour
-        @inbounds id = ngbs[1, i]
+        @inbounds id = ngbs[1, I]
         if id > 0 && mu_s[id] > 0
             x = 3 * id - 2
-            k = i % nr  #should be i rather than id
+            k = I % nr  #should be I rather than id
             k == 0 && (k += nr) # the rangle of k is [1, nr]
             @inbounds fx -= cross_x(Dij[1, k], Dij[2, k], Dij[3, k], m[x], m[x + 1],
                                     m[x + 2])
@@ -305,10 +305,10 @@ end
         end
 
         # the right neighbour
-        @inbounds id = ngbs[2, i]
+        @inbounds id = ngbs[2, I]
         if id > 0 && mu_s[id] > 0
             x = 3 * id - 2
-            k = i % nr
+            k = I % nr
             k == 0 && (k += nr)
             k += 1  # the range of k is [2, nr+1]
             @inbounds fx += cross_x(Dij[1, k], Dij[2, k], Dij[3, k], m[x], m[x + 1],
@@ -329,7 +329,7 @@ end
         end
 
         # the top neighbour
-        @inbounds id = ngbs[4, i]
+        @inbounds id = ngbs[4, I]
         if id > 0 && mu_s[id] > 0
             x = 3 * id - 2
             @inbounds fx += cross_x(T(0), T(0), D, m[x], m[x + 1], m[x + 2])
@@ -337,7 +337,7 @@ end
             @inbounds fz += cross_z(T(0), T(0), D, m[x], m[x + 1], m[x + 2])
         end
 
-        @inbounds energy[i] = -0.5 * (fx * m[j + 1] + fy * m[j + 2] + fz * m[j + 3])
+        @inbounds energy[I] = -0.5 * (fx * m[j + 1] + fy * m[j + 2] + fz * m[j + 3])
         @inbounds h[j + 1] = fx * ms_inv
         @inbounds h[j + 2] = fy * ms_inv
         @inbounds h[j + 3] = fz * ms_inv

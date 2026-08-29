@@ -64,14 +64,14 @@ end
         @inbounds dw_dt[j + 1] = 0
         @inbounds dw_dt[j + 2] = 0
     else
-        a = gamma / (1 + alpha * alpha)
-        b = alpha * a
+        a::T = gamma / (1 + alpha * alpha)
+        b::T = alpha * a
         u::T = 1.0 / (1 + alpha * alpha)
 
         @inbounds mx = m[j]
         @inbounds my = m[j + 1]
         @inbounds mz = m[j + 2]
-        mm = mx * mx + my * my + mz * mz
+        mm::T = mx * mx + my * my + mz * mz
         @inbounds mh = mx * h[j] + my * h[j + 1] + mz * h[j + 2]
         @inbounds h1 = mm * h[j] - mh * mx
         @inbounds h2 = mm * h[j + 1] - mh * my
@@ -143,16 +143,16 @@ end
         @inbounds dw_dt[j + 1] = 0
         @inbounds dw_dt[j + 2] = 0
     else
-        a = gamma / (1 + alpha * alpha)
-        b = alpha * a
+        a::T = gamma / (1 + alpha * alpha)
+        b::T = alpha * a
         u::T = 1.0 / (1 + alpha * alpha)
 
-        @inbounds aj_ = aj[index]
+        @inbounds aj_ = aj[I]
 
         @inbounds mx = m[j]
         @inbounds my = m[j + 1]
         @inbounds mz = m[j + 2]
-        mm = mx * mx + my * my + mz * mz
+        mm::T = mx * mx + my * my + mz * mz
         @inbounds mh = mx * h[j] + my * h[j + 1] + mz * h[j + 2]
         @inbounds h1 = mm * h[j] - mh * mx
         @inbounds h2 = mm * h[j + 1] - mh * my

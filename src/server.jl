@@ -306,22 +306,22 @@ function init_default_handlers()
         send_message(ws, "run_code_response", response)
     end
     
-    register_handler("stop_server") do ws, client_id, data
-        log_message("Received stop_server command from client $client_id")
-        
+    register_handler("stop_server") do ws, data
+        log_message("Received stop_server command")
+
         try
             # Send confirmation message to the client
             send_message(ws, "server_stopping", Dict(
                 "message" => "Your connection is being closed",
                 "timestamp" => now()
             ))
-            
+
             # Close the WebSocket connection
             close(ws)
-            
-            log_message("Closed connection for client $client_id")
+
+            log_message("Closed connection for stop_server request")
         catch e
-            log_message("Error closing connection for client $client_id: $e")
+            log_message("Error closing connection for stop_server request: $e")
         end
     end
     

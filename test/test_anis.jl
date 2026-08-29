@@ -111,4 +111,5 @@ function test_hex_anis()
 end
 
 @using_gpu()
-test_functions("Anisotropy", test_anis, test_spatial_anis, test_cubic_anis, test_hex_anis, )
+# This file imports Enzyme, which is not compatible with GPU backends, so only run tests on CPU.
+test_functions("Anisotropy", test_anis, test_spatial_anis, test_cubic_anis, test_hex_anis; platforms=["CPU"])

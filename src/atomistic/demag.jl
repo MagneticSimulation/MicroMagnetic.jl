@@ -84,14 +84,18 @@ function effective_field(demag::Demag, sim::AtomisticSim, spin::AbstractArray{T,
 
     distribute_m_atomistic(spin, demag.mx, demag.my, demag.mz, sim.mu_s, nx, ny, nz)
 
-    #synchronize()
+    # synchronize() is not needed here: on the CPU backend KA kernels are
+    # synchronous; on the CUDA backend both KA (distribute_m_atomistic) and
+    # cuFFT (mul! with the rfft plan) execute on the default stream, so stream
+    # ordering guarantees the kernel completes before the FFT begins.
     mul!(demag.Mx, demag.m_plan, demag.mx)
     mul!(demag.My, demag.m_plan, demag.my)
     mul!(demag.Mz, demag.m_plan, demag.mz)
 
     add_tensor_M(demag.Mx, demag.My, demag.Mz, demag.tensor_xx, demag.tensor_yy,
                  demag.tensor_zz, demag.tensor_xy, demag.tensor_xz, demag.tensor_yz)
-    #synchronize()
+    # synchronize() not needed: same default-stream ordering guarantee as above
+    # applies between the KA kernel (add_tensor_M) and the cuFFT mul! calls.
 
     mul!(demag.mx, demag.h_plan, demag.Mx)
     mul!(demag.my, demag.h_plan, demag.My)

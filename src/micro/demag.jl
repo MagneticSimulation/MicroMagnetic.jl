@@ -110,7 +110,10 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1}, 
 
     distribute_m(spin, demag.mx, demag.my, demag.mz, sim.mu0_Ms, nx, ny, nz)
 
-    #synchronize()
+    # synchronize() is not needed here: on the CPU backend KA kernels are
+    # synchronous; on the CUDA backend both KA (distribute_m) and cuFFT (mul!
+    # with the rfft plan) execute on the default stream, so stream ordering
+    # guarantees the kernel completes before the FFT begins.
     mul!(demag.Mx, demag.m_plan, demag.mx)
     mul!(demag.My, demag.m_plan, demag.my)
     mul!(demag.Mz, demag.m_plan, demag.mz)
