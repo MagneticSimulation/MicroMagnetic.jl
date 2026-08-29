@@ -3,6 +3,33 @@
     return x1*y1 + x2*y2 + x3*y3
 end
 
+"""
+    cross_x(x1, x2, x3, y1, y2, y3)
+    cross_y(x1, x2, x3, y1, y2, y3)
+    cross_z(x1, x2, x3, y1, y2, y3)
+
+Return the three components of  (x1,x2,x3) × (y1,y2,y3).
+
+NOTE ON TYPE SIGNATURE (historical pitfall — DO NOT re-tighten to `where {T<:Number, x1::T,...}`):
+
+  MicroMagnetic's `build_matrix` (see `src/eigen/eigen.jl`) performs *exact symbolic
+  linearisation* of the LLG equation by feeding effective-field kernels a spin array
+  whose elements are `Epsilon` / `AddExpr` duals, not plain `Float64`.  Many kernels
+  multiply *scalar* coefficient tuples (e.g. the DMI direction masks of ±1 or the
+  1/dx pre-factors, which are plain `Float64`) with *symbolic* neighbour-spin values
+  inside  cross_*(ax,ay,az, m_kx,m_ky,m_kz).  In these calls the six arguments are
+  NOT of the same Julia type:  (Float64,Float64,Float64, AddExpr,AddExpr,AddExpr).
+
+  Hence  cross_x / cross_y / cross_z  MUST accept mixed numeric types.  The "all six
+  identical" parametric method below is still valuable (it lets Julia fully inline and
+  optimise the normal-Float64 production path), but the *first* three methods below
+  are the generic, promotion-based fallbacks that work for any Number mixture.
+"""
+@inline cross_x(x1, x2, x3, y1, y2, y3) = -x3 * y2 + x2 * y3
+@inline cross_y(x1, x2, x3, y1, y2, y3) =  x3 * y1 - x1 * y3
+@inline cross_z(x1, x2, x3, y1, y2, y3) = -x2 * y1 + x1 * y2
+
+# Homogeneous fast-path (same concrete numeric type across all 6 arguments):
 @inline function cross_x(x1::T, x2::T, x3::T, y1::T, y2::T, y3::T) where {T<:Number}
     return -x3*y2 + x2*y3
 end

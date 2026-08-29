@@ -177,6 +177,77 @@ function Base.:*(a::FlatTerm, b::FlatTerm)
 end
 
 # ---------------------------------------------------------------------------
+# zero / one — CRITICAL overrides.  Without these, `zero(FlatTerm)` falls
+# back to `convert(FlatTerm, 0)` → FlatTerm(::Int<:Real) at line 76 returns
+# a bare `0.0 :: Float64`, which strips ALL ε-coefficients from fx/fy/fz in
+# the kernel immediately.  Same pitfall for Epsilon.
+# ---------------------------------------------------------------------------
+Base.zero(::Type{Epsilon})  = FlatTerm(0.0, Dict{Int,Float64}())
+Base.zero(::Epsilon)        = zero(Epsilon)
+Base.zero(::Type{FlatTerm}) = FlatTerm(0.0, Dict{Int,Float64}())
+Base.zero(f::FlatTerm)      = FlatTerm(0.0, Dict{Int,Float64}())   # don't reuse f.coefs
+
+Base.one(::Type{Epsilon})   = FlatTerm(1.0, Dict{Int,Float64}())
+Base.one(::Epsilon)         = one(Epsilon)
+Base.one(::Type{FlatTerm})  = FlatTerm(1.0, Dict{Int,Float64}())
+Base.one(f::FlatTerm)       = FlatTerm(1.0, Dict{Int,Float64}())
+
+# ---------------------------------------------------------------------------
+# Symbolic-aware cross product — inline the 3 explicit component formulas
+# so NO promote/convert EVER touches the mixed Float64 × SymType arguments.
+# This avoids the ambiguity chain caused by util.jl's generic fallback
+# promoting 6 args to a common type before compute, which strips ε tags.
+# Note: cross_x/y/z are exported from MicroMagnetic, so we add method
+# overloads that dispatch whenever ANY of the 6 args is Epsilon/FlatTerm.
+# ---------------------------------------------------------------------------
+const SymType = Union{Epsilon, FlatTerm}
+
+# ---------------------------------------------------------------------------
+# Division / inversion.  Julia's generic `/(x, y)` falls back to
+# `promote(x, y)` first, which throws `promotion of types FlatTerm & Float64
+# failed to change any arguments` because we deliberately kept FlatTerm ≠
+# Float64 for symbolic clarity.  Add explicit dispatches so:
+#
+#   FlatTerm / Real  →  FlatTerm * inv(Real)  (trivial, no ε terms)
+#   Real / FlatTerm  →  Real * inv(FlatTerm)
+#   inv(FlatTerm)    →  allowed ONLY when the symbolic part is empty, i.e.
+#                       the FlatTerm represents a bare constant.  Otherwise
+#                       we cannot divide 1/(c + Σcoef·ε) at FIRST ORDER.
+# ---------------------------------------------------------------------------
+Base.inv(e::Epsilon)  = error("Cannot invert Epsilon perturbation: 1/ε is not first-order.")
+
+function Base.inv(f::FlatTerm)
+    if isempty(f.coefs)
+        # Pure constant: just 1/c.
+        invc = inv(f.c)
+        iszero(invc) && return 0.0
+        return invc   # Plain Float64 since there's no ε part.
+    end
+    # 1/(c + Σ) at first order:  1/c · (1 − Σ/c)  →  return as FlatTerm.
+    # If c == 0 here (singular but has coefs), it's 1/ε-class: error out.
+    iszero(f.c) && error("Cannot invert FlatTerm with zero constant and non-zero ε part — not first-order representable.")
+    invc = inv(f.c)
+    new_coefs = Dict{Int,Float64}()
+    sizehint!(new_coefs, length(f.coefs))
+    coef = -invc * invc
+    for (k, v) in f.coefs
+        nv = coef * v
+        iszero(nv) && continue
+        new_coefs[k] = nv
+    end
+    return FlatTerm(invc, new_coefs)
+end
+
+# Left-division too:  `Real \ SymType`  =  inv(Real) * SymType.
+Base.:/(a::SymType,    b::Real)     = a * inv(b)
+Base.:\(a::Real,       b::SymType)  = inv(a) * b
+Base.:/(a::Epsilon,    b::Epsilon)  = error("Cannot divide Epsilon/Epsilon at first order (ε/ε is O(1) indeterminate).")
+Base.:/(a::Epsilon,    b::FlatTerm) = a * inv(b)
+Base.:/(a::FlatTerm,   b::Epsilon)  = error("Cannot divide FlatTerm / Epsilon at first order (divide by ε is singular).")
+Base.:/(a::FlatTerm,   b::FlatTerm) = a * inv(b)
+Base.:/(a::Real,       b::SymType)  = a * inv(b)
+
+# ---------------------------------------------------------------------------
 # Addition / subtraction — pointwise Dict merge with coefficient summation
 # ---------------------------------------------------------------------------
 function Base.:+(a::Epsilon, b::Epsilon)
@@ -443,14 +514,23 @@ function rotation_matrix_inverse(mx, my, mz)
 end
 
 # ---------------------------------------------------------------------------
-# 3-D cross product components — already optimal; kept for API stability.
+# 3-D cross product components  cross_x / cross_y / cross_z.
+#
+# DEFINITION SOURCE:  src/util.jl  (NOT here!)
+#   As of 2026-08-29 util.jl provides BOTH:
+#     (a) a fully generic, untyped  cross_x(x1,x2,x3,y1,y2,y3)  fallback that
+#         accepts mixed-type argument tuples like (Float64,Float64,Float64,
+#         AddExpr,AddExpr,AddExpr) which the symbolic build_matrix linearisation
+#         relies on for DMI / anisotropy / vector cross kernels;
+#     (b) the  cross_x(::T,...) where {T<:Number}  homogeneous fast-path used by
+#         the production Float64 simulation kernels (fully inlined).
+#
+# DO NOT RE-DEFINE cross_x / cross_y / cross_z here.  Julia treats any method
+# with the same signature in a later include() as an *overwrite*, which is
+# FORBIDDEN during module precompilation ("ERROR: Method overwriting is not
+# permitted during Module precompilation").  Precompilation used to silently
+# load a half-recompiled MicroMagnetic.jl image which in turn caused the
+# bulkdmi_kernel! DMI linearisation path to return all zeros even for real-
+# valued inputs; deleting this duplicate block fixed both the precompilation
+# blocker and the downstream DMI silent-zero bug.
 # ---------------------------------------------------------------------------
-@inline function cross_x(x1, x2, x3, y1, y2, y3)
-    return -x3 * y2 + x2 * y3
-end
-@inline function cross_y(x1, x2, x3, y1, y2, y3)
-    return x3 * y1 - x1 * y3
-end
-@inline function cross_z(x1, x2, x3, y1, y2, y3)
-    return -x2 * y1 + x1 * y2
-end
