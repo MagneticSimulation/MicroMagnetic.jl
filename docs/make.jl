@@ -31,11 +31,11 @@ Miscellaneous = ["Skyrmion Phase (Monte Carlo)" => "monte_carlo/skyrmion.md",
                  "Skyrmion collapse (NEB)" => "neb/neb_skx.md"]
 
 PAGES = ["Home" => "index.md",
-         "Manual" => ["install.md", "gui.md", "docker.md", "basics.md", "units.md", "fem.md", "equations.md", "contrib.md"],
-         "Atomistic" => Atomistic, 
-         "Micromagnetics (FD)" => Micromagnetic, 
+         "Manual" => ["install.md", "gui.md", "docker.md", "basics.md", "units.md", "fem.md", "equations.md", "eigen/eigenmodes.md", "contrib.md"],
+         "Atomistic" => Atomistic,
+         "Micromagnetics (FD)" => Micromagnetic,
          "Micromagnetics (FE)" => FE,
-         "Miscellaneous" => Miscellaneous, 
+         "Miscellaneous" => Miscellaneous,
          "API" => API]
 
 

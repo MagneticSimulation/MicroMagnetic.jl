@@ -1,6 +1,7 @@
 using MicroMagnetic
 using DelimitedFiles
 using LinearAlgebra
+using Random
 using Test
 
 MicroMagnetic.set_backend("cpu")
@@ -35,11 +36,50 @@ function analytical(H, Ms=8e5)
     return freq
 end
 
+function test_matrixfree_equivalence_demag(setup_fun; gamma=2.21e5, alpha=0.0,
+                                            rtol=1e-12, atol=1e-14, nrand=5)
+    _α = Float64(alpha)
+    sim_d = setup_fun()
+    sim_o = setup_fun()
+    B  = build_matrix(sim_d, gamma=Float64(gamma), alpha=_α)
+    op = build_matrix(sim_o, gamma=Float64(gamma), alpha=_α, matrixfree=true)
+    @assert op.alpha ≈ _α "matrix-free operator has alpha=$(op.alpha), want $_α"
+
+    @test size(op) == size(B)
+    @test eltype(op) == eltype(B)
+
+    B_mf = Matrix(op)
+    @test isapprox(B, B_mf; rtol=rtol, atol=atol)
+
+    rng = MersenneTwister(9999)
+    N2 = size(B, 1)
+    for _ in 1:nrand
+        x = randn(rng, N2)
+        y_ref = B * x
+        y_mf  = similar(y_ref); LinearAlgebra.mul!(y_mf, op, x)
+        @test isapprox(y_ref, y_mf; rtol=rtol, atol=atol)
+
+        a5, b5 = -2.0, 0.25
+        y_out = randn(rng, N2)
+        y_5   = copy(y_out)
+        LinearAlgebra.mul!(y_5, op, x, a5, b5)
+        y_5_ref = a5 .* (B * x) .+ b5 .* y_out
+        @test isapprox(y_5_ref, y_5; rtol=rtol, atol=atol)
+    end
+    nothing
+end
+
 H = 1.23e4
 B, f = compute_frequency(H)
 fan = analytical(H)
 
 println("f=", f, " ", fan)
 @test abs(f -  fan)/f < 100*eps()
+
+# --- matrix-free equivalence (single-cell demag + Zeeman, long-range path) ---
+println("  matrix-free: 1-cell demag (α=0) …")
+test_matrixfree_equivalence_demag(() -> setup(H=(H, 0, 0)))
+println("  matrix-free: 1-cell demag damped (α=0.01) …")
+test_matrixfree_equivalence_demag(() -> setup(H=(H, 0, 0)); alpha=0.01)
 
 

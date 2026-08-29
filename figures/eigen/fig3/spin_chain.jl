@@ -26,7 +26,7 @@ MicroMagnetic.set_precision(AbstractFloat)
 function compute_frequency(;H0=0, K=0.005, B=0)
     H = (0, 0, H0)
     sim = setup(H=H, K=K, B=B)
-    B = build_matrix(sim, gamma=1)
+    B = build_matrix(sim, gamma=1, alpha=0.0)
     all = imag(eigvals(B))
     sort!(all)
     return all[101:end]

@@ -24,32 +24,61 @@ m0 = Array(sim.spin)
 MicroMagnetic.set_precision(AbstractFloat)
 sim = setup(m0=m0)
 
-B = build_matrix(sim, gamma=2.211e5)
+# Build phase: matrix-free operator (O(N) storage — no 2N×2N dense Jacobian).
+# The returned LLGJacOperator supports size/eltype, mul!(3/5-arg), issymmetric
+# and copy(), so it can be passed directly to Arpack.eigs for Krylov-targeted
+# eigensolves (which=:LR / :LM / :SR).  When targeting interior eigenvalues via
+# shift-invert (e.g. which=:SM → smallest-magnitude lowest-freq FMR modes)
+# Arpack requires a factorisation of (B−σI), so we materialise a sparse matrix
+# once via the built-in SparseArrays.sparse(op) (= 2N mul! calls).  For truly
+# large meshes (2N ≫ 10⁴) and :LR / :LM targeting, call
+#     Arpack.eigs(op; nev=..., which=:LR, explicittransform=:none)
+# directly on the operator and skip the sparse() step.
+op = build_matrix(sim, gamma=2.211e5, matrixfree=true)
 
-function compute_eigen_values(matrix, sim; nev=10)
-    sparse_matrix = sparse(matrix)
-    vals, vecs = Arpack.eigs(sparse_matrix, nev=2*nev, which=:SM, tol=1e-6, maxiter=10*sim.n_total)
+function compute_eigen_values(op, sim; nev=10, which=:SM)
+    if which == :SM
+        # Smallest-magnitude (lowest-freq FMR) modes live in the interior of
+        # the spectrum; Arpack needs shift-invert → factorise via sparse.
+        A = SparseArrays.sparse(op)
+        vals, vecs = Arpack.eigs(A; nev=2*nev, which=:SM, tol=1e-6,
+                                 maxiter=10*sim.n_total, explicittransform=:none)
+    else
+        # Pure matrix-free Krylov path (e.g. :LR → least-damped modes).
+        vals, vecs = Arpack.eigs(op; nev=2*nev, which=which, tol=1e-6,
+                                 maxiter=10*sim.n_total, explicittransform=:none)
+    end
 
     indices = findall(x -> imag(x) > 0, vals)
     freqs = vals[indices]
     eigenvectors = vecs[:, indices]
+    # Ensure we got at least nev valid positive-imaginary eigenvalues.
+    if length(freqs) < nev
+        @warn("Only $(length(freqs))/$(nev) positive-imaginary modes returned " *
+              "by Arpack; increase nev or maxiter.")
+        keep = length(freqs)
+    else
+        keep = nev
+    end
+    freqs = freqs[1:keep]
+    eigenvectors = eigenvectors[:, 1:keep]
 
     mesh = sim.mesh
     N = sim.n_total
-    evecs = reshape(eigenvectors, (2, N, nev))
-    new_evecs = zeros(eltype(evecs), 3, N, nev)
+    evecs = reshape(eigenvectors, (2, N, keep))
+    new_evecs = zeros(eltype(evecs), 3, N, keep)
     new_evecs[1:2, :, :] .= evecs
 
     m0 = reshape(sim.spin, 3, N)
-    m = zeros(Complex{Float64}, 3, N, nev)
+    m = zeros(Complex{Float64}, 3, N, keep)
     for i = 1:N
         R = MicroMagnetic.rotation_matrix(m0[1, i], m0[2, i], m0[3, i])
-        for j = 1:nev
+        for j = 1:keep
             m[:, i, j] = R * new_evecs[:, i, j]
         end
     end
     
-    m = reshape(m, (3, mesh.nx, mesh.ny, mesh.nz, nev))
+    m = reshape(m, (3, mesh.nx, mesh.ny, mesh.nz, keep))
 
     return freqs, m
 end
@@ -75,5 +104,5 @@ function plot(freqs, m)
     save("fig4.pdf", fig)
 end
 
-freqs, m = compute_eigen_values(B, sim, nev=10)
+freqs, m = compute_eigen_values(op, sim, nev=10, which=:SM)
 plot(freqs, m)

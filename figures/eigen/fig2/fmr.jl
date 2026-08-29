@@ -14,14 +14,14 @@ MicroMagnetic.set_precision(AbstractFloat)
 function compute_frequency100(H0)
     H = (H0, 0, 0)
     sim = setup(m0=(1,0,0), H=H)
-    B = build_matrix(sim, gamma=2.21e5)
+    B = build_matrix(sim, gamma=2.21e5, alpha=0.0)
     return imag(eigvals(B)[2])/1e9/(2*pi)
 end
 
 function compute_frequency110(H0)
     H = (H0/sqrt(2), H0/sqrt(2),0)
     sim = setup(H=H, m0=(1,1,0))
-    B = build_matrix(sim, gamma=2.21e5)
+    B = build_matrix(sim, gamma=2.21e5, alpha=0.0)
     println(B)
     return imag(eigvals(B)[2])/1e9/(2*pi)
 end
