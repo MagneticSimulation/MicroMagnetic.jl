@@ -4,6 +4,7 @@ using LinearAlgebra
 using Test
 
 MicroMagnetic.set_backend("cpu")
+MicroMagnetic.set_precision(AbstractFloat)
 
 function setup(;m0=(0,0,1), H=(0,0,0))
     mesh = FDMesh(nx=1, ny=1, nz=1, dx=5e-9, dy=5e-9, dz=2e-9)
@@ -11,19 +12,17 @@ function setup(;m0=(0,0,1), H=(0,0,0))
     return sim
 end
 
-MicroMagnetic.set_precision(AbstractFloat)
-
 function compute_frequency100(H0)
     H = (H0, 0, 0)
     sim = setup(m0=(1,0,0), H=H)
-    B = build_matrix(sim, gamma=2.21e5)
+    B = build_matrix(sim, gamma=2.21e5, alpha=0.0)
     return imag(eigvals(B)[2])/1e9/(2*pi)
 end
 
 function compute_frequency110(H0)
     H = (H0/sqrt(2), H0/sqrt(2),0)
     sim = setup(H=H, m0=(1,1,0))
-    B = build_matrix(sim, gamma=2.21e5)
+    B = build_matrix(sim, gamma=2.21e5, alpha=0.0)
     return imag(eigvals(B)[2])/1e9/(2*pi)
 end
 
@@ -50,34 +49,8 @@ f110_an = analytical110(H)
 
 println("f100:", f100, " ", f100_an)
 println("f110:", f110, " ", f110_an)
-@test f100 == f100_an
-@test f110 == f110_an
-
-# Enzyme-based dynamic_matrix tests are disabled for now: Enzyme cannot differentiate
-# through KernelAbstractions CPU kernel launches (IllegalTypeAnalysisException).
-# To be reworked or removed in a dedicated commit.
-#=
-using Enzyme
-MicroMagnetic.set_precision(Float64)
-
-function compute_frequency100_enzyme(H0)
-    H = (H0, 0, 0)
-    sim = setup(m0=(1,0,0), H=H)
-    B = dynamic_matrix(sim, gamma=2.21e5)
-    return imag(eigvals(B)[2])/1e9/(2*pi)
-end
-
-function compute_frequency110_enzyme(H0)
-    H = (H0/sqrt(2), H0/sqrt(2),0)
-    sim = setup(H=H, m0=(1,1,0))
-    B = dynamic_matrix(sim, gamma=2.21e5)
-    return imag(eigvals(B)[2])/1e9/(2*pi)
-end
-
-f100 = compute_frequency100_enzyme(H)
-f110 = compute_frequency110_enzyme(H)
-println("f100_enzyme:", f100, " ", f100_an)
-println("f110_enzyme:", f110, " ", f110_an)
-@test abs(f100-f100_an) < eps()
-@test abs(f110-f110_an) < eps()*10
-=#
+# Eigenvalue extraction + symbolic → F64 roundtrip can differ in the last
+# 1–2 ULPs from the analytic expression; a strict `==` is therefore flaky.
+# Use a tight relative tolerance instead.
+@test isapprox(f100, f100_an; rtol=10 * eps())
+@test isapprox(f110, f110_an; rtol=10 * eps())
