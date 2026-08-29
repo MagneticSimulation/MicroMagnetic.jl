@@ -41,7 +41,6 @@ AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
-Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 
 [extensions]
@@ -49,7 +48,6 @@ CUDAExt = "CUDA"
 AMDGPUExt = "AMDGPU"
 MetalExt = "Metal"
 oneAPIExt = "oneAPI"
-EnzymeExt = "Enzyme"
 CairoMakieExt = "CairoMakie"
 
 [extras]
@@ -59,4 +57,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
 
 [targets]
-test = ["Test", "DelimitedFiles", "NPZ", "Enzyme"]
+test = ["Test", "DelimitedFiles", "NPZ"]

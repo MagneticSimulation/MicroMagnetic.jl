@@ -233,8 +233,8 @@ function test_hex_anis()
     field = Array(anis.field)
     energy = Array(anis.energy)
 
-    gd = Enzyme.gradient(Forward, hexagonal_energy, m0, Const(K1), Const(K2), Const(K3))
-    expected = - collect(gd[1]) ./ (MicroMagnetic.mu_0*Ms)
+    dEmx, dEmy, dEmz = hexagonal_energy_gradient(m0, K1, K2, K3)
+    expected = [ -dEmx, -dEmy, -dEmz ] ./ (MicroMagnetic.mu_0*Ms)
 
     @test isapprox(field[1:3], expected)
     @test isapprox(energy[1]*1e27, hexagonal_energy(m0, K1, K2, K3), rtol=1e-5)
