@@ -244,7 +244,7 @@ args = Dict(
 sim_with(args)
 ```
 
-In these examples, the external field `H` is varied using the `_s` suffix (or `_sweep` if preferred). This suffix can be applied to other parameters as well, including `Ms` (saturation magnetization), `Ku` (anisotropy constant), `A` (exchange constant), `D` (Dzyaloshinskii-Moriya interaction), `task` (e.g., "Relax" or "Dynamics"), and `driver` (e.g., "SD", "LLG", "LLG_STT"). This flexibility allows you to explore a wide range of micromagnetic scenarios, such as computing hysteresis loops or studying the effects of parameter variations.
+In these examples, the external field `H` is varied using the `_s` suffix (or `_sweep` if preferred). This suffix can be applied to other parameters as well, including `Ms` (saturation magnetization), `Ku` (anisotropy constant), `A` (exchange constant), `D` (Dzyaloshinskii-Moriya interaction), `task` (e.g., "Relax" or "Dynamics"), and `driver` (e.g., "SD", "LLG"). This flexibility allows you to explore a wide range of micromagnetic scenarios, such as computing hysteresis loops or studying the effects of parameter variations.
 
 ### Example: Standard Problem 4
 

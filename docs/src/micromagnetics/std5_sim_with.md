@@ -36,15 +36,14 @@ Define simulation parameters.
 
 ````@example
 args = (name="std5_sw", task_s=["relax", "dynamics"],      # List of tasks to perform
-        driver_s=["SD", "LLG_STT"],            # List of drivers to use
+        driver_s=["SD", "LLG"],                # List of drivers to use
         mesh=FDMesh(; nx=20, ny=20, nz=2, dx=5e-9, dy=5e-9, dz=5e-9), # Mesh configuration
         Ms=8e5,                               # Saturation magnetization
         A=1.3e-11,                            # Exchange constant
         demag=true,                           # Enable demagnetization
         m0=init_fun,                          # Initial magnetization function
         alpha=0.1,                            # Gilbert damping parameter
-        ux=-72.438,                           # Effective current density
-        beta=0.05,                            # Nonadiabatic STT parameter
+        stt=(model=:zhang_li, b=-72.438, J=(1, 0, 0), xi=0.05),  # Spin transfer torque
         steps=160,                            # Number of steps for dynamics
         dt=0.05ns,                            # Time step size
         stopping_dmdt=0.01,                   # Stopping criterion for relaxation
@@ -60,10 +59,10 @@ sim_with(args);
 nothing #hide
 ````
 
-Generate a movie for the vortex dynamics. With the `LLG_STT` driver, the ovf files are stored in the folder `std5_sw_LLG_STT`:
+Generate a movie for the vortex dynamics. With the `LLG` driver, the ovf files are stored in the folder `std5_sw_LLG`:
 
 ````@example
-ovf2movie("std5_sw_LLG_STT"; output="../public/std5.mp4", component='x');
+ovf2movie("std5_sw_LLG"; output="../public/std5.mp4", component='x');
 nothing #hide
 ````
 ![](../public/std5.mp4)

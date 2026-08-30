@@ -53,11 +53,12 @@ MicroMagnetic.save_vtk(sim, "skx")
 ````
 
 After obataining the skyrmion profile, we then move the skyrmion using spin transfer torques.
-So we use change the driver to "LLG_STT" using the `set_driver` function. Meanwhile,
-we set the relevant parameters such as alpha, beta and u.
+So we change the driver to "LLG" using the `set_driver` function and add the torque with `add_stt`,
+setting the relevant parameters such as alpha and the Zhang-Li model parameters.
 
 ````@example
-set_driver(sim; driver="LLG_STT", alpha=0.05, beta=0.2, ux=-20)
+set_driver(sim; driver="LLG", alpha=0.05)
+add_stt(sim; model=:zhang_li, b=-20, J=(1, 0, 0), xi=0.2)
 ````
 
 During the simulation, we need to extract the skyrmion center, so we write a call back function
@@ -74,13 +75,13 @@ end
 ````
 
 We use the `run_sim` function to run the simulation.
-The magnetization snapshots are saved as ovf files in the folder `skx_LLG_STT`,
+The magnetization snapshots are saved as ovf files in the folder `skx_LLG`,
 which can be exported to a movie (.mp4) using the `ovf2movie`.
 
 ````@example
 if !isfile("assets/skx.mp4")
     run_sim(sim; steps=100, dt=1e-10, save_m_every=1, call_back=call_back_fun)
-    ovf2movie("skx_LLG_STT"; output="assets/skx.mp4", component='z')
+    ovf2movie("skx_LLG"; output="assets/skx.mp4", component='z')
 end
 ````
 

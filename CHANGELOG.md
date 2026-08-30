@@ -36,6 +36,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - fix docs/tutorials (std4, std5, skyrmion_stt): `dynamic_m_interval` → `dynamic_m_every`
   and `jld2movie` (removed) → `ovf2movie` on the ovf output folder
 
+### Removed
+
+- the `LLG_STT`, `LLG_CPP` and `LLG_STT_CPP` drivers (deprecated since v0.5.0); use the
+  `LLG` driver together with `add_stt`/`add_sot` instead
+- `set_ux`/`set_uy`/`set_uz` (driver-bound STT helpers); pass `b`/`J` to `add_stt` instead
+- `sim_with` keywords `beta`, `ux`, `uy`, `uz` and `ufun`; put them inside the
+  `stt=(model=:zhang_li, ...)` tuple instead
+
 ## Version [v0.5.0] - 2026-05-30
 
 ### Added
