@@ -1,4 +1,4 @@
-export create_sim, sim_with
+export sim_with
 
 # --------------------------------------------------------------------------
 # Keyword vocabularies used for the fail-fast validation of `sim_with` (I-09).

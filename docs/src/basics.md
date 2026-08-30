@@ -36,11 +36,10 @@ graph TD
    AbstractSim --> MonteCarlo
 ```
 
-For [MicroSim](@ref MicroMagnetic.MicroSim), [AtomisticSim](@ref MicroMagnetic.AtomisticSim), you have two creation options: the [`create_sim`](@ref) function or the direct `Sim` constructor. The `create_sim` function provides a streamlined approach for parameter specification.
+For [MicroSim](@ref MicroMagnetic.MicroSim), [AtomisticSim](@ref MicroMagnetic.AtomisticSim), you create the simulation with the `Sim` constructor and then set the material parameters and add the energy terms step by step.
 
 ### Example: Simulation Creation
 
-**Method 1: Using `Sim` constructor**
 ```julia
 sim = Sim(mesh; driver="SD", name="std4")
 
@@ -49,13 +48,6 @@ add_exch(sim, 1.3e-11)     # Add exchange interaction
 add_demag(sim)             # Add demagnetization
 init_m0(sim, (1, 0.25, 0.1))  # Initialize magnetization
 ```
-
-**Method 2: Using `create_sim` function**
-```julia
-sim = create_sim(mesh, driver="SD", Ms=8e5, A=1.3e-11, demag=true, m0=(1, 0.25, 0.1))
-```
-
-Both methods produce equivalent simulation configurations. The `create_sim` approach offers a more concise syntax for common parameter combinations.
 
 All simulation data is accessible through the `sim` object, with the magnetization distribution available via `sim.spin` at any time.
 
@@ -162,14 +154,16 @@ correspondingly add Zeeman energy, exchange interaction energy, DMI, and demagne
 
 Note
 ```julia
-sim = create_sim(mesh, Ms=8e5, A=1.3e-11)
+sim = Sim(mesh; driver="SD")
+set_Ms(sim, 8e5)
+add_exch(sim, 1.3e-11)
 ```
 and
 ```julia
-sim = create_sim(mesh)
-set_Ms(sim, Ms=8e5)
+sim = Sim(mesh; driver="SD")
+set_Ms(sim, 8e5)
 
-ex = add_exch(sim, A=1.3e-11)
+ex = add_exch(sim, 1.3e-11)
 ```
 are equivalent. The advantage of the latter is that when we need exchange interaction data, we can directly access it through  `ex`.
 

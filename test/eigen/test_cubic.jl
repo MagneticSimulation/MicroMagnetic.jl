@@ -9,7 +9,7 @@ MicroMagnetic.set_precision(AbstractFloat)
 
 function setup(;m0=(0,0,1), H=(0,0,0))
     mesh = FDMesh(nx=1, ny=1, nz=1, dx=5e-9, dy=5e-9, dz=2e-9)
-    sim = create_sim(mesh; H=H, m0=m0, Ms=8e5, Kc=2e4, demag=false)
+    sim = MicroMagnetic.create_sim(mesh; H=H, m0=m0, Ms=8e5, Kc=2e4, demag=false)
     return sim
 end
 

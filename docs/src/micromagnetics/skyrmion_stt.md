@@ -25,11 +25,16 @@ mesh = FDMesh(; nx=400, ny=150, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy");
 nothing #hide
 ````
 
-We create a Sim instance using `create_sim` function, and set basic simulation parameters such as
+We create a Sim instance with the `Sim` constructor and set basic simulation parameters such as
 'Ms', 'A', 'D' and 'H'.
 
 ````@example
-sim = create_sim(mesh; Ms=3.87e5, A=5.2e-12, D=1e-3, H=(0, 0, 160 * mT), name="skx");
+sim = Sim(mesh; driver="SD", name="skx")
+set_Ms(sim, 3.87e5)
+add_exch(sim, 5.2e-12)
+add_dmi(sim, 1e-3)
+add_zeeman(sim, (0, 0, 160 * mT))
+nothing #hide
 nothing #hide
 ````
 

@@ -1310,7 +1310,7 @@ end
 
 Add magnetoelastic energy term (unified interface).
 
-# Short alias
+# Short alias (deprecated, use add_magnetoelastic)
 add_mel = add_magnetoelastic
 
 # Arguments
@@ -1406,8 +1406,8 @@ function add_magnetoelastic(sim::AbstractSim;
     return me
 end
 
-# Short alias for add_magnetoelastic
-const add_mel = add_magnetoelastic
+# Deprecated short alias for add_magnetoelastic (remove in v0.7)
+Base.@deprecate add_mel(args...; kwargs...) add_magnetoelastic(args...; kwargs...)
 
 # Helper: Initialize 6-component field (constant, 4D array, or function -> kernel_array)
 function _init_six_component_field(mesh, data, T)

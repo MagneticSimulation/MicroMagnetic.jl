@@ -13,8 +13,10 @@ using MicroMagnetic
 mesh = FDMesh(; dx=5e-9, dy=5e-9, dz=5e-9, nx=10, ny=10, nz=1);
 
 # Create a Simulation with saturation magnetization Ms=8.6e5 A/m
-# Initilize the magnetization to (1,1,1) direction, note that |m|=1 so the magnetization vector m = (1,1,1)/sqrt(3). 
-sim = create_sim(mesh; Ms=8.6e5, m0=(1, 1, 1));
+# Initilize the magnetization to (1,1,1) direction, note that |m|=1 so the magnetization vector m = (1,1,1)/sqrt(3).
+sim = Sim(mesh; driver="SD")
+set_Ms(sim, 8.6e5)
+init_m0(sim, (1, 1, 1));
 
 # Consider the demagnetization energy
 demag = add_demag(sim);

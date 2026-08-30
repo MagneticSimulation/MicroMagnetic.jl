@@ -29,6 +29,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   keys ignored by the given mesh type (`mu_s`/`J` on FDMesh, `Ms`/`A` on atomistic
   meshes) and about orphaned keys (`dmi_type` without `D`, `axis` without `Ku`), and its
   unsupported-mesh error message is now informative
+- `hysteresis` now returns the collected `(H_values, m_values)`; `plot_hysteresis(H, m)`
+  is implemented in the CairoMakie extension to visualize them
+- the public API no longer exports `dynamic_matrix` (it was declared but never
+  implemented)
+- exported the type aliases `NumberOrArrayOrFunction`, `NumberOrTupleOrArrayOrFunction`
+  and `TupleOrArrayOrFunction`, which appear in public method signatures
+- `run_sim` for `MonteCarlo` is renamed to `run_mc` (the old name still works with a
+  deprecation warning)
+- `add_mel` is deprecated in favor of `add_magnetoelastic`
+- clearer sweep errors: scalar values passed to a `_s` keyword now raise an informative
+  `ArgumentError`, and length mismatches report `_s`/`_sweep` instead of `_range`
 
 ### Fixed
 
@@ -43,6 +54,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `set_ux`/`set_uy`/`set_uz` (driver-bound STT helpers); pass `b`/`J` to `add_stt` instead
 - `sim_with` keywords `beta`, `ux`, `uy`, `uz` and `ufun`; put them inside the
   `stt=(model=:zhang_li, ...)` tuple instead
+- `create_sim` is no longer exported; build simulations with `Sim` + `set_*`/`add_*`
+  (or use the high-level `sim_with`). `MicroMagnetic.create_sim(...)` still works and
+  remains the factory used by the NEB/transition machinery
 
 ## Version [v0.5.0] - 2026-05-30
 

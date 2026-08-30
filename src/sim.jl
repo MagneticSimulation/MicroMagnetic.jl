@@ -759,7 +759,8 @@ function hysteresis(sim::AbstractSim, Hs::AbstractVector; direction::Tuple=(1, 0
         # Send data to frontend for real-time plotting
         send_hysteresis_data(H_values, m_values)
     end
-    
+
+    return H_values, m_values
 end
 
 """

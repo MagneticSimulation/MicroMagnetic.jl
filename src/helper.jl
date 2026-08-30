@@ -853,10 +853,18 @@ function check_sweep_lengths(dict::Dict)
     range_keys = filter(key -> endswith(String(key), "_sweep") ||
                                (endswith(String(key), "_s") && String(key) != "mu_s"),
                         keys(dict))
-    lengths = [length(dict[key]) for key in range_keys]
+    lengths = Int[]
+    for key in range_keys
+        value = dict[key]
+        if !(value isa AbstractArray)
+            throw(ArgumentError("The value of `$key` should be an array of per-stage " *
+                                "values, got `$(typeof(value))`."))
+        end
+        push!(lengths, length(value))
+    end
 
     if length(lengths) > 1 && length(unique(lengths)) > 1
-        throw(ErrorException("Error: Not all _range arrays have the same length."))
+        throw(ErrorException("Error: not all `_s`/`_sweep` arrays have the same length."))
     end
 
     if length(lengths) == 0

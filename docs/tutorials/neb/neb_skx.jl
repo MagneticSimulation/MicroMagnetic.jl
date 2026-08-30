@@ -11,14 +11,26 @@ using DelimitedFiles
 using CubicSplines
 using MicroMagnetic
 
-# In this example, we will compute the energy barrier of a skyrmion collapse into the ferromagnetic state using the NEB method. 
-# Firstly, we use create_sim method to describe the studied system. For example, the system is a thin film (120x120x2 nm^3) 
-# with periodic boundary conditions, and three energies are considered.
+# In this example, we will compute the energy barrier of a skyrmion collapse into the ferromagnetic state using the NEB method.
+# Firstly, we describe the studied system with the low-level API. For example, the system is a thin film (120x120x2 nm^3)
+# with periodic boundary conditions, and three energies are considered (exchange, DMI and Zeeman).
 
 mesh = FDMesh(; nx=60, ny=60, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
-params = Dict(:Ms => 3.84e5, :A => 3.25e-12, :D => 5.83e-4, :H => (0, 0, 120 * mT))
 
-# Using NEB can be divided into two stages. The first stage is to prepare the initial state and the final state. We assume that 
+# A helper function which creates the simulation and adds all the energy terms.
+function init_sim(; m0=nothing)
+    sim = Sim(mesh; name="skx", driver="SD", save_data=false)
+    set_Ms(sim, 3.84e5)
+    add_exch(sim, 3.25e-12)
+    add_dmi(sim, 5.83e-4)
+    add_zeeman(sim, (0, 0, 120 * mT))
+    if m0 !== nothing
+        init_m0(sim, m0)
+    end
+    return sim
+end
+
+# Using NEB can be divided into two stages. The first stage is to prepare the initial state and the final state. We assume that
 # the initial state is a magnetic skyrmion and the final state is ferromagnetic state.
 
 # In this method, we will obtain a magnetic skyrmion. The skyrmion state is saved as 'skx.vts'.
@@ -31,7 +43,7 @@ function relax_skx()
         return (0, 0, 1)
     end
 
-    sim = create_sim(mesh; m0=m0_fun_skx, params...)
+    sim = init_sim(; m0=m0_fun_skx)
     relax(sim; max_steps=2000, stopping_dmdt=0.01)
     save_vtk(sim, "skx")
 
@@ -53,8 +65,8 @@ init_images = [read_vtk("skx.vts"), (0, 0, 1)];
 # i.e., something like interpolation = [5,5].
 interpolation = [6];
 
-# To use the NEB, we use the create_sim method to create a Sim instance.
-sim = create_sim(mesh; params...);
+# To use the NEB, we create a Sim instance with the same helper function.
+sim = init_sim();
 
 # We create the NEB instance and set the spring_constant, the driver could be "SD" or "LLG"
 neb = NEB(sim, init_images, interpolation; name="skx_fm", driver="SD");

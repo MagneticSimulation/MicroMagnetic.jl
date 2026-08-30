@@ -1,7 +1,7 @@
 using Random
 using WriteVTK
 
-export MonteCarlo
+export MonteCarlo, run_mc
 
 function MonteCarlo(mesh::Mesh; name="mc", mc_2d=false)
     if !isa(mesh, CubicMesh) && (!isa(mesh, TriangularMesh))
@@ -228,8 +228,14 @@ function average_m(sim::MonteCarlo)
     return Tuple(sum(b; dims=2) ./ sum(shape))
 end
 
-function run_sim(sim::MonteCarlo; max_steps=10000, save_m_every=10, save_vtk_every=-1,
-                 save_ovf_every=-1, ovf_format="binary8")
+"""
+    run_mc(sim::MonteCarlo; max_steps=10000, save_m_every=10, save_vtk_every=-1,
+           save_ovf_every=-1, ovf_format="binary8")
+
+Run the Monte Carlo simulation for `max_steps` Monte Carlo steps.
+"""
+function run_mc(sim::MonteCarlo; max_steps=10000, save_m_every=10, save_vtk_every=-1,
+                save_ovf_every=-1, ovf_format="binary8")
     for i in 1:max_steps
         if save_m_every > 0
             if sim.steps % save_m_every == 0
@@ -254,6 +260,11 @@ function run_sim(sim::MonteCarlo; max_steps=10000, save_m_every=10, save_vtk_eve
 
         run_step(sim)
     end
+end
+
+function run_sim(sim::MonteCarlo; kwargs...)
+    Base.depwarn("`run_sim` for MonteCarlo is deprecated, use `run_mc` instead.", :run_sim)
+    return run_mc(sim; kwargs...)
 end
 
 function compute_clock_number(m::Array{T,1}, cn::Array{Float32,1}, shape::Array{Bool},

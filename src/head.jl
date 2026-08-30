@@ -28,6 +28,9 @@ means that the input parameter could be a number or an array or a function:
 """
 NumberOrArrayOrFunction = Union{Number,Array,Function}
 
+# the aliases below appear in public method signatures, so export them (§8.5)
+export NumberOrArrayOrFunction, NumberOrTupleOrArrayOrFunction, TupleOrArrayOrFunction
+
 """
     NumberOrTupleOrArrayOrFunction
 

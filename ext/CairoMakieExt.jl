@@ -557,4 +557,35 @@ function MicroMagnetic.plot_transition_paths(
     return fig
 end
 
+"""
+    MicroMagnetic.plot_hysteresis(H_values, m_values; size=(400, 280), title="",
+                    xlabel="H (A/m)", ylabel="m", markersize=6, transparency=false,
+                    output=nothing)
+
+Plot a hysteresis loop from `H_values` and `m_values`, for example the data returned by
+[`hysteresis`](@ref):
+
+```julia
+H, m = hysteresis(sim, Hs)
+plot_hysteresis(H, m)
+```
+
+`output` is the filename to save the figure (e.g. "hysteresis.png"); the figure is
+returned in any case.
+"""
+function MicroMagnetic.plot_hysteresis(H_values::AbstractVector, m_values::AbstractVector;
+                                       size=(400, 280), title="", xlabel="H (A/m)",
+                                       ylabel="m", markersize=6, transparency=false,
+                                       output=nothing)
+    bg_color = transparency ? :transparent : :white
+    fig = Figure(; size=size, backgroundcolor=bg_color)
+    ax = Axis(fig[1, 1]; xlabel=xlabel, ylabel=ylabel, title=title,
+              backgroundcolor=bg_color)
+
+    scatterlines!(ax, H_values, m_values; markersize=markersize)
+
+    isnothing(output) || save(output, fig)
+    return fig
+end
+
 end

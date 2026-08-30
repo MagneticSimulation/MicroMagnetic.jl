@@ -117,7 +117,11 @@ f_{[100]} = \frac{\gamma}{2\pi} (H + K), \quad K = \frac{4 K_c}{\mu_0 M_s}
 ```@example
 function setup_cubic(; m0=(0,0,1), H=(0,0,0))
     mesh = FDMesh(nx=1, ny=1, nz=1, dx=5e-9, dy=5e-9, dz=2e-9)
-    sim = create_sim(mesh; H=H, m0=m0, Ms=8e5, Kc=2e4, demag=false)
+    sim = Sim(mesh; driver="SD")
+    set_Ms(sim, 8e5)
+    add_cubic_anis(sim, 2e4)
+    add_zeeman(sim, H)
+    init_m0(sim, m0)
     return sim
 end
 
@@ -209,7 +213,12 @@ function setup_std4(; m0=(0,0,1))
     mesh = FDMesh(nx=24, ny=24, nz=2, dx=5e-9, dy=5e-9, dz=5e-9)
     v = (1, 0.7, 0)
     H = 80e3 .* v ./ sqrt(sum(v.^2))
-    sim = create_sim(mesh; A=1.3e-11, H=H, m0=m0, demag=true, Ms=8e5)
+    sim = Sim(mesh; driver="SD")
+    set_Ms(sim, 8e5)
+    add_exch(sim, 1.3e-11)
+    add_demag(sim)
+    add_zeeman(sim, H)
+    init_m0(sim, m0)
     return sim
 end
 
