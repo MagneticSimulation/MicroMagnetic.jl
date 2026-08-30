@@ -10,17 +10,17 @@ capturing the complex behavior of vortex structures, including their motion and 
 this example has dimensions of 100 nm × 100 nm × 10 nm, and the simulation tracks the position of the vortex core
 as it evolves over time due to the combined effects of exchange interactions, demagnetization, and spin-transfer torques.
 
-```julia
+````@example
 using MicroMagnetic
 using Printf
 using CairoMakie
 
 @using_gpu()
-```
+````
 
 Define a function to initialize a vortex roughly.
 
-```julia
+````@example
 function init_fun(i, j, k, dx, dy, dz)
     x = i - 10
     y = j - 10
@@ -30,12 +30,12 @@ function init_fun(i, j, k, dx, dy, dz)
     end
     return (y / r, -x / r, 0)
 end
-```
+````
 
 Define simulation parameters.
 
-```julia
-args = (name="std5", task_s=["relax", "dynamics"],          # List of tasks to perform
+````@example
+args = (name="std5_sw", task_s=["relax", "dynamics"],      # List of tasks to perform
         driver_s=["SD", "LLG_STT"],            # List of drivers to use
         mesh=FDMesh(; nx=20, ny=20, nz=2, dx=5e-9, dy=5e-9, dz=5e-9), # Mesh configuration
         Ms=8e5,                               # Saturation magnetization
@@ -50,17 +50,20 @@ args = (name="std5", task_s=["relax", "dynamics"],          # List of tasks to p
         stopping_dmdt=0.01,                   # Stopping criterion for relaxation
         saver_item=SaverItem(("Rx", "Ry"), ("<m>", "<m>"), compute_guiding_center),    #vortex center tracking
         dynamic_m_every=1);
-```
+nothing #hide
+````
 
 Run the simulation using `sim_with` function.
 
-```julia
+````@example
 sim_with(args);
-```
+nothing #hide
+````
 
-Generate a movie for the vortex dynamics.
-```julia
-ovf2movie("std5_LLG"; output="../public/std5.mp4", component='x');
-```
+Generate a movie for the vortex dynamics. With the `LLG_STT` driver, the ovf files are stored in the folder `std5_sw_LLG_STT`:
 
+````@example
+ovf2movie("std5_sw_LLG_STT"; output="../public/std5.mp4", component='x');
+nothing #hide
+````
 ![](../public/std5.mp4)

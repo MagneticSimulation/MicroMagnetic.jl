@@ -295,6 +295,16 @@ all columns), the matrix-free `mul!` needs only **1 local symbolic pass +
 1 FFT demag call** per application.
 ```
 
+!!! warning "Restore the precision afterwards"
+    `set_precision(AbstractFloat)` changes a global setting. Since `AbstractFloat`
+    is not a concrete type, simulations created afterwards will fail (in particular
+    on the GPU). When you are done with the eigenmode analysis, restore the default:
+
+```@example
+MicroMagnetic.set_precision(Float64)
+nothing #hide
+```
+
 ## References
 
 - X. Fan, S. Zhang, W. Wang, L. Kong, Y. Guo, Y. Liu, and H. Du, "Automatic

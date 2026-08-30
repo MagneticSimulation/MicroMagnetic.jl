@@ -50,9 +50,12 @@ makedocs(;
     draft = false,
     source = "src",
     build = "build",
+    pagesonly = true,
     pages = PAGES
 )
 
 #deploydocs(; repo="github.com/MagneticSimulation/MicroMagnetic.jl")
-DocumenterVitepress.deploydocs(; repo="github.com/MagneticSimulation/MicroMagnetic.jl",
-                               target="build")
+if get(ENV, "CI", "false") == "true"
+    DocumenterVitepress.deploydocs(; repo="github.com/MagneticSimulation/MicroMagnetic.jl",
+                                   target="build")
+end
