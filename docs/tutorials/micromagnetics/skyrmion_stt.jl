@@ -50,10 +50,11 @@ function call_back_fun(sim, t)
 end
 
 # We use the `run_sim` function to run the simulation.
-# after that, a jld2 file will be created and we can export it to a movie (.mp4) using the `jld2movie`.
+# The magnetization snapshots are saved as ovf files in the folder `skx_LLG_STT`,
+# which can be exported to a movie (.mp4) using the `ovf2movie`.
 if !isfile("assets/skx.mp4")
     run_sim(sim; steps=100, dt=1e-10, save_m_every=1, call_back=call_back_fun)
-    jld2movie("skx.jld2"; output="assets/skx.mp4")
+    ovf2movie("skx_LLG_STT"; output="assets/skx.mp4", component='z')
 end
 
 # ![](./assets/skx.mp4)

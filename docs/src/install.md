@@ -71,7 +71,7 @@ args = {
     "steps": 100,                                      # Number of dynamic simulation steps
     "dt": 0.01 * jl.ns,                                # Time step size (0.01 ns)
     "stopping_dmdt": 0.01,                             # Stopping criterion for relaxation
-    "dynamic_m_interval": 1,                           # Save magnetization at each step
+    "dynamic_m_every": 1,                              # Save magnetization at each step
     "H_s": [(0, 0, 0), (-24.6 * jl.mT, 4.3 * jl.mT, 0)]  # Sequence of applied magnetic fields
 }
 

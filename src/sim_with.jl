@@ -1,5 +1,94 @@
 export create_sim, sim_with
 
+# --------------------------------------------------------------------------
+# Keyword vocabularies used for the fail-fast validation of `sim_with` (I-09).
+# Every keyword accepted by `sim_with` must be listed here; unknown keys throw
+# an error before any simulation is started.
+# --------------------------------------------------------------------------
+const _COMMON_KEYS = (:mesh, :name, :task, :driver, :integrator, :save_vtk, :saver_item,
+                      :stt, :sot)
+const _MATERIAL_KEYS = (:Ms, :mu_s, :A, :J, :D, :dmi_type, :Ku, :axis, :Kc, :axis1,
+                        :axis2, :demag, :H, :T, :m0, :shape)
+const _DRIVER_KEYS = (:alpha, :beta, :gamma, :tol, :ux, :uy, :uz, :ufun)
+const _RELAX_KEYS = (:stopping_dmdt, :max_steps, :relax_data_every, :relax_m_every,
+                     :using_time_factor)
+const _DYN_KEYS = (:steps, :dt, :dynamic_data_save, :dynamic_m_every, :call_back)
+const _SIM_WITH_KEYS = (_COMMON_KEYS..., _MATERIAL_KEYS..., _DRIVER_KEYS...,
+                        _RELAX_KEYS..., _DYN_KEYS...)
+
+# The only parameters that support per-stage sweeping via `_s`/`_sweep` (I-07).
+const _SWEEP_KEYS = (:task, :driver, :Ms, :H)
+
+_is_relax(task) = startswith(lowercase(string(task)), "rel")
+_is_dynamics(task) = startswith(lowercase(string(task)), "dyn")
+_is_llg_driver(name) = startswith(lowercase(string(name)), "llg")
+
+function _check_task(task)
+    if !_is_relax(task) && !_is_dynamics(task)
+        error("`sim_with` only supports task = \"Relax\" or \"Dynamics\", got `$task`.")
+    end
+    return nothing
+end
+
+function _levenshtein(a::AbstractString, b::AbstractString)
+    n, m = length(a), length(b)
+    (n == 0 || m == 0) && return max(n, m)
+    prev = collect(0:m)
+    cur = similar(prev)
+    for i in 1:n
+        cur[1] = i
+        ca = a[i]
+        for j in 1:m
+            cost = ca == b[j] ? 0 : 1
+            cur[j + 1] = min(cur[j] + 1, prev[j + 1] + 1, prev[j] + cost)
+        end
+        prev, cur = cur, prev
+    end
+    return prev[m + 1]
+end
+
+function _suggest_key(key::Symbol)
+    best, bestd = :task, typemax(Int)
+    for cand in _SIM_WITH_KEYS
+        d = _levenshtein(String(key), String(cand))
+        if d < bestd
+            best, bestd = cand, d
+        end
+    end
+    return bestd <= 3 ? " (did you mean `:$best`?)" : ""
+end
+
+# A key is known when it is listed in `_SIM_WITH_KEYS` or when it is the `_s`/`_sweep`
+# variant of a known key (the per-stage support of the sweep variant is checked later, I-07).
+function _is_known_key(key::Symbol)
+    key in _SIM_WITH_KEYS && return true
+    name = String(key)
+    if endswith(name, "_sweep")
+        return Symbol(chop(name; tail = 6)) in _SIM_WITH_KEYS
+    elseif endswith(name, "_s") && name != "mu_s"
+        return Symbol(chop(name; tail = 2)) in _SIM_WITH_KEYS
+    end
+    return false
+end
+
+function _check_known_keys(args::Dict)
+    for key in keys(args)
+        if !_is_known_key(key)
+            error("`sim_with` got an unknown key `:$key`$(_suggest_key(key)). " *
+                  "See `?sim_with` for the list of supported keys.")
+        end
+    end
+    return nothing
+end
+
+# Warn (before running) about keys that cannot apply to the tasks being run.
+function _warn_unused_keys(args::Dict, plausible::Tuple)
+    for key in sort!(collect(keys(args)); by = string)
+        key in plausible || @warn "Key `:$key` is not used."
+    end
+    return nothing
+end
+
 """
     create_sim(mesh; args...)
 
@@ -8,16 +97,19 @@ Create a micromagnetic simulation instance with given arguments.
 - `mesh`: a mesh has to be provided to start the simulation. The mesh could be [`FDMesh`](@ref), [`CubicMesh`](@ref), or [`TriangularMesh`](@ref).
 
 # Arguments
-- `name` : the simulation name, should be a string.
+- `name` : the simulation name, should be a string. By default, name="unnamed".
 - `driver` : the driver name, should be a string. By default, the driver is "SD".
+- `integrator` : the integrator name, should be a string. By default, integrator="DormandPrince".
 - `alpha` : the Gilbert damping in the LLG equation, should be a number.
 - `beta` : the nonadiabatic strength in the LLG equation with spin transfer torques (zhang-li model), should be a number.
 - `gamma` : the gyromagnetic ratio, default value = 2.21e5.
 - `ux`, `uy` or `uz`: the strengths of the spin transfer torque.
 - `ufun` : the time-dependent function for `u`.
+- `stt` : parameters forwarded to [`add_stt`](@ref) as a `NamedTuple`, e.g. `stt=(model=:zhang_li, b=-72.438, J=(1,0,0), xi=0.05)`. Only added when the driver is LLG-family.
+- `sot` : parameters forwarded to [`add_sot`](@ref) as a `NamedTuple`. Only added when the driver is LLG-family.
 - `Ms`: the saturation magnetization, should be [`NumberOrArrayOrFunction`](@ref). By default, Ms=8e5
 - `mu_s`: the magnetic moment, should be [`NumberOrArrayOrFunction`](@ref). By default, mu_s=2*mu_B
-- `A` or `J`: the exchange constant, should be [`NumberOrArrayOrFunction`](@ref).
+- `A` or `J`: the exchange constant, should be [`NumberOrArrayOrFunction`](@ref). For micromagnetic meshes (FDMesh) use `A`; for atomistic meshes use `J`.
 - `D` : the DMI constant, should be [`NumberOrArrayOrFunction`](@ref).
 - `dmi_type` : the type of DMI, could be "bulk", "interfacial" or "D2d".
 - `Ku`: the anisotropy constant, should be [`NumberOrArrayOrFunction`](@ref).
@@ -27,16 +119,31 @@ Create a micromagnetic simulation instance with given arguments.
 - `axis2`: the cubic anisotropy axis2, should be a tuple, such as (0,1,0)
 - `demag` : include demagnetization or not, should be a boolean, i.e., true or false. By default,  demag=false.
 - `H`: the external field, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref).
-- `m0` : the initial magnetization, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref).
+- `m0` : the initial magnetization, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). By default, m0=(0.8, 0.6, 0).
 - `T` : the temperature, should be should be [`NumberOrArrayOrFunction`](@ref).
 - `shape` : the shape defines the geometry of the sample, where parameters are configured.
+
+!!! note
+    The keyword dictionary is copied internally, so the caller's `Dict` is never modified.
 """
 function create_sim(mesh; args...)
     return create_sim(mesh, Dict(args))
 end
 
 function create_sim(mesh, args::Dict)
-    #Ms=8e5, A=1.3e-11, D=0, Ku=0, axis=(0,0,1), H=(0,0,0), m0=(0,0,1), demag=false, driver="SD", name="relax"
+    # never modify the caller's Dict (I-08)
+    args = copy(args)
+
+    # warn about orphaned keys that will not be used (I-14)
+    haskey(args, :dmi_type) && !haskey(args, :D) &&
+        @warn "Key `:dmi_type` is not used because `:D` is not provided."
+    haskey(args, :axis) && !haskey(args, :Ku) &&
+        @warn "Key `:axis` is not used because `:Ku` is not provided."
+    haskey(args, :axis1) && !haskey(args, :Kc) &&
+        @warn "Key `:axis1` is not used because `:Kc` is not provided."
+    haskey(args, :axis2) && !haskey(args, :Kc) &&
+        @warn "Key `:axis2` is not used because `:Kc` is not provided."
+
     driver = haskey(args, :driver) ? args[:driver] : "SD"
     name = haskey(args, :name) ? args[:name] : "unnamed"
     shape = haskey(args, :shape) ? args[:shape] : nothing
@@ -45,6 +152,26 @@ function create_sim(mesh, args::Dict)
 
     #Create the mesh using given driver and name
     sim = Sim(mesh; driver=driver, integrator=integrator, name=name)
+
+    # Spin-transfer / spin-orbit torques are added as interactions; they only make
+    # sense for LLG-family drivers because the non-conservative torque field must
+    # not enter the SD energy minimization (I-10)
+    if haskey(args, :stt)
+        if _is_llg_driver(driver)
+            add_stt(sim; args[:stt]...)
+        else
+            @warn "Key `:stt` is ignored because driver=\"$driver\" is not an LLG-family driver."
+        end
+        delete!(args, :stt)
+    end
+    if haskey(args, :sot)
+        if _is_llg_driver(driver)
+            add_sot(sim; args[:sot]...)
+        else
+            @warn "Key `:sot` is ignored because driver=\"$driver\" is not an LLG-family driver."
+        end
+        delete!(args, :sot)
+    end
 
     #If the simulation is the standard micromagnetics simulation.
     if isa(mesh, FDMesh)
@@ -77,6 +204,12 @@ function create_sim(mesh, args::Dict)
             haskey(args, key) && delete!(args, key)
         end
 
+        # warn about material keys ignored by this mesh type (I-14)
+        haskey(args, :mu_s) &&
+            @warn "Key `:mu_s` is ignored for FDMesh (use `:Ms` instead)."
+        haskey(args, :J) &&
+            @warn "Key `:J` is ignored for FDMesh (use `:A` instead)."
+
         #If the simulation is atomistic
     elseif isa(mesh, AtomisticMesh)
         mu_s = haskey(args, :mu_s) ? args[:mu_s] : 2 * mu_B
@@ -95,8 +228,15 @@ function create_sim(mesh, args::Dict)
         for key in [:mu_s, :J, :D]
             haskey(args, key) && delete!(args, key)
         end
+
+        # warn about material keys ignored by this mesh type (I-14)
+        haskey(args, :Ms) &&
+            @warn "Key `:Ms` is ignored for atomistic meshes (use `:mu_s` instead)."
+        haskey(args, :A) &&
+            @warn "Key `:A` is ignored for atomistic meshes (use `:J` instead)."
     else
-        error("This info is for debug.")
+        error("Unsupported mesh type $(typeof(mesh)). Only FDMesh and AtomisticMesh " *
+              "(CubicMesh, TriangularMesh, ...) are supported by `create_sim`.")
     end
 
     # add the anisotropy
@@ -133,12 +273,8 @@ function create_sim(mesh, args::Dict)
     m0_value = haskey(args, :m0) ? args[:m0] : (0.8, 0.6, 0)
     init_m0(sim, m0_value)
 
-    for key in [:driver, :name, :Ku, :Kc, :H, :m0, :shape, :T]
+    for key in [:driver, :name, :integrator, :Ku, :Kc, :H, :m0, :shape, :T]
         haskey(args, key) && delete!(args, key)
-    end
-
-    for key in args
-        #@warn @sprintf("Key '%s' is not used.", key)
     end
 
     return sim
@@ -152,14 +288,17 @@ end
 # Keywords
 
 - `mesh`: A mesh must be provided to start the simulation. The mesh could be [`FDMesh`](@ref), [`CubicMesh`](@ref), or [`TriangularMesh`](@ref).
-- `name`: The name of the simulation, provided as a string.
+- `name`: The name of the simulation, provided as a string. Default is "unnamed".
 - `task`: The type of simulation task, which can be `"Relax"` or `"Dynamics"`. The default is "Relax".
 - `driver`: The name of the driver, which should be "SD", "LLG", or "LLG_STT". The default is "SD".
+- `integrator`: The integrator used to create the simulation, e.g. `"DormandPrince"`. Default is `"DormandPrince"`.
 - `alpha`: The Gilbert damping parameter in the LLG equation, provided as a number.
 - `beta`: The nonadiabatic strength in the LLG equation with spin-transfer torques (Zhang-Li model), provided as a number.
 - `gamma`: The gyromagnetic ratio, with a default value of 2.21e5.
-- `ux`, `uy`, `uz`: The components of the spin-transfer torque strength.
+- `ux`, `uy`, `uz`: The components of the spin-transfer torque strength (deprecated; use `stt`).
 - `ufun`: A time-dependent function for `u`.
+- `stt`: Parameters forwarded to [`add_stt`](@ref) as a `NamedTuple`, e.g. `stt=(model=:zhang_li, b=-72.438, J=(1,0,0), xi=0.05)`. The torque is applied only in stages that run with an LLG-family driver; SD stages are not affected.
+- `sot`: Parameters forwarded to [`add_sot`](@ref) as a `NamedTuple`, applied under the same driver rule as `stt`.
 - `Ms`: The saturation magnetization, which should be a [`NumberOrArrayOrFunction`](@ref). The default is `Ms=8e5`.
 - `mu_s`: The magnetic moment, which should be a [`NumberOrArrayOrFunction`](@ref). The default is `mu_s=2*mu_B`.
 - `A` or `J`: The exchange constant, which should be a [`NumberOrArrayOrFunction`](@ref).
@@ -181,10 +320,10 @@ end
 - `saver_item`: A `SaverItem` instance or a list of `SaverItem` instances. These are custom data-saving utilities that can be used to store additional quantities during the simulation (e.g., guiding centers or other derived values). If `nothing`, no additional data is saved beyond the default.
 - `call_back`: A user-defined function or `nothing`. If provided, this function will be called at every step, allowing for real-time inspection or manipulation of the simulation state.
 - `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
-- `relax_data_every::Int`: Interval for saving overall data such as energies and average magnetization during a `Relax` task. A negative value disables data saving (e.g., `relax_data_every = -1` saves data only at the end of the relaxation).
+- `relax_data_every::Int`: Interval for saving overall data such as energies and average magnetization during a `Relax` task. `0` saves data only at the end of the relaxation and a negative value disables data saving.
+- `relax_m_every::Int`: Interval for saving magnetization data during a `Relax` task. `0` saves magnetization only at the end of the relaxation (also when `max_steps` is reached without convergence) and a negative value disables magnetization saving.
 - `dynamic_data_save::Bool`: Boolean flag to enable or disable saving overall data such as energies and average magnetization during the `Dynamics` task. Set to `true` to enable, or `false` to disable.
-- `relax_m_every::Int`: Interval for saving magnetization data during a `Relax` task. A negative value disables magnetization saving while `relax_m_every=0` saves magnetization only at the end of the relaxation.
-- `dynamic_m_every ::Int`: Interval for saving magnetization data during a `Dynamics` task. A negative value disables magnetization saving while `dynamic_m_every =0` saves magnetization only at the end of the dynamics.
+- `dynamic_m_every::Int`: Interval for saving magnetization data during a `Dynamics` task. `0` saves magnetization only at the end of the dynamics and a negative value disables magnetization saving.
 - `using_time_factor::Bool`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
 - `save_vtk::Bool`: Boolean flag to save the magnetization to vtk files after finishing each task. Default is `false`.
 
@@ -194,20 +333,30 @@ See examples at [High-Level Interface](@ref).
 
 #### Notes
 
-- **Suffix Usage**: Parameters like `H`, `Ms`, `Ku`, `A`, `D`, `task`, and `driver` can be defined as arrays using the `_s` or `_sweep` suffix. When using these suffixes, ensure that the corresponding array lengths match. This allows the simulation to iterate over different values for these parameters.
-- **Argument Types**: The `args` parameter can be either a `NamedTuple` or a `Dict`, providing flexibility in how you organize and pass the simulation parameters.
-- **Driver Selection**: The `driver` parameter (or `driver_s` for multiple drivers) specifies the simulation type. Options include `"SD"` for the steepest-descent method, `"LLG"` for the Landau-Lifshitz-Gilbert equation, and `"LLG_STT"` for simulations involving spin-transfer torques.
+- **Fail-fast validation**: Unknown keys throw an error immediately (before the simulation starts), with a "did you mean" hint for likely typos. Keys that cannot apply to the configured task(s) produce a warning before the simulation runs.
+- **Argument Types**: The `args` parameter can be either a `NamedTuple` or a `Dict`. Neither is modified; `sim_with` works on an internal copy.
+- **Suffix Usage**: Only `task`, `driver`, `Ms` and `H` support the `_s` or `_sweep` suffix to iterate over per-stage values (e.g. `task_s`, `H_s`). The corresponding array lengths must match. Sweeping over any other key throws an error.
+- **Driver Selection**: The `driver` parameter (or `driver_s` for multiple stages) specifies the simulation type. Options include `"SD"` for the steepest-descent method, `"LLG"` for the Landau-Lifshitz-Gilbert equation, and `"LLG_STT"` for simulations involving spin-transfer torques. `driver_s` is honored for both `Relax` and `Dynamics` stages, and driver parameters (`alpha`, `beta`, ...) are re-applied whenever the driver changes.
 - **Stopping Criterion**: The `stopping_dmdt` parameter is critical for determining when to stop a simulation, particularly in relaxation tasks. It measures the rate of change in magnetization, with typical values ranging from `0.01` to `1`. For atomistic models, the `using_time_factor` flag can be set to `false` to disable time scaling.
-- **Data Saving**: The `relax_m_every` and `dynamic_m_every ` parameters control how frequently magnetization data is saved during `Relax` and `Dynamics` tasks, respectively. Use negative values to disable data saving for these tasks.
+- **Data Saving**: `relax_data_every`/`relax_m_every` and `dynamic_m_every` control how often data/magnetization are saved during `Relax` and `Dynamics` tasks. A value of `0` saves only at the end of the task, a negative value disables saving.
 
 """
 function sim_with(args::Union{NamedTuple,Dict})
-    #convert args to a dict
-    if !isa(args, Dict)
-        args = Dict(key => value for (key, value) in pairs(args))
-    end
+    # work on a copy so the caller's Dict/NamedTuple is never modified (I-08)
+    args = isa(args, Dict) ? copy(args) :
+           Dict(key => value for (key, value) in pairs(args))
 
+    # fail fast on unknown keys, before anything is built or run (I-09)
+    _check_known_keys(args)
+
+    haskey(args, :mesh) || error("A mesh must be provided to start the simulation.")
+    mesh = pop!(args, :mesh)
+
+    # validate the task value up front (I-04)
     task = get(args, :task, "Relax")
+    _check_task(task)
+    delete!(args, :task)
+
     driver = get(args, :driver, "SD")
     stopping_dmdt = get(args, :stopping_dmdt, 0.1)
     max_steps = get(args, :max_steps, 10000)
@@ -217,97 +366,117 @@ function sim_with(args::Union{NamedTuple,Dict})
     steps = get(args, :steps, 100)
     dt = get(args, :dt, 1e-11)
     dynamic_data_save = get(args, :dynamic_data_save, true)
-    dynamic_m_every  = get(args, :dynamic_m_every , -1)
+    dynamic_m_every = get(args, :dynamic_m_every, -1)
     call_back = get(args, :call_back, nothing)
     saver_item = get(args, :saver_item, nothing)
+    stt_params = pop!(args, :stt, nothing)
+    sot_params = pop!(args, :sot, nothing)
     vtk_saving = get(args, :save_vtk, false)
-    name = haskey(args, :name) ? args[:name] : "unnamed"
-
-    if !haskey(args, :mesh)
-        error("A mesh must be provided to start the simulation.")
-    end
-
-    mesh = args[:mesh]
-    delete!(args, :mesh)
+    name = get(args, :name, "unnamed")
 
     N = check_sweep_lengths(args)
+    dict = Dict{Symbol,Any}()
+    if N > 0
+        dict = extract_sweep_keys(args)
+        # only task/driver/Ms/H support per-stage sweeping (I-07)
+        for key in keys(dict)
+            if !(key in _SWEEP_KEYS)
+                error("`sim_with` does not support sweeping over `:$key`. " *
+                      "Supported per-stage keys are: :task, :driver, :Ms, :H.")
+            end
+        end
+        for (key, value) in dict
+            args[key] = value[1]
+        end
+    end
+
+    # snapshot of the driver parameters; re-applied to every driver created or
+    # switched to below, so switching drivers never falls back to the defaults (I-03)
+    driver_kw = Dict(key => args[key] for key in _DRIVER_KEYS if haskey(args, key))
+
+    shape = get(args, :shape, nothing)
+    sim = create_sim(mesh, args)
+
+    # create_sim works on its own copy, so drop the material keys here; it has
+    # either consumed them or warned about the ones it ignores (I-08/I-14)
+    for key in _MATERIAL_KEYS
+        delete!(args, key)
+    end
+
+    # attach custom saver items (both tasks)
+    if isa(saver_item, SaverItem)
+        push!(sim.saver.items, saver_item)
+    elseif isa(saver_item, AbstractArray)
+        for item in saver_item
+            push!(sim.saver.items, item)
+        end
+    end
+    delete!(args, :saver_item)
+
+    # STT/SOT are applied as soon as a stage runs with an LLG-family driver; SD
+    # stages never see the non-conservative torque field (I-10)
+    stt_applied = Ref(false)
+    sot_applied = Ref(false)
+    function _apply_torques!()
+        if _is_llg_driver(sim.driver_name)
+            if stt_params !== nothing && !stt_applied[]
+                add_stt(sim; stt_params...)
+                stt_applied[] = true
+            end
+            if sot_params !== nothing && !sot_applied[]
+                add_sot(sim; sot_params...)
+                sot_applied[] = true
+            end
+        end
+        return nothing
+    end
+    _apply_torques!()
+
+    # warn early about keys that cannot apply to the configured tasks (I-09)
+    n_stages = max(N, 1)
+    stage_task(i) = N > 0 && haskey(dict, :task) ? dict[:task][i] : task
+    stage_driver(i) = N > 0 && haskey(dict, :driver) ? dict[:driver][i] : driver
+    has_relax = any(i -> _is_relax(stage_task(i)), 1:n_stages)
+    has_dyn = any(i -> _is_dynamics(stage_task(i)), 1:n_stages)
+    plausible = (_COMMON_KEYS..., _DRIVER_KEYS...,
+                 (has_relax ? _RELAX_KEYS : ())...,
+                 (has_dyn ? _DYN_KEYS : ())...)
+    _warn_unused_keys(args, plausible)
+    if (stt_params !== nothing || sot_params !== nothing) &&
+       !any(i -> _is_dynamics(stage_task(i)) || _is_llg_driver(stage_driver(i)), 1:n_stages)
+        @warn "Keys `:stt`/`:sot` are provided but will not be applied: no stage " *
+              "runs with an LLG-family driver."
+    end
 
     # common single task without range
     if N == 0
-        sim = create_sim(mesh, args)
-
-        haskey(args, :task) && delete!(args, :task)
-
-        if isa(saver_item, SaverItem)
-            push!(sim.saver.items, saver_item)
-        end
-
-        if isa(saver_item, AbstractArray)
-            for item in saver_item
-                push!(sim.saver.items, item)
-            end
-        end
-
-        if startswith(lowercase(task), "rel") # task == relax
-            for key in [:stopping_dmdt, :max_steps, :relax_data_every, :relax_m_every,
-                        :using_time_factor]
-                haskey(args, key) && delete!(args, key)
-            end
-
+        if _is_relax(task)
             relax(sim; max_steps=max_steps, stopping_dmdt=stopping_dmdt,
                   save_data_every=relax_data_every, save_m_every=relax_m_every,
                   using_time_factor=using_time_factor)
-
-        elseif startswith(lowercase(task), "dyn") # task == "dynamics"
-            if driver == "SD"
+        else  # dynamics
+            if lowercase(string(driver)) == "sd"
+                # SD cannot run dynamics; switch to LLG and re-apply the driver
+                # parameters to the freshly created driver (I-03)
                 set_driver(sim; driver="LLG", integrator="DormandPrince")
-                set_driver_arguments(sim, args)
-                set_initial_condition!(sim, sim.driver.integrator)
+                set_driver_arguments(sim, copy(driver_kw))
             end
-
-            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_every , :call_back,
-                        :saver_item, :save_vtk]
-                haskey(args, key) && delete!(args, key)
-            end
+            set_initial_condition!(sim, sim.driver.integrator)
+            _apply_torques!()
 
             run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
-                    save_m_every=dynamic_m_every , call_back=call_back)
-        end
-
-        for key in args
-            @warn @sprintf("Key '%s' is not used.", key)
+                    save_m_every=dynamic_m_every, call_back=call_back)
         end
 
         if vtk_saving
             !isdir("vtks") && mkdir("vtks")
-            vtkname = @sprintf("vtks/%s.vts", name)
-            save_vtk(sim, vtkname)
+            save_vtk(sim, @sprintf("vtks/%s.vts", name))
         end
 
         return sim
     end
 
     # Now we need to deal with the case that N > 0
-    dict = extract_sweep_keys(args)
-    for (k, v) in dict
-        args[k] = v[1]
-    end
-
-    shape = get(args, :shape, nothing)
-
-    sim = create_sim(mesh, args)
-    haskey(args, :task) && delete!(args, :task)
-
-    if isa(saver_item, SaverItem)
-        push!(sim.saver.items, saver_item)
-    end
-
-    if isa(saver_item, AbstractArray)
-        for item in saver_item
-            push!(sim.saver.items, item)
-        end
-    end
-
     for n in 1:N
         task_ = haskey(dict, :task) ? dict[:task][n] : task
         driver_ = haskey(dict, :driver) ? dict[:driver][n] : driver
@@ -325,33 +494,32 @@ function sim_with(args::Union{NamedTuple,Dict})
             update_zeeman(sim, dict[:H][n])
         end
 
-        # TODO: we can add more ...
-
-        if startswith(lowercase(task_), "rel")
-            for key in [:stopping_dmdt, :max_steps, :relax_data_every, :relax_m_every,
-                        :using_time_factor]
-                haskey(args, key) && delete!(args, key)
+        if _is_relax(task_)
+            # honor driver_s for relax stages as well (I-05)
+            if lowercase(string(driver_)) != lowercase(sim.driver_name)
+                set_driver(sim; driver=driver_)
+                set_driver_arguments(sim, copy(driver_kw))
             end
+            _apply_torques!()
+
             relax(sim; max_steps=max_steps, stopping_dmdt=stopping_dmdt,
                   save_data_every=relax_data_every, save_m_every=relax_m_every,
                   using_time_factor=using_time_factor)
 
-        elseif startswith(lowercase(task_), "dyn")
-            if driver_ == "SD"
+        elseif _is_dynamics(task_)
+            if lowercase(string(driver_)) == "sd"
+                # SD cannot run dynamics; switch to LLG (I-03: re-apply params)
                 set_driver(sim; driver="LLG", integrator="DormandPrince")
-            else
-                set_driver(sim; driver=driver_, integrator="DormandPrince")
+                set_driver_arguments(sim, copy(driver_kw))
+            elseif lowercase(string(driver_)) != lowercase(sim.driver_name)
+                set_driver(sim; driver=driver_)
+                set_driver_arguments(sim, copy(driver_kw))
             end
-            set_driver_arguments(sim, args)
             set_initial_condition!(sim, sim.driver.integrator)
-
-            for key in [:steps, :dt, :dynamic_data_save, :dynamic_m_every , :call_back,
-                        :saver_item, :save_vtk]
-                haskey(args, key) && delete!(args, key)
-            end
+            _apply_torques!()
 
             run_sim(sim; steps=steps, dt=dt, save_data=dynamic_data_save,
-                    save_m_every=dynamic_m_every , call_back=call_back)
+                    save_m_every=dynamic_m_every, call_back=call_back)
 
         else
             error("Only support two types of task: 'Relax' and 'Dynamics'.")
@@ -362,10 +530,6 @@ function sim_with(args::Union{NamedTuple,Dict})
             vtkname = @sprintf("vtks/%s_%d.vts", name, n)
             save_vtk(sim, vtkname)
         end
-    end
-
-    for key in args
-        @warn @sprintf("Key '%s' is not used.", key)
     end
 
     return sim

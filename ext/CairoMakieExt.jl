@@ -265,7 +265,7 @@ function MicroMagnetic.ovf2movie(folder; framerate=12, output=nothing, figsize=(
                                  kwargs...)
 
     if output === nothing
-        output = @sprintf("%s.gif", basename(path))
+        output = @sprintf("%s.gif", basename(folder))
     end
 
     files = readdir(folder)

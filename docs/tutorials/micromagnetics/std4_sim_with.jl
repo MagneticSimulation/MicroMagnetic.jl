@@ -25,19 +25,19 @@ args = (name="std4", task_s=["relax", "dynamics"],           # List of tasks
         steps=100,                              # Number of steps for dynamics
         dt=0.01ns,                              # Time step size
         stopping_dmdt=0.01,                     # Stopping criterion for relaxation
-        dynamic_m_interval=1,                   # Save magnetization at each step
+        dynamic_m_every=1,                      # Save magnetization at each step
         H_s=[(0, 0, 0), (-24.6mT, 4.3mT, 0)]);
 
-# Run the simulation using the `sim_with` function:
+# Run the simulation using `sim_with` function:
 sim = sim_with(args);
 
-# With the above code, the simulation for standard problem 4 is complete. Next, we proceed to process the data, 
+# With the above code, the simulation for standard problem 4 is complete. Next, we proceed to process the data,
 # such as visualizing the magnetization distribution or creating a movie from the simulation results.
 
 # Visualize the magnetization dynamics using CairoMakie
 using CairoMakie
-# Generate a movie from the simulation results stored in the jld2 file
-jld2movie("std4.jld2"; output="assets/std4.mp4", component='x');
+# Generate a movie from the simulation ovfs stored in folder `std4_LLG`
+ovf2movie("std4_LLG"; output="assets/std4.mp4", component='x');
 
 # Display the generated movie
 # ![](./assets/std4.mp4)

@@ -43,12 +43,13 @@ args = (name="std5", task_s=["relax", "dynamics"],          # List of tasks to p
         dt=0.05ns,                            # Time step size
         stopping_dmdt=0.01,                   # Stopping criterion for relaxation
         saver_item=SaverItem(("Rx", "Ry"), ("<m>", "<m>"), compute_guiding_center),    #vortex center tracking
-        dynamic_m_interval=1);
+        dynamic_m_every=1);
 
 # Run the simulation using `sim_with` function.
 sim_with(args);
 
-# Generate a movie for the vortex dynamics.
-jld2movie("std5.jld2"; output="assets/std5.mp4", component='z', figsize=(400, 400))
+# Generate a movie for the vortex dynamics. With the `LLG_STT` driver, the ovf files
+# are stored in the folder `std5_LLG_STT`:
+ovf2movie("std5_LLG_STT"; output="assets/std5.mp4", component='z')
 
 # ![](./assets/std5.mp4)

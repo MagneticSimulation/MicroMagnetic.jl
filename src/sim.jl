@@ -330,7 +330,7 @@ function set_driver_arguments(sim::AbstractSim, args::Dict)
         delete!(args, :gamma)
     end
 
-    #FIXME: check the type of sim.driver.integrator
+    # FIXME: check the type of sim.driver.integrator
     if haskey(args, :tol) && startswith(driver, "LLG")
         sim.driver.integrator.tol = args[:tol]
         delete!(args, :tol)
@@ -368,8 +368,22 @@ function send_visualization_data(sim)
     end
 end
 
+# Save one magnetization snapshot to `<name>_<driver>/m_%08d`; shared by relax and
+# run_sim so both tasks use the same output branching (I-06).
+function _save_m_snapshot(sim::AbstractSim, step::Int, output::String)
+    output_folder = @sprintf("%s_%s", sim.name, nameof(typeof(sim.driver)))
+    if output == "ovf"
+        save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", step)))
+    elseif output == "vtu"
+        save_vtk(sim, joinpath(output_folder, @sprintf("m_%08d", step)))
+    else
+        save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", step)))
+    end
+    return nothing
+end
+
 """
-    relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=0, 
+    relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=0,
            save_m_every=0, using_time_factor=true, output="ovf", update_time=1.0)
 
 Relaxes the system using either the `LLG` or `SD` driver. This function is compatible with both [Micromagnetic model](@ref) and [Atomistic spin model](@ref).
@@ -378,8 +392,8 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
 
 - `max_steps::Int`: Maximum number of steps to run the simulation. Default is `10000`.
 - `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
-- `save_data_every::Int`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving while `save_data_every=0` saves data only at the end of the relaxation.
-- `save_m_every::Int`: Interval for saving magnetization data. A negative value disables magnetization saving while `save_m_every=0` saves magnetization only at the end of the relaxation.
+- `save_data_every::Int`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving while `save_data_every=0` saves data only at the end of the relaxation (also when `max_steps` is reached without convergence).
+- `save_m_every::Int`: Interval for saving magnetization data. A negative value disables magnetization saving while `save_m_every=0` saves magnetization only at the end of the relaxation (also when `max_steps` is reached without convergence).
 - `using_time_factor::Bool`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
 - `update_time::Float64`: Time interval (in seconds) for updating visualization data. Default is `1.0`.
 
@@ -406,21 +420,25 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
 
     output_folder = @sprintf("%s_%s", sim.name, nameof(typeof(sim.driver)))
-    if save_m_every>0
+    if save_m_every >= 0
         mkpath(output_folder)
     end
 
     N_spins = sim.n_total
     dm = create_zeros(3 * N_spins)
-    
+
     last_update_time = time()
 
     driver = sim.driver
     stop_flag = false
     max_dmdt = 0
+    data_saved = false
+    m_saved = false
+    last_step = 0
     @info @sprintf("Running Driver : %s.", typeof(driver))
     for i in 1:max_steps
         @timeit timer "run_step" run_step(sim, driver)
+        last_step = i
 
         if llg_driver && isa(sim.driver.integrator, AdaptiveRK)
             copyto!(sim.prespin, sim.spin)
@@ -450,20 +468,16 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
             sim.saver.nsteps += 1
         end
 
-        if (save_data_every > 0 && i % save_data_every == 0) || (stop_flag && save_data_every == 0)
+        if save_data_every > 0 && i % save_data_every == 0
             compute_system_energy(sim, sim.spin, t)
             sim.saver.t = t
             write_data(sim)
+            data_saved = true
         end
 
-        if (save_m_every > 0 && i % save_m_every == 0) || (stop_flag && save_m_every == 0)
-            if output == "ovf"
-                save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
-            elseif output == "vts"
-                save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
-            elseif output == "vtu"
-                save_vtk(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
-            end
+        if save_m_every > 0 && i % save_m_every == 0
+            _save_m_snapshot(sim, i, output)
+            m_saved = true
         end
 
         current_time = time()
@@ -479,7 +493,18 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
                            stopping_dmdt, i)
             break
         end
+    end
 
+    # save the final state once when no interval saving was requested (I-06);
+    # this also triggers when max_steps is reached without convergence
+    if save_data_every == 0 && !data_saved
+        t = llg_driver ? sim.driver.integrator.t : 0.0
+        compute_system_energy(sim, sim.spin, t)
+        sim.saver.t = t
+        write_data(sim)
+    end
+    if save_m_every == 0 && !m_saved
+        _save_m_snapshot(sim, last_step, output)
     end
 
     if !stop_flag
@@ -790,7 +815,7 @@ Run the simulation for a total duration of `steps * dt` seconds.
 - `steps`: The total number of simulation steps. The total simulation time will be `steps * dt`.
 - `dt`: The time step for each simulation step (in seconds). It controls the time interval between successive steps.
 - `save_data`: A boolean flag to control whether the overall simulation data (such as total energy, exchange energy, and average magnetization) is saved at each step. The default is `true`.
-- `save_m_every`: Specifies how often to save the magnetization configuration. For example, if `save_m_every = 1`, the magnetization is saved at every step. A negative value will disable magnetization saving entirely.
+- `save_m_every`: Specifies how often to save the magnetization configuration. For example, if `save_m_every = 1`, the magnetization is saved at every step. `save_m_every = 0` saves only the final state, and a negative value will disable magnetization saving entirely.
 - `saver_item`: A `SaverItem` instance or a list of `SaverItem` instances. These are custom data-saving utilities that can be used to store additional quantities during the simulation (e.g., guiding centers or other derived values). If `nothing`, no additional data is saved beyond the default.
 - `call_back`: A user-defined function or `nothing`. If provided, this function will be called at every step, allowing for real-time inspection or manipulation of the simulation state.
 - `update_time`: The time interval (in seconds) at which the magnetization data is sent to the client. The default is `1.0` second.
@@ -828,6 +853,7 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
     end
 
     last_update_time = time()
+    m_saved = false
     for i in 0:steps
         run_until(sim, i * dt; save_data=save_data)
 
@@ -837,11 +863,8 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
         call_back !== nothing && call_back(sim, i * dt)
 
         if save_m_every > 0 && (i - 1) % save_m_every == 0
-            if output == "ovf"
-                save_ovf(sim, joinpath(output_folder, @sprintf("m_%08d.ovf", i)))
-            elseif output == "vts" || output == "vtu"
-                save_vtk_points(sim, joinpath(output_folder, @sprintf("m_%08d", i)))
-            end
+            _save_m_snapshot(sim, i, output)
+            m_saved = true
         end
 
         current_time = time()
@@ -851,6 +874,11 @@ function run_sim(sim::AbstractSim; steps=10, dt=1e-10, save_data=true, save_m_ev
                 last_update_time = current_time
             end
         end
+    end
+
+    # save the final state once when no interval saving was requested (I-06)
+    if save_m_every == 0 && !m_saved
+        _save_m_snapshot(sim, steps, output)
     end
 
     return nothing

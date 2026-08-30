@@ -263,7 +263,7 @@ args = (
     steps = 100,                              # Number of steps for dynamics
     dt = 0.01ns,                              # Step size
     stopping_dmdt = 0.01,                     # Stopping criterion for relaxation
-    dynamic_m_interval = 1,                   # Save the magnetization each step
+    dynamic_m_every = 1,                      # Save the magnetization each step
     H_s = [(0,0,0), (-24.6mT, 4.3mT, 0)]      # Static field sweep
 )
 
