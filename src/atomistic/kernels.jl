@@ -10,7 +10,7 @@ Jij is represented by Js, which is an array with its length equals to n_ngbs
 
 Note that the return value is h * alpha + h_ex 
 """
-@kernel function atomistic_exchange_kernel!(h, energy, @Const(Js), @Const(m), @Const(mu_s),
+@kernel function atomistic_exchange_kernel!(h, energy, @Const(Js), @Const(m), mu_s,
                                             @Const(ngbs), n_ngbs,
                                             alpha::T) where {T<:AbstractFloat}
     I = @index(Global)
@@ -54,7 +54,7 @@ compute the biquadratic exchange interaction h_ex, which is defined as
 Kij is represented by Ks, which is an array with its length equals to n_ngbs.
 """
 @kernel function atomistic_exchange_bq_kernel!(h, energy, @Const(Ks), @Const(m),
-                                               @Const(mu_s), @Const(ngbs),
+                                               mu_s, @Const(ngbs),
                                                n_ngbs)
     I = @index(Global)
     i = 3 * I - 2
@@ -102,7 +102,7 @@ Jij is represented by Js, which is an array with its length equals to n_ngbs
 Note that the return value is h * alpha + h_ex 
 """
 @kernel function atomistic_spatial_exchange_kernel!(h, energy, @Const(Js), @Const(m),
-                                                    @Const(mu_s), @Const(ngbs), n_ngbs)
+                                                    mu_s, @Const(ngbs), n_ngbs)
     I = @index(Global)
     i = 3 * I - 2
     T = eltype(h)
@@ -149,7 +149,7 @@ Jij is a 3d array with size (3, n_ngbs, N)
 """
 @kernel function atomistic_spatial_dmi_kernel!(h::AbstractArray{T,1},
                                                energy::AbstractArray{T,1}, @Const(Dij),
-                                               @Const(m), @Const(mu_s), @Const(ngbs),
+                                               @Const(m), mu_s, @Const(ngbs),
                                                n_ngbs) where {T<:AbstractFloat}
     I = @index(Global)
     j = 3 * I - 2
@@ -193,7 +193,7 @@ compute the dmi interaction h_dmi,  which is defined as
 Jij is a 2d array with size (3, n_ngbs)
 """
 @kernel function atomistic_dmi_kernel!(h::AbstractArray{T,1}, energy::AbstractArray{T,1},
-                                       @Const(Dij), @Const(m), @Const(mu_s), @Const(ngbs),
+                                       @Const(Dij), @Const(m), mu_s, @Const(ngbs),
                                        n_ngbs) where {T<:AbstractFloat}
     I = @index(Global)
     j = 3 * I - 2
@@ -239,7 +239,7 @@ Jij is a 2d array with size (3, n_ngbs)
 """
 @kernel function atomistic_canted_dmi_kernel!(h::AbstractArray{T,1},
                                               energy::AbstractArray{T,1}, @Const(Dij),
-                                              @Const(m), @Const(mu_s), @Const(ngbs),
+                                              @Const(m), mu_s, @Const(ngbs),
                                               n_ngbs) where {T<:AbstractFloat}
     I = @index(Global)
     ii, jj, kk = @index(Global, NTuple)
@@ -277,7 +277,7 @@ Jij is a 2d array with size (3, n_ngbs)
 end
 
 @kernel function tube_bulk_dmi_kernel!(h, energy, D::T, @Const(Dij), @Const(m),
-                                       @Const(mu_s), @Const(ngbs), n_ngbs,
+                                       mu_s, @Const(ngbs), n_ngbs,
                                        nr) where {T<:AbstractFloat}
     I = @index(Global)
     j = 3 * (I - 1)

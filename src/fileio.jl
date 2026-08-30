@@ -42,7 +42,7 @@ function init_saver(name::String, driver::String)
     step = SaverItem("step", "<unitless>", o::AbstractSim -> o.saver.nsteps)
     push!(saver.items, step)
 
-    if driver in ("LLG", "InertialLLG", "SpatialLLG")
+    if driver in ("LLG", "InertialLLG")
         time = SaverItem("time", "<s>", o::AbstractSim -> o.saver.t)
         push!(saver.items, time)
     end

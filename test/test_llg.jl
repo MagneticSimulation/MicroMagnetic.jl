@@ -20,7 +20,7 @@ function analytical(alpha::Float64, gamma::Float64, H0::Float64, ts::Array)
     return mx, my, mz
 end
 
-function test_llg(integrator="DormandPrince"; driver="LLG")
+function test_llg(integrator="DormandPrince"; driver="LLG", alpha_mode=:scalar)
     tol = integrator == "BS23" ? 1e-7 : 1e-8
     error = integrator == "BS23" ? 2e-6 : 8e-7
 
@@ -31,10 +31,14 @@ function test_llg(integrator="DormandPrince"; driver="LLG")
     set_Ms(sim, 8e5)
     sim.driver.gamma = 2.21e5
 
-    if driver == "SpatialLLG"
-        set_alpha(sim, (i, j, k, dx, dy, dz) -> 0.05)
+    # uniform (Fill), array and function alpha all drive the same LLG call_back
+    if alpha_mode == :scalar
+        set_alpha(sim, 0.05)
+        @test sim.driver.alpha isa MicroMagnetic.Fill
+    elseif alpha_mode == :array
+        set_alpha(sim, fill(0.05, sim.n_total))
     else
-        sim.driver.alpha = 0.05
+        set_alpha(sim, (i, j, k, dx, dy, dz) -> 0.05)
     end
 
     sim.driver.integrator.tol = tol
@@ -66,7 +70,7 @@ function test_llg_fixed(integrator="RungeKutta")
 
     sim = Sim(mesh; name="spin", integrator=integrator)
     set_Ms(sim, 8e5)
-    sim.driver.alpha = 0.05
+    set_alpha(sim, 0.05)
     sim.driver.gamma = 2.21e5
     sim.driver.integrator.step = 1e-13
 
@@ -109,7 +113,11 @@ function test_llg_fh()
 end
 
 function test_llg_spatial()
+    # "SpatialLLG" is a deprecation alias of "LLG" and warns
     test_llg(driver="SpatialLLG")
+    # array and function alpha reach the same call_back as the uniform Fill
+    test_llg(alpha_mode=:array)
+    test_llg(alpha_mode=:function)
     return nothing
 end
 

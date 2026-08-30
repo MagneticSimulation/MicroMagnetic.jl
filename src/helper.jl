@@ -2,6 +2,46 @@
 export compute_skyrmion_number, compute_guiding_center
 export set_region, region_map
 
+"""
+    make_param(T, v, mesh, n_total; scale=1)
+
+Materialise the parameter `v` (a `NumberOrArrayOrFunction`) into an n_total-length
+read-only array of element type `T`. This is the single discrimination point for
+"spatial or not": a uniform number becomes an O(1) `Fill`, a
+function or array is materialised into a dense backend array through the existing
+`init_scalar!` path. `scale` (e.g. `mu_0` for `set_Ms`) is applied exactly as the
+old "store, then `. *= scale`" two-step did, keeping results bit-identical.
+
+For non-isbits element types (the symbolic `AbstractFloat` mode) the number falls
+back to dense materialisation, because `Fill{AbstractFloat}` is not isbits and
+cannot reach GPU kernels.
+"""
+function make_param(::Type{T}, v::NumberOrArrayOrFunction, mesh::Mesh, n_total::Int;
+                    scale=1) where T
+    if v isa Number && isbitstype(T)
+        # round to T first, then round again after scaling: exactly what the dense
+        # "store, then .*= scale" path computes. Skipping the final
+        # T() would promote to Float64 for scale=mu_0 and silently materialise a
+        # dense CPU array at the field assignment (eltype mismatch).
+        v = T(v)
+        v = scale == 1 ? v : T(v * scale)
+        return Fill(v, n_total)
+    end
+    a_host = zeros(T, n_total)
+    init_scalar!(a_host, mesh, v)
+    if scale != 1
+        a_host .*= scale
+    end
+    if default_backend[] == CPU()
+        return a_host
+    end
+    # a CPU array cannot be broadcast into a GPU array, so materialise on the host
+    # and make one copy to the backend (the old zeros → init_scalar! → copy pattern)
+    a = create_zeros(T, n_total)
+    copyto!(a, a_host)
+    return a
+end
+
 function init_scalar!(v::AbstractArray, mesh::Mesh, init::Number)
     v .= init
     return true

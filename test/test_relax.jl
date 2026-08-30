@@ -20,7 +20,7 @@ function relax_system(; driver="LLG")
     sim = Sim(mesh; name="relax_llg", driver=driver)
     if driver == "LLG"
         sim.driver.precession = false
-        sim.driver.alpha = 0.5
+        set_alpha(sim, 0.5)
     end
     set_Ms(sim, 8.6e5)
 

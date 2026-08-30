@@ -12,7 +12,7 @@ function test_df_torque(integrator="DormandPrince")
     sim = Sim(mesh; name="spin", integrator=integrator)
 
     set_Ms(sim, 8e5)
-    sim.driver.alpha = 0.05
+    set_alpha(sim, 0.05)
     sim.driver.gamma = 2.21e5
     sim.driver.integrator.tol = 1e-8
 
@@ -55,7 +55,7 @@ function test_df_torque_atomistic(integrator="DormandPrince")
     sim = Sim(mesh; name="spin", integrator=integrator)
 
     set_mu_s(sim, 2*mu_B)
-    sim.driver.alpha = 0.05
+    set_alpha(sim, 0.05)
     sim.driver.gamma = 2.21e5/mu_0  # Note: atomistic gamma is divided by mu_0
     sim.driver.integrator.tol = 1e-8
 
@@ -93,7 +93,7 @@ function test_df_torque_functional_aj(integrator="DormandPrince")
     sim = Sim(mesh; name="spin", integrator=integrator)
 
     set_Ms(sim, 8e5)
-    sim.driver.alpha = 0.05
+    set_alpha(sim, 0.05)
     sim.driver.gamma = 2.21e5
 
     # Functional aj that depends on position

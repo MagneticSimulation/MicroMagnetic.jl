@@ -11,7 +11,7 @@ end
     The kernel for the Zeeman interaction, works for both the micromagnetic and atomistic model,
 where factor = cell_size for the micromagnetic model and factor = 1 for atomistic model.
 """
-@kernel function zeeman_kernel!(@Const(m), @Const(h), energy, @Const(mu0_Ms),
+@kernel function zeeman_kernel!(@Const(m), @Const(h), energy, mu0_Ms,
                                 factor::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
@@ -36,7 +36,7 @@ end
 Similar to the zeeman_kernel! that this kernel works for both the micromagnetic and atomistic model,
 and factor = cell_size for the micromagnetic model and factor = 1 for atomistic model.
 """
-@kernel function time_zeeman_kernel!(@Const(m), h, @Const(h_static), energy, @Const(mu0_Ms),
+@kernel function time_zeeman_kernel!(@Const(m), h, @Const(h_static), energy, mu0_Ms,
                                      factor::T, fx::T, fy::T,
                                      fz::T) where {T<:AbstractFloat}
     I = @index(Global)
@@ -51,8 +51,8 @@ end
 """
 The kernel anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
 """
-@kernel function anisotropy_kernel!(@Const(m), h, energy, @Const(Ku), axis_x::T, axis_y::T,
-                                    axis_z::T, @Const(mu0_Ms),
+@kernel function anisotropy_kernel!(@Const(m), h, energy, Ku, axis_x::T, axis_y::T,
+                                    axis_z::T, mu0_Ms,
                                     volume::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
@@ -77,8 +77,8 @@ end
 """
 The kernel spatial_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
 """
-@kernel function spatial_anisotropy_kernel!(@Const(m), h, energy, @Const(Ku), @Const(axes),
-                                            @Const(mu0_Ms),
+@kernel function spatial_anisotropy_kernel!(@Const(m), h, energy, Ku, @Const(axes),
+                                            mu0_Ms,
                                             volume::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
@@ -107,9 +107,9 @@ end
 """
 The kernel cubic_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
 """
-@kernel function cubic_anisotropy_kernel!(@Const(m), h, energy, @Const(Kc), a1x::T, a1y::T,
+@kernel function cubic_anisotropy_kernel!(@Const(m), h, energy, Kc, a1x::T, a1y::T,
                                           a1z::T, a2x::T, a2y::T, a2z::T, a3x::T, a3y::T,
-                                          a3z::T, @Const(mu0_Ms),
+                                          a3z::T, mu0_Ms,
                                           volume::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
@@ -223,7 +223,7 @@ end
     end
 end
 
-@kernel function exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(A),
+@kernel function exchange_kernel!(@Const(m), h, energy, mu0_Ms, A,
                                   dx::T, dy::T, dz::T, @Const(ngbs),
                                   volume::T) where {T<:AbstractFloat}
     I = @index(Global)
@@ -269,7 +269,7 @@ end
 end
 
 
-@kernel function uniform_exchange_kernel!(@Const(m), h, energy, @Const(mu0_Ms), Ax::T,
+@kernel function uniform_exchange_kernel!(@Const(m), h, energy, mu0_Ms, Ax::T,
                                           Ay::T, Az::T, dx::T, dy::T, dz::T, @Const(ngbs),
                                           volume::T) where {T<:AbstractFloat}
     I = @index(Global)
@@ -308,7 +308,7 @@ end
     end
 end
 
-@kernel function bulkdmi_kernel!(@Const(m), h, energy, @Const(mu0_Ms), Dx::T, Dy::T, Dz::T,
+@kernel function bulkdmi_kernel!(@Const(m), h, energy, mu0_Ms, Dx::T, Dy::T, Dz::T,
                                  dx::T, dy::T, dz::T, @Const(ngbs),
                                  volume::T) where {T<:AbstractFloat}
     I = @index(Global)
@@ -352,8 +352,8 @@ end
 
 
 @kernel function spatial_vector_bulkdmi_kernel!(
-        @Const(m), h, energy, @Const(mu0_Ms),
-        @Const(Dxs), @Const(Dys), @Const(Dzs),
+        @Const(m), h, energy, mu0_Ms,
+        Dxs, Dys, Dzs,
         dx::T, dy::T, dz::T, @Const(ngbs), volume::T
     ) where {T<:AbstractFloat}
 
@@ -432,7 +432,7 @@ end
 
 
 
-@kernel function interfacial_dmi_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(Ds),
+@kernel function interfacial_dmi_kernel!(@Const(m), h, energy, mu0_Ms, Ds,
                                          dx::T, dy::T, dz::T, @Const(ngbs),
                                          volume::T) where {T<:AbstractFloat}
     I = @index(Global)
@@ -477,8 +477,10 @@ end
     end
 end
 
-@kernel function stochastic_field_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(eta),
-                                          @Const(Temp), base_T::T, factor::T,
+# `alphas` is read per spin (uniform damping arrives as a Fill); `factor` carries
+# everything except alpha: 2*k_B/(volume*gamma*dt) scaled by the time profile.
+@kernel function stochastic_field_kernel!(@Const(m), h, energy, mu0_Ms, eta,
+                                          Temp, base_T::T, alphas, factor::T,
                                           volume::T) where {T<:AbstractFloat}
     I = @index(Global)
 
@@ -487,7 +489,7 @@ end
     @inbounds T_local = Temp[I] + base_T
 
     if Ms_local > 0
-        @inbounds scale = sqrt(factor * T_local / Ms_local)
+        @inbounds scale = sqrt(factor * alphas[I] * T_local / Ms_local)
         @inbounds h[j + 1] = eta[j + 1] * scale
         @inbounds h[j + 2] = eta[j + 2] * scale
         @inbounds h[j + 3] = eta[j + 3] * scale
@@ -504,7 +506,7 @@ end
     end
 end
 
-@kernel function interlayer_exch_kernel!(@Const(m), h, energy, @Const(mu0_Ms), @Const(Js),
+@kernel function interlayer_exch_kernel!(@Const(m), h, energy, mu0_Ms, @Const(Js),
                                          K1::Int32, K2::Int32, nx::Int32, ny::Int32, dz::T,
                                          volume::T) where {T<:AbstractFloat}
     i, j = @index(Global, NTuple)
@@ -627,7 +629,7 @@ end
 The kernel df_torque_kernel! compute the effective field defined as 
         H = (1/gamma)(a_J m x p +  b_J p)
 """
-@kernel function df_torque_kernel!(@Const(m), h, gamma::T, @Const(aj), bj::T, px::T, py::T,
+@kernel function df_torque_kernel!(@Const(m), h, gamma::T, aj, bj::T, px::T, py::T,
                                    pz::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
@@ -665,7 +667,7 @@ end
 The kernel slonczewski_torque_kernel! compute the effective field defined as 
         H = (beta*J)(epsilon* m x m_p +  xi*m_p)
 """
-@kernel function slonczewski_torque_kernel!(@Const(m), h, @Const(J), lambda_sq::T, P::T,
+@kernel function slonczewski_torque_kernel!(@Const(m), h, J, lambda_sq::T, P::T,
                                             xi::T, ft::T, px::T, py::T,
                                             pz::T) where {T<:AbstractFloat}
     id = @index(Global)
@@ -688,7 +690,7 @@ end
 The kernel zhangli_torque_kernel! compute the effective field defined as 
    H = (b/gamma)*[m x (J.nabla) m + xi (J.nabla) m]
 """
-@kernel function zhangli_torque_kernel!(@Const(m), h, @Const(bJ), @Const(ngbs), @Const(xi),
+@kernel function zhangli_torque_kernel!(@Const(m), h, @Const(bJ), @Const(ngbs), xi,
                                         ut::T, dx::T, dy::T, dz::T) where {T<:AbstractFloat}
     I = @index(Global)
     j = 3 * I - 2

@@ -17,7 +17,7 @@ function test_zeeman()
     mesh = FDMesh(; dx=2e-9, nx=3, ny=2, nz=1, pbc="x")
 
     sim = Sim(mesh; name="test_zeeman")
-    sim.driver.alpha = 0.01
+    set_alpha(sim, 0.01)
     sim.driver.gamma = 2.21e5
 
     set_Ms(sim, 8.6e5)

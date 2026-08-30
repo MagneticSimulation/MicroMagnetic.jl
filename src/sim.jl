@@ -20,9 +20,10 @@ Create a simulation instance for the given mesh with specified driver and integr
 # Keyword Arguments
 - `driver::String="LLG"`: The simulation driver type. Options:
   - `"SD"`: Energy minimization (Steepest Descent)
-  - `"LLG"`: Landau-Lifshitz-Gilbert equation
+  - `"LLG"`: Landau-Lifshitz-Gilbert equation (supports uniform and spatial damping
+    through `set_alpha`; the former `"SpatialLLG"` driver is deprecated and treated
+    as `"LLG"`)
   - `"InertialLLG"` : Inertial LLG Equation
-  - `"SpatialLLG"` : Spatial LLG equation allowing spatial damping constant.
 - `name::String="dyn"`: Name identifier for the simulation
 - `integrator::String="DormandPrince"`: Time integration method. Options:
   - Fixed step methods: `"Heun"`, `"RungeKutta"`, `"RungeKuttaCayley"`
@@ -48,6 +49,7 @@ sim = Sim(mesh, driver="SD")
 function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
              save_data=true)
     T = Float[]
+    driver = _normalize_driver_name(driver)
 
     if isa(mesh, FDMesh)
         sim = MicroSim{T}()
@@ -71,15 +73,16 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.prespin = create_zeros(3 * n_total)
     sim.field = create_zeros(3 * n_total)
     sim.energy = create_zeros(n_total)
-    sim.pins = create_zeros(Bool, n_total)
+    sim.pins = Fill(false, n_total)
 
     if isa(mesh, FDMesh)
-        sim.mu0_Ms = create_zeros(n_total)
+        # 0 Ms means vacuum; a uniform default costs O(1) storage
+        sim.mu0_Ms = Fill(T(0), n_total)
     elseif isa(mesh, FEMesh)
         sim.mu0_Ms = zeros(T, sim.n_cells)
         sim.L_mu = create_zeros(3 * n_total)
     else
-        sim.mu_s = create_zeros(n_total)
+        sim.mu_s = Fill(T(0), n_total)
     end
 
     sim.driver_name = driver
@@ -89,8 +92,6 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     saver_name = @sprintf("%s_%s.txt", name, lowercase(driver))
     if driver === "InertialLLG"
         saver_name = @sprintf("%s_illg.txt", name)
-    elseif driver === "SpatialLLG"
-        saver_name = @sprintf("%s_llg.txt", name)
     end
     sim.saver = create_saver(saver_name, driver)
 
@@ -128,15 +129,13 @@ set_Ms(sim, circular_Ms)
 """
 function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     T = Float[]
-    Ms_a = zeros(T, sim.n_total)
-    init_scalar!(Ms_a, sim.mesh, Ms)
+    sim.mu0_Ms = make_param(T, Ms, sim.mesh, sim.n_total; scale=mu_0)
 
-    if any(isnan, Ms_a)
+    if sim.mu0_Ms isa Fill
+        isnan(sim.mu0_Ms.value) && error("NaN is given by the input Ms!")
+    elseif any(isnan, sim.mu0_Ms)
         error("NaN is given by the input Ms!")
     end
-
-    Ms_a .*= mu_0  #we convert A/m to Tesla
-    copyto!(sim.mu0_Ms, Ms_a)
     @info "Saturation magnetization has been set."
     send_visualization_data(sim)
     return true
@@ -148,7 +147,13 @@ end
 Set the saturation magnetization Ms within the Shape.
 """
 function set_Ms(sim::AbstractSim, shape::CSGShape, Ms::Number)
-    init_scalar!(sim.mu0_Ms, sim.mesh, shape, Ms * mu_0)
+    mu0_Ms = Array(sim.mu0_Ms)
+    init_scalar!(mu0_Ms, sim.mesh, shape, Ms * mu_0)
+    if sim.mu0_Ms isa Array
+        copyto!(sim.mu0_Ms, mu0_Ms)   # e.g. FEM keeps dense storage, update in place
+    else
+        sim.mu0_Ms = kernel_array(mu0_Ms)
+    end
     @info "Saturation magnetization has been set."
     send_visualization_data(sim)
     return true
@@ -170,30 +175,28 @@ set_pinning(sim, pinning_boundary)
 ```
 """
 function set_pinning(sim::AbstractSim, ids::ArrayOrFunction)
-    pins = zeros(Bool, sim.n_total)
-    init_scalar!(pins, sim.mesh, ids)
-    copyto!(sim.pins, pins)
+    sim.pins = make_param(Bool, ids, sim.mesh, sim.n_total)
     return true
 end
 
 """
-    set_alpha(sim::AbstractSim, alpha::ArrayOrFunction)
+    set_alpha(sim::AbstractSim, alpha::NumberOrArrayOrFunction)
 
-Set the damping parameter α for a simulation with `SpatialLLG` driver.
-
-This function updates the spatially varying damping coefficient array in the simulation's driver.
-The α parameter can be specified either as a uniform value (via a function) or as a spatially varying array.
+Set the damping parameter α of the `LLG` driver. A uniform number is stored as an
+O(1) `Fill`; a function or an array is materialised into a dense array, so both
+uniform and spatially varying damping are supported by the same driver.
 
 # Arguments
 - `sim::AbstractSim`: The simulation object containing the driver
-- `alpha::ArrayOrFunction`: The damping parameter specification, which can be:
+- `alpha::NumberOrArrayOrFunction`: The damping parameter specification, which can be:
+  - A number, e.g. `0.1`
   - A function `f(i, j, k, dx, dy, dz) -> Float64` that returns the α value at each spatial coordinate
   - An array of Float64 values with length equal to `sim.n_total`
 
 # Examples
 ```julia
-# Set uniform α value of 0.1 using a function
-set_alpha(sim, (i, j, k, dx, dy, dz) -> 0.1)
+# Set uniform α value of 0.1
+set_alpha(sim, 0.1)
 
 # Set spatially varying α using an array
 alpha_array = rand(sim.n_total) * 0.2 + 0.01  # Random values between 0.01 and 0.21
@@ -210,14 +213,13 @@ end
 set_alpha(sim, spatial_alpha)
 ```
 """
-function set_alpha(sim::AbstractSim, alpha::ArrayOrFunction)
-    if !isa(sim.driver, SpatialLLG)
-        @warn("set_alpha only works for the SpatialLLG driver")
+function set_alpha(sim::AbstractSim, alpha::NumberOrArrayOrFunction)
+    if !(sim.driver isa LLG)
+        @warn("set_alpha only works for the LLG driver")
         return
     end
-    alpha_array = zeros(Float[], sim.n_total)
-    init_scalar!(alpha_array, sim.mesh, alpha)
-    copyto!(sim.driver.alpha, alpha_array)
+    T = eltype(sim.driver.alpha)  # match the driver's precision
+    sim.driver.alpha = make_param(T, alpha, sim.mesh, sim.n_total)
     return true
 end
 
@@ -301,7 +303,8 @@ function set_driver_arguments(sim::AbstractSim, args::Dict)
     driver = sim.driver_name
 
     if haskey(args, :alpha) && startswith(driver, "LLG")
-        sim.driver.alpha = args[:alpha]
+        T = eltype(sim.driver.alpha)  # match the driver's precision
+        sim.driver.alpha = make_param(T, args[:alpha], sim.mesh, sim.n_total)
         delete!(args, :alpha)
     end
 
@@ -365,8 +368,9 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         max_steps = maxsteps
     end
 
-    # to dertermine which driver is used.
-    llg_driver = isa(sim.driver, LLG)
+    # relax works with any driver that carries an integrator (LLG family and
+    # InertialLLG); SD and EmptyDriver do not
+    llg_driver = hasproperty(sim.driver, :integrator)
     if isa(sim, MicroSimFE)
         output = "vtu"
     end
@@ -565,10 +569,11 @@ Set the driver of the simulation, can be used to switch the driver.
 """
 function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", args...)
     args = Dict(args)
+    driver = _normalize_driver_name(driver)
 
     @info(@sprintf("The driver %s is used!", driver))
 
-    # FIXME : Does not work if only the integrator changes  
+    # FIXME : Does not work if only the integrator changes
     if sim.driver_name != driver
         sim.driver = create_driver(driver, integrator, sim.n_total)
         sim.driver_name = driver
@@ -581,8 +586,6 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
         saver_name = @sprintf("%s_%s.txt", sim.name, lowercase(driver))
         if driver === "InertialLLG"
             saver_name = @sprintf("%s_illg.txt", sim.name)
-        elseif driver === "SpatialLLG"
-            saver_name = @sprintf("%s_llg.txt", sim.name)
         end
 
         saver.name = saver_name

@@ -116,7 +116,9 @@ function NEB(sim::AbstractSim, given_images::TupleOrArray,
     neb.clib_image = clib_image
     neb.nsteps = 0
 
-    neb.pins = repeat(sim.pins, n_images)
+    # repeat materialises on the host (a Fill expands there); copy onto the
+    # active backend so the chain kernels never see a CPU array on GPU
+    neb.pins = kernel_array(Array(repeat(sim.pins, n_images)))
     given_images_aligned = []
     for i in 1:length(given_images)
         init_m0(sim, given_images[i])
@@ -147,7 +149,7 @@ function NEB(sim::AbstractSim, given_images::TupleOrArray,
     if driver == "LLG"
         neb.driver.tol = 1e-5
         neb.driver.precession = false
-        neb.driver.alpha = 0.2
+        neb.driver.alpha = Fill(0.2, neb.n_total)
         set_initial_condition!(neb, neb.driver.integrator)
     end
 
@@ -273,8 +275,8 @@ end
 function relax(sim::NEB; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
                save_vtk_every=-1, using_time_factor=true, vtk_folder="vtks")
 
-    # to dertermine which driver is used.
-    llg_driver = isa(sim.driver, LLG)
+    # relax works with any driver that carries an integrator
+    llg_driver = hasproperty(sim.driver, :integrator)
 
     time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1

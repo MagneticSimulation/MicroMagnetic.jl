@@ -47,15 +47,16 @@ function initialize!(integrator::GPSM, sim::AbstractSim)
         error("GPSM integrator requires Exchange interaction!")
     end
     integrator.Laplaian = build_exch_matrix(integrator.exch, sim)
-    alpha = sim.driver.alpha
-    gamma_G = sim.driver.gamma 
+    # GPSM's projection assumes uniform damping; take one representative value
+    alpha = first(as_param_array(sim.driver.alpha, sim.n_total))
+    gamma_G = sim.driver.gamma
     dt = integrator.step * gamma_G / (1 + alpha * alpha)
     integrator.G = I - dt * integrator.Laplaian
     integrator.G = cholesky(integrator.G)
-    
+
     integrator.initialized = true
 
-    alpha = sim.driver.alpha
+    alpha = first(as_param_array(sim.driver.alpha, sim.n_total))
     gamma_G = sim.driver.gamma 
     dt = integrator.step * gamma_G / (1 + alpha * alpha)
     N = sim.n_total
@@ -92,8 +93,8 @@ function advance_step(sim::AbstractSim, integrator::GPSM)
 
     sim.prespin .= sim.spin
 
-    alpha = sim.driver.alpha
-    gamma_G = sim.driver.gamma 
+    alpha = first(as_param_array(sim.driver.alpha, sim.n_total))
+    gamma_G = sim.driver.gamma
     dt = integrator.step * gamma_G / (1 + alpha * alpha)
 
     N = sim.n_total

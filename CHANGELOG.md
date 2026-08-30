@@ -11,6 +11,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `sim_with`: new `stt` and `sot` keywords forward to `add_stt`/`add_sot` (e.g.
   `stt=(model=:zhang_li, b=-72.438, J=(1,0,0), xi=0.05)`); the torque is applied only in
   stages running with an LLG-family driver so SD minimization never sees it
+- new `Fill{T,N}` array type with O(1) storage for uniformly valued parameters (vendored
+  implementation, no FillArrays.jl dependency): uniform parameters are no longer materialised
+  into O(n) arrays, and an isbits `Fill` is passed to GPU kernels by value, where the per-spin
+  read folds into a compile-time immediate. Design principle: "spatial or not" is a property of
+  the value, not of the type or the API
+- `set_alpha(sim, alpha)` now accepts a plain number in addition to arrays and functions
+  (`NumberOrArrayOrFunction`); a uniform alpha is stored as a zero-allocation `Fill`
+- new tests `test/test_fill.jl` and `test/test_fill_equivalence.jl`: parameters stored as `Fill`
+  and the same values materialised into dense arrays give bit-identical trajectories (`alpha`,
+  `Ms`, `Ku` and `D`) on the CPU and CUDA backends
 
 ### Changed
 
@@ -40,6 +50,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `add_mel` is deprecated in favor of `add_magnetoelastic`
 - clearer sweep errors: scalar values passed to a `_s` keyword now raise an informative
   `ArgumentError`, and length mismatches report `_s`/`_sweep` instead of `_range`
+- the `SpatialLLG` driver is merged into `LLG`: `LLG.alpha` is now an `AbstractArray{T,1}`
+  (by default a zero-allocation `Fill(0.1, n)`), so uniform and spatial damping run through the
+  same kernel and call-back; `driver="SpatialLLG"` still works but is deprecated (a deprecation
+  warning is emitted and it is treated as `"LLG"`, so output files are named `*_llg.txt` either
+  way) and will be removed in v0.7
+- all per-spin term parameters (`SpatialExchange.A`, `InterfacialDMI.D`,
+  `SpatialVectorBulkDMI.Dx/Dy/Dz`, `Anisotropy.Ku`, `CubicAnisotropy.Kc`,
+  `StochasticField.temperature`, `ZhangLiTorque.xi`, `SlonczewskiTorque.J`, `DFTorqueField.aj`,
+  ...) are routed through a single internal helper (`make_param`): a uniform number is stored as
+  a `Fill`, a function or array is materialised into a dense array
+- `sim.mu0_Ms`/`sim.mu_s`/`sim.pins` now default to O(1) `Fill`s (0/false), and
+  `set_Ms`/`set_mu_s`/`set_pinning` replace the storage instead of writing into it; `set_Ms`
+  keeps the A/m → Tesla (`mu_0`) scaling semantics
+- GPU kernels no longer mark parameters that may be a `Fill` (`mu0_Ms`, `Ms`/`mu_s`, `Ku`, `Kc`,
+  `A`, `D`, `pins`, ...) with `@Const`, and the stochastic-field kernel reads alpha per spin, so
+  a spatially varying alpha now also applies to thermal noise
 
 ### Fixed
 
@@ -48,6 +74,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - fix `ovf2movie` default output filename (undefined `path` variable)
 - fix docs/tutorials (std4, std5, skyrmion_stt): `dynamic_m_interval` → `dynamic_m_every`
   and `jld2movie` (removed) → `ovf2movie` on the ovf output folder
+- `relax` now works with the `InertialLLG` driver (previously it fell into the minimization
+  branch): both `relax(sim::AbstractSim)` and `relax(sim::NEB)` decide between time integration
+  and minimization by checking whether the driver carries an integrator instead of testing
+  `isa(driver, LLG)`
 
 ### Removed
 
@@ -59,6 +89,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `create_sim` is no longer exported; build simulations with `Sim` + `set_*`/`add_*`
   (or use the high-level `sim_with`). `MicroMagnetic.create_sim(...)` still works and
   remains the factory used by the NEB/transition machinery
+- assigning a scalar to `sim.driver.alpha` (`sim.driver.alpha = 0.05`) is no longer supported and
+  throws an informative error (the driver does not know the mesh length); use
+  `set_alpha(sim, 0.05)` instead — scalars, arrays and functions are all accepted. Assignments to
+  the other driver fields keep the usual `setproperty!` conversion semantics
+- in-place writes into `sim.mu0_Ms`/`sim.mu_s`/`sim.pins` (`copyto!` or broadcast assignment)
+  now throw while these fields hold a `Fill`; use `set_Ms`/`set_mu_s`/`set_pinning`, which
+  replace the storage
 
 ## Version [v0.5.0] - 2026-05-30
 

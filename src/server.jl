@@ -178,10 +178,6 @@ function extract_driver_info(driver)
     elseif driver isa Main.MicroMagnetic.SD
         info["max_tau"] = driver.max_tau
         info["min_tau"] = driver.min_tau
-    elseif driver isa Main.MicroMagnetic.SpatialLLG
-        info["gamma"] = driver.gamma
-        info["integrator"] = Base.nameof(typeof(driver.integrator)) |> string
-        info["tol"] = driver.tol
     end
     return info
 end
@@ -231,7 +227,7 @@ function send_sim_state(sim)
     driver_key = driver_type_str * " Driver"
     
     # Add driver parameters for LLG family drivers
-    if driver_type_str in ["LLG", "InertialLLG", "SpatialLLG"]
+    if driver_type_str in ["LLG", "InertialLLG"]
         state[driver_key] = extract_driver_info(sim.driver)
     elseif driver_type_str == "SD"
         # Optional: Add brief SD information

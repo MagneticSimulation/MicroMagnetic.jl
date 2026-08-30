@@ -31,7 +31,7 @@ function compare_demag_fft_direct(; nx, ny, nz, dx=2e-9, dy=2e-9, dz=2e-9,
         m = 2.0 .* rand(3 * ntotal) .- 1.0
         init_m0(sim, m; norm=false)
         Random.seed!(seed + 7919)
-        copyto!(sim.mu0_Ms, MicroMagnetic.mu_0 .* (6e5 .+ 3e5 .* rand(ntotal)))
+        set_Ms(sim, 6e5 .+ 3e5 .* rand(ntotal))
     end
 
     add_demag(sim_fft; Nx=Nx, Ny=Ny, Nz=Nz)

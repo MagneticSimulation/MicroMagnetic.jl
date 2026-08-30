@@ -63,7 +63,7 @@ end
 function compute_field_macro_uniform(mesh, Nx, Ny, Nz)
     Ms = 8.6e5
     sim = Sim(mesh)
-    sim.mu0_Ms[:] .= MicroMagnetic.mu_0 * Ms
+    set_Ms(sim, Ms)
 
     init_m0(sim, (1, 1, 1); norm=false)
     add_demag(sim; Nx=Nx, Ny=Ny, Nz=Nz)
@@ -76,7 +76,7 @@ end
 function compute_field_macro(mesh, Nx, Ny, Nz)
     Ms = 8.6e5
     sim = Sim(mesh)
-    sim.mu0_Ms[:] .= MicroMagnetic.mu_0 * Ms
+    set_Ms(sim, Ms)
 
     function rand_m(i, j, k, dx, dy, dz)
         I = i % 3

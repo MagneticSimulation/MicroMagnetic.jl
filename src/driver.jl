@@ -11,16 +11,31 @@ mutable struct SD{T<:AbstractFloat} <: Driver
     steps::Int64
 end
 
-# Landau-Lifshitz-Gilbert driver
+# Landau-Lifshitz-Gilbert driver. The damping `alpha` is an n_total-length array,
+# usually an O(1) `Fill` for uniform damping: "spatial or not" is a
+# property of the value, not the type, so LLG serves uniform and spatial damping
+# alike (the former SpatialLLG driver was merged into it). Use `set_alpha` to
+# change it.
 mutable struct LLG{T<:AbstractFloat} <: Driver
     precession::Bool
-    alpha::T
+    alpha::AbstractArray{T, 1}
     gamma::T
     integrator::Integrator
     tol::Float64
 end
 
-# Inertial LLG driver
+# `sim.driver.alpha = <number>` cannot know the mesh length; the discrimination
+# between Fill and dense materialisation lives in `set_alpha`.
+function Base.setproperty!(driver::LLG, name::Symbol, x)
+    if name === :alpha && !(x isa AbstractArray)
+        throw(ArgumentError("`sim.driver.alpha = $x` is no longer supported; " *
+                            "use `set_alpha(sim, $x)` instead."))
+    end
+    # default conversion semantics for the other (typed scalar) fields
+    return invoke(setproperty!, Tuple{Any,Symbol,Any}, driver, name, x)
+end
+
+# Inertial LLG driver (keeps a scalar alpha; not part of the array unification)
 mutable struct InertialLLG{T<:AbstractFloat} <: Driver
     alpha::T
     gamma::T
@@ -29,12 +44,16 @@ mutable struct InertialLLG{T<:AbstractFloat} <: Driver
     tol::Float64
 end
 
-mutable struct SpatialLLG{T<:AbstractFloat} <: Driver
-    precession::Bool
-    alpha::AbstractArray{T, 1}
-    gamma::T
-    integrator::Integrator
-    tol::Float64
+# "SpatialLLG" was merged into "LLG" when alpha became a (possibly Fill) array;
+# the old name stays as a deprecation alias (remove in v0.7, INTERFACE_DESIGN §10).
+function _normalize_driver_name(driver::String)
+    if driver == "SpatialLLG"
+        Base.depwarn("Driver \"SpatialLLG\" is deprecated; use \"LLG\" together " *
+                     "with `set_alpha` (which accepts uniform and spatial alpha).",
+                     :create_driver)
+        return "LLG"
+    end
+    return driver
 end
 
 
@@ -45,7 +64,8 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         error("The `$driver` driver was removed in v0.6.0. Use the `LLG` driver " *
               "together with $replacement instead.")
     end
-    supported_drivers = ["None", "SD", "LLG", "SpatialLLG", "InertialLLG"]
+    driver = _normalize_driver_name(driver)
+    supported_drivers = ["None", "SD", "LLG", "InertialLLG"]
     if !(driver in supported_drivers)
         error("Supported drivers: ", join(supported_drivers, " "))
     end
@@ -75,8 +95,6 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
     if driver == "LLG"
         call_back_fun = contains(integrator, "Cayley") ? llg_cayley_call_back :
                         llg_call_back
-    elseif driver == "SpatialLLG"
-        call_back_fun = spatial_llg_call_back
     elseif driver == "InertialLLG"
         call_back_fun = inertial_llg_call_back
         n_total = 2*n_total
@@ -104,11 +122,8 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
     end
 
     if driver == "LLG"
-        return LLG(true, T(0.1), T(2.21e5), dopri5, tol)
-    elseif driver == "SpatialLLG"
-        alpha = create_zeros(n_total)
-        alpha .= 0.1
-        return SpatialLLG(true, alpha, T(2.21e5), dopri5, tol)
+        # the default uniform alpha is an O(1) Fill: zero allocation
+        return LLG(true, Fill(T(0.1), n_total), T(2.21e5), dopri5, tol)
     elseif driver == "InertialLLG"
         return InertialLLG(T(0.01), T(2.21e5), T(10e-12), dopri5, tol)
     end

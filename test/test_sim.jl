@@ -27,7 +27,7 @@ function test_sim()
     @test isapprox(Array(sim.spin), m0)
 
     set_Ms(sim, 8.6e5)
-    sim.driver.alpha = 0.5
+    set_alpha(sim, 0.5)
     sim.driver.gamma = 2.21e5
     sim.driver.precession = false
 

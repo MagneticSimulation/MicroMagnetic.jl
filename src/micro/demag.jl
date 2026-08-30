@@ -600,7 +600,7 @@ function fill_tensors(long_tensor, tensor, tx::Bool, ty::Bool, tz::Bool)
     return nothing
 end
 
-@kernel function distribute_m_kernel!(@Const(m), m_pad, @Const(Ms))
+@kernel function distribute_m_kernel!(@Const(m), m_pad, Ms)
     i, j, k = @index(Global, NTuple)
     I = @index(Global)
 
@@ -617,7 +617,7 @@ function distribute_m(m, m_pad, Ms, nx::Int64, ny::Int64, nz::Int64)
 end
 
 @kernel function collect_h_kernel!(h, energy, @Const(m), @Const(h_pad),
-                                   @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
+                                   mu0_Ms, volume::T) where {T<:AbstractFloat}
     i, j, k = @index(Global, NTuple)
     I = @index(Global)
 

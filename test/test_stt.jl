@@ -31,7 +31,7 @@ end
 function run_dynamics_stt(mesh; alpha=0.1, beta=0.2, u=5.8, integrator="DormandPrince")
     sim = Sim(mesh; name="stt_dyn", driver="LLG", integrator=integrator)
     set_Ms(sim, 8.6e5)
-    sim.driver.alpha = alpha
+    set_alpha(sim, alpha)
     sim.driver.gamma = 2.21e5
 
     stt = add_stt(sim, model=:zhang_li, b=u, J=(1.0, 0, 0), xi=beta)

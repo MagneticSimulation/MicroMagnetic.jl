@@ -91,7 +91,7 @@ function relax_system()
     mesh = FDMesh(; nx=500, ny=1, nz=11, dx=2e-9, dy=2e-9, dz=1e-9)
     sim = Sim(mesh; name="relax_llg", driver="LLG", integrator="GPSM")
     sim.driver.precession = false
-    sim.driver.alpha = 0.5
+    set_alpha(sim, 0.5)
     
     set_Ms(sim, 8.6e5)
 

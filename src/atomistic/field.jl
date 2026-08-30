@@ -195,10 +195,10 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
 
     dt = integrator.step
     gamma = sim.driver.gamma
-    alpha = sim.driver.alpha
     k_B = stochastic.k_B
     scaling_factor = stochastic.scaling_fun(t)
-    factor::T = 2 * alpha * k_B / (gamma * dt) * scaling_factor
+    # alpha enters per spin inside the kernel (uniform damping arrives as a Fill)
+    factor::T = 2 * k_B / (gamma * dt) * scaling_factor
 
     stochastic.scaling_factor = scaling_factor
 
@@ -206,8 +206,10 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
                                                              stochastic.energy, sim.mu_s,
                                                              stochastic.eta,
                                                              stochastic.temperature,
-                                                             stochastic.offset_temp, factor,
-                                                             T(1); ndrange=N)
+                                                             stochastic.offset_temp,
+                                                             as_param_array(sim.driver.alpha,
+                                                                            N),
+                                                             factor, T(1); ndrange=N)
 
     return nothing
 end

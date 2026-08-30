@@ -242,11 +242,8 @@ function add_exch(sim::MicroSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
     elseif isa(A, Tuple) && length(A) == 3
         exch = UniformExchange(T(A[1]), T(A[2]), T(A[3]), field, energy, name)
     else
-        Spatial_A = zeros(T, sim.n_total)
-        init_scalar!(Spatial_A, sim.mesh, A)
-
-        A_kb = kernel_array(Spatial_A)
-
+        # a uniform number becomes an O(1) Fill, a function/array a dense array
+        A_kb = make_param(T, A, sim.mesh, sim.n_total)
         exch = SpatialExchange(A_kb, field, energy, name)
     end
 
@@ -303,33 +300,20 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
             if isa(D, NTuple{3, Number})
                 dmi = BulkDMI(T(D[1]), T(D[2]), T(D[3]), field, energy, name)
             else
-                Dx = zeros(T, sim.n_total)
-                Dy = zeros(T, sim.n_total)
-                Dz = zeros(T, sim.n_total)
-                init_scalar!(Dx, sim.mesh, D[1])
-                init_scalar!(Dy, sim.mesh, D[2])
-                init_scalar!(Dz, sim.mesh, D[3])
+                Dx = make_param(T, D[1], sim.mesh, sim.n_total)
+                Dy = make_param(T, D[2], sim.mesh, sim.n_total)
+                Dz = make_param(T, D[3], sim.mesh, sim.n_total)
 
-                Dx_kb = kernel_array(Dx)
-                Dy_kb = kernel_array(Dy)
-                Dz_kb = kernel_array(Dz)
-
-                dmi = SpatialVectorBulkDMI(Dx_kb, Dy_kb, Dz_kb, field, energy, name)
+                dmi = SpatialVectorBulkDMI(Dx, Dy, Dz, field, energy, name)
             end
         else
-            Spatial_D = zeros(T, sim.n_total)
-            init_scalar!(Spatial_D, sim.mesh, D)
-            D_kb = kernel_array(Spatial_D)
+            D_kb = make_param(T, D, sim.mesh, sim.n_total)
             dmi = SpatialVectorBulkDMI(D_kb, D_kb, D_kb, field, energy, name)
         end
 
         @info "Bulk DMI has been added."
     elseif type == "interfacial"
-        Spatial_D = zeros(T, sim.n_total)
-        init_scalar!(Spatial_D, sim.mesh, D)
-
-        D_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
-        copyto!(D_kb, Spatial_D)
+        D_kb = make_param(T, D, sim.mesh, n_total)
 
         dmi = InterfacialDMI(D_kb, field, energy, name)
         @info "Interfacial DMI has been added."
@@ -367,12 +351,7 @@ function add_dmi(sim::MicroSim,D::NumberOrTupleOrArrayOrFunction, ft::Function; 
     elseif isa(D, Tuple) && length(D) == 3
             dmi = TimeBulkDMI(T(D[1]), T(D[2]), T(D[3]), ft, field, energy, name)
     else
-            Spatial_D = zeros(T, sim.n_total)
-            init_scalar!(Spatial_D, sim.mesh, D)
-
-            D_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
-            copyto!(D_kb, Spatial_D)
-
+            D_kb = make_param(T, D, sim.mesh, n_total)
             dmi = TimeSpatialBulkDMI(D_kb, ft, field, energy, name)
     end
 
@@ -431,10 +410,7 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction;
                   axis::TupleOrArrayOrFunction=(0, 0, 1), name="anis")
     n_total = sim.n_total
     T = Float[]
-    Kus = zeros(T, n_total)
-    init_scalar!(Kus, sim.mesh, Ku)
-
-    Kus_kb = kernel_array(Kus)
+    Kus_kb = make_param(T, Ku, sim.mesh, n_total)
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)
 
@@ -512,12 +488,10 @@ Example:
 ```
 """
 function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name="anis")  #FIXME : fix this function
-    n_total = sim.n_total
-    Kus = zeros(Float64, n_total)
-    init_scalar!(Kus, sim.mesh, Ku)
     for i in sim.interactions
         if i.name == name
-            i.Ku[:] = Kus[:]
+            # replace instead of writing in place: a Fill Ku cannot be written to
+            i.Ku = make_param(Float64, Ku, sim.mesh, sim.n_total)
             return nothing
         end
     end
@@ -542,8 +516,7 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
                         axis2=(0, 1, 0), name="cubic")
     n_total = sim.n_total
     T = Float[]
-    Kcs = zeros(T, n_total)
-    init_scalar!(Kcs, sim.mesh, Kc)
+    Kcs_kb = make_param(T, Kc, sim.mesh, n_total)
 
     norm1 = sqrt(axis1[1]^2 + axis1[2]^2 + axis1[3]^2)
     norm2 = sqrt(axis2[1]^2 + axis2[2]^2 + axis2[3]^2)
@@ -554,11 +527,8 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
     end
     naxis3 = cross_product(axis1, axis2)
 
-    Kcs_kb = KernelAbstractions.zeros(default_backend[], T, n_total)
     field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
-
-    copyto!(Kcs_kb, Kcs)
 
     anis = CubicAnisotropy(Kcs_kb, naxis1, naxis2, naxis3, field, energy, name)
     push!(sim.interactions, anis)
@@ -738,21 +708,22 @@ function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name
     field = create_zeros(3 * N)
     energy = create_zeros(N)
 
-    Spatial_T = create_zeros(N)
     eta = create_zeros(3 * N)
 
     if isa(Temp, Function) && methods(Temp)[1].nargs - 1 == 4 #four parameters (x,y,z,t)
         @info("Fully spatiotemporal temperature profile is provided, scaling and T0 are ignored.")
         spatiotemporal_mode = true
+        # the profile is rewritten at every step, so it must stay a dense buffer
+        temperature = create_zeros(N)
         scaling_fun = Temp
     else
         spatiotemporal_mode = false
-        init_scalar!(Spatial_T, sim.mesh, Temp)
+        temperature = make_param(T, Temp, sim.mesh, N)
         scaling_fun = scaling
     end
 
-    thermal = StochasticField(Spatial_T, T(T0), eta, field, energy, -1, name, k_B,
-                              scaling_fun, average(Spatial_T), T(1), spatiotemporal_mode)
+    thermal = StochasticField(temperature, T(T0), eta, field, energy, -1, name, k_B,
+                              scaling_fun, average(temperature), T(1), spatiotemporal_mode)
     push!(sim.interactions, thermal)
 
     if sim.save_data
@@ -954,9 +925,7 @@ function add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number,
     field = create_zeros(3 * n_total)
 
     T = Float[]
-    spatial_aj = zeros(T, sim.n_total)
-    init_scalar!(spatial_aj, sim.mesh, aj)
-    aj_zb = kernel_array(spatial_aj)
+    aj_zb = make_param(T, aj, sim.mesh, n_total)
 
     torque = DFTorqueField(T(p[1]), T(p[2]), T(p[3]), aj_zb, T(bj), field, name)
 
@@ -1168,10 +1137,10 @@ function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
 
     T = Float[]
     n_total = sim.n_total
-    xi = zeros(T, n_total)
-    init_scalar!(xi, sim.mesh, xi_init)
-    xi_kb = kernel_array(xi)
+    xi = make_param(T, xi_init, sim.mesh, n_total)
 
+    # bJ is a 3N vector (a per-component current density times b) and cannot be
+    # represented by a uniform Fill; it stays dense.
     bJ_cpu = zeros(T, 3 * n_total)
     init_vector!(bJ_cpu, sim.mesh, params[:J])
     bJ_cpu .*= b
@@ -1184,7 +1153,7 @@ function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
 
     field = create_zeros(3 * n_total)
     ft = haskey(params, :ft) ? params[:ft] : t -> 1.0
-    torque = ZhangLiTorque(xi_kb, bJ, field, ft, name)
+    torque = ZhangLiTorque(xi, bJ, field, ft, name)
 
     push!(sim.interactions, torque)
     @info "Zhang-Li Spin Transfer Torque has been added."
@@ -1211,9 +1180,7 @@ function add_slonczewski_torque(sim::AbstractSim, name, params::Dict)
     T = Float[]
     n_total = sim.n_total
 
-    J_cpu = zeros(T, n_total)
-    init_scalar!(J_cpu, sim.mesh, params[:J])
-    J = kernel_array(J_cpu)
+    J = make_param(T, params[:J], sim.mesh, n_total)
 
     field = create_zeros(3 * n_total)
 

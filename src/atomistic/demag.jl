@@ -240,7 +240,7 @@ function compute_dipolar_tensors(tensor, kernel_fun, Nx, Ny, Nz, dx, dy, dz)
     return nothing
 end
 
-@kernel function distribute_m_atomistic_kernel!(@Const(m), m_pad, @Const(mu_s))
+@kernel function distribute_m_atomistic_kernel!(@Const(m), m_pad, mu_s)
     i, j, k = @index(Global, NTuple)
     I = @index(Global)
 
@@ -258,7 +258,7 @@ function distribute_m_atomistic(m, m_pad, mu_s::AbstractArray{T,1},
 end
 
 @kernel function collect_h_atomistic_kernel!(h, energy, @Const(m), @Const(h_pad),
-                                             @Const(mu_s))
+                                             mu_s)
     i, j, k = @index(Global, NTuple)
     I = @index(Global)
 

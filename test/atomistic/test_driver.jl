@@ -26,7 +26,7 @@ function test_driver()
     relax(sim; stopping_dmdt=1e-2, max_steps=1000, using_time_factor=false)
 
     set_driver(sim; driver="LLG", integrator="DormandPrince")
-    sim.driver.alpha = 0.5
+    set_alpha(sim, 0.5)
     sim.driver.gamma = 1.0
 
     run_until(sim, 2.0)

@@ -126,7 +126,7 @@ function test_sim_with_sweep_driver()
             max_steps=2, stopping_dmdt=1e-5, relax_m_every=-1)
     sim = sim_with(args)
     @test sim.driver_name == "LLG"
-    @test isapprox(sim.driver.alpha, 0.05; rtol=1e-6)
+    @test isapprox(first(sim.driver.alpha), 0.05; rtol=1e-6)
     @test isapprox(sim.driver.gamma, 2.21e5; rtol=1e-6)
 
     # I-05: relax stages honor driver_s as well
@@ -135,7 +135,7 @@ function test_sim_with_sweep_driver()
             max_steps=2, stopping_dmdt=1e-5, relax_m_every=-1)
     sim = sim_with(args)
     @test sim.driver_name == "LLG"
-    @test isapprox(sim.driver.alpha, 0.05; rtol=1e-6)
+    @test isapprox(first(sim.driver.alpha), 0.05; rtol=1e-6)
     return nothing
 end
 

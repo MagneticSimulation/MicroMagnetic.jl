@@ -27,7 +27,7 @@ function relax_system(; driver="SD")
     sim = Sim(mesh; name="test_pinning", driver=driver)
     if driver == "LLG"
         sim.driver.precession = false
-        sim.driver.alpha = 0.5
+        set_alpha(sim, 0.5)
     end
     set_Ms(sim, 8.6e5)
     set_pinning(sim, pinning_boundary)

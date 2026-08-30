@@ -1,11 +1,16 @@
 
+# `alphas` is read per spin so uniform (Fill) and spatial (dense) damping share
+# this kernel, mirroring llg_rhs_kernel!.
 @kernel function llg_rhs_cayley_kernel!(dw_dt, @Const(m), @Const(h), @Const(omega),
-                                        @Const(pins), alpha::T, gamma::T,
+                                        pins, alphas, gamma::T,
                                         precession::Bool) where {T<:AbstractFloat}
     I = @index(Global)
     j = 3 * I - 2
 
-    if pins[I]
+    @inbounds pin::Bool = pins[I]
+    @inbounds alpha::T = alphas[I]
+
+    if pin
         @inbounds dw_dt[j] = 0
         @inbounds dw_dt[j + 1] = 0
         @inbounds dw_dt[j + 2] = 0

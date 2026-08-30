@@ -31,9 +31,8 @@ The `circular_shape` function here assigns `2 * mu_B` to atoms within a circle o
 """
 function set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
     T = Float[]
-    Ms = zeros(T, sim.n_total)
-    init_scalar!(Ms, sim.mesh, init)
-    copyto!(sim.mu_s, Ms)
+    # a uniform number is stored as an O(1) Fill; functions/arrays are materialised
+    sim.mu_s = make_param(T, init, sim.mesh, sim.n_total)
 
     send_visualization_data(sim)
     return true
@@ -63,7 +62,7 @@ function set_mu_s_kagome(sim::AtomisticSim, Ms::Number)
             mu_s[id] = 0.0
         end
     end
-    copyto!(sim.mu_s, mu_s)
+    sim.mu_s = kernel_array(mu_s)
     return true
 end
 

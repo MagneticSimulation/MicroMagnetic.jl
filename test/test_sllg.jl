@@ -9,7 +9,7 @@ function test_sllg(; dt=1e-15)
 
     V = 2.8e-26
     sim = Sim(mesh; driver="LLG", integrator="RungeKutta", name="sllg")
-    sim.driver.alpha = 0.1
+    set_alpha(sim, 0.1)
     sim.driver.gamma = 1.76e11
     sim.driver.integrator.step = dt
 
@@ -34,7 +34,7 @@ function test_noise(; dt=1e-14)
     mesh = FDMesh(; nx=4, ny=3, nz=1, dx=1e-9, dy=1e-9, dz=1e-9)
 
     sim = Sim(mesh; driver="LLG", integrator="Heun", name="sllg2")
-    sim.driver.alpha = 0.1
+    set_alpha(sim, 0.1)
     sim.driver.gamma = 2.21e5
     sim.driver.integrator.step = dt
 

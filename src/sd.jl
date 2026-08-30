@@ -36,7 +36,7 @@ end
     @inbounds ff[I] = fx * fx + fy * fy + fz * fz
 end
 
-@kernel function run_step_kernel!(@Const(gk), m, @Const(h), @Const(pins),
+@kernel function run_step_kernel!(@Const(gk), m, @Const(h), pins,
                                   tau::T) where {T<:AbstractFloat}
     I = @index(Global)
     @inbounds if !pins[I]

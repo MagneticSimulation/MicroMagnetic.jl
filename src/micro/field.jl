@@ -254,11 +254,11 @@ function effective_field(st::StochasticField, sim::MicroSim, spin::AbstractArray
 
     dt = integrator.step
     gamma = sim.driver.gamma
-    alpha = sim.driver.alpha
     k_B = st.k_B
 
     back = default_backend[]
-    factor = 2 * alpha * k_B / (volume * gamma * dt)
+    # alpha enters per spin inside the kernel (uniform damping arrives as a Fill)
+    factor = 2 * k_B / (volume * gamma * dt)
     if st.spatiotemporal_mode
         mesh = sim.mesh
         Nx, Ny, Nz = mesh.nx, mesh.ny, mesh.nz
@@ -274,6 +274,7 @@ function effective_field(st::StochasticField, sim::MicroSim, spin::AbstractArray
 
     stochastic_field_kernel!(back, groupsize[])(spin, st.field, st.energy, sim.mu0_Ms,
                                                 st.eta, st.temperature, st.offset_temp,
+                                                as_param_array(sim.driver.alpha, N),
                                                 T(factor), T(volume); ndrange=N)
 
     return nothing

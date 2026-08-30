@@ -3,6 +3,7 @@ using Test
 
 
 include("test_mesh.jl")
+include("test_fill.jl")
 include("test_init_m0.jl")
 include("test_shapes.jl")
 include("test_zeeman.jl")
@@ -20,6 +21,7 @@ include("test_llg.jl")
 include("test_illg.jl")
 include("test_sllg.jl")
 include("test_spatial_llg.jl")
+include("test_fill_equivalence.jl")
 include("test_relax.jl")
 include("test_pins.jl")
 include("test_stt.jl")

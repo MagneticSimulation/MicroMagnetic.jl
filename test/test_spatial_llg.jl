@@ -19,6 +19,11 @@ function test_spatial_llg()
     
     set_Ms(sim, 8.6e5)
 
+    # a uniform number is stored as an O(1) Fill
+    set_alpha(sim, 0.15)
+    @test sim.driver.alpha isa MicroMagnetic.Fill
+    @test Array(sim.driver.alpha) == fill(0.15, sim.n_total)
+
     set_alpha(sim, (i, j, k, dx, dy, dz) -> 0.1)
     alpha = Array(sim.driver.alpha)
     @test maximum(alpha) == minimum(alpha)

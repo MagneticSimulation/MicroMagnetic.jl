@@ -22,7 +22,7 @@ function test_llg(;integrator="DormandPrince")
   sim = Sim(mesh, name="spin", integrator=integrator)
 
   set_Ms(sim, 8e5)
-  sim.driver.alpha = 0.05
+  set_alpha(sim, 0.05)
   sim.driver.gamma = 2.21e5
   sim.driver.integrator.tol=1e-9
 
