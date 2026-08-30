@@ -1,12 +1,13 @@
 import { defineConfig } from 'vitepress'
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
-import mathjax3 from "markdown-it-mathjax3";
+import { mathjaxPlugin } from './mathjax-plugin'
+import { juliaReplTransformer } from './julia-repl-transformer'
 import footnote from "markdown-it-footnote";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
-
-
 import path from 'path'
+
+const mathjax = mathjaxPlugin()
 
 function getBaseRepository(base: string): string {
   if (!base || base === '/') return '/';
@@ -43,8 +44,11 @@ export default withMermaid (defineConfig({
     // ['script', {src: '/versions.js'], for custom domains, I guess if deploy_url is available.
     ['script', {src: `${baseTemp.base}siteinfo.js`}],
   ],
-  
+
   vite: {
+    plugins: [
+      mathjax.vitePlugin,
+    ],
     define: {
       __DEPLOY_ABSPATH__: JSON.stringify('REPLACE_ME_DOCUMENTER_VITEPRESS_DEPLOY_ABSPATH'),
     },
@@ -54,30 +58,31 @@ export default withMermaid (defineConfig({
       }
     },
     optimizeDeps: {
-      exclude: [ 
+      exclude: [
         '@nolebase/vitepress-plugin-enhanced-readabilities/client',
         'vitepress',
         '@nolebase/ui',
-      ], 
-    }, 
-    ssr: { 
-      noExternal: [ 
+      ],
+    },
+    ssr: {
+      noExternal: [
         // If there are other packages that need to be processed by Vite, you can add them here.
         '@nolebase/vitepress-plugin-enhanced-readabilities',
         '@nolebase/ui',
-      ], 
+      ],
     },
   },
   markdown: {
-    math: true,
+    codeTransformers: [juliaReplTransformer()],
     config(md) {
-      md.use(tabsMarkdownPlugin),
-      md.use(mathjax3),
-      md.use(footnote)
+      md.use(tabsMarkdownPlugin);
+      md.use(footnote);
+      mathjax.markdownConfig(md);
     },
     theme: {
       light: "github-light",
-      dark: "github-dark"}
+      dark: "github-dark"
+    },
   },
 
   themeConfig: {

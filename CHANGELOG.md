@@ -43,6 +43,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- fix LaTeX formula rendering in the docs: migrate `docs/src/.vitepress/config.mts` to
+  the DocumenterVitepress mathjax plugin and pin the npm dependencies with a lockfile
 - fix `ovf2movie` default output filename (undefined `path` variable)
 - fix docs/tutorials (std4, std5, skyrmion_stt): `dynamic_m_interval` → `dynamic_m_every`
   and `jld2movie` (removed) → `ovf2movie` on the ovf output folder
