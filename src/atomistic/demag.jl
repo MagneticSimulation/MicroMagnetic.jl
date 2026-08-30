@@ -23,12 +23,21 @@ function init_demag(sim::AtomisticSim, Nx::Int, Ny::Int, Nz::Int)
     #one batched buffer for the 3 magnetization components (see micro/demag.jl)
     m_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
     M_pad = create_zeros(Complex{T}, lenx, ny_fft, nz_fft, 3)
-    h_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
-
-    tune_fftw_threads(m_pad, M_pad, nx_fft)
+    if inplace_inverse(M_pad)
+        #in-place c2r: the real field overwrites the spectrum buffer's own
+        #memory, so no separate h_pad buffer is needed; 1/N is folded into the
+        #packed tensors (see the comments in micro/demag.jl)
+        tune_fftw_threads(m_pad, M_pad, nx_fft, make_inplace_plan)
+        h_pad = reinterpret(T, M_pad)
+        h_plan = make_inplace_plan(M_pad, nx_fft)
+        tscale = T(inv(nx_fft * ny_fft * nz_fft))
+    else
+        h_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
+        h_plan = plan_irfft(M_pad, nx_fft, 1:3)
+        tscale = one(T)
+    end
 
     m_plan = plan_rfft(m_pad, 1:3)
-    h_plan = plan_irfft(M_pad, nx_fft, 1:3)
 
     tensor = create_zeros(nx, ny, nz)
     mx_pad = create_zeros(nx_fft, ny_fft, nz_fft)
@@ -37,32 +46,32 @@ function init_demag(sim::AtomisticSim, Nx::Int, Ny::Int, Nz::Int)
     #Nxx
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_xx!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_xx = pack_demag_tensor(real(plan * mx_pad), 1, 1)
+    tensor_xx = pack_demag_tensor(real(plan * mx_pad), 1, 1; tscale = tscale)
 
     #Nyy
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_yy!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_yy = pack_demag_tensor(real(plan * mx_pad), 1, 1)
+    tensor_yy = pack_demag_tensor(real(plan * mx_pad), 1, 1; tscale = tscale)
 
     #Nzz
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_zz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_zz = pack_demag_tensor(real(plan * mx_pad), 1, 1)
+    tensor_zz = pack_demag_tensor(real(plan * mx_pad), 1, 1; tscale = tscale)
 
     #Nxy
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_xy!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, true, true, false)
-    tensor_xy = pack_demag_tensor(real(plan * mx_pad), -1, 1)
+    tensor_xy = pack_demag_tensor(real(plan * mx_pad), -1, 1; tscale = tscale)
 
     #Nxz
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_xz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, true, false, true)
-    tensor_xz = pack_demag_tensor(real(plan * mx_pad), 1, -1)
+    tensor_xz = pack_demag_tensor(real(plan * mx_pad), 1, -1; tscale = tscale)
 
     #Nyz
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_yz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, true, true)
-    tensor_yz = pack_demag_tensor(real(plan * mx_pad), -1, -1)
+    tensor_yz = pack_demag_tensor(real(plan * mx_pad), -1, -1; tscale = tscale)
 
     field = create_zeros(3 * sim.n_total)
     energy = create_zeros(sim.n_total)
@@ -93,7 +102,7 @@ function effective_field(demag::Demag, sim::AtomisticSim, spin::AbstractArray{T,
     # synchronize() not needed: same default-stream ordering guarantee as above
     # applies between the KA kernel (add_tensor_M) and the cuFFT mul! calls.
 
-    mul!(demag.h_pad, demag.h_plan, demag.M_pad)
+    inv_transform!(demag.h_pad, demag.M_pad, demag.h_plan, demag.nx_fft)
 
     collect_h_atomistic_energy(demag.field, demag.energy, spin, demag.h_pad,
                                sim.mu_s, nx, ny, nz)

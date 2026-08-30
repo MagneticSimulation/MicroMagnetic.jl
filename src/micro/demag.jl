@@ -16,7 +16,9 @@ mutable struct Demag{T<:AbstractFloat} <: MicroEnergy
     tensor_yz::AbstractArray{T,3}
     m_pad::AbstractArray{T,4}           #padded m (nx_fft, ny_fft, nz_fft, 3), zero padding is kept zero
     M_pad::AbstractArray{Complex{T},4}  #spectrum, batched over the 3 components
-    h_pad::AbstractArray{T,4}           #padded h, only [1:nx, 1:ny, 1:nz] is meaningful
+    h_pad::AbstractArray{T,4}           #padded h, only [1:nx, 1:ny, 1:nz] is meaningful;
+                                        #a reinterpret view of M_pad on backends with an
+                                        #in-place c2r (CPU/CUDA), an own buffer otherwise
     m_plan::Any
     h_plan::Any
     field::AbstractArray{T,1}
@@ -35,7 +37,8 @@ end
 #mirrored entries by index mapping.
 #`full` (lenx, ny_fft, nz_fft) is the raw `real(plan * mx_pad)` output; it is
 #used as scratch for the parity self-check and then discarded.
-function pack_demag_tensor(full::AbstractArray{T,3}, ey::Int, ez::Int) where {T<:AbstractFloat}
+function pack_demag_tensor(full::AbstractArray{T,3}, ey::Int, ez::Int;
+                           tscale::T=one(T)) where {T<:AbstractFloat}
     lenx, ny, nz = size(full)
     ny2 = ny ÷ 2 + 1
     nz2 = nz ÷ 2 + 1
@@ -56,6 +59,7 @@ function pack_demag_tensor(full::AbstractArray{T,3}, ey::Int, ez::Int) where {T<
         @warn("demag tensor parity check failed: max |F - F_mirror| / max|F| = $(vmax / max(scale, one(T))); " *
               "the packed demag tensors would give wrong fields!")
     end
+    tscale == one(T) || rmul!(packed, tscale)
     return packed
 end
 
@@ -72,6 +76,82 @@ end
     @inbounds expected = sy * sz * packed[a + 1 + lenx * (bb + ny2 * cc)]
     @inbounds full[i] = abs(full[i] - expected)
 end
+
+#Backends with a raw in-place c2r transform (CPU/FFTW and CUDA/cuFFT) write the
+#real field directly into the spectrum buffer's own memory: the padded real
+#output (2*lenx = nx_fft+2 real rows per component) exactly fits the complex
+#input (lenx rows), so the separate h_pad allocation disappears.  Other
+#backends fall back to an independent h_pad plus the public plan API.  The raw
+#c2r transform is UNNORMALIZED, hence 1/N is folded into the packed tensors.
+inplace_inverse(::AbstractArray) = false
+inplace_inverse(A::Array) = true
+inplace_inverse(A::Array{Complex{T}}) where {T} = T === Float64 || T === Float32
+
+#raw FFTW in-place c2r plan, batched over the 3 components (howmany = 3)
+mutable struct FFTWInplacePlan
+    ptr::Ptr{Cvoid}
+    destroy::Function
+end
+
+function make_inplace_plan(M_pad::Array{Complex{Float64},4}, nx_fft::Int)
+    lenx, ny, nz = size(M_pad)[1:3]
+    n = Cint[nz, ny, nx_fft]            #C order: the halved (first) dim goes last
+    inembed = Cint[nz, ny, lenx]        #complex input dims
+    onembed = Cint[nz, ny, 2 * lenx]    #padded real output dims
+    ptr = ccall((:fftw_plan_many_dft_c2r, FFTW.libfftw3), Ptr{Cvoid},
+                (Cint, Ptr{Cint}, Cint, Ptr{ComplexF64}, Ptr{Cint}, Cint, Cint,
+                 Ptr{Float64}, Ptr{Cint}, Cint, Cint, Cuint),
+                Cint(3), n, Cint(3), pointer(M_pad), inembed, Cint(1),
+                Cint(lenx * ny * nz), pointer(M_pad), onembed, Cint(1),
+                Cint(2 * lenx * ny * nz), Cuint(FFTW.MEASURE))
+    ptr == C_NULL && error("fftw_plan_many_dft_c2r failed")
+    p = FFTWInplacePlan(ptr, () -> ccall((:fftw_destroy_plan, FFTW.libfftw3), Cvoid,
+                                         (Ptr{Cvoid},), ptr))
+    finalizer(p) do pl
+        pl.destroy()
+    end
+    return p
+end
+
+function make_inplace_plan(M_pad::Array{Complex{Float32},4}, nx_fft::Int)
+    lenx, ny, nz = size(M_pad)[1:3]
+    n = Cint[nz, ny, nx_fft]
+    inembed = Cint[nz, ny, lenx]
+    onembed = Cint[nz, ny, 2 * lenx]
+    ptr = ccall((:fftwf_plan_many_dft_c2r, FFTW.libfftw3f), Ptr{Cvoid},
+                (Cint, Ptr{Cint}, Cint, Ptr{ComplexF32}, Ptr{Cint}, Cint, Cint,
+                 Ptr{Float32}, Ptr{Cint}, Cint, Cint, Cuint),
+                Cint(3), n, Cint(3), pointer(M_pad), inembed, Cint(1),
+                Cint(lenx * ny * nz), pointer(M_pad), onembed, Cint(1),
+                Cint(2 * lenx * ny * nz), Cuint(FFTW.MEASURE))
+    ptr == C_NULL && error("fftwf_plan_many_dft_c2r failed")
+    p = FFTWInplacePlan(ptr, () -> ccall((:fftwf_destroy_plan, FFTW.libfftw3f), Cvoid,
+                                         (Ptr{Cvoid},), ptr))
+    finalizer(p) do pl
+        pl.destroy()
+    end
+    return p
+end
+
+#execute the inverse: c2r with in == out (destroys M_pad, refilled every step)
+function inv_transform!(h_pad, M_pad::Array{Complex{Float64},4}, h_plan::FFTWInplacePlan,
+                        nx_fft::Int)
+    ccall((:fftw_execute_dft_c2r, FFTW.libfftw3), Cvoid,
+          (Ptr{Cvoid}, Ptr{Float64}, Ptr{Float64}),
+          h_plan.ptr, pointer(M_pad), pointer(M_pad))
+    return nothing
+end
+
+function inv_transform!(h_pad, M_pad::Array{Complex{Float32},4}, h_plan::FFTWInplacePlan,
+                        nx_fft::Int)
+    ccall((:fftwf_execute_dft_c2r, FFTW.libfftw3f), Cvoid,
+          (Ptr{Cvoid}, Ptr{Float32}, Ptr{Float32}),
+          h_plan.ptr, pointer(M_pad), pointer(M_pad))
+    return nothing
+end
+
+#generic fallback for backends without a raw in-place c2r
+inv_transform!(h_pad, M_pad, h_plan, nx_fft::Int) = mul!(h_pad, h_plan, M_pad)
 
 # Note: the size of the demag tensors is reduced to ~nx*ny*nz by packing them
 # into the (y,z) parity fundamental domain, see pack_demag_tensor.
@@ -99,12 +179,24 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     #per FFT stage and enables batched transforms on GPU backends)
     m_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
     M_pad = create_zeros(Complex{T}, lenx, ny_fft, nz_fft, 3)
-    h_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
-
-    tune_fftw_threads(m_pad, M_pad, nx_fft)
+    if inplace_inverse(M_pad)
+        #in-place c2r: the real field overwrites the spectrum buffer's own
+        #memory (nx_fft+2 real rows fit into lenx complex rows per component),
+        #so no separate h_pad buffer is needed; the raw transform is
+        #unnormalized, hence 1/N is folded into the packed tensors below.
+        #The thread count must be settled (tuned with throw-away plans) BEFORE
+        #the final in-place plan is created.
+        tune_fftw_threads(m_pad, M_pad, nx_fft, make_inplace_plan)
+        h_pad = reinterpret(T, M_pad)
+        h_plan = make_inplace_plan(M_pad, nx_fft)
+        tscale = T(inv(nx_fft * ny_fft * nz_fft))
+    else
+        h_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
+        h_plan = plan_irfft(M_pad, nx_fft, 1:3)
+        tscale = one(T)
+    end
 
     m_plan = plan_rfft(m_pad, 1:3)
-    h_plan = plan_irfft(M_pad, nx_fft, 1:3)
 
     tensor = create_zeros(nx, ny, nz)
     mx_pad = create_zeros(nx_fft, ny_fft, nz_fft)
@@ -113,32 +205,32 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     #Nxx
     compute_demag_tensors(tensor, tensors_kernel_xx!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_xx = pack_demag_tensor(real(plan * mx_pad), 1, 1)
+    tensor_xx = pack_demag_tensor(real(plan * mx_pad), 1, 1; tscale = tscale)
 
     #Nyy
     compute_demag_tensors(tensor, tensors_kernel_yy!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_yy = pack_demag_tensor(real(plan * mx_pad), 1, 1)
+    tensor_yy = pack_demag_tensor(real(plan * mx_pad), 1, 1; tscale = tscale)
 
     #Nzz
     compute_demag_tensors(tensor, tensors_kernel_zz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_zz = pack_demag_tensor(real(plan * mx_pad), 1, 1)
+    tensor_zz = pack_demag_tensor(real(plan * mx_pad), 1, 1; tscale = tscale)
 
     #Nxy
     compute_demag_tensors(tensor, tensors_kernel_xy!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, true, true, false)
-    tensor_xy = pack_demag_tensor(real(plan * mx_pad), -1, 1)
+    tensor_xy = pack_demag_tensor(real(plan * mx_pad), -1, 1; tscale = tscale)
 
     #Nxz
     compute_demag_tensors(tensor, tensors_kernel_xz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, true, false, true)
-    tensor_xz = pack_demag_tensor(real(plan * mx_pad), 1, -1)
+    tensor_xz = pack_demag_tensor(real(plan * mx_pad), 1, -1; tscale = tscale)
 
     #Nyz
     compute_demag_tensors(tensor, tensors_kernel_yz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, true, true)
-    tensor_yz = pack_demag_tensor(real(plan * mx_pad), -1, -1)
+    tensor_yz = pack_demag_tensor(real(plan * mx_pad), -1, -1; tscale = tscale)
 
     field = create_zeros(3 * sim.n_total)
     energy = create_zeros(sim.n_total)
@@ -169,9 +261,9 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1}, 
                  demag.tensor_xy, demag.tensor_xz, demag.tensor_yz,
                  demag.ny_fft, demag.nz_fft)
 
-    #the inverse transform writes the full padded array, so h lives in its own
-    #buffer (its padding is garbage and is never read back)
-    mul!(demag.h_pad, demag.h_plan, demag.M_pad)
+    #in-place c2r (CPU/CUDA): the real field overwrites M_pad's memory and h_pad
+    #is a reinterpret view of it; other backends: out-of-place into own buffer
+    inv_transform!(demag.h_pad, demag.M_pad, demag.h_plan, demag.nx_fft)
 
     heff = output == nothing ? demag.field : output
 
@@ -183,11 +275,13 @@ end
 
 #FFTW only parallelizes plans that are created after set_num_threads, and the
 #optimal thread count depends strongly on the grid shape (e.g. very thin grids
-#can be several times SLOWER with many threads), so we time both candidates
-#once at initialization and keep the faster one. Non-CPU backends (cuFFT etc.)
+#can be several times SLOWER with many threads), so we time the REAL pipeline
+#(forward mul! + in-place c2r via `make_ip_plan`) for both candidates and keep
+#the faster one. The timing plans are thrown away; the caller creates the final
+#plans afterwards with the winning thread count. Non-CPU backends (cuFFT etc.)
 #ignore FFTW and are left untouched.
 function tune_fftw_threads(m_pad::AbstractArray{T,4}, M_pad::AbstractArray{Complex{T},4},
-                           nx_fft::Int) where {T<:AbstractFloat}
+                           nx_fft::Int, make_ip_plan::Function) where {T<:AbstractFloat}
     default_backend[] != CPU() && return nothing
     if length(m_pad) < 2^16 #threading cannot pay off on small problems
         FFTW.set_num_threads(1)
@@ -195,18 +289,23 @@ function tune_fftw_threads(m_pad::AbstractArray{T,4}, M_pad::AbstractArray{Compl
     end
 
     maxt = max(Sys.CPU_THREADS, 1)
-    scratch = similar(m_pad)
     best, best_time = 1, Inf
     for nt in unique((1, maxt))
         FFTW.set_num_threads(nt)
         p = plan_rfft(m_pad, 1:3)
-        ip = plan_irfft(M_pad, nx_fft, 1:3)
-        mul!(M_pad, p, m_pad)        #warmup (r2c preserves m_pad)
-        mul!(scratch, ip, M_pad)     #warmup (c2r destroys M_pad, refilled below)
-        t = @elapsed for _ in 1:2
-            mul!(M_pad, p, m_pad)
-            mul!(scratch, ip, M_pad)
+        ip = make_ip_plan(M_pad, nx_fft)
+        #several rounds, keep the fastest: a single noisy sample on a busy
+        #machine can otherwise select a catastrophically bad thread count
+        t = Inf
+        for _ in 1:4
+            mul!(M_pad, p, m_pad)        #warmup + refill (r2c preserves m_pad)
+            inv_transform!(M_pad, M_pad, ip, nx_fft)  #warmup (destroys M_pad)
+            t = min(t, @elapsed begin
+                mul!(M_pad, p, m_pad)
+                inv_transform!(M_pad, M_pad, ip, nx_fft)
+            end)
         end
+        finalize(ip)
         if t < best_time
             best, best_time = nt, t
         end
