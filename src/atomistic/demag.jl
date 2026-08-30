@@ -17,12 +17,22 @@ function init_demag(sim::AtomisticSim, Nx::Int, Ny::Int, Nz::Int)
     ny_fft = mesh.ny > cn ? 2 * mesh.ny : 2 * mesh.ny - 1
     nz_fft = mesh.nz > cn ? 2 * mesh.nz : 2 * mesh.nz - 1
 
-    mx_pad = create_zeros(nx_fft, ny_fft, nz_fft)
-    my_pad = create_zeros(nx_fft, ny_fft, nz_fft)
-    mz_pad = create_zeros(nx_fft, ny_fft, nz_fft)
-    plan = plan_rfft(mx_pad)
+    lenx = (nx_fft % 2 > 0) ? nx : nx + 1
+
+    T = Float[]
+    #one batched buffer for the 3 magnetization components (see micro/demag.jl)
+    m_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
+    M_pad = create_zeros(Complex{T}, lenx, ny_fft, nz_fft, 3)
+    h_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
+
+    tune_fftw_threads(m_pad, M_pad, nx_fft)
+
+    m_plan = plan_rfft(m_pad, 1:3)
+    h_plan = plan_irfft(M_pad, nx_fft, 1:3)
 
     tensor = create_zeros(nx, ny, nz)
+    mx_pad = create_zeros(nx_fft, ny_fft, nz_fft)
+    plan = plan_rfft(mx_pad)
 
     #Nxx
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_xx!, Nx, Ny, Nz, dx, dy, dz)
@@ -54,21 +64,11 @@ function init_demag(sim::AtomisticSim, Nx::Int, Ny::Int, Nz::Int)
     fill_tensors(mx_pad, tensor, false, true, true)
     tensor_yz = real(plan * mx_pad)
 
-    lenx = (nx_fft % 2 > 0) ? nx : nx + 1
-
-    T = Float[]
-    Mx = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    My = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    Mz = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-
-    #m_plan = plan_rfft(mx_pad)
-    h_plan = plan_irfft(Mx, nx_fft)
-
     field = create_zeros(3 * sim.n_total)
     energy = create_zeros(sim.n_total)
 
     demag = Demag(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz, tensor_xy,
-                  tensor_xz, tensor_yz, mx_pad, my_pad, mz_pad, Mx, My, Mz, plan, h_plan,
+                  tensor_xz, tensor_yz, m_pad, M_pad, h_pad, m_plan, h_plan,
                   field, energy, "Demag")
     return demag
 end
@@ -78,31 +78,24 @@ function effective_field(demag::Demag, sim::AtomisticSim, spin::AbstractArray{T,
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, sim.mesh.ny, sim.mesh.nz
 
-    fill!(demag.mx, 0)
-    fill!(demag.my, 0)
-    fill!(demag.mz, 0)
-
-    distribute_m_atomistic(spin, demag.mx, demag.my, demag.mz, sim.mu_s, nx, ny, nz)
+    #see the comment in micro/demag.jl: the zero padding of m_pad stays zero
+    distribute_m_atomistic(spin, demag.m_pad, sim.mu_s, nx, ny, nz)
 
     # synchronize() is not needed here: on the CPU backend KA kernels are
     # synchronous; on the CUDA backend both KA (distribute_m_atomistic) and
     # cuFFT (mul! with the rfft plan) execute on the default stream, so stream
     # ordering guarantees the kernel completes before the FFT begins.
-    mul!(demag.Mx, demag.m_plan, demag.mx)
-    mul!(demag.My, demag.m_plan, demag.my)
-    mul!(demag.Mz, demag.m_plan, demag.mz)
+    mul!(demag.M_pad, demag.m_plan, demag.m_pad)
 
-    add_tensor_M(demag.Mx, demag.My, demag.Mz, demag.tensor_xx, demag.tensor_yy,
-                 demag.tensor_zz, demag.tensor_xy, demag.tensor_xz, demag.tensor_yz)
+    add_tensor_M(demag.M_pad, demag.tensor_xx, demag.tensor_yy, demag.tensor_zz,
+                 demag.tensor_xy, demag.tensor_xz, demag.tensor_yz)
     # synchronize() not needed: same default-stream ordering guarantee as above
     # applies between the KA kernel (add_tensor_M) and the cuFFT mul! calls.
 
-    mul!(demag.mx, demag.h_plan, demag.Mx)
-    mul!(demag.my, demag.h_plan, demag.My)
-    mul!(demag.mz, demag.h_plan, demag.Mz)
+    mul!(demag.h_pad, demag.h_plan, demag.M_pad)
 
-    collect_h_atomistic_energy(demag.field, demag.energy, spin, demag.mx, demag.my,
-                               demag.mz, sim.mu_s, nx, ny, nz)
+    collect_h_atomistic_energy(demag.field, demag.energy, spin, demag.h_pad,
+                               sim.mu_s, nx, ny, nz)
 
     return nothing
 end
@@ -237,42 +230,41 @@ function compute_dipolar_tensors(tensor, kernel_fun, Nx, Ny, Nz, dx, dy, dz)
     return nothing
 end
 
-@kernel function distribute_m_atomistic_kernel!(@Const(m), mx_pad, my_pad, mz_pad,
-                                                @Const(mu_s))
+@kernel function distribute_m_atomistic_kernel!(@Const(m), m_pad, @Const(mu_s))
     i, j, k = @index(Global, NTuple)
     I = @index(Global)
 
     p = 3 * I - 2
-    @inbounds mx_pad[i, j, k] = m[p] * mu_s[I] * 1e20  # 1e20 = 4*pi*mu_0*(1e9)^3
-    @inbounds my_pad[i, j, k] = m[p + 1] * mu_s[I] * 1e20
-    @inbounds mz_pad[i, j, k] = m[p + 2] * mu_s[I] * 1e20
+    @inbounds m_pad[i, j, k, 1] = m[p] * mu_s[I] * 1e20  # 1e20 = 4*pi*mu_0*(1e9)^3
+    @inbounds m_pad[i, j, k, 2] = m[p + 1] * mu_s[I] * 1e20
+    @inbounds m_pad[i, j, k, 3] = m[p + 2] * mu_s[I] * 1e20
 end
 
-function distribute_m_atomistic(m, mx_pad, my_pad, mz_pad, mu_s::AbstractArray{T,1},
+function distribute_m_atomistic(m, m_pad, mu_s::AbstractArray{T,1},
                                 nx::Int64, ny::Int64, nz::Int64) where {T<:AbstractFloat}
     kernel! = distribute_m_atomistic_kernel!(default_backend[], groupsize[])
-    kernel!(m, mx_pad, my_pad, mz_pad, mu_s; ndrange=(nx, ny, nz))
+    kernel!(m, m_pad, mu_s; ndrange=(nx, ny, nz))
     return nothing
 end
 
-@kernel function collect_h_atomistic_kernel!(h, energy, @Const(m), @Const(hx), @Const(hy),
-                                             @Const(hz), @Const(mu_s))
+@kernel function collect_h_atomistic_kernel!(h, energy, @Const(m), @Const(h_pad),
+                                             @Const(mu_s))
     i, j, k = @index(Global, NTuple)
     I = @index(Global)
 
     p = 3 * I - 2
-    @inbounds h[p] = -hx[i, j, k]
-    @inbounds h[p + 1] = -hy[i, j, k]
-    @inbounds h[p + 2] = -hz[i, j, k]
+    @inbounds h[p] = -h_pad[i, j, k, 1]
+    @inbounds h[p + 1] = -h_pad[i, j, k, 2]
+    @inbounds h[p + 2] = -h_pad[i, j, k, 3]
 
     @inbounds mh = m[p] * h[p] + m[p + 1] * h[p + 1] + m[p + 2] * h[p + 2]
     @inbounds energy[I] = -0.5 * mu_s[I] * mh
 end
 
-function collect_h_atomistic_energy(h, energy, m, hx, hy, hz, mu_s::AbstractArray{T,1},
+function collect_h_atomistic_energy(h, energy, m, h_pad, mu_s::AbstractArray{T,1},
                                     nx::Int64, ny::Int64,
                                     nz::Int64) where {T<:AbstractFloat}
     kernel! = collect_h_atomistic_kernel!(default_backend[], groupsize[])
-    kernel!(h, energy, m, hx, hy, hz, mu_s; ndrange=(nx, ny, nz))
+    kernel!(h, energy, m, h_pad, mu_s; ndrange=(nx, ny, nz))
     return nothing
 end

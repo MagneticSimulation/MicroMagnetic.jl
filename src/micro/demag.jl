@@ -11,12 +11,9 @@ mutable struct Demag{T<:AbstractFloat} <: MicroEnergy
     tensor_xy::AbstractArray{T,3}
     tensor_xz::AbstractArray{T,3}
     tensor_yz::AbstractArray{T,3}
-    mx::AbstractArray{T,3}  #input for FFT
-    my::AbstractArray{T,3}
-    mz::AbstractArray{T,3}
-    Mx::AbstractArray{Complex{T},3} #output for FFT
-    My::AbstractArray{Complex{T},3}
-    Mz::AbstractArray{Complex{T},3}
+    m_pad::AbstractArray{T,4}           #padded m (nx_fft, ny_fft, nz_fft, 3), zero padding is kept zero
+    M_pad::AbstractArray{Complex{T},4}  #spectrum, batched over the 3 components
+    h_pad::AbstractArray{T,4}           #padded h, only [1:nx, 1:ny, 1:nz] is meaningful
     m_plan::Any
     h_plan::Any
     field::AbstractArray{T,1}
@@ -25,7 +22,6 @@ mutable struct Demag{T<:AbstractFloat} <: MicroEnergy
 end
 
 # Note: the size of the demag tensors can be reduced to ~nx*ny*nz (now the size is ~4*nx*ny*nz)
-# mx_pad can be reused so my_pad and mz_pad can be removed.
 # FIXME: add the real pbc (current imeplenation is macro pbc)
 function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     mesh = sim.mesh
@@ -43,12 +39,23 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     ny_fft = mesh.ny > cn ? 2 * mesh.ny : 2 * mesh.ny - 1
     nz_fft = mesh.nz > cn ? 2 * mesh.nz : 2 * mesh.nz - 1
 
-    mx_pad = create_zeros(nx_fft, ny_fft, nz_fft)
-    my_pad = create_zeros(nx_fft, ny_fft, nz_fft)
-    mz_pad = create_zeros(nx_fft, ny_fft, nz_fft)
-    plan = plan_rfft(mx_pad)
+    lenx = (nx_fft % 2 > 0) ? nx : nx + 1
+
+    T = Float[]
+    #one batched buffer for the 3 magnetization components (avoids 3 plan calls
+    #per FFT stage and enables batched transforms on GPU backends)
+    m_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
+    M_pad = create_zeros(Complex{T}, lenx, ny_fft, nz_fft, 3)
+    h_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
+
+    tune_fftw_threads(m_pad, M_pad, nx_fft)
+
+    m_plan = plan_rfft(m_pad, 1:3)
+    h_plan = plan_irfft(M_pad, nx_fft, 1:3)
 
     tensor = create_zeros(nx, ny, nz)
+    mx_pad = create_zeros(nx_fft, ny_fft, nz_fft)
+    plan = plan_rfft(mx_pad)
 
     #Nxx
     compute_demag_tensors(tensor, tensors_kernel_xx!, Nx, Ny, Nz, dx, dy, dz)
@@ -80,21 +87,11 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     fill_tensors(mx_pad, tensor, false, true, true)
     tensor_yz = real(plan * mx_pad)
 
-    lenx = (nx_fft % 2 > 0) ? nx : nx + 1
-
-    T = Float[]
-    Mx = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    My = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-    Mz = create_zeros(Complex{T}, lenx, ny_fft, nz_fft)
-
-    #m_plan = plan_rfft(mx_pad)
-    h_plan = plan_irfft(Mx, nx_fft)
-
     field = create_zeros(3 * sim.n_total)
     energy = create_zeros(sim.n_total)
 
     demag = Demag(nx_fft, ny_fft, nz_fft, tensor_xx, tensor_yy, tensor_zz, tensor_xy,
-                  tensor_xz, tensor_yz, mx_pad, my_pad, mz_pad, Mx, My, Mz, plan, h_plan,
+                  tensor_xz, tensor_yz, m_pad, M_pad, h_pad, m_plan, h_plan,
                   field, energy, "Demag")
     return demag
 end
@@ -104,32 +101,63 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1}, 
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, sim.mesh.ny, sim.mesh.nz
 
-    fill!(demag.mx, 0)
-    fill!(demag.my, 0)
-    fill!(demag.mz, 0)
-
-    distribute_m(spin, demag.mx, demag.my, demag.mz, sim.mu0_Ms, nx, ny, nz)
+    # The zero padding of m_pad is zeroed once at init and never written again:
+    # the forward r2c mul! preserves its input and distribute_m fully overwrites
+    # the mesh region at every call, while the padded tail stays zero.
+    distribute_m(spin, demag.m_pad, sim.mu0_Ms, nx, ny, nz)
 
     # synchronize() is not needed here: on the CPU backend KA kernels are
     # synchronous; on the CUDA backend both KA (distribute_m) and cuFFT (mul!
     # with the rfft plan) execute on the default stream, so stream ordering
     # guarantees the kernel completes before the FFT begins.
-    mul!(demag.Mx, demag.m_plan, demag.mx)
-    mul!(demag.My, demag.m_plan, demag.my)
-    mul!(demag.Mz, demag.m_plan, demag.mz)
+    mul!(demag.M_pad, demag.m_plan, demag.m_pad)
 
-    add_tensor_M(demag.Mx, demag.My, demag.Mz, demag.tensor_xx, demag.tensor_yy,
-                 demag.tensor_zz, demag.tensor_xy, demag.tensor_xz, demag.tensor_yz)
+    add_tensor_M(demag.M_pad, demag.tensor_xx, demag.tensor_yy, demag.tensor_zz,
+                 demag.tensor_xy, demag.tensor_xz, demag.tensor_yz)
 
-    mul!(demag.mx, demag.h_plan, demag.Mx)
-    mul!(demag.my, demag.h_plan, demag.My)
-    mul!(demag.mz, demag.h_plan, demag.Mz)
+    #the inverse transform writes the full padded array, so h lives in its own
+    #buffer (its padding is garbage and is never read back)
+    mul!(demag.h_pad, demag.h_plan, demag.M_pad)
 
     heff = output == nothing ? demag.field : output
 
-    collect_h_energy(heff, demag.energy, spin, demag.mx, demag.my, demag.mz, sim.mu0_Ms,
+    collect_h_energy(heff, demag.energy, spin, demag.h_pad, sim.mu0_Ms,
                      T(mesh.volume), nx, ny, nz)
 
+    return nothing
+end
+
+#FFTW only parallelizes plans that are created after set_num_threads, and the
+#optimal thread count depends strongly on the grid shape (e.g. very thin grids
+#can be several times SLOWER with many threads), so we time both candidates
+#once at initialization and keep the faster one. Non-CPU backends (cuFFT etc.)
+#ignore FFTW and are left untouched.
+function tune_fftw_threads(m_pad::AbstractArray{T,4}, M_pad::AbstractArray{Complex{T},4},
+                           nx_fft::Int) where {T<:AbstractFloat}
+    default_backend[] != CPU() && return nothing
+    if length(m_pad) < 2^16 #threading cannot pay off on small problems
+        FFTW.set_num_threads(1)
+        return nothing
+    end
+
+    maxt = max(Sys.CPU_THREADS, 1)
+    scratch = similar(m_pad)
+    best, best_time = 1, Inf
+    for nt in unique((1, maxt))
+        FFTW.set_num_threads(nt)
+        p = plan_rfft(m_pad, 1:3)
+        ip = plan_irfft(M_pad, nx_fft, 1:3)
+        mul!(M_pad, p, m_pad)        #warmup (r2c preserves m_pad)
+        mul!(scratch, ip, M_pad)     #warmup (c2r destroys M_pad, refilled below)
+        t = @elapsed for _ in 1:2
+            mul!(M_pad, p, m_pad)
+            mul!(scratch, ip, M_pad)
+        end
+        if t < best_time
+            best, best_time = nt, t
+        end
+    end
+    FFTW.set_num_threads(best)
     return nothing
 end
 
@@ -419,42 +447,42 @@ function fill_tensors(long_tensor, tensor, tx::Bool, ty::Bool, tz::Bool)
     return nothing
 end
 
-@kernel function distribute_m_kernel!(@Const(m), mx_pad, my_pad, mz_pad, @Const(Ms))
+@kernel function distribute_m_kernel!(@Const(m), m_pad, @Const(Ms))
     i, j, k = @index(Global, NTuple)
     I = @index(Global)
 
     p = 3 * I - 2
-    @inbounds mx_pad[i, j, k] = m[p] * Ms[I]
-    @inbounds my_pad[i, j, k] = m[p + 1] * Ms[I]
-    @inbounds mz_pad[i, j, k] = m[p + 2] * Ms[I]
+    @inbounds m_pad[i, j, k, 1] = m[p] * Ms[I]
+    @inbounds m_pad[i, j, k, 2] = m[p + 1] * Ms[I]
+    @inbounds m_pad[i, j, k, 3] = m[p + 2] * Ms[I]
 end
 
-function distribute_m(m, mx_pad, my_pad, mz_pad, Ms, nx::Int64, ny::Int64, nz::Int64)
+function distribute_m(m, m_pad, Ms, nx::Int64, ny::Int64, nz::Int64)
     kernel! = distribute_m_kernel!(default_backend[])
-    kernel!(m, mx_pad, my_pad, mz_pad, Ms; ndrange=(nx, ny, nz))
+    kernel!(m, m_pad, Ms; ndrange=(nx, ny, nz))
     return nothing
 end
 
-@kernel function collect_h_kernel!(h, energy, @Const(m), @Const(hx), @Const(hy), @Const(hz),
+@kernel function collect_h_kernel!(h, energy, @Const(m), @Const(h_pad),
                                    @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
     i, j, k = @index(Global, NTuple)
     I = @index(Global)
 
     p = 3 * I - 2
     factor::T = -1.0 / mu_0
-    @inbounds h[p] = factor * hx[i, j, k]
-    @inbounds h[p + 1] = factor * hy[i, j, k]
-    @inbounds h[p + 2] = factor * hz[i, j, k]
+    @inbounds h[p] = factor * h_pad[i, j, k, 1]
+    @inbounds h[p + 1] = factor * h_pad[i, j, k, 2]
+    @inbounds h[p + 2] = factor * h_pad[i, j, k, 3]
 
     @inbounds mh = m[p] * h[p] + m[p + 1] * h[p + 1] + m[p + 2] * h[p + 2]
 
     @inbounds energy[I] = -0.5 * mu0_Ms[I] * volume * mh
 end
 
-function collect_h_energy(h, energy, m, hx, hy, hz, Ms, volume::T, nx::Int64, ny::Int64,
+function collect_h_energy(h, energy, m, h_pad, Ms, volume::T, nx::Int64, ny::Int64,
                           nz::Int64) where {T<:AbstractFloat}
     kernel! = collect_h_kernel!(default_backend[])
-    kernel!(h, energy, m, hx, hy, hz, Ms, volume; ndrange=(nx, ny, nz))
+    kernel!(h, energy, m, h_pad, Ms, volume; ndrange=(nx, ny, nz))
     return nothing
 end
 
@@ -462,10 +490,12 @@ end
 # Hx .= tensor_xx.*Mx .+ tensor_xy.*My .+  tensor_xz.*Mz
 # Hy .= tensor_xy.*Mx .+ tensor_yy.*My .+  tensor_yz.*Mz
 # Hz .= tensor_xz.*Mx .+ tensor_yz.*My .+  tensor_zz.*Mz
-# we use Mx, My and Mz to store Hx, Hy and Hz
-@kernel function add_tensor_M_kernel!(Mx, My, Mz, @Const(tensor_xx), @Const(tensor_yy),
+# we use M_pad to store Hx, Hy and Hz; the spectra of the three components are
+# consecutive along the last (batch) dimension, so linear indices i, i + nspec
+# and i + 2*nspec address the same frequency in Mx, My and Mz.
+@kernel function add_tensor_M_kernel!(M_pad, @Const(tensor_xx), @Const(tensor_yy),
                                       @Const(tensor_zz), @Const(tensor_xy),
-                                      @Const(tensor_xz), @Const(tensor_yz))
+                                      @Const(tensor_xz), @Const(tensor_yz), nspec::Int64)
     i = @index(Global)
     @inbounds xx = tensor_xx[i]
     @inbounds yy = tensor_yy[i]
@@ -474,19 +504,24 @@ end
     @inbounds xz = tensor_xz[i]
     @inbounds yz = tensor_yz[i]
 
-    @inbounds Hx = xx * Mx[i] + xy * My[i] + xz * Mz[i]
-    @inbounds Hy = xy * Mx[i] + yy * My[i] + yz * Mz[i]
-    @inbounds Hz = xz * Mx[i] + yz * My[i] + zz * Mz[i]
+    @inbounds Mx = M_pad[i]
+    @inbounds My = M_pad[i + nspec]
+    @inbounds Mz = M_pad[i + 2 * nspec]
 
-    @inbounds Mx[i] = Hx
-    @inbounds My[i] = Hy
-    @inbounds Mz[i] = Hz
+    @inbounds Hx = xx * Mx + xy * My + xz * Mz
+    @inbounds Hy = xy * Mx + yy * My + yz * Mz
+    @inbounds Hz = xz * Mx + yz * My + zz * Mz
+
+    @inbounds M_pad[i] = Hx
+    @inbounds M_pad[i + nspec] = Hy
+    @inbounds M_pad[i + 2 * nspec] = Hz
 end
 
-function add_tensor_M(Mx, My, Mz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz,
+function add_tensor_M(M_pad, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz,
                       tensor_yz)
     kernel! = add_tensor_M_kernel!(default_backend[], groupsize[])
-    kernel!(Mx, My, Mz, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz;
-            ndrange=length(Mx))
+    nspec = length(M_pad) ÷ 3
+    kernel!(M_pad, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz, nspec;
+            ndrange=nspec)
     return nothing
 end
