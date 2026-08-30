@@ -2,7 +2,7 @@ using KernelAbstractions
 using Printf
 
 export Sim, init_m0, set_Ms, run_until, relax, run_sim,
-       set_driver, set_pinning, set_ux, set_uy, set_uz, advance_step, set_alpha,
+       set_driver, set_pinning, advance_step, set_alpha,
        hysteresis
 
 """
@@ -221,26 +221,6 @@ function set_alpha(sim::AbstractSim, alpha::ArrayOrFunction)
     return true
 end
 
-function set_ux(sim::AbstractSim, init_ux)
-    return init_scalar!(sim.driver.ux, sim.mesh, init_ux)
-end
-
-function set_ux_bounary(sim::AbstractSim, ux)
-    return set_ux_bounary_implement(sim, ux)
-end
-
-function set_uy(sim::AbstractSim, init_uy)
-    return init_scalar!(sim.driver.uy, sim.mesh, init_uy)
-end
-
-function set_uz(sim::AbstractSim, init_uz)
-    return init_scalar!(sim.driver.uz, sim.mesh, init_uz)
-end
-
-function set_aj(sim::AbstractSim, init_aj)
-    return init_scalar!(sim.driver.aj, sim.mesh, init_aj)
-end
-
 @doc raw"""
 Compute the average magnetization defined as
 
@@ -334,31 +314,6 @@ function set_driver_arguments(sim::AbstractSim, args::Dict)
     if haskey(args, :tol) && startswith(driver, "LLG")
         sim.driver.integrator.tol = args[:tol]
         delete!(args, :tol)
-    end
-
-    if haskey(args, :beta) && startswith(driver, "LLG_STT")
-        sim.driver.beta = args[:beta]
-        delete!(args, :beta)
-    end
-
-    if haskey(args, :ux) && startswith(driver, "LLG_STT")
-        set_ux(sim, args[:ux])
-        delete!(args, :ux)
-    end
-
-    if haskey(args, :uy) && startswith(driver, "LLG_STT")
-        set_uy(sim, args[:uy])
-        delete!(args, :uy)
-    end
-
-    if haskey(args, :uz) && startswith(driver, "LLG_STT")
-        set_uz(sim, args[:uz])
-        delete!(args, :uz)
-    end
-
-    if haskey(args, :ufun) && startswith(driver, "LLG_STT")
-        sim.driver.ufun = args[:ufun]
-        delete!(args, :ufun)
     end
 end
 

@@ -120,11 +120,12 @@ end
 function test_sim_with_sweep_driver()
     mesh = FDMesh(; nx=1, ny=1, nz=1)
     # I-03: driver parameters survive driver switches between stages
-    args = (name="test_sweep_driver", task_s=["dynamics", "dynamics"],
-            driver_s=["LLG", "LLG_STT"], mesh=mesh, m0=(1, 0, 0), Ms=8e5, H=(0, 0, 1e5),
-            alpha=0.05, gamma=2.21e5, steps=1, dt=1e-12, dynamic_m_every=-1)
+    args = (name="test_sweep_driver", task_s=["relax", "dynamics"],
+            driver_s=["SD", "LLG"], mesh=mesh, m0=(1, 0, 0), Ms=8e5, H=(0, 0, 1e5),
+            alpha=0.05, gamma=2.21e5, steps=1, dt=1e-12, dynamic_m_every=-1,
+            max_steps=2, stopping_dmdt=1e-5, relax_m_every=-1)
     sim = sim_with(args)
-    @test sim.driver_name == "LLG_STT"
+    @test sim.driver_name == "LLG"
     @test isapprox(sim.driver.alpha, 0.05; rtol=1e-6)
     @test isapprox(sim.driver.gamma, 2.21e5; rtol=1e-6)
 

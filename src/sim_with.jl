@@ -9,7 +9,13 @@ const _COMMON_KEYS = (:mesh, :name, :task, :driver, :integrator, :save_vtk, :sav
                       :stt, :sot)
 const _MATERIAL_KEYS = (:Ms, :mu_s, :A, :J, :D, :dmi_type, :Ku, :axis, :Kc, :axis1,
                         :axis2, :demag, :H, :T, :m0, :shape)
-const _DRIVER_KEYS = (:alpha, :beta, :gamma, :tol, :ux, :uy, :uz, :ufun)
+const _DRIVER_KEYS = (:alpha, :gamma, :tol)
+# keys removed together with the LLG_STT/LLG_CPP drivers in v0.6.0 (I-10)
+const _REMOVED_KEYS = Dict(:beta => "put the nonadiabatic parameter inside `stt=(model=:zhang_li, ..., xi=...)`",
+                           :ux => "use `stt=(model=:zhang_li, b=<u>, J=<direction>, ...)`",
+                           :uy => "use `stt=(model=:zhang_li, b=<u>, J=<direction>, ...)`",
+                           :uz => "use `stt=(model=:zhang_li, b=<u>, J=<direction>, ...)`",
+                           :ufun => "use the time dependence inside `stt=(..., ft=<fun>)`")
 const _RELAX_KEYS = (:stopping_dmdt, :max_steps, :relax_data_every, :relax_m_every,
                      :using_time_factor)
 const _DYN_KEYS = (:steps, :dt, :dynamic_data_save, :dynamic_m_every, :call_back)
@@ -73,6 +79,10 @@ end
 
 function _check_known_keys(args::Dict)
     for key in keys(args)
+        if haskey(_REMOVED_KEYS, key)
+            error("`sim_with` no longer accepts `:$key` (removed in v0.6.0): " *
+                  _REMOVED_KEYS[key] * ".")
+        end
         if !_is_known_key(key)
             error("`sim_with` got an unknown key `:$key`$(_suggest_key(key)). " *
                   "See `?sim_with` for the list of supported keys.")
@@ -101,10 +111,7 @@ Create a micromagnetic simulation instance with given arguments.
 - `driver` : the driver name, should be a string. By default, the driver is "SD".
 - `integrator` : the integrator name, should be a string. By default, integrator="DormandPrince".
 - `alpha` : the Gilbert damping in the LLG equation, should be a number.
-- `beta` : the nonadiabatic strength in the LLG equation with spin transfer torques (zhang-li model), should be a number.
 - `gamma` : the gyromagnetic ratio, default value = 2.21e5.
-- `ux`, `uy` or `uz`: the strengths of the spin transfer torque.
-- `ufun` : the time-dependent function for `u`.
 - `stt` : parameters forwarded to [`add_stt`](@ref) as a `NamedTuple`, e.g. `stt=(model=:zhang_li, b=-72.438, J=(1,0,0), xi=0.05)`. Only added when the driver is LLG-family.
 - `sot` : parameters forwarded to [`add_sot`](@ref) as a `NamedTuple`. Only added when the driver is LLG-family.
 - `Ms`: the saturation magnetization, should be [`NumberOrArrayOrFunction`](@ref). By default, Ms=8e5
@@ -290,13 +297,10 @@ end
 - `mesh`: A mesh must be provided to start the simulation. The mesh could be [`FDMesh`](@ref), [`CubicMesh`](@ref), or [`TriangularMesh`](@ref).
 - `name`: The name of the simulation, provided as a string. Default is "unnamed".
 - `task`: The type of simulation task, which can be `"Relax"` or `"Dynamics"`. The default is "Relax".
-- `driver`: The name of the driver, which should be "SD", "LLG", or "LLG_STT". The default is "SD".
+- `driver`: The name of the driver, which should be "SD" or "LLG". The default is "SD".
 - `integrator`: The integrator used to create the simulation, e.g. `"DormandPrince"`. Default is `"DormandPrince"`.
 - `alpha`: The Gilbert damping parameter in the LLG equation, provided as a number.
-- `beta`: The nonadiabatic strength in the LLG equation with spin-transfer torques (Zhang-Li model), provided as a number.
 - `gamma`: The gyromagnetic ratio, with a default value of 2.21e5.
-- `ux`, `uy`, `uz`: The components of the spin-transfer torque strength (deprecated; use `stt`).
-- `ufun`: A time-dependent function for `u`.
 - `stt`: Parameters forwarded to [`add_stt`](@ref) as a `NamedTuple`, e.g. `stt=(model=:zhang_li, b=-72.438, J=(1,0,0), xi=0.05)`. The torque is applied only in stages that run with an LLG-family driver; SD stages are not affected.
 - `sot`: Parameters forwarded to [`add_sot`](@ref) as a `NamedTuple`, applied under the same driver rule as `stt`.
 - `Ms`: The saturation magnetization, which should be a [`NumberOrArrayOrFunction`](@ref). The default is `Ms=8e5`.
@@ -336,7 +340,7 @@ See examples at [High-Level Interface](@ref).
 - **Fail-fast validation**: Unknown keys throw an error immediately (before the simulation starts), with a "did you mean" hint for likely typos. Keys that cannot apply to the configured task(s) produce a warning before the simulation runs.
 - **Argument Types**: The `args` parameter can be either a `NamedTuple` or a `Dict`. Neither is modified; `sim_with` works on an internal copy.
 - **Suffix Usage**: Only `task`, `driver`, `Ms` and `H` support the `_s` or `_sweep` suffix to iterate over per-stage values (e.g. `task_s`, `H_s`). The corresponding array lengths must match. Sweeping over any other key throws an error.
-- **Driver Selection**: The `driver` parameter (or `driver_s` for multiple stages) specifies the simulation type. Options include `"SD"` for the steepest-descent method, `"LLG"` for the Landau-Lifshitz-Gilbert equation, and `"LLG_STT"` for simulations involving spin-transfer torques. `driver_s` is honored for both `Relax` and `Dynamics` stages, and driver parameters (`alpha`, `beta`, ...) are re-applied whenever the driver changes.
+- **Driver Selection**: The `driver` parameter (or `driver_s` for multiple stages) specifies the simulation type. Options include `"SD"` for the steepest-descent method and `"LLG"` for the Landau-Lifshitz-Gilbert equation. The `"LLG_STT"`/`"LLG_CPP"` drivers were removed in v0.6.0; use `stt=(...)`/`sot=(...)` together with the `LLG` driver instead. `driver_s` is honored for both `Relax` and `Dynamics` stages, and driver parameters (`alpha`, `gamma`, ...) are re-applied whenever the driver changes.
 - **Stopping Criterion**: The `stopping_dmdt` parameter is critical for determining when to stop a simulation, particularly in relaxation tasks. It measures the rate of change in magnetization, with typical values ranging from `0.01` to `1`. For atomistic models, the `using_time_factor` flag can be set to `false` to disable time scaling.
 - **Data Saving**: `relax_data_every`/`relax_m_every` and `dynamic_m_every` control how often data/magnetization are saved during `Relax` and `Dynamics` tasks. A value of `0` saves only at the end of the task, a negative value disables saving.
 

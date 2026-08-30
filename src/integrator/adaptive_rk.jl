@@ -270,6 +270,3 @@ function run_step(sim::AbstractSim, driver::LLG)
     return advance_step(sim, driver.integrator)
 end
 
-function run_step(sim::AbstractSim, driver::LLG_STT)
-    return advance_step(sim, driver.integrator)
-end
