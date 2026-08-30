@@ -37,32 +37,32 @@ function init_demag(sim::AtomisticSim, Nx::Int, Ny::Int, Nz::Int)
     #Nxx
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_xx!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_xx = real(plan * mx_pad)
+    tensor_xx = pack_demag_tensor(real(plan * mx_pad), 1, 1)
 
     #Nyy
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_yy!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_yy = real(plan * mx_pad)
+    tensor_yy = pack_demag_tensor(real(plan * mx_pad), 1, 1)
 
     #Nzz
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_zz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_zz = real(plan * mx_pad)
+    tensor_zz = pack_demag_tensor(real(plan * mx_pad), 1, 1)
 
     #Nxy
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_xy!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, true, true, false)
-    tensor_xy = real(plan * mx_pad)
+    tensor_xy = pack_demag_tensor(real(plan * mx_pad), -1, 1)
 
     #Nxz
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_xz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, true, false, true)
-    tensor_xz = real(plan * mx_pad)
+    tensor_xz = pack_demag_tensor(real(plan * mx_pad), 1, -1)
 
     #Nyz
     compute_dipolar_tensors(tensor, dipolar_tensors_kernel_yz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, true, true)
-    tensor_yz = real(plan * mx_pad)
+    tensor_yz = pack_demag_tensor(real(plan * mx_pad), -1, -1)
 
     field = create_zeros(3 * sim.n_total)
     energy = create_zeros(sim.n_total)
@@ -88,7 +88,8 @@ function effective_field(demag::Demag, sim::AtomisticSim, spin::AbstractArray{T,
     mul!(demag.M_pad, demag.m_plan, demag.m_pad)
 
     add_tensor_M(demag.M_pad, demag.tensor_xx, demag.tensor_yy, demag.tensor_zz,
-                 demag.tensor_xy, demag.tensor_xz, demag.tensor_yz)
+                 demag.tensor_xy, demag.tensor_xz, demag.tensor_yz,
+                 demag.ny_fft, demag.nz_fft)
     # synchronize() not needed: same default-stream ordering guarantee as above
     # applies between the KA kernel (add_tensor_M) and the cuFFT mul! calls.
 

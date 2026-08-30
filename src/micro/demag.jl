@@ -5,6 +5,9 @@ mutable struct Demag{T<:AbstractFloat} <: MicroEnergy
     nx_fft::Int64
     ny_fft::Int64
     nz_fft::Int64
+    #Fourier-space demag tensors packed into the fundamental domain of the
+    #(y,z) mirror parity group: (lenx, ny_fft÷2+1, nz_fft÷2+1), see
+    #pack_demag_tensor below. Roughly 4x smaller than the full half-spectrum.
     tensor_xx::AbstractArray{T,3}
     tensor_yy::AbstractArray{T,3}
     tensor_zz::AbstractArray{T,3}
@@ -21,7 +24,57 @@ mutable struct Demag{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
-# Note: the size of the demag tensors can be reduced to ~nx*ny*nz (now the size is ~4*nx*ny*nz)
+#The padded demag kernels constructed by fill_tensors have exact mirror
+#parities on the cyclic (nx_fft, ny_fft, nz_fft) grid,
+#    F(a, ny_fft-b, c) = ey * F(a,b,c),   F(a, b, nz_fft-c) = ez * F(a,b,c),
+#with (ey, ez) = (+1,+1) for the diagonal components xx/yy/zz, (-1,+1) for xy,
+#(+1,-1) for xz and (-1,-1) for yz (F is real because the kernels are even
+#under the full point reflection).  The Fourier tensors are therefore stored
+#only on the fundamental domain b < ny_fft÷2+1, c < nz_fft÷2+1 -- about 4x
+#less memory than the full half-spectrum -- and add_tensor_M reconstructs the
+#mirrored entries by index mapping.
+#`full` (lenx, ny_fft, nz_fft) is the raw `real(plan * mx_pad)` output; it is
+#used as scratch for the parity self-check and then discarded.
+function pack_demag_tensor(full::AbstractArray{T,3}, ey::Int, ez::Int) where {T<:AbstractFloat}
+    lenx, ny, nz = size(full)
+    ny2 = ny ÷ 2 + 1
+    nz2 = nz ÷ 2 + 1
+    packed = similar(full, lenx, ny2, nz2)
+    packed .= @view(full[:, 1:ny2, 1:nz2])
+
+    #self-check: overwrite `full` with |full - parity-reconstructed value|
+    scale = maximum(abs, full)
+    kernel! = _tensor_parity_kernel!(get_backend(full), groupsize[])
+    kernel!(full, packed, ey, ez, lenx, ny, nz, ny2, nz2; ndrange=length(full))
+    vmax = maximum(full)
+    #tolerance: FFT roundoff is ~1e-8 relative for Float64 and ~1e-5 (relative
+    #to the dominant entries) for Float32; components that are physically
+    #near-zero (e.g. yz of a monolayer, scale ~1e-17) are judged against an
+    #absolute floor of the same O(1) kernel units instead
+    tol = T == Float32 ? 1e-2 : 1e-9
+    if vmax > tol * max(scale, one(T))
+        @warn("demag tensor parity check failed: max |F - F_mirror| / max|F| = $(vmax / max(scale, one(T))); " *
+              "the packed demag tensors would give wrong fields!")
+    end
+    return packed
+end
+
+@kernel function _tensor_parity_kernel!(full, @Const(packed), ey::Int, ez::Int,
+                                        lenx::Int, ny::Int, nz::Int, ny2::Int, nz2::Int)
+    i = @index(Global)
+    i0 = i - 1
+    r, a = divrem(i0, lenx)
+    c, b = divrem(r, ny)
+    bb = b < ny2 ? b : ny - b
+    cc = c < nz2 ? c : nz - c
+    sy = b < ny2 ? 1 : ey
+    sz = c < nz2 ? 1 : ez
+    @inbounds expected = sy * sz * packed[a + 1 + lenx * (bb + ny2 * cc)]
+    @inbounds full[i] = abs(full[i] - expected)
+end
+
+# Note: the size of the demag tensors is reduced to ~nx*ny*nz by packing them
+# into the (y,z) parity fundamental domain, see pack_demag_tensor.
 # FIXME: add the real pbc (current imeplenation is macro pbc)
 function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     mesh = sim.mesh
@@ -60,32 +113,32 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     #Nxx
     compute_demag_tensors(tensor, tensors_kernel_xx!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_xx = real(plan * mx_pad)
+    tensor_xx = pack_demag_tensor(real(plan * mx_pad), 1, 1)
 
     #Nyy
     compute_demag_tensors(tensor, tensors_kernel_yy!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_yy = real(plan * mx_pad)
+    tensor_yy = pack_demag_tensor(real(plan * mx_pad), 1, 1)
 
     #Nzz
     compute_demag_tensors(tensor, tensors_kernel_zz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, false, false)
-    tensor_zz = real(plan * mx_pad)
+    tensor_zz = pack_demag_tensor(real(plan * mx_pad), 1, 1)
 
     #Nxy
     compute_demag_tensors(tensor, tensors_kernel_xy!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, true, true, false)
-    tensor_xy = real(plan * mx_pad)
+    tensor_xy = pack_demag_tensor(real(plan * mx_pad), -1, 1)
 
     #Nxz
     compute_demag_tensors(tensor, tensors_kernel_xz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, true, false, true)
-    tensor_xz = real(plan * mx_pad)
+    tensor_xz = pack_demag_tensor(real(plan * mx_pad), 1, -1)
 
     #Nyz
     compute_demag_tensors(tensor, tensors_kernel_yz!, Nx, Ny, Nz, dx, dy, dz)
     fill_tensors(mx_pad, tensor, false, true, true)
-    tensor_yz = real(plan * mx_pad)
+    tensor_yz = pack_demag_tensor(real(plan * mx_pad), -1, -1)
 
     field = create_zeros(3 * sim.n_total)
     energy = create_zeros(sim.n_total)
@@ -113,7 +166,8 @@ function effective_field(demag::Demag, sim::MicroSim, spin::AbstractArray{T,1}, 
     mul!(demag.M_pad, demag.m_plan, demag.m_pad)
 
     add_tensor_M(demag.M_pad, demag.tensor_xx, demag.tensor_yy, demag.tensor_zz,
-                 demag.tensor_xy, demag.tensor_xz, demag.tensor_yz)
+                 demag.tensor_xy, demag.tensor_xz, demag.tensor_yz,
+                 demag.ny_fft, demag.nz_fft)
 
     #the inverse transform writes the full padded array, so h lives in its own
     #buffer (its padding is garbage and is never read back)
@@ -493,20 +547,36 @@ end
 # we use M_pad to store Hx, Hy and Hz; the spectra of the three components are
 # consecutive along the last (batch) dimension, so linear indices i, i + nspec
 # and i + 2*nspec address the same frequency in Mx, My and Mz.
+# The six tensors are stored packed on the (y,z) parity fundamental domain
+# (see pack_demag_tensor): for a frequency (a, b, c) with b > ny2 or c > nz2
+# the tensor entry is reconstructed from the root (a, ny+2-b, nz+2-c).  The
+# diagonal components are even in both axes (no sign), xy is odd in y, xz odd
+# in z and yz odd in both, giving the sign factors sy, sz below.  The kernel
+# runs on a 3D ndrange (lenx, ny, nz) so that the frequency components are
+# available directly (no integer division in the hot loop).
 @kernel function add_tensor_M_kernel!(M_pad, @Const(tensor_xx), @Const(tensor_yy),
                                       @Const(tensor_zz), @Const(tensor_xy),
-                                      @Const(tensor_xz), @Const(tensor_yz), nspec::Int64)
-    i = @index(Global)
-    @inbounds xx = tensor_xx[i]
-    @inbounds yy = tensor_yy[i]
-    @inbounds zz = tensor_zz[i]
-    @inbounds xy = tensor_xy[i]
-    @inbounds xz = tensor_xz[i]
-    @inbounds yz = tensor_yz[i]
+                                      @Const(tensor_xz), @Const(tensor_yz),
+                                      lenx::Int64, ny::Int64, nz::Int64,
+                                      ny2::Int64, nz2::Int64, nspec::Int64)
+    ia, ib, ic = @index(Global, NTuple)
+    bb = ib <= ny2 ? ib : ny + 2 - ib
+    cc = ic <= nz2 ? ic : nz + 2 - ic
+    sy = ib <= ny2 ? 1 : -1
+    sz = ic <= nz2 ? 1 : -1
+    i = ia + (ib - 1) * lenx + (ic - 1) * (lenx * ny)
+    p = ia + (bb - 1) * lenx + (cc - 1) * (lenx * ny2)
 
     @inbounds Mx = M_pad[i]
     @inbounds My = M_pad[i + nspec]
     @inbounds Mz = M_pad[i + 2 * nspec]
+
+    @inbounds xx = tensor_xx[p]
+    @inbounds yy = tensor_yy[p]
+    @inbounds zz = tensor_zz[p]
+    @inbounds xy = sy * tensor_xy[p]
+    @inbounds xz = sz * tensor_xz[p]
+    @inbounds yz = sy * sz * tensor_yz[p]
 
     @inbounds Hx = xx * Mx + xy * My + xz * Mz
     @inbounds Hy = xy * Mx + yy * My + yz * Mz
@@ -518,10 +588,11 @@ end
 end
 
 function add_tensor_M(M_pad, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz,
-                      tensor_yz)
+                      tensor_yz, ny_fft::Int64, nz_fft::Int64)
     kernel! = add_tensor_M_kernel!(default_backend[], groupsize[])
-    nspec = length(M_pad) ÷ 3
-    kernel!(M_pad, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz, nspec;
-            ndrange=nspec)
+    lenx, ny2, nz2 = size(tensor_xx)
+    nspec = lenx * ny_fft * nz_fft
+    kernel!(M_pad, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz,
+            lenx, ny_fft, nz_fft, ny2, nz2, nspec; ndrange=(lenx, ny_fft, nz_fft))
     return nothing
 end
