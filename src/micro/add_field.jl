@@ -374,13 +374,17 @@ end
 
 
 """
-    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true)
+    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true, pbc3d=false)
 
 Add Demag to the system. `Nx`, `Ny` and `Nz` can be used to describe the macro boundary conditions which means that
 the given mesh is repeated `2Nx+1`, `2Ny+1 and `2Nz+1` times in `x`, `y` and `z` direction, respectively.
+With `pbc3d=true` a true 3D-periodic demag is used instead (tin-foil convention:
+the uniform magnetization component produces no field); `Nx/Ny/Nz` are ignored.
 """
-function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true)
-    if fft && Float[] != AbstractFloat
+function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true, pbc3d=false)
+    if pbc3d
+        demag = init_demag_pbc3d(sim)
+    elseif fft && Float[] != AbstractFloat
         demag = init_demag(sim, Nx, Ny, Nz)
     else
         demag = init_direct_demag(sim, Nx, Ny, Nz)
