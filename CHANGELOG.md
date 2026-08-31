@@ -65,6 +65,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `run_sim` for `MonteCarlo` is renamed to `run_mc` (the old name still works with a
   deprecation warning)
 - `add_mel` is deprecated in favor of `add_magnetoelastic`
+- `create_sim` is deprecated and will be removed in v0.7.0: build simulations with
+  `Sim` + `set_*/add_*` (low level, see basics.md) or use the high-level `sim_with`;
+  it remains exported and fully functional in v0.6.0
 - clearer sweep errors: scalar values passed to a `_s` keyword now raise an informative
   `ArgumentError`, and length mismatches report `_s`/`_sweep` instead of `_range`
 - the `SpatialLLG` driver is merged into `LLG`: `LLG.alpha` is now an `AbstractArray{T,1}`
@@ -113,9 +116,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `set_ux`/`set_uy`/`set_uz` (driver-bound STT helpers); pass `b`/`J` to `add_stt` instead
 - `sim_with` keywords `beta`, `ux`, `uy`, `uz` and `ufun`; put them inside the
   `stt=(model=:zhang_li, ...)` tuple instead
-- `create_sim` is no longer exported; build simulations with `Sim` + `set_*`/`add_*`
-  (or use the high-level `sim_with`). `MicroMagnetic.create_sim(...)` still works and
-  remains the factory used by the NEB/transition machinery
 - in-place writes into `sim.mu0_Ms`/`sim.mu_s`/`sim.pins` (`copyto!` or broadcast assignment)
   now throw while these fields hold a `Fill`; use `set_Ms`/`set_mu_s`/`set_pinning`, which
   replace the storage
