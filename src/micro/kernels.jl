@@ -35,7 +35,7 @@ end
 
 """
     Zeeman field kernel: writes `h = (Hx, Hy, Hz) .* (fx, fy, fz)` and the energy.
-The per-spin `Hx/Hy/Hz` components may be O(1) Fills for a uniform field.
+The per-spin `Hx/Hz` components may be O(1) Fills for a uniform field.
 """
 @kernel function zeeman_field_kernel!(@Const(m), h, energy, mu0_Ms, Hx, Hy, Hz,
                                       factor::T, fx::T, fy::T,
@@ -47,6 +47,20 @@ The per-spin `Hx/Hy/Hz` components may be O(1) Fills for a uniform field.
     @inbounds h[j + 3] = Hz[I] * fz
     @inbounds mh::T = m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3]
     @inbounds energy[I] = -factor * mu0_Ms[I] * mh
+end
+
+"""
+    Field-write-only variant used at add/update time, when the energy is not yet
+meaningful and `mu0_Ms` may live on a different memory space (e.g. the CPU array
+of the FE model).
+"""
+@kernel function zeeman_write_field_kernel!(h, Hx, Hy, Hz, fx::T, fy::T,
+                                            fz::T) where {T<:AbstractFloat}
+    I = @index(Global)
+    j = 3 * (I - 1)
+    @inbounds h[j + 1] = Hx[I] * fx
+    @inbounds h[j + 2] = Hy[I] * fy
+    @inbounds h[j + 3] = Hz[I] * fz
 end
 
 """

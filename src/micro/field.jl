@@ -554,9 +554,10 @@ function build_exch_matrix(exch::Exchange, sim::MicroSim)
 
     n_total = sim.n_total
 
+    T = Float[]
     I = Int64[]
     J = Int64[]
-    V = Float64[]
+    V = T[]
 
     safe_div(a, b) = b == 0.0 ? 0.0 : a / b
 

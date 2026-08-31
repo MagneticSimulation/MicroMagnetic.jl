@@ -16,8 +16,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `Anisotropy` absorbs `SpatialAnisotropy`: the easy axis is stored as three per-spin
   component arrays (uniform axes are `Fill`s), and the uniform and spatial cases share
   one kernel
+- `UniformExchange` and `SpatialExchange` collapse into a single `Exchange` with
+  direction-decomposed per-spin `Ax/Ay/Az` bond stiffness (uniform values are O(1)
+  `Fill`s); one kernel serves both, neighbour pairs keep the harmonic-mean stiffness,
+  and `GPSM`/`build_exch_matrix` follow suit
+- `Zeeman` absorbs `TimeZeeman`: the field is stored as per-spin `Hx/Hy/Hz` components
+  plus a time-modulation function (the static term uses a shared identity `t -> 1.0`,
+  so its precomputed field is never rewritten per step); `update_zeeman` replaces the
+  components instead of writing in place
+- `BulkDMI` also absorbs `InterfacialDMI` (`type = :bulk`/`:interfacial`) and the time
+  DMI (`ft`), leaving a single DMI type; the interfacial kernel gained the same scalar
+  time factor
+- spin-polarization vectors became per-spin components (`Fill`s when uniform):
+  `add_stt`'s `p` and `add_sot`'s `p` now accept `NumberOrTupleOrArrayOrFunction`,
+  enabling spatially varying polarization
+- `CubicAnisotropy` axes are stored as three per-spin component arrays each
+  (uniform axes are `Fill`s), unlocking spatially varying cubic easy axes
 
-## Version [v0.6.0] - unreleased (Collapse uniform/spatial DMI and anisotropy struct pairs (Phase 4))
+## Version [v0.6.0] - unreleased
 
 ### Added
 

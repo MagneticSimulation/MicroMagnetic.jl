@@ -32,10 +32,8 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function=_
 
     # materialise the interaction field once; the dynamic path rewrites it per
     # step, the static path keeps it until update_zeeman replaces the components
-    ms = sim isa AtomisticSim ? sim.mu_s : sim.mu0_Ms
-    zeeman_field_kernel!(default_backend[], groupsize[])(sim.spin, zeeman.field,
-                              zeeman.energy, ms, Hx, Hy, Hz, T(1), T(1), T(1), T(1);
-                              ndrange=n_total)
+    zeeman_write_field_kernel!(default_backend[], groupsize[])(zeeman.field, Hx, Hy,
+                                    Hz, T(1), T(1), T(1); ndrange=n_total)
 
     push!(sim.interactions, zeeman)
 
@@ -78,7 +76,6 @@ function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; H_output=no
     T = Float[]
     Hx, Hy, Hz = make_vector_param(T, H0, sim.mesh, n_total)
 
-    ms = sim isa AtomisticSim ? sim.mu_s : sim.mu0_Ms
     for i in sim.interactions
         if i.name == name
             # replace the components instead of writing in place: they may be Fills
@@ -92,9 +89,8 @@ function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; H_output=no
             end
             # re-materialise the interaction field; for a static term this is the
             # update itself, a dynamic term rewrites it at every step anyway
-            zeeman_field_kernel!(default_backend[], groupsize[])(sim.spin, i.field,
-                                      i.energy, ms, Hx, Hy, Hz, T(1), T(1), T(1), T(1);
-                                      ndrange=n_total)
+            zeeman_write_field_kernel!(default_backend[], groupsize[])(i.field, Hx, Hy,
+                                      Hz, T(1), T(1), T(1); ndrange=n_total)
             return nothing
         end
     end
@@ -467,12 +463,13 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
         dot12 = v1[1] * v2[1] + v1[2] * v2[2] + v1[3] * v2[3]
         abs(dot12) > 1e-10 &&
             @error("The axis1 and axis2 are not perpendicular to each other!")
-        a3x = T(v1[2] * v2[3] - v1[3] * v2[2])
-        a3y = T(v1[3] * v2[1] - v1[1] * v2[3])
-        a3z = T(v1[1] * v2[2] - v1[2] * v2[1])
-        anis = CubicAnisotropy(Kcs_kb, a1..., a2..., as_param_array(a3x, n_total),
-                               as_param_array(a3y, n_total),
-                               as_param_array(a3z, n_total), field, energy, name)
+        a3x = v1[2] * v2[3] - v1[3] * v2[2]
+        a3y = v1[3] * v2[1] - v1[1] * v2[3]
+        a3z = v1[1] * v2[2] - v1[2] * v2[1]
+        # make_param keeps the eltype consistent (Fill{T} or symbolic dense)
+        anis = CubicAnisotropy(Kcs_kb, a1..., a2..., make_param(T, a3x, sim.mesh, n_total),
+                               make_param(T, a3y, sim.mesh, n_total),
+                               make_param(T, a3z, sim.mesh, n_total), field, energy, name)
     else
         # spatial axes: per-spin perpendicularity check and cross product
         d12 = maximum(abs.(a1[1] .* a2[1] .+ a1[2] .* a2[2] .+ a1[3] .* a2[3]))
@@ -1216,9 +1213,10 @@ function rm_demag_charges(sim::MicroSim, Ms; x::Tuple=(0, 0), y::Tuple=(0, 0), z
 
     # split the precomputed field into per-spin components (a static Zeeman uses
     # `field` directly, the components document the input for the saver)
-    Hx = kernel_array(f[1:3:length(f)])
-    Hy = kernel_array(f[2:3:length(f)])
-    Hz = kernel_array(f[3:3:length(f)])
+    T = Float[]
+    Hx = kernel_array(T.(f[1:3:length(f)]))
+    Hy = kernel_array(T.(f[2:3:length(f)]))
+    Hz = kernel_array(T.(f[3:3:length(f)]))
     zeeman = Zeeman(Hx, Hy, Hz, _static_time, (0, 0, 0), T(1), T(1), T(1), field, energy,
                     name)
     push!(sim.interactions, zeeman)
