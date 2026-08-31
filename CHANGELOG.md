@@ -4,7 +4,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## Version [v0.6.0] - unreleased
+## Version [v0.7.0] - unreleased
+
+### Changed
+
+- collapsed the uniform/spatial struct pairs into single types, following the Fill
+  parameter representation (the types are unexported, so user code is unaffected):
+  `BulkDMI` now stores per-spin `Dx/Dy/Dz` components (uniform values are O(1) `Fill`s)
+  and serves scalar, tuple and spatial `D` through one kernel; `TimeBulkDMI` absorbs
+  `TimeSpatialBulkDMI` with the time factor applied inside the kernel
+- `Anisotropy` absorbs `SpatialAnisotropy`: the easy axis is stored as three per-spin
+  component arrays (uniform axes are `Fill`s), and the uniform and spatial cases share
+  one kernel
+
+## Version [v0.6.0] - unreleased (Collapse uniform/spatial DMI and anisotropy struct pairs (Phase 4))
 
 ### Added
 

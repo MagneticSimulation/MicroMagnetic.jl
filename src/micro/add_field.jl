@@ -294,21 +294,16 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
 
     if type == "bulk"
-        if isa(D, Number)
-            dmi = BulkDMI(T(D), T(D), T(D), field, energy, name)
-        elseif isa(D, Tuple) && length(D) == 3
-            if isa(D, NTuple{3, Number})
-                dmi = BulkDMI(T(D[1]), T(D[2]), T(D[3]), field, energy, name)
-            else
-                Dx = make_param(T, D[1], sim.mesh, sim.n_total)
-                Dy = make_param(T, D[2], sim.mesh, sim.n_total)
-                Dz = make_param(T, D[3], sim.mesh, sim.n_total)
-
-                dmi = SpatialVectorBulkDMI(Dx, Dy, Dz, field, energy, name)
-            end
+        # One type serves uniform and spatial D: numbers become O(1) Fills,
+        # functions/arrays dense arrays
+        if isa(D, Tuple) && length(D) == 3
+            dmi = BulkDMI(make_param(T, D[1], sim.mesh, sim.n_total),
+                          make_param(T, D[2], sim.mesh, sim.n_total),
+                          make_param(T, D[3], sim.mesh, sim.n_total),
+                          field, energy, name)
         else
             D_kb = make_param(T, D, sim.mesh, sim.n_total)
-            dmi = SpatialVectorBulkDMI(D_kb, D_kb, D_kb, field, energy, name)
+            dmi = BulkDMI(D_kb, D_kb, D_kb, field, energy, name)
         end
 
         @info "Bulk DMI has been added."
@@ -346,13 +341,14 @@ function add_dmi(sim::MicroSim,D::NumberOrTupleOrArrayOrFunction, ft::Function; 
     T = Float[]
     field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
-    if isa(D, Number)
-            dmi = TimeBulkDMI(T(D), T(D), T(D), ft, field, energy, name)
-    elseif isa(D, Tuple) && length(D) == 3
-            dmi = TimeBulkDMI(T(D[1]), T(D[2]), T(D[3]), ft, field, energy, name)
+    if isa(D, Tuple) && length(D) == 3
+            dmi = TimeBulkDMI(make_param(T, D[1], sim.mesh, n_total),
+                              make_param(T, D[2], sim.mesh, n_total),
+                              make_param(T, D[3], sim.mesh, n_total),
+                              ft, field, energy, name)
     else
             D_kb = make_param(T, D, sim.mesh, n_total)
-            dmi = TimeSpatialBulkDMI(D_kb, ft, field, energy, name)
+            dmi = TimeBulkDMI(D_kb, D_kb, D_kb, ft, field, energy, name)
     end
 
     push!(sim.interactions, dmi)
@@ -417,14 +413,25 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction;
     if isa(axis, Tuple)
         lt = sqrt(axis[1]^2 + axis[2]^2 + axis[3]^2)
         naxis = (T(axis[1] / lt), T(axis[2] / lt), T(axis[3] / lt))
-        anis = Anisotropy(Kus_kb, naxis, field, energy, name)
+        # a uniform axis is stored as three O(1) Fills (dense in symbolic mode,
+        # where a non-isbits Fill could not reach a kernel)
+        anis = Anisotropy(Kus_kb, make_param(T, naxis[1], sim.mesh, n_total),
+                          make_param(T, naxis[2], sim.mesh, n_total),
+                          make_param(T, naxis[3], sim.mesh, n_total),
+                          field, energy, name)
     else
         axes = zeros(T, 3 * n_total)
         init_vector!(axes, sim.mesh, axis)
         normalise(axes, n_total)
 
         axes_kb = kernel_array(axes)
-        anis = SpatialAnisotropy(Kus_kb, axes_kb, field, energy, name)
+        axis_x = create_zeros(T, n_total)
+        axis_y = create_zeros(T, n_total)
+        axis_z = create_zeros(T, n_total)
+        axis_x .= @view axes_kb[1:n_total]
+        axis_y .= @view axes_kb[(n_total + 1):(2 * n_total)]
+        axis_z .= @view axes_kb[(2 * n_total + 1):(3 * n_total)]
+        anis = Anisotropy(Kus_kb, axis_x, axis_y, axis_z, field, energy, name)
     end
 
     push!(sim.interactions, anis)
@@ -461,7 +468,8 @@ function add_anis(sim::AbstractSim, geo::Shape, Ku::Number; axis=(0, 0, 1), name
     update_scalar_geometry(Kus, geo, Ku)
     field = zeros(Float64, 3 * n_total)
     energy = zeros(Float64, n_total)
-    anis = Anisotropy(Kus, naxis, field, energy, name)
+    anis = Anisotropy(Kus, Fill(naxis[1], n_total), Fill(naxis[2], n_total),
+                      Fill(naxis[3], n_total), field, energy, name)
     push!(sim.interactions, anis)
 
     if sim.save_data

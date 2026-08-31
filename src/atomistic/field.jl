@@ -33,12 +33,11 @@ end
 function effective_field(anis::Anisotropy, sim::AtomisticSim, spin::AbstractArray{T,1},
                          t::Float64; output=nothing) where {T<:AbstractFloat}
     N = sim.n_total
-    axis = anis.axis
 
     heff = output === nothing ? anis.field : output
     kernal = anisotropy_kernel!(default_backend[])
-    kernal(spin, heff, anis.energy, anis.Ku, axis[1], axis[2], axis[3], sim.mu_s, T(1);
-           ndrange=N)
+    kernal(spin, heff, anis.energy, anis.Ku, anis.axis_x, anis.axis_y, anis.axis_z,
+           sim.mu_s, T(1); ndrange=N)
 
     return nothing
 end
@@ -73,7 +72,7 @@ end
 function effective_field(anis::TubeAnisotropy, sim::AtomisticSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
-    kernal = spatial_anisotropy_kernel!(default_backend[], groupsize[])
+    kernal = tube_anisotropy_kernel!(default_backend[], groupsize[])
     kernal(spin, anis.field, anis.energy, anis.Ku, anis.axes, sim.mu_s, T(1); ndrange=N)
 
     return nothing

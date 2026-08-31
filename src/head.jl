@@ -183,15 +183,9 @@ end
 
 mutable struct Anisotropy{T<:AbstractFloat} <: MicroEnergy
     Ku::AbstractArray{T,1}
-    axis::Tuple{T,T,T}
-    field::AbstractArray{T,1}
-    energy::AbstractArray{T,1}
-    name::String
-end
-
-mutable struct SpatialAnisotropy{T<:AbstractFloat} <: MicroEnergy
-    Ku::AbstractArray{T,1}
-    axes::AbstractArray{T,1}
+    axis_x::AbstractArray{T,1}  # per-spin easy-axis components; uniform axes are Fills
+    axis_y::AbstractArray{T,1}
+    axis_z::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
@@ -268,27 +262,7 @@ mutable struct InterlayerDMI{T<:AbstractFloat} <: MicroEnergy
 end
 
 mutable struct BulkDMI{T<:AbstractFloat} <: MicroEnergy
-    Dx::Real
-    Dy::Real
-    Dz::Real
-    field::AbstractArray{T,1}
-    energy::AbstractArray{T,1}
-    name::String
-end
-
-mutable struct TimeBulkDMI{T<:AbstractFloat} <: MicroEnergy
-    Dx::Real
-    Dy::Real
-    Dz::Real    
-    time_D::Function
-    field::AbstractArray{T,1}
-    energy::AbstractArray{T,1}
-    name::String
-end
-
-
-mutable struct SpatialVectorBulkDMI{T<:AbstractFloat} <: MicroEnergy
-    Dx::AbstractArray{T,1}
+    Dx::AbstractArray{T,1}  # per-spin D components; uniform values are Fills
     Dy::AbstractArray{T,1}
     Dz::AbstractArray{T,1}
     field::AbstractArray{T,1}
@@ -296,8 +270,10 @@ mutable struct SpatialVectorBulkDMI{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
-mutable struct TimeSpatialBulkDMI{T<:AbstractFloat} <: MicroEnergy
-    D::AbstractArray{T,1}
+mutable struct TimeBulkDMI{T<:AbstractFloat} <: MicroEnergy
+    Dx::AbstractArray{T,1}
+    Dy::AbstractArray{T,1}
+    Dz::AbstractArray{T,1}
     time_D::Function
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}

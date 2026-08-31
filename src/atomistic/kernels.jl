@@ -346,3 +346,30 @@ end
         @inbounds h[j + 3] = fz * ms_inv
     end
 end
+
+# Anisotropy for the CylindricalTubeMesh: `axes` is a 3×N array whose j-th row is
+# the radial direction at cell I; linear indexing axes[3*(I-1)+a] == axes[a, I].
+@kernel function tube_anisotropy_kernel!(@Const(m), h, energy, Ku, axes, mu_s,
+                                         volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu_s[id]
+    @inbounds ax = axes[j+1]
+    @inbounds ay = axes[j+2]
+    @inbounds az = axes[j+3]
+
+    if Ms_local == 0.0
+        @inbounds energy[id] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        Ms_inv::T = 2.0 / Ms_local
+        @inbounds sa = m[j + 1] * ax + m[j + 2] * ay + m[j + 3] * az
+        @inbounds h[j + 1] = Ku[id] * sa * ax * Ms_inv
+        @inbounds h[j + 2] = Ku[id] * sa * ay * Ms_inv
+        @inbounds h[j + 3] = Ku[id] * sa * az * Ms_inv
+        @inbounds energy[id] = Ku[id] * (1.0 - sa * sa) * volume
+    end
+end

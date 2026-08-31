@@ -34,24 +34,12 @@ end
 function effective_field(anis::Anisotropy, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
-    axis = anis.axis
     volume = T(sim.mesh.volume)
 
     back = default_backend[]
-    anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku, axis[1],
-                                          axis[2], axis[3], sim.mu0_Ms, volume; ndrange=N)
-
-    return nothing
-end
-
-function effective_field(anis::SpatialAnisotropy, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
-    N = sim.n_total
-    volume = T(sim.mesh.volume)
-
-    back = default_backend[]
-    spatial_anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku,
-                                                  anis.axes, sim.mu0_Ms, volume; ndrange=N)
+    anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku,
+                                          anis.axis_x, anis.axis_y, anis.axis_z,
+                                          sim.mu0_Ms, volume; ndrange=N)
 
     return nothing
 end
@@ -135,9 +123,9 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
-    bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms, dmi.Dx,
-                                       dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs, volume;
-                                       ndrange=N)
+    bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                                       dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs,
+                                       volume, T(1); ndrange=N)
 
     return nothing
 end
@@ -147,50 +135,15 @@ function effective_field(dmi::TimeBulkDMI, sim::MicroSim, spin::AbstractArray{T,
     N = sim.n_total
     mesh = sim.mesh
     volume = T(mesh.volume)
-    Dx =dmi.time_D(t)*dmi.Dx
-    Dy =dmi.time_D(t)*dmi.Dy
-    Dz =dmi.time_D(t)*dmi.Dz
-    
+    tfac = T(dmi.time_D(t))
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
     bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
-                                            Dx, Dy, Dz, dx, dy,
-                                            dz, mesh.ngbs, volume; ndrange=N)
+                                       dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs,
+                                       volume, tfac; ndrange=N)
 
     return nothing
-    
-end
-
-function effective_field(dmi::SpatialVectorBulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
-    N = sim.n_total
-    mesh = sim.mesh
-    volume = T(mesh.volume)
-
-    dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
-    back = default_backend[]
-    spatial_vector_bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
-                                               dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs, volume;
-                                               ndrange=N)
-
-    return nothing
-end
-
-function effective_field(dmi::TimeSpatialBulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
-        N = sim.n_total
-        mesh =sim.mesh
-        volume = T(mesh.volume)
-        D = dmi.time_D(t)*dmi.D
-        dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
-        back = default_backend[]
-        spatial_vector_bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
-                                               D, D, D, dx, dy, dz, mesh.ngbs, volume;
-                                               ndrange=N)
-
-        return nothing
-
 end
 
 function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::AbstractArray{T,1},
@@ -420,7 +373,8 @@ function effective_field_debug(exch::SpatialExchange, sim::MicroSim, spin::Array
     end
 end
 
-#we keep this function for debug and testing purpose, only works on CPU
+#we keep this function for debug and testing purpose, only works on CPU.
+#It mirrors bulkdmi_kernel! line by line so the two can be compared tightly.
 function effective_field_debug(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,1},
                                t::Float64)
     mesh = sim.mesh
@@ -432,11 +386,10 @@ function effective_field_debug(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,
     field = dmi.field
     energy = dmi.energy
     Ms = sim.mu0_Ms
-    Dx, Dy, Dz = dmi.Dx, dmi.Dy, dmi.Dz
-    Ds = (Dx / dx, Dx / dx, Dy / dy, Dy / dy, Dz / dz, Dz / dz)
-    ax = (1.0, -1.0, 0.0, 0.0, 0.0, 0.0)
-    ay = (0.0, 0.0, 1.0, -1.0, 0.0, 0.0)
-    az = (0.0, 0.0, 0.0, 0.0, 1.0, -1.0)
+    Dxs = Array(dmi.Dx)
+    Dys = Array(dmi.Dy)
+    Dzs = Array(dmi.Dz)
+    axes6 = (1.0 / dx, -1.0 / dx, 1.0 / dy, -1.0 / dy, 1.0 / dz, -1.0 / dz)
 
     for index in 1:n_total
         i = 3 * index - 2
@@ -447,18 +400,50 @@ function effective_field_debug(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,
             field[i + 2] = 0.0
             continue
         end
+        Dx_I = Dxs[index]
+        Dy_I = Dys[index]
+        Dz_I = Dzs[index]
         fx, fy, fz = 0.0, 0.0, 0.0
 
-        for j in 1:6
+        # ---- (±x) ----
+        for j in 1:2
             id = ngbs[j, index]
             if id > 0 && Ms[id] > 0
-                k = 3 * (id - 1) + 1
-                fx += Ds[j] *
-                      cross_x(ax[j], ay[j], az[j], spin[k], spin[k + 1], spin[k + 2])
-                fy += Ds[j] *
-                      cross_y(ax[j], ay[j], az[j], spin[k], spin[k + 1], spin[k + 2])
-                fz += Ds[j] *
-                      cross_z(ax[j], ay[j], az[j], spin[k], spin[k + 1], spin[k + 2])
+                Dx_n = Dxs[id]
+                if Dx_I != 0 && Dx_n != 0
+                    k = 3 * id - 2
+                    D_eff = 2 * Dx_I * Dx_n / (Dx_I + Dx_n)
+                    fy += D_eff * (-axes6[j] * spin[k + 2])
+                    fz += D_eff * ( axes6[j] * spin[k + 1])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            id = ngbs[j, index]
+            if id > 0 && Ms[id] > 0
+                Dy_n = Dys[id]
+                if Dy_I != 0 && Dy_n != 0
+                    k = 3 * id - 2
+                    D_eff = 2 * Dy_I * Dy_n / (Dy_I + Dy_n)
+                    fx += D_eff * ( axes6[j] * spin[k + 2])
+                    fz += D_eff * (-axes6[j] * spin[k])
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            id = ngbs[j, index]
+            if id > 0 && Ms[id] > 0
+                Dz_n = Dzs[id]
+                if Dz_I != 0 && Dz_n != 0
+                    k = 3 * id - 2
+                    D_eff = 2 * Dz_I * Dz_n / (Dz_I + Dz_n)
+                    fx += D_eff * (-axes6[j] * spin[k + 1])
+                    fy += D_eff * ( axes6[j] * spin[k])
+                end
             end
         end
 

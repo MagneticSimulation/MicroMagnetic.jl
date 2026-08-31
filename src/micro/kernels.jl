@@ -51,43 +51,16 @@ end
 """
 The kernel anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
 """
-@kernel function anisotropy_kernel!(@Const(m), h, energy, Ku, axis_x::T, axis_y::T,
-                                    axis_z::T, mu0_Ms,
+@kernel function anisotropy_kernel!(@Const(m), h, energy, Ku, axis_x, axis_y, axis_z,
+                                    mu0_Ms,
                                     volume::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
     @inbounds Ms_local = mu0_Ms[id]
-
-    if Ms_local == 0.0
-        @inbounds energy[id] = 0
-        @inbounds h[j + 1] = 0
-        @inbounds h[j + 2] = 0
-        @inbounds h[j + 3] = 0
-    else
-        Ms_inv::T = 2.0 / Ms_local
-        @inbounds sa = m[j + 1] * axis_x + m[j + 2] * axis_y + m[j + 3] * axis_z
-        @inbounds h[j + 1] = Ku[id] * sa * axis_x * Ms_inv
-        @inbounds h[j + 2] = Ku[id] * sa * axis_y * Ms_inv
-        @inbounds h[j + 3] = Ku[id] * sa * axis_z * Ms_inv
-        @inbounds energy[id] = Ku[id] * (1.0 - sa * sa) * volume
-    end
-end
-
-"""
-The kernel spatial_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
-"""
-@kernel function spatial_anisotropy_kernel!(@Const(m), h, energy, Ku, @Const(axes),
-                                            mu0_Ms,
-                                            volume::T) where {T<:AbstractFloat}
-    id = @index(Global)
-    j = 3 * (id - 1)
-
-    @inbounds Ms_local = mu0_Ms[id]
-
-    @inbounds ax = axes[j+1]
-    @inbounds ay = axes[j+2]
-    @inbounds az = axes[j+3]
+    @inbounds ax = axis_x[id]
+    @inbounds ay = axis_y[id]
+    @inbounds az = axis_z[id]
 
     if Ms_local == 0.0
         @inbounds energy[id] = 0
@@ -308,53 +281,11 @@ end
     end
 end
 
-@kernel function bulkdmi_kernel!(@Const(m), h, energy, mu0_Ms, Dx::T, Dy::T, Dz::T,
-                                 dx::T, dy::T, dz::T, @Const(ngbs),
-                                 volume::T) where {T<:AbstractFloat}
-    I = @index(Global)
-
-    @inbounds Ms_local = mu0_Ms[I]
-
-    Ds = (Dx / dx, Dx / dx, Dy / dy, Dy / dy, Dz / dz, Dz / dz)
-    ax = (T(1), T(-1), T(0), T(0), T(0), T(0))
-    ay = (T(0), T(0), T(1), T(-1), T(0), T(0))
-    az = (T(0), T(0), T(0), T(0), T(1), T(-1))
-
-    i = 3 * I - 2
-    if Ms_local == T(0)
-        @inbounds energy[I] = T(0)
-        @inbounds h[i] = T(0)
-        @inbounds h[i + 1] = T(0)
-        @inbounds h[i + 2] = T(0)
-    else
-        fx = T(0)
-        fy = T(0)
-        fz = T(0)
-        for j in 1:6
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
-                k = 3 * id - 2
-                @inbounds fx += Ds[j] *
-                                cross_x(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-                @inbounds fy += Ds[j] *
-                                cross_y(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-                @inbounds fz += Ds[j] *
-                                cross_z(ax[j], ay[j], az[j], m[k], m[k + 1], m[k + 2])
-            end
-        end
-        Ms_inv = 1.0 / Ms_local
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i + 1] + fz * m[i + 2]) * volume
-        @inbounds h[i]     = fx * Ms_inv
-        @inbounds h[i + 1] = fy * Ms_inv
-        @inbounds h[i + 2] = fz * Ms_inv
-    end
-end
-
-
-@kernel function spatial_vector_bulkdmi_kernel!(
-        @Const(m), h, energy, mu0_Ms,
-        Dxs, Dys, Dzs,
-        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+# Unified bulk DMI kernel: the D components are read per spin (a uniform D arrives
+# as an O(1) Fill) and `tfac` is a scalar time factor (1 for the static term).
+@kernel function bulkdmi_kernel!(
+        @Const(m), h, energy, mu0_Ms, Dxs, Dys, Dzs,
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T, tfac::T
     ) where {T<:AbstractFloat}
 
     I = @index(Global)
@@ -369,9 +300,9 @@ end
         @inbounds h[i+1] = T(0)
         @inbounds h[i+2] = T(0)
     else
-        Dx_I = Dxs[I]
-        Dy_I = Dys[I]
-        Dz_I = Dzs[I]
+        @inbounds Dx_I = tfac * Dxs[I]
+        @inbounds Dy_I = tfac * Dys[I]
+        @inbounds Dz_I = tfac * Dzs[I]
 
         fx = T(0)
         fy = T(0)
@@ -381,7 +312,7 @@ end
         for j in 1:2
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
-                Dx_n = Dxs[id]
+                Dx_n = tfac * Dxs[id]
                 if Dx_I != 0 && Dx_n != 0
                     k = 3*id - 2
                     D_eff = 2 * Dx_I * Dx_n / (Dx_I + Dx_n)
@@ -396,7 +327,7 @@ end
         for j in 3:4
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
-                Dy_n = Dys[id]
+                Dy_n = tfac * Dys[id]
                 if Dy_I != 0 && Dy_n != 0
                     k = 3*id - 2
                     D_eff = 2 * Dy_I * Dy_n / (Dy_I + Dy_n)
@@ -411,7 +342,7 @@ end
         for j in 5:6
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
-                Dz_n = Dzs[id]
+                Dz_n = tfac * Dzs[id]
                 if Dz_I != 0 && Dz_n != 0
                     k = 3*id - 2
                     D_eff = 2 * Dz_I * Dz_n / (Dz_I + Dz_n)
