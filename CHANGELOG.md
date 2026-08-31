@@ -10,8 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - collapsed the uniform/spatial struct pairs into single types, following the Fill
   parameter representation (the types are unexported, so user code is unaffected):
-  `BulkDMI` now stores per-spin `Dx/Dy/Dz` components (uniform values are O(1) `Fill`s)
-  and serves scalar, tuple and spatial `D` through one kernel; `TimeBulkDMI` absorbs
+  the DMI type (renamed from `BulkDMI`, which is no longer bulk-specific) stores
+  per-spin `Dx/Dy/Dz` components (uniform values are O(1) `Fill`s) and serves
+  scalar, tuple and spatial `D` through one kernel; `TimeBulkDMI` absorbs
   `TimeSpatialBulkDMI` with the time factor applied inside the kernel
 - `Anisotropy` absorbs `SpatialAnisotropy`: the easy axis is stored as three per-spin
   component arrays (uniform axes are `Fill`s), and the uniform and spatial cases share
@@ -24,8 +25,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   plus a time-modulation function (the static term uses a shared identity `t -> 1.0`,
   so its precomputed field is never rewritten per step); `update_zeeman` replaces the
   components instead of writing in place
-- `BulkDMI` also absorbs `InterfacialDMI` (`type = :bulk`/`:interfacial`) and the time
-  DMI (`ft`), leaving a single DMI type; the interfacial kernel gained the same scalar
+- it also absorbs `InterfacialDMI` (`type = :bulk`/`:interfacial`) and the time
+  DMI (`ft`), leaving a single micromagnetic DMI type named `DMI` (distinct from the
+  atomistic `Heisenberg*` interactions); the interfacial kernel gained the same scalar
   time factor
 - spin-polarization vectors became per-spin components (`Fill`s when uniform):
   `add_stt`'s `p` and `add_sot`'s `p` now accept `NumberOrTupleOrArrayOrFunction`,

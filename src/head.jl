@@ -255,7 +255,9 @@ mutable struct InterlayerDMI{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
-mutable struct BulkDMI{T<:AbstractFloat} <: MicroEnergy
+# The micromagnetic (continuum) DMI energy, serving the bulk and interfacial
+# forms through `type`; atomistic DMI lives in the Heisenberg* interaction types.
+mutable struct DMI{T<:AbstractFloat} <: MicroEnergy
     Dx::AbstractArray{T,1}  # per-spin D components; uniform values are Fills
     Dy::AbstractArray{T,1}
     Dz::AbstractArray{T,1}

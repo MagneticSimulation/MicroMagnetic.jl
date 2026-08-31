@@ -199,25 +199,25 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
         # One type serves uniform and spatial D: numbers become O(1) Fills,
         # functions/arrays dense arrays
         if isa(D, Tuple) && length(D) == 3
-            dmi = BulkDMI(make_param(T, D[1], sim.mesh, sim.n_total),
+            dmi = DMI(make_param(T, D[1], sim.mesh, sim.n_total),
                           make_param(T, D[2], sim.mesh, sim.n_total),
                           make_param(T, D[3], sim.mesh, sim.n_total),
                           _static_time, :bulk, field, energy, name)
         else
             D_kb = make_param(T, D, sim.mesh, sim.n_total)
-            dmi = BulkDMI(D_kb, D_kb, D_kb, _static_time, :bulk, field, energy, name)
+            dmi = DMI(D_kb, D_kb, D_kb, _static_time, :bulk, field, energy, name)
         end
 
         @info "Bulk DMI has been added."
     elseif type == "interfacial"
         D_kb = make_param(T, D, sim.mesh, n_total)
 
-        dmi = BulkDMI(D_kb, D_kb, D_kb, _static_time, :interfacial, field, energy, name)
+        dmi = DMI(D_kb, D_kb, D_kb, _static_time, :interfacial, field, energy, name)
         @info "Interfacial DMI has been added."
 
     elseif type == "D2d"
         if isa(D, Number)
-            dmi = BulkDMI(make_param(T, -D, sim.mesh, sim.n_total),
+            dmi = DMI(make_param(T, -D, sim.mesh, sim.n_total),
                           make_param(T, D, sim.mesh, sim.n_total),
                           make_param(T, 0, sim.mesh, sim.n_total),
                           _static_time, :bulk, field, energy, name)
@@ -247,13 +247,13 @@ function add_dmi(sim::MicroSim,D::NumberOrTupleOrArrayOrFunction, ft::Function; 
     field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
     if isa(D, Tuple) && length(D) == 3
-            dmi = BulkDMI(make_param(T, D[1], sim.mesh, n_total),
+            dmi = DMI(make_param(T, D[1], sim.mesh, n_total),
                           make_param(T, D[2], sim.mesh, n_total),
                           make_param(T, D[3], sim.mesh, n_total),
                           ft, :bulk, field, energy, name)
     else
             D_kb = make_param(T, D, sim.mesh, n_total)
-            dmi = BulkDMI(D_kb, D_kb, D_kb, ft, :bulk, field, energy, name)
+            dmi = DMI(D_kb, D_kb, D_kb, ft, :bulk, field, energy, name)
     end
 
     push!(sim.interactions, dmi)

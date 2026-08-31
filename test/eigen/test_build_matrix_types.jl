@@ -126,19 +126,19 @@ end
     end
 
     # ── B2: same seed, but WITH DMI added, seed on axis 1 (mx) ────────
-    # For a z-only mesh with Dz≠0, BulkDMI's cross_y on a z-bond is
+    # For a z-only mesh with Dz≠0, DMI's cross_y on a z-bond is
     #   cross_y(0,0,±1, mk_x, mk_y, mk_z) = ±1*mk_x - 0*mk_z = ±mk_x.
     # So H_DMI_y at site i DOES depend on m_x at the neighbour.  A pure
     # δm_x perturbation at site 2 therefore propagates ε into
-    # BulkDMI.field at sites 1 and 3 (each on its y-component).
+    # DMI.field at sites 1 and 3 (each on its y-component).
     let sim = _setup_sim_with_seed(seed_site=2, seed_axis=1, add_dmi=true)
         r = _probe(sim)
-        dmi_entry = only(p for p in r.per_interaction if first(p) == "BulkDMI")
+        dmi_entry = only(p for p in r.per_interaction if first(p) == "DMI")
         @test last(dmi_entry).n_sym >= 1
     end
 
     # ── B3: seed on site 2, axis 3 (mz) + DMI (z-only mesh) ───────────
-    # On a 1x1x4 mesh the only bonds are ±z.  For z-bonds the BulkDMI
+    # On a 1x1x4 mesh the only bonds are ±z.  For z-bonds the DMI
     # cross products are:
     #   cross_x = ay*m_z - az*m_y = 0*m_z - 1*m_y = -m_y
     #   cross_y = az*m_x - ax*m_z = 1*m_x - 0*m_z =  m_x
@@ -149,7 +149,7 @@ end
     # invent ε where the physics says there is none.
     let sim = _setup_sim_with_seed(seed_site=2, seed_axis=3, add_dmi=true)
         r = _probe(sim)
-        dmi_entry = only(p for p in r.per_interaction if first(p) == "BulkDMI")
+        dmi_entry = only(p for p in r.per_interaction if first(p) == "DMI")
         # DMI.field symbolic count must be zero (no coupling to mz on z-bonds)
         @test last(dmi_entry).n_sym == 0
         # Exchange DOES couple to mz: fz at sites 1, 2, 3 each carry ε.
@@ -158,19 +158,19 @@ end
 
     # ── B4: seed on site 2, axis 2 (my) + DMI (z-only mesh) ───────────
     # my DOES couple into H_DMI for z-bonds (cross_x = -m_y), so this is
-    # the positive counterpart to B3: BulkDMI.field must now carry
+    # the positive counterpart to B3: DMI.field must now carry
     # genuine ε contributions, and sim.field must have strictly more
     # symbolic entries than the Exch-only A2 baseline.
     let sim = _setup_sim_with_seed(seed_site=2, seed_axis=2, add_dmi=true)
         r = _probe(sim)
-        dmi_entry = only(p for p in r.per_interaction if first(p) == "BulkDMI")
+        dmi_entry = only(p for p in r.per_interaction if first(p) == "DMI")
         @test last(dmi_entry).n_sym >= 1
         # Exchange contributes 3 (fy at sites 1,2,3) + DMI contributes ≥1
         @test r.n_sym >= 4
     end
 
     # ── Physics spot-check: m0 == ẑ opens DMI torque in B matrix ──────
-    # On a z-only-bond mesh (1×1×nz), BulkDMI on z-bonds gives
+    # On a z-only-bond mesh (1×1×nz), DMI on z-bonds gives
     #   H_DMI_x = -m_y(neighbour), H_DMI_y = m_x(neighbour), H_DMI_z = 0.
     # The resulting torque m × H_DMI lies in the (x,y)-plane.  For this
     # torque to survive the tangent-frame projection it must be

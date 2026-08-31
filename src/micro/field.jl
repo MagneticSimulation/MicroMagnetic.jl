@@ -104,7 +104,7 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::AbstractArray{T,1}
     return nothing
 end
 
-function effective_field(dmi::BulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
+function effective_field(dmi::DMI, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     mesh = sim.mesh
@@ -381,7 +381,7 @@ end
 
 #we keep this function for debug and testing purpose, only works on CPU.
 #It mirrors bulkdmi_kernel! line by line so the two can be compared tightly.
-function effective_field_debug(dmi::BulkDMI, sim::MicroSim, spin::Array{Float64,1},
+function effective_field_debug(dmi::DMI, sim::MicroSim, spin::Array{Float64,1},
                                t::Float64)
     mesh = sim.mesh
     dx = mesh.dx
