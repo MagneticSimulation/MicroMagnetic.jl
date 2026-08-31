@@ -188,9 +188,15 @@ end
 
 mutable struct CubicAnisotropy{T<:AbstractFloat} <: MicroEnergy
     Kc::AbstractArray{T,1}
-    axis1::Tuple
-    axis2::Tuple
-    axis3::Tuple
+    axis1x::AbstractArray{T,1}  # per-spin easy-axis components; uniform = O(1) Fill
+    axis1y::AbstractArray{T,1}
+    axis1z::AbstractArray{T,1}
+    axis2x::AbstractArray{T,1}
+    axis2y::AbstractArray{T,1}
+    axis2z::AbstractArray{T,1}
+    axis3x::AbstractArray{T,1}
+    axis3y::AbstractArray{T,1}
+    axis3z::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
@@ -253,24 +259,8 @@ mutable struct BulkDMI{T<:AbstractFloat} <: MicroEnergy
     Dx::AbstractArray{T,1}  # per-spin D components; uniform values are Fills
     Dy::AbstractArray{T,1}
     Dz::AbstractArray{T,1}
-    field::AbstractArray{T,1}
-    energy::AbstractArray{T,1}
-    name::String
-end
-
-mutable struct TimeBulkDMI{T<:AbstractFloat} <: MicroEnergy
-    Dx::AbstractArray{T,1}
-    Dy::AbstractArray{T,1}
-    Dz::AbstractArray{T,1}
-    time_D::Function
-    field::AbstractArray{T,1}
-    energy::AbstractArray{T,1}
-    name::String
-end
-
-
-mutable struct InterfacialDMI{T<:AbstractFloat} <: MicroEnergy
-    D::AbstractArray{T,1}
+    ft::Function            # time modulation; the static term uses `_static_time`
+    type::Symbol            # :bulk or :interfacial
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
@@ -298,9 +288,9 @@ mutable struct TorqueField{T<:AbstractFloat} <: MicroEnergy
 end
 
 mutable struct DFTorqueField{T<:AbstractFloat} <: MicroEnergy
-    px::T
-    py::T
-    pz::T
+    px::AbstractArray{T,1}  # per-spin polarization components; uniform = O(1) Fill
+    py::AbstractArray{T,1}
+    pz::AbstractArray{T,1}
     aj::AbstractArray{T,1}
     bj::T
     field::AbstractArray{T,1}
@@ -316,9 +306,9 @@ mutable struct ZhangLiTorque{T<:AbstractFloat} <: MicroEnergy
 end
 
 mutable struct SlonczewskiTorque{T<:AbstractFloat} <: MicroEnergy
-    px::T
-    py::T
-    pz::T
+    px::AbstractArray{T,1}  # per-spin polarization components; uniform = O(1) Fill
+    py::AbstractArray{T,1}
+    pz::AbstractArray{T,1}
     beta::T
     Lambda::T
     xi::T

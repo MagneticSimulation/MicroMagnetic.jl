@@ -43,13 +43,12 @@ function effective_field(anis::CubicAnisotropy, sim::AtomisticSim, spin::Abstrac
                          t::Float64; output=nothing) where {T<:AbstractFloat}
     N = sim.n_total
 
-    a1x, a1y, a1z = anis.axis1
-    a2x, a2y, a2z = anis.axis2
-    a3x, a3y, a3z = anis.axis3
     heff = output === nothing ? anis.field : output
-    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc, T(a1x),
-                                                T(a1y), T(a1z), T(a2x), T(a2y), T(a2z),
-                                                T(a3x), T(a3y), T(a3z), sim.mu_s, T(1);
+    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc,
+                                                anis.axis1x, anis.axis1y, anis.axis1z,
+                                                anis.axis2x, anis.axis2y, anis.axis2z,
+                                                anis.axis3x, anis.axis3y, anis.axis3z,
+                                                sim.mu_s, T(1);
                                                 ndrange=N)
 
     return nothing

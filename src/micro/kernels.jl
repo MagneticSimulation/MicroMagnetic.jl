@@ -81,9 +81,9 @@ end
 """
 The kernel cubic_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
 """
-@kernel function cubic_anisotropy_kernel!(@Const(m), h, energy, Kc, a1x::T, a1y::T,
-                                          a1z::T, a2x::T, a2y::T, a2z::T, a3x::T, a3y::T,
-                                          a3z::T, mu0_Ms,
+@kernel function cubic_anisotropy_kernel!(@Const(m), h, energy, Kc, axis1x, axis1y,
+                                          axis1z, axis2x, axis2y, axis2z, axis3x, axis3y,
+                                          axis3z, mu0_Ms,
                                           volume::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
@@ -96,6 +96,15 @@ The kernel cubic_anisotropy_kernel! works for both the micromagnetic and atomist
         @inbounds h[j + 2] = 0
         @inbounds h[j + 3] = 0
     else
+        @inbounds a1x = axis1x[id]
+        @inbounds a1y = axis1y[id]
+        @inbounds a1z = axis1z[id]
+        @inbounds a2x = axis2x[id]
+        @inbounds a2y = axis2y[id]
+        @inbounds a2z = axis2z[id]
+        @inbounds a3x = axis3x[id]
+        @inbounds a3y = axis3y[id]
+        @inbounds a3z = axis3z[id]
         Ms_inv::T = 4.0 * Kc[id] / Ms_local
         @inbounds mxp = a1x * m[j + 1] + a1y * m[j + 2] + a1z * m[j + 3]
         @inbounds myp = a2x * m[j + 1] + a2y * m[j + 2] + a2z * m[j + 3]
@@ -366,10 +375,10 @@ end
 
 @kernel function interfacial_dmi_kernel!(@Const(m), h, energy, mu0_Ms, Ds,
                                          dx::T, dy::T, dz::T, @Const(ngbs),
-                                         volume::T) where {T<:AbstractFloat}
+                                         volume::T, tfac::T) where {T<:AbstractFloat}
     I = @index(Global)
     @inbounds Ms_local = mu0_Ms[I]
-    @inbounds D_I = Ds[I]
+    @inbounds D_I = tfac * Ds[I]
 
     Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy))
     ax = (T(0), T(0), T(-1), T(1))
@@ -390,7 +399,7 @@ end
         for j in 1:4
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
-                D_nb = Ds[id]
+                D_nb = tfac * Ds[id]
                 if D_nb != T(0)
                     k = 3 * id - 2
                     D_eff = 2 * D_I * D_nb / (D_I + D_nb)
@@ -561,20 +570,23 @@ end
 The kernel df_torque_kernel! compute the effective field defined as 
         H = (1/gamma)(a_J m x p +  b_J p)
 """
-@kernel function df_torque_kernel!(@Const(m), h, gamma::T, aj, bj::T, px::T, py::T,
-                                   pz::T) where {T<:AbstractFloat}
+@kernel function df_torque_kernel!(@Const(m), h, gamma::T, aj, bj::T, px, py,
+                                   pz) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
     @inbounds a = aj[id] / gamma
 
     b::T = bj / gamma
+    @inbounds p_x = px[id]
+    @inbounds p_y = py[id]
+    @inbounds p_z = pz[id]
     @inbounds mx::T = m[j + 1]
     @inbounds my::T = m[j + 2]
     @inbounds mz::T = m[j + 3]
-    @inbounds h[j + 1] = a * cross_x(mx, my, mz, px, py, pz) + b*px
-    @inbounds h[j + 2] = a * cross_y(mx, my, mz, px, py, pz) + b*py
-    @inbounds h[j + 3] = a * cross_z(mx, my, mz, px, py, pz) + b*pz
+    @inbounds h[j + 1] = a * cross_x(mx, my, mz, p_x, p_y, p_z) + b*p_x
+    @inbounds h[j + 2] = a * cross_y(mx, my, mz, p_x, p_y, p_z) + b*p_y
+    @inbounds h[j + 3] = a * cross_z(mx, my, mz, p_x, p_y, p_z) + b*p_z
 end
 
 """
@@ -600,22 +612,25 @@ The kernel slonczewski_torque_kernel! compute the effective field defined as
         H = (beta*J)(epsilon* m x m_p +  xi*m_p)
 """
 @kernel function slonczewski_torque_kernel!(@Const(m), h, J, lambda_sq::T, P::T,
-                                            xi::T, ft::T, px::T, py::T,
-                                            pz::T) where {T<:AbstractFloat}
+                                            xi::T, ft::T, px, py,
+                                            pz) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
 
     @inbounds mx::T = m[j + 1]
     @inbounds my::T = m[j + 2]
     @inbounds mz::T = m[j + 3]
+    @inbounds p_x = px[id]
+    @inbounds p_y = py[id]
+    @inbounds p_z = pz[id]
 
-    mp::T = mx * px + my * py + mz * pz
+    mp::T = mx * p_x + my * p_y + mz * p_z
     epsilon::T = P * lambda_sq / (lambda_sq + 1 + (lambda_sq - 1) * mp);
 
-    @inbounds a = J[id]*ft # note ft is multiplied by the coefficient beta 
-    @inbounds h[j + 1] = a * (epsilon*cross_x(mx, my, mz, px, py, pz) + xi*px)
-    @inbounds h[j + 2] = a * (epsilon*cross_y(mx, my, mz, px, py, pz) + xi*py)
-    @inbounds h[j + 3] = a * (epsilon*cross_z(mx, my, mz, px, py, pz) + xi*pz)
+    @inbounds a = J[id]*ft # note ft is multiplied by the coefficient beta
+    @inbounds h[j + 1] = a * (epsilon*cross_x(mx, my, mz, p_x, p_y, p_z) + xi*p_x)
+    @inbounds h[j + 2] = a * (epsilon*cross_y(mx, my, mz, p_x, p_y, p_z) + xi*p_y)
+    @inbounds h[j + 3] = a * (epsilon*cross_z(mx, my, mz, p_x, p_y, p_z) + xi*p_z)
 end
 
 """

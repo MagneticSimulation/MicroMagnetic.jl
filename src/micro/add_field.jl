@@ -206,22 +206,25 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
             dmi = BulkDMI(make_param(T, D[1], sim.mesh, sim.n_total),
                           make_param(T, D[2], sim.mesh, sim.n_total),
                           make_param(T, D[3], sim.mesh, sim.n_total),
-                          field, energy, name)
+                          _static_time, :bulk, field, energy, name)
         else
             D_kb = make_param(T, D, sim.mesh, sim.n_total)
-            dmi = BulkDMI(D_kb, D_kb, D_kb, field, energy, name)
+            dmi = BulkDMI(D_kb, D_kb, D_kb, _static_time, :bulk, field, energy, name)
         end
 
         @info "Bulk DMI has been added."
     elseif type == "interfacial"
         D_kb = make_param(T, D, sim.mesh, n_total)
 
-        dmi = InterfacialDMI(D_kb, field, energy, name)
+        dmi = BulkDMI(D_kb, D_kb, D_kb, _static_time, :interfacial, field, energy, name)
         @info "Interfacial DMI has been added."
 
     elseif type == "D2d"
         if isa(D, Number)
-            dmi = BulkDMI(T(-D), T(D), T(0), field, energy, name)
+            dmi = BulkDMI(make_param(T, -D, sim.mesh, sim.n_total),
+                          make_param(T, D, sim.mesh, sim.n_total),
+                          make_param(T, 0, sim.mesh, sim.n_total),
+                          _static_time, :bulk, field, energy, name)
         else
             error("D2d only support uniform DMI!")
         end
@@ -248,13 +251,13 @@ function add_dmi(sim::MicroSim,D::NumberOrTupleOrArrayOrFunction, ft::Function; 
     field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
     if isa(D, Tuple) && length(D) == 3
-            dmi = TimeBulkDMI(make_param(T, D[1], sim.mesh, n_total),
-                              make_param(T, D[2], sim.mesh, n_total),
-                              make_param(T, D[3], sim.mesh, n_total),
-                              ft, field, energy, name)
+            dmi = BulkDMI(make_param(T, D[1], sim.mesh, n_total),
+                          make_param(T, D[2], sim.mesh, n_total),
+                          make_param(T, D[3], sim.mesh, n_total),
+                          ft, :bulk, field, energy, name)
     else
             D_kb = make_param(T, D, sim.mesh, n_total)
-            dmi = TimeBulkDMI(D_kb, D_kb, D_kb, ft, field, energy, name)
+            dmi = BulkDMI(D_kb, D_kb, D_kb, ft, :bulk, field, energy, name)
     end
 
     push!(sim.interactions, dmi)
@@ -266,8 +269,8 @@ function add_dmi(sim::MicroSim,D::NumberOrTupleOrArrayOrFunction, ft::Function; 
         "Changes in the value of the ft function "
         push!(sim.saver.items,
               SaverItem(string("time_D", name), "<J/m^2>",
-                        o::AbstractSim ->(dmi.time_D(o.driver.integrator.t))))
-     
+                        o::AbstractSim ->(dmi.ft(o.driver.integrator.t))))
+
     end
     send_sim_state(sim)
     return dmi
@@ -426,25 +429,60 @@ add a cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1). The thi
     add_cubic_anis(sim, 1e3, (1, 1, 0), (1, -1, 0))
 ```
 """
+# Normalise a cubic-anisotropy axis given as a uniform 3-tuple (stored as O(1)
+# Fills) or an array/function (per-spin, stored as three dense component arrays).
+# Returns ((x, y, z), normalised values or nothing, is_uniform); the values are the
+# normalised scalars for a uniform axis and `nothing` otherwise.
+function _cubic_axis(v, T, mesh, n_total)
+    if v isa Tuple && length(v) == 3 && all(x -> x isa Real, v)
+        lt = sqrt(v[1]^2 + v[2]^2 + v[3]^2)
+        vals = (v[1] / lt, v[2] / lt, v[3] / lt)
+        comps = (make_param(T, vals[1], mesh, n_total),
+                 make_param(T, vals[2], mesh, n_total),
+                 make_param(T, vals[3], mesh, n_total))
+        return comps, vals, true
+    end
+    x, y, z = make_vector_param(T, v, mesh, n_total)
+    norm = sqrt.(x .^ 2 + y .^ 2 + z .^ 2)
+    x ./= norm
+    y ./= norm
+    z ./= norm
+    return (x, y, z), nothing, false
+end
+
 function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1, 0, 0),
                         axis2=(0, 1, 0), name="cubic")
     n_total = sim.n_total
     T = Float[]
     Kcs_kb = make_param(T, Kc, sim.mesh, n_total)
 
-    norm1 = sqrt(axis1[1]^2 + axis1[2]^2 + axis1[3]^2)
-    norm2 = sqrt(axis2[1]^2 + axis2[2]^2 + axis2[3]^2)
-    naxis1, naxis2 = axis1 ./ norm1, axis2 ./ norm2
-    if abs.(sum(naxis1 .* naxis2)) > 1e-10
-        @error("The axis1 and axis2 are not perpendicular to each other!")
-        return nothing
-    end
-    naxis3 = cross_product(axis1, axis2)
-
+    a1, v1, uni1 = _cubic_axis(axis1, T, sim.mesh, n_total)
+    a2, v2, uni2 = _cubic_axis(axis2, T, sim.mesh, n_total)
     field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
 
-    anis = CubicAnisotropy(Kcs_kb, naxis1, naxis2, naxis3, field, energy, name)
+    anis = nothing
+    if uni1 && uni2
+        # uniform axes: keep everything O(1) with plain scalar arithmetic
+        dot12 = v1[1] * v2[1] + v1[2] * v2[2] + v1[3] * v2[3]
+        abs(dot12) > 1e-10 &&
+            @error("The axis1 and axis2 are not perpendicular to each other!")
+        a3x = T(v1[2] * v2[3] - v1[3] * v2[2])
+        a3y = T(v1[3] * v2[1] - v1[1] * v2[3])
+        a3z = T(v1[1] * v2[2] - v1[2] * v2[1])
+        anis = CubicAnisotropy(Kcs_kb, a1..., a2..., as_param_array(a3x, n_total),
+                               as_param_array(a3y, n_total),
+                               as_param_array(a3z, n_total), field, energy, name)
+    else
+        # spatial axes: per-spin perpendicularity check and cross product
+        d12 = maximum(abs.(a1[1] .* a2[1] .+ a1[2] .* a2[2] .+ a1[3] .* a2[3]))
+        d12 > 1e-10 &&
+            @error("The axis1 and axis2 are not perpendicular to each other!")
+        a3x = a1[2] .* a2[3] .- a1[3] .* a2[2]
+        a3y = a1[3] .* a2[1] .- a1[1] .* a2[3]
+        a3z = a1[1] .* a2[2] .- a1[2] .* a2[1]
+        anis = CubicAnisotropy(Kcs_kb, a1..., a2..., a3x, a3y, a3z, field, energy, name)
+    end
     push!(sim.interactions, anis)
 
     if sim.save_data
@@ -452,7 +490,7 @@ function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,
               SaverItem(string("E_", name), "<J>",
                         o::AbstractSim -> sum(anis.energy)))
     end
-    @info "Hexagonal Anisotropy has been added."
+    @info "Cubic Anisotropy has been added."
     send_sim_state(sim)
     return anis
 end
@@ -819,7 +857,8 @@ function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction;
 end
 
 @doc raw"""
-    add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number, p::Tuple{Real,Real,Real}; name="sot")
+    add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number,
+            p::NumberOrTupleOrArrayOrFunction; name="sot")
 
 Add damping-like and field-like torque to LLG equation, which is useful to model spin-orbit torques (SOT) or Slonczewski torque with constant $\epsilon(\theta)$.
 
@@ -833,15 +872,16 @@ The equivalent effective field is
 \mathbf{H}_\mathrm{stt} = (1/\gamma)(a_J \mathbf{m} \times \mathbf{p} +  b_J \mathbf{p})
 ```
 """
-function add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction, bj::Number,
-                 p::Tuple{Real,Real,Real}; name="sot")
+function add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction,
+                 bj::Number, p::NumberOrTupleOrArrayOrFunction; name="sot")
     n_total = sim.n_total
     field = create_zeros(3 * n_total)
 
     T = Float[]
     aj_zb = make_param(T, aj, sim.mesh, n_total)
+    px, py, pz = make_vector_param(T, p, sim.mesh, n_total)
 
-    torque = DFTorqueField(T(p[1]), T(p[2]), T(p[3]), aj_zb, T(bj), field, name)
+    torque = DFTorqueField(px, py, pz, aj_zb, T(bj), field, name)
 
     push!(sim.interactions, torque)
 
@@ -982,7 +1022,8 @@ $P$ is the spin polarization, $\Lambda$ is the Slonczewski parameter.
   - `J::NumberOrArrayOrFunction`: Current density magnitude (A/m²)
   - `tf::Real`: Free layer thickness (m)
   - `Ms::Real`: Saturation magnetization (A/m)
-  - `p::Union{Tuple, Vector}`: Polarization direction vector
+  - `p::NumberOrTupleOrArrayOrFunction`: Polarization direction (a uniform 3-tuple,
+    an n_total-length array/function per component, or a spatially varying one)
   - `P::Real`: Spin polarization (0 ≤ P ≤ 1)
 
 - **Optional:**
@@ -1100,7 +1141,8 @@ function add_slonczewski_torque(sim::AbstractSim, name, params::Dict)
 
     ft = haskey(params, :ft) ? params[:ft] : t -> 1.0
 
-    torque = SlonczewskiTorque(T(p[1]), T(p[2]), T(p[3]), T(beta), T(Lambda), T(xi), T(P),
+    px, py, pz = make_vector_param(T, p, sim.mesh, n_total)
+    torque = SlonczewskiTorque(px, py, pz, T(beta), T(Lambda), T(xi), T(P),
                                J, field, ft, name)
 
     push!(sim.interactions, torque)

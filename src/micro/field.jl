@@ -53,13 +53,12 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArr
     N = sim.n_total
     volume = T(sim.mesh.volume)
 
-    a1x, a1y, a1z = anis.axis1
-    a2x, a2y, a2z = anis.axis2
-    a3x, a3y, a3z = anis.axis3
     heff = output === nothing ? anis.field : output
-    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc, T(a1x),
-                                                T(a1y), T(a1z), T(a2x), T(a2y), T(a2z),
-                                                T(a3x), T(a3y), T(a3z), sim.mu0_Ms, volume;
+    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc,
+                                                anis.axis1x, anis.axis1y, anis.axis1z,
+                                                anis.axis2x, anis.axis2y, anis.axis2z,
+                                                anis.axis3x, anis.axis3y, anis.axis3z,
+                                                sim.mu0_Ms, volume;
                                                 ndrange=N)
 
     return nothing
@@ -112,41 +111,17 @@ function effective_field(dmi::BulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
     volume = T(mesh.volume)
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+    tfac = T(dmi.ft(t))
     back = default_backend[]
-    bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
-                                       dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs,
-                                       volume, T(1); ndrange=N)
-
-    return nothing
-end
-
-function effective_field(dmi::TimeBulkDMI, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
-    N = sim.n_total
-    mesh = sim.mesh
-    volume = T(mesh.volume)
-    tfac = T(dmi.time_D(t))
-
-    dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
-    back = default_backend[]
-    bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
-                                       dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs,
-                                       volume, tfac; ndrange=N)
-
-    return nothing
-end
-
-function effective_field(dmi::InterfacialDMI, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
-    N = sim.n_total
-    mesh = sim.mesh
-    volume = T(mesh.volume)
-
-    dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
-    back = default_backend[]
-    interfacial_dmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
-                                               dmi.D, dx, dy, dz, mesh.ngbs, volume;
-                                               ndrange=N)
+    if dmi.type === :bulk
+        bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                                           dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz,
+                                           mesh.ngbs, volume, tfac; ndrange=N)
+    else
+        interfacial_dmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy,
+                                                   sim.mu0_Ms, dmi.Dx, dx, dy, dz,
+                                                   mesh.ngbs, volume, tfac; ndrange=N)
+    end
 
     return nothing
 end
