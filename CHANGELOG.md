@@ -21,6 +21,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - new tests `test/test_fill.jl` and `test/test_fill_equivalence.jl`: parameters stored as `Fill`
   and the same values materialised into dense arrays give bit-identical trajectories (`alpha`,
   `Ms`, `Ku` and `D`) on the CPU and CUDA backends
+- magnetoelastic coupling via `add_magnetoelastic(sim; ...)`: `model=:tensor` couples the
+  magnetisation to a stress tensor (`lambda_s` + `sigma`) and `model=:cubic` uses the cubic
+  magnetoelastic constants `B1`/`B2` with a six-component strain `[εxx, εyy, εzz, εxy, εxz, εyz]`;
+  `sigma`/`strain` accept a 4D array or an `(i, j, k) -> (...)` function
+- twin monoclinic anisotropy interaction `add_twin_mono_anis` (with the new example
+  `examples/twin_monoclinic_anisotropy.jl`)
+- systematic saddle-point search and transition-path workflow: `find_saddle`,
+  `find_transitions`, `compute_hessian_modes` (HessianModes) and GNEB with climbing-image
+  support (`relax_gneb!`, `set_climbing_image!`, `set_image_type!`, `gneb_images`);
+  `plot_transition_paths` visualises the result in the CairoMakie extension. New docs page
+  `atomistic/saddle_point_search.md` and example `examples/skyrmion_sps.jl`
+- matrix-free mode for the eigenvalue method: `build_matrix(sim; matrixfree=true)` returns an
+  `LLGJacOperator` (O(N) memory; a mat-vec is one symmetry pass plus one demag FFT) that can be
+  fed to iterative eigensolvers such as `Arpack.eigs`; the assembled-matrix path is optimised as
+  well. New docs page `eigen/eigenmodes.md`
+- the eigen matrix assembly accepts symbolic parameters (Symbolics `FlatTerm`) for DMI, with a
+  `cpart` accessor for symbolic term components
 
 ### Changed
 
@@ -66,6 +83,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - GPU kernels no longer mark parameters that may be a `Fill` (`mu0_Ms`, `Ms`/`mu_s`, `Ku`, `Kc`,
   `A`, `D`, `pins`, ...) with `@Const`, and the stochastic-field kernel reads alpha per spin, so
   a spatially varying alpha now also applies to thermal noise
+- demag memory/speed overhaul: the Fourier tensors are packed into the (y,z) parity
+  fundamental domain (~4x less memory), the inverse transform uses an in-place c2r plan
+  (the padded `h_pad` copy is gone) and the 1/N scaling is folded into the tensors
 
 ### Fixed
 
@@ -78,6 +98,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   branch): both `relax(sim::AbstractSim)` and `relax(sim::NEB)` decide between time integration
   and minimization by checking whether the driver carries an integrator instead of testing
   `isa(driver, LLG)`
+- fix the interlayer exchange energy calculation
+- fix the interlayer DMI energy calculation
+- fix symbolic type truncation in the local `H_eff` kernels
 
 ### Removed
 
@@ -96,6 +119,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - in-place writes into `sim.mu0_Ms`/`sim.mu_s`/`sim.pins` (`copyto!` or broadcast assignment)
   now throw while these fields hold a `Fill`; use `set_Ms`/`set_mu_s`/`set_pinning`, which
   replace the storage
+- the Enzyme dependency (and the `EnzymeExt` package extension) is removed; automatic
+  differentiation is no longer used anywhere in the package
 
 ## Version [v0.5.0] - 2026-05-30
 
