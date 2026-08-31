@@ -299,7 +299,9 @@ end
 
 mutable struct ZhangLiTorque{T<:AbstractFloat} <: MicroEnergy
     xi::AbstractArray{T,1}
-    bJ::AbstractArray{T,1} # bJ = b*J
+    bJx::AbstractArray{T,1} # b*J along x; uniform values are O(1) Fills
+    bJy::AbstractArray{T,1} # b*J along y
+    bJz::AbstractArray{T,1} # b*J along z
     field::AbstractArray{T,1}
     ufun::Function
     name::String

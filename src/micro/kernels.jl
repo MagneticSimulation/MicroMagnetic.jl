@@ -651,7 +651,7 @@ end
 The kernel zhangli_torque_kernel! compute the effective field defined as 
    H = (b/gamma)*[m x (J.nabla) m + xi (J.nabla) m]
 """
-@kernel function zhangli_torque_kernel!(@Const(m), h, @Const(bJ), @Const(ngbs), xi,
+@kernel function zhangli_torque_kernel!(@Const(m), h, bJx, bJy, bJz, @Const(ngbs), xi,
                                         ut::T, dx::T, dy::T, dz::T) where {T<:AbstractFloat}
     I = @index(Global)
     j = 3 * I - 2
@@ -667,7 +667,7 @@ The kernel zhangli_torque_kernel! compute the effective field defined as
     i2 < 0 && (i2 = I)
     j1 = 3 * i1 - 2
     j2 = 3 * i2 - 2
-    @inbounds u = bJ[j] * factor
+    @inbounds u = bJx[I] * factor
     @inbounds fx += u * (m[j2] - m[j1])
     @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
     @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
@@ -680,7 +680,7 @@ The kernel zhangli_torque_kernel! compute the effective field defined as
     i2 < 0 && (i2 = I)
     j1 = 3 * i1 - 2
     j2 = 3 * i2 - 2
-    @inbounds u = bJ[j+1] * factor
+    @inbounds u = bJy[I] * factor
     @inbounds fx += u * (m[j2] - m[j1])
     @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
     @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
@@ -693,7 +693,7 @@ The kernel zhangli_torque_kernel! compute the effective field defined as
     i2 < 0 && (i2 = I)
     j1 = 3 * i1 - 2
     j2 = 3 * i2 - 2
-    @inbounds u = bJ[j+2] * factor
+    @inbounds u = bJz[I] * factor
     @inbounds fx += u * (m[j2] - m[j1])
     @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
     @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])

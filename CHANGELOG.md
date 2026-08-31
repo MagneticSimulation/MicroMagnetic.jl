@@ -32,6 +32,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enabling spatially varying polarization
 - `CubicAnisotropy` axes are stored as three per-spin component arrays each
   (uniform axes are `Fill`s), unlocking spatially varying cubic easy axes
+- `ZhangLiTorque` stores the current density as three per-spin components
+  (`bJx/bJy/bJz`, O(1) `Fill`s for a uniform `J`) instead of one 3N dense array
 
 ## Version [v0.6.0] - unreleased
 

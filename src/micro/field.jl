@@ -254,7 +254,8 @@ function effective_field(torque::ZhangLiTorque, sim::AbstractSim, spin::Abstract
     ut = T(torque.ufun(t)/gamma)
 
     back = default_backend[]
-    zhangli_torque_kernel!(back, groupsize[])(spin, torque.field, torque.bJ, mesh.ngbs,
+    zhangli_torque_kernel!(back, groupsize[])(spin, torque.field, torque.bJx,
+                                              torque.bJy, torque.bJz, mesh.ngbs,
                                               torque.xi, ut, T(mesh.dx), T(mesh.dy),
                                               T(mesh.dz); ndrange=N)
 

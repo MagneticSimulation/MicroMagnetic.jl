@@ -31,3 +31,8 @@ Base.:(==)(a::Fill, b::Fill) = (a.value == b.value && a.size == b.size)
 # which keeps `alpha::T`) is wrapped in an O(1) Fill so one kernel serves both.
 as_param_array(v::AbstractArray, n::Int) = v
 as_param_array(v::Number, n::Int) = Fill(v, n)
+
+# Multiply a per-spin parameter by a scalar, preserving O(1) Fill storage and the
+# element type (a plain `v * s` would promote a Fill{Float32} to Fill{Float64}).
+scale_param(v::Fill, s) = Fill(convert(eltype(v), v.value * s), length(v))
+scale_param(v::AbstractArray, s) = v .* s

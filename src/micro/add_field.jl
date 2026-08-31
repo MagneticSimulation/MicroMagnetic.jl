@@ -1091,21 +1091,32 @@ function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
     n_total = sim.n_total
     xi = make_param(T, xi_init, sim.mesh, n_total)
 
-    # bJ is a 3N vector (a per-component current density times b) and cannot be
-    # represented by a uniform Fill; it stays dense.
-    bJ_cpu = zeros(T, 3 * n_total)
-    init_vector!(bJ_cpu, sim.mesh, params[:J])
-    bJ_cpu .*= b
+    # b*J decomposed into per-spin components: a uniform tuple J stays O(1) Fills,
+    # a spatial J becomes dense arrays
+    Jx, Jy, Jz = make_vector_param(T, params[:J], sim.mesh, n_total)
     if has_P && !has_b
-        factor = 1 ./ (1 .+ xi .^ 2)
-        result = reshape(bJ_cpu, 3, n_total) .* factor'
-        bJ_cpu = reshape(result, 3*n_total)
+        # adiabatic correction 1/(1+xi^2); a uniform xi folds into the scalar b,
+        # a spatial one multiplies per spin
+        if xi isa Fill
+            s = b / (1 + xi.value^2)
+            bJx = scale_param(Jx, s)
+            bJy = scale_param(Jy, s)
+            bJz = scale_param(Jz, s)
+        else
+            corr = 1 ./ (1 .+ xi .^ 2)
+            bJx = scale_param(Jx, b) .* corr
+            bJy = scale_param(Jy, b) .* corr
+            bJz = scale_param(Jz, b) .* corr
+        end
+    else
+        bJx = scale_param(Jx, b)
+        bJy = scale_param(Jy, b)
+        bJz = scale_param(Jz, b)
     end
-    bJ = kernel_array(bJ_cpu)
 
     field = create_zeros(3 * n_total)
     ft = haskey(params, :ft) ? params[:ft] : t -> 1.0
-    torque = ZhangLiTorque(xi, bJ, field, ft, name)
+    torque = ZhangLiTorque(xi, bJx, bJy, bJz, field, ft, name)
 
     push!(sim.interactions, torque)
     @info "Zhang-Li Spin Transfer Torque has been added."
