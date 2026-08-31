@@ -21,7 +21,7 @@ const MU_S = mu_B
 const B_Z = 0.8D^2 / (MU_S * J)
 const OUTPUT = joinpath(@__DIR__, "skyrmion_sps")
 
-function create_sim()
+function build_sim()
     mesh = CubicMesh(; nx=N, ny=N, nz=1, pbc="open")
     sim = Sim(mesh; driver="SD", name="skyrmion_sps", save_data=false)
     set_mu_s(sim, MU_S)
@@ -41,14 +41,14 @@ function initial_skyrmion(i, j, k, dx, dy, dz)
 end
 
 mkpath(OUTPUT)
-sim = create_sim()
+sim = build_sim()
 init_m0(sim, initial_skyrmion)
 relax(sim; max_steps=50_000, stopping_dmdt=1e-5,
       save_data_every=-1, save_m_every=-1)
 minimum = Float64.(Array(sim.spin))
 
 result = find_transitions(
-    create_sim, minimum; n_modes=8, directions=(-1, 1),
+    build_sim, minimum; n_modes=8, directions=(-1, 1),
     exploration_depth=1, n_transitions=3, images=21,
     krylov_dimension=64, output_folder=OUTPUT)
 

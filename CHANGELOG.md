@@ -37,6 +37,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `ZhangLiTorque` stores the current density as three per-spin components
   (`bJx/bJy/bJz`, O(1) `Fill`s for a uniform `J`) instead of one 3N dense array
 
+### Removed
+
+- `create_sim` is fully removed (it stayed exported but deprecated in v0.6.0), converging
+  the public interface to two layers: build simulations with the low-level `Sim(mesh; ...)`
+  constructor plus `set_*`/`add_*`/`init_m0` (see the basics page), or run a typical
+  simulation directly from keywords with the high-level `sim_with`. NEB/transition factory
+  callables are unaffected: they accept any function returning an `AbstractSim`, however it
+  is named
+
 ## Version [v0.6.0] - unreleased
 
 ### Added

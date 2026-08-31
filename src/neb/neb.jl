@@ -54,14 +54,13 @@ A NEB instance configured with the provided parameters.
 # Example
 
 ```julia
-# define mesh and the corresponding parameters
+# define mesh and set the corresponding parameters
 mesh = FDMesh(nx=60, ny=60, nz=1, dx=2e-9, dy=2e-9, dz=2e-9, pbc="xy")
-params = Dict(
-    :Ms => 3.84e5,
-    :A => 3.25e-12,
-    :D => 5.83e-4,
-    :H => (0, 0, 120 * mT)
-)
+sim = Sim(mesh)
+set_Ms(sim, 3.84e5)
+add_exch(sim, 3.25e-12)
+add_dmi(sim, 5.83e-4)
+add_zeeman(sim, (0, 0, 120 * mT))
 
 # Define the initial and final state, stored in the init_images list.
 # Any acceptable object, such as a function, a tuple, or an array, can be used.
@@ -73,9 +72,6 @@ init_images = [read_vtk("skx.vts"), (0, 0, 1)]
 # For example, if init_images = [read_vtk("skx.vts"), read_vtk("skx2.vts"), (0, 0, 1)], 
 # the length of interpolation should be 2, i.e., something like interpolation = [5,5].
 interpolation = [6]
-
-# Use the create_sim method to create a Sim instance.
-sim = create_sim(mesh; params...)
 
 # Create the NEB instance and set the spring_constant. The driver can be "SD" or "LLG".
 neb = NEB(sim, init_images, interpolation; name="skx_fm", driver="SD")

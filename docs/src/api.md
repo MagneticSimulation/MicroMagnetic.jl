@@ -58,7 +58,6 @@ add_sot
 add_torque
 add_sahe_torque
 add_thermal_noise
-create_sim
 relax
 run_sim
 hysteresis

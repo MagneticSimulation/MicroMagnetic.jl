@@ -1,4 +1,4 @@
-export create_sim, sim_with
+export sim_with
 
 # --------------------------------------------------------------------------
 # Keyword vocabularies used for the fail-fast validation of `sim_with` (I-09).
@@ -99,45 +99,10 @@ function _warn_unused_keys(args::Dict, plausible::Tuple)
     return nothing
 end
 
-"""
-    create_sim(mesh; args...)
-
-Create a micromagnetic simulation instance with given arguments.
-
-- `mesh`: a mesh has to be provided to start the simulation. The mesh could be [`FDMesh`](@ref), [`CubicMesh`](@ref), or [`TriangularMesh`](@ref).
-
-# Arguments
-- `name` : the simulation name, should be a string. By default, name="unnamed".
-- `driver` : the driver name, should be a string. By default, the driver is "SD".
-- `integrator` : the integrator name, should be a string. By default, integrator="DormandPrince".
-- `alpha` : the Gilbert damping in the LLG equation, should be a number.
-- `gamma` : the gyromagnetic ratio, default value = 2.21e5.
-- `stt` : parameters forwarded to [`add_stt`](@ref) as a `NamedTuple`, e.g. `stt=(model=:zhang_li, b=-72.438, J=(1,0,0), xi=0.05)`. Only added when the driver is LLG-family.
-- `sot` : parameters forwarded to [`add_sot`](@ref) as a `NamedTuple`. Only added when the driver is LLG-family.
-- `Ms`: the saturation magnetization, should be [`NumberOrArrayOrFunction`](@ref). By default, Ms=8e5
-- `mu_s`: the magnetic moment, should be [`NumberOrArrayOrFunction`](@ref). By default, mu_s=2*mu_B
-- `A` or `J`: the exchange constant, should be [`NumberOrArrayOrFunction`](@ref). For micromagnetic meshes (FDMesh) use `A`; for atomistic meshes use `J`.
-- `D` : the DMI constant, should be [`NumberOrArrayOrFunction`](@ref).
-- `dmi_type` : the type of DMI, could be "bulk", "interfacial" or "D2d".
-- `Ku`: the anisotropy constant, should be [`NumberOrArrayOrFunction`](@ref).
-- `axis`: the anisotropy axis, should be a tuple, such as (0,0, 1)
-- `Kc`: the cubic anisotropy constant, should be [`NumberOrArrayOrFunction`](@ref).
-- `axis1`: the cubic anisotropy axis1, should be a tuple, such as (1,0,0)
-- `axis2`: the cubic anisotropy axis2, should be a tuple, such as (0,1,0)
-- `demag` : include demagnetization or not, should be a boolean, i.e., true or false. By default,  demag=false.
-- `H`: the external field, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref).
-- `m0` : the initial magnetization, should be a tuple or function, i.e., [`TupleOrArrayOrFunction`](@ref). By default, m0=(0.8, 0.6, 0).
-- `T` : the temperature, should be should be [`NumberOrArrayOrFunction`](@ref).
-- `shape` : the shape defines the geometry of the sample, where parameters are configured.
-
-!!! note
-    The keyword dictionary is copied internally, so the caller's `Dict` is never modified.
-"""
-function create_sim(mesh; args...)
-    return create_sim(mesh, Dict(args))
-end
-
-function create_sim(mesh, args::Dict)
+# Assemble a Sim from a mesh plus a material/initial-state keyword Dict. This is
+# a private helper of `sim_with` (the public entry point); the keyword reference
+# lives in the `sim_with` docstring.
+function _build_sim(mesh, args::Dict)
     # never modify the caller's Dict (I-08)
     args = copy(args)
 
@@ -243,7 +208,7 @@ function create_sim(mesh, args::Dict)
             @warn "Key `:A` is ignored for atomistic meshes (use `:J` instead)."
     else
         error("Unsupported mesh type $(typeof(mesh)). Only FDMesh and AtomisticMesh " *
-              "(CubicMesh, TriangularMesh, ...) are supported by `create_sim`.")
+              "(CubicMesh, TriangularMesh, ...) are supported by `_build_sim`.")
     end
 
     # add the anisotropy
@@ -399,9 +364,9 @@ function sim_with(args::Union{NamedTuple,Dict})
     driver_kw = Dict(key => args[key] for key in _DRIVER_KEYS if haskey(args, key))
 
     shape = get(args, :shape, nothing)
-    sim = create_sim(mesh, args)
+    sim = _build_sim(mesh, args)
 
-    # create_sim works on its own copy, so drop the material keys here; it has
+    # _build_sim works on its own copy, so drop the material keys here; it has
     # either consumed them or warned about the ones it ignores (I-08/I-14)
     for key in _MATERIAL_KEYS
         delete!(args, key)

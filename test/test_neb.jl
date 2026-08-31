@@ -52,7 +52,7 @@ function test_init_images()
 end
 
 function test_init_neb()
-    function create_sim()
+    function build_sim()
         mesh = FDMesh(; nx=1, ny=1, nz=1, dx=5e-9, dy=5e-9, dz=5e-9)
         sim = Sim(mesh; name="neb", driver="None", save_data=false)
         set_Ms(sim, 8e5)
@@ -64,7 +64,7 @@ function test_init_neb()
         add_anis(sim, -2e4; axis=(0, 0, 1), name="Kz")
         return sim
     end
-    sim = create_sim()
+    sim = build_sim()
     init_m0(sim, (1, 0, 0.0))
     m0 = Array(sim.spin)
 

@@ -29,7 +29,7 @@ const D = 0.45J
 const MU_S = mu_B
 const B_Z = 0.8D^2 / (MU_S * J)
 
-function create_sim()
+function build_sim()
     mesh = CubicMesh(; nx=N, ny=N, nz=1, pbc="open")
     sim = Sim(mesh; driver="SD", save_data=false)
     set_mu_s(sim, MU_S)
@@ -44,7 +44,7 @@ Initialize and relax one skyrmion before starting SPS. The example script
 contains the short `initial_skyrmion` function used below.
 
 ```julia
-sim = create_sim()
+sim = build_sim()
 init_m0(sim, initial_skyrmion)
 relax(sim; max_steps=50_000, stopping_dmdt=1e-5,
       save_data_every=-1, save_m_every=-1)
@@ -55,7 +55,7 @@ minimum = Float64.(Array(sim.spin))
 
 ```julia
 result = find_transitions(
-    create_sim, minimum;
+    build_sim, minimum;
     n_modes=8,
     directions=(-1, 1),
     exploration_depth=1,

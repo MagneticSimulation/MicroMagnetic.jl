@@ -51,12 +51,12 @@ init_m0(sim, (1, 0.25, 0.1))  # Initialize magnetization
 
 All simulation data is accessible through the `sim` object, with the magnetization distribution available via `sim.spin` at any time.
 
-!!! note "Migrating from `create_sim` (deprecated, removal planned for v0.7.0)"
-    `create_sim(mesh; Ms=..., A=..., ...)` still works in v0.6.0. Going forward, prefer
-    the `Sim` constructor shown above — each keyword maps to one explicit call
-    (`Ms` → `set_Ms`, `A` → `add_exch`, `demag` → `add_demag`, `m0` → `init_m0`, ...) —
-    or use the high-level [`sim_with`](@ref) when the configuration should be executed
-    as well.
+!!! note "Migrating from `create_sim` (removed in v0.7.0)"
+    `create_sim(mesh; Ms=..., A=..., ...)` was deprecated in v0.6.0 and fully removed
+    in v0.7.0. Build the simulation with the `Sim` constructor shown above — each
+    keyword maps to one explicit call (`Ms` → `set_Ms`, `A` → `add_exch`,
+    `demag` → `add_demag`, `m0` → `init_m0`, ...) — or use the high-level
+    [`sim_with`](@ref) when the configuration should be executed as well.
 
 !!! note
     By default, the magnetization is stored in a 1D array with the form ``[m_{1,x}, m_{1, y}, m_{1, z}, ..., m_{n,x}, m_{n, y}, m_{n, z}]``, which can be reshaped into a 4D array
