@@ -58,13 +58,11 @@ function make_vector_param(::Type{T}, v::TupleOrArrayOrFunction, mesh::Mesh,
     end
     f = zeros(T, 3 * n_total)
     init_vector!(f, mesh, v)
-    f_kb = kernel_array(f)
-    Hx = create_zeros(T, n_total)
-    Hy = create_zeros(T, n_total)
-    Hz = create_zeros(T, n_total)
-    Hx .= @view f_kb[1:n_total]
-    Hy .= @view f_kb[(n_total + 1):(2 * n_total)]
-    Hz .= @view f_kb[(2 * n_total + 1):(3 * n_total)]
+    # the 3N layout is spin-interleaved (mx1,my1,mz1,mx2,...): split per component
+    # on the host with strided copies before moving to the backend
+    Hx = kernel_array(f[1:3:3 * n_total])
+    Hy = kernel_array(f[2:3:3 * n_total])
+    Hz = kernel_array(f[3:3:3 * n_total])
     return (Hx, Hy, Hz)
 end
 

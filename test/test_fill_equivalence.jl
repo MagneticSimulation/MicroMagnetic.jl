@@ -32,12 +32,32 @@ function run_case(field::Symbol, uniform::Bool)
         add_exch(sim, 1.3e-11)
         uniform ? add_anis(sim, 1e5) : add_anis(sim, fill(1e5, n))
         add_zeeman(sim, (0, 0, 1e5))
-    else # :D
+    elseif field == :D
         set_Ms(sim, 8e5)
         add_exch(sim, 1.3e-11)
         uniform ? add_dmi(sim, 1e-3; type="interfacial") :
                   add_dmi(sim, fill(1e-3, n); type="interfacial")
         add_zeeman(sim, (0, 0, 1e5))
+    elseif field == :A
+        set_Ms(sim, 8e5)
+        add_anis(sim, 1e5)
+        add_zeeman(sim, (0, 0, 1e5))
+        uniform ? add_exch(sim, 1.3e-11) : add_exch(sim, fill(1.3e-11, n))
+    elseif field == :H
+        # static Zeeman: the uniform tuple is stored as O(1) Fills, the function
+        # input is materialised densely (the field is written once at add time)
+        set_Ms(sim, 8e5)
+        add_exch(sim, 1.3e-11)
+        uniform ? add_zeeman(sim, (0, 0, 1e5)) :
+                  add_zeeman(sim, (i, j, k, dx, dy, dz) -> (0, 0, 1e5))
+    elseif field == :Ht
+        # time-modulated Zeeman: the per-spin components reach the kernel at
+        # every step, so this is the Fill-in-kernel path proper
+        set_Ms(sim, 8e5)
+        add_exch(sim, 1.3e-11)
+        ft = t -> 1 + 0.5 * sin(2 * pi * t / 1e-9)
+        uniform ? add_zeeman(sim, (0, 0, 1e5), ft) :
+                  add_zeeman(sim, (i, j, k, dx, dy, dz) -> (0, 0, 1e5), ft)
     end
 
     init_m0(sim, (1, 0.1, 0.05))
@@ -59,7 +79,7 @@ end
 
 function test_fill_equivalence()
     set_precision(Float64)
-    for field in (:alpha, :Ms, :Ku, :D)
+    for field in (:alpha, :Ms, :Ku, :D, :A, :H, :Ht)
         spin_fill = run_case(field, true)
         spin_dense = run_case(field, false)
         @test !iszero(maximum(abs.(spin_fill)))  # sanity: the system actually moved

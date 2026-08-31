@@ -329,13 +329,10 @@ function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction;
         init_vector!(axes, sim.mesh, axis)
         normalise(axes, n_total)
 
-        axes_kb = kernel_array(axes)
-        axis_x = create_zeros(T, n_total)
-        axis_y = create_zeros(T, n_total)
-        axis_z = create_zeros(T, n_total)
-        axis_x .= @view axes_kb[1:n_total]
-        axis_y .= @view axes_kb[(n_total + 1):(2 * n_total)]
-        axis_z .= @view axes_kb[(2 * n_total + 1):(3 * n_total)]
+        # the 3N layout is spin-interleaved: split per component on the host
+        axis_x = kernel_array(axes[1:3:3 * n_total])
+        axis_y = kernel_array(axes[2:3:3 * n_total])
+        axis_z = kernel_array(axes[3:3:3 * n_total])
         anis = Anisotropy(Kus_kb, axis_x, axis_y, axis_z, field, energy, name)
     end
 

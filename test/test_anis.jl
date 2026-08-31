@@ -56,6 +56,11 @@ function test_spatial_anis()
     @test isapprox(field[2], 2 * Ku / (MicroMagnetic.mu_0 * Ms) * dot(m, axis) * axis[2])
     @test isapprox(field[3], 2 * Ku / (MicroMagnetic.mu_0 * Ms) * dot(m, axis) * axis[3])
     @test isapprox(energy[10], Ku * (1 - dot(m, axis)^2) * 1e-27)
+    # a second site locks the per-spin component layout of the spatial axis
+    @test isapprox(field[4], field[1])
+    @test isapprox(field[5], field[2])
+    @test isapprox(field[6], field[3])
+    @test isapprox(energy[2], energy[10])
 end
 
 function test_cubic_anis()
