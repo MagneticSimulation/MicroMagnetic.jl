@@ -142,8 +142,36 @@ function test_llg_fixed_dt()
     end
 end
 
+function test_llg_alpha_assignment()
+    mesh = FDMesh(; nx=2, ny=2, nz=1)
+    sim = Sim(mesh; driver="LLG", name="alpha_assign")
+    n = sim.n_total
+
+    # scalar assignment is kept: converted in place to a same-length Fill
+    sim.driver.alpha = 0.5
+    @test length(sim.driver.alpha) == n
+    @test isapprox(sim.driver.alpha[1], 0.5; rtol=1e-7)
+    @test sim.driver.alpha isa MicroMagnetic.Fill
+
+    # dense array assignment: eltype matched to the driver precision, length validated
+    sim.driver.alpha = fill(0.2, n)
+    @test isapprox(sim.driver.alpha[end], 0.2; rtol=1e-6)
+    @test_throws ArgumentError sim.driver.alpha = fill(0.2, n + 1)
+
+    # function-form parameters need the mesh; still redirected to set_alpha
+    @test_throws ArgumentError sim.driver.alpha = (i, j, k, dx, dy, dz) -> 0.1
+
+    # set_alpha keeps working (uniform + spatial + function forms)
+    set_alpha(sim, 0.3)
+    @test isapprox(sim.driver.alpha[1], 0.3; rtol=1e-7)
+    set_alpha(sim, (i, j, k, dx, dy, dz) -> 0.1 + 0.0 * i)
+    @test isapprox(Array(sim.driver.alpha)[1], 0.1; rtol=1e-6)
+    return nothing
+end
+
 @using_gpu()
 test_functions("Spatial LLG", test_llg_spatial)
+test_functions("LLG alpha assignment", test_llg_alpha_assignment)
 test_functions("LLG DormandPrince", test_llg_dp)
 test_functions("LLG BS23", test_llg_bs)
 test_functions("LLG CashKarp54", test_llg_ck)

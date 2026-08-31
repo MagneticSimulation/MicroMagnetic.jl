@@ -6,26 +6,26 @@ ShareDefaultModule = true
 
 MicroMagnetic.jl provides tools for computing the eigenmodes of a magnetic
 system around a static equilibrium state. The linearised Landau–Lifshitz–Gilbert
-(LLG) equation yields a Jacobian matrix `B` that maps tangent perturbations
-`\delta\bar{m}` to their time derivatives:
+(LLG) equation yields a Jacobian matrix $B$ that maps tangent perturbations
+$\delta\bar{m}$ to their time derivatives:
 
 ```math
 \frac{d\bar{m}}{dt} = B \, \bar{m}
 ```
 
-where `\bar{m}` is the 2N-component tangent vector (two degrees of freedom
-per spin site, since `|\mathbf{m}|=1` removes the radial direction). The
-eigenvalues `\sigma = \sigma_r + i\sigma_i` of `B` have the following
+where $\bar{m}$ is the 2N-component tangent vector (two degrees of freedom
+per spin site, since $|\mathbf{m}|=1$ removes the radial direction). The
+eigenvalues $\sigma = \sigma_r + i\sigma_i$ of $B$ have the following
 physical meaning:
 
-- **Imaginary part** `\sigma_i` → oscillation frequency `f = |\sigma_i| / (2\pi)`
-- **Real part** `\sigma_r` → damping rate `\Gamma = -\sigma_r / (2\pi)`
-  (`\sigma_r < 0` for stable equilibria, so `\Gamma > 0`)
+- **Imaginary part** $\sigma_i$ → oscillation frequency $f = |\sigma_i| / (2\pi)$
+- **Real part** $\sigma_r$ → damping rate $\Gamma = -\sigma_r / (2\pi)$
+  ($\sigma_r < 0$ for stable equilibria, so $\Gamma > 0$)
 
-The **least-damped modes** are those with the smallest `|\sigma_r|`, i.e. the
+The **least-damped modes** are those with the smallest $|\sigma_r|$, i.e. the
 slowest-decaying modes. They dominate the long-time dynamics and are the most
 readily observed in experiments. In Arpack, use `which=:LR` (largest real part)
-to target them — since `\sigma_r` is negative, "largest real part" means
+to target them — since $\sigma_r$ is negative, "largest real part" means
 closest to zero, hence least damped. For the lowest-frequency modes use
 `which=:SM` (smallest magnitude), which requires shift-invert via sparse
 materialisation.
@@ -39,8 +39,8 @@ Linearising the Gilbert-form LLG equation
 + \alpha \, \mathbf{m}_i \times \frac{d\mathbf{m}_i}{dt}
 ```
 
-around an equilibrium state `\mathbf{m}_0` (where
-`\mathbf{m}_0 \times \mathbf{H}_0 = 0`) gives, for each site `i`:
+around an equilibrium state $\mathbf{m}_0$ (where
+$\mathbf{m}_0 \times \mathbf{H}_0 = 0$) gives, for each site $i$:
 
 ```math
 \delta\dot{\mathbf{m}}_i = -\frac{\gamma}{1+\alpha^2} \Big[
@@ -51,11 +51,11 @@ around an equilibrium state `\mathbf{m}_0` (where
 \Big]
 ```
 
-where `\delta\mathbf{H}_i = \sum_j (\partial \mathbf{H}_i / \partial \mathbf{m}_j)\, \delta\mathbf{m}_j`
+where $\delta\mathbf{H}_i = \sum_j (\partial \mathbf{H}_i / \partial \mathbf{m}_j)\, \delta\mathbf{m}_j$
 is the field variation caused by the perturbation. The perturbation
-`\delta\mathbf{m}` lives in the local tangent plane perpendicular to
-`\mathbf{m}_0`, so we project to a 2D frame per site using rotation matrices
-`R_i` and their inverses `R_i^{-1}`.
+$\delta\mathbf{m}$ lives in the local tangent plane perpendicular to
+$\mathbf{m}_0$, so we project to a 2D frame per site using rotation matrices
+$R_i$ and their inverses $R_i^{-1}$.
 
 ## Precision Setup
 
@@ -107,7 +107,7 @@ We compute the ferromagnetic resonance (FMR) frequency of a single-cell
 particle with cubic anisotropy, and compare with the analytical solution.
 The setup follows [`test/eigen/test_cubic.jl`](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/test/eigen/test_cubic.jl).
 
-For a cubic anisotropy `K_c` and saturation magnetization `M_s`, the
+For a cubic anisotropy $K_c$ and saturation magnetization $M_s$, the
 effective anisotropy field along the \[100] direction gives the FMR frequency:
 
 ```math
@@ -190,7 +190,7 @@ nothing #hide
 
 ## Example 2: Large-Scale FMR with Matrix-Free Arpack
 
-For large meshes where the dense `2N \times 2N` Jacobian does not fit in
+For large meshes where the dense $2N \times 2N$ Jacobian does not fit in
 memory, pass `matrixfree=true` to obtain an `LLGJacOperator` and solve with
 `Arpack.eigs`. The operator implements the full `AbstractMatrix` interface
 needed by Arpack (`size`, `eltype`, 3- and 5-argument `mul!`, `issymmetric`,

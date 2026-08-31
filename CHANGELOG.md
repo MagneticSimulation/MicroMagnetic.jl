@@ -86,6 +86,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - demag memory/speed overhaul: the Fourier tensors are packed into the (y,z) parity
   fundamental domain (~4x less memory), the inverse transform uses an in-place c2r plan
   (the padded `h_pad` copy is gone) and the 1/N scaling is folded into the tensors
+- `sim.driver.alpha = <scalar>` keeps working with the per-cell damping array: a scalar
+  is stored as a uniform O(1) `Fill`, arrays are accepted with the eltype matched to the
+  driver precision (length is validated), and function-form parameters go through
+  `set_alpha(sim, ...)` (which needs the mesh for spatial sampling)
 
 ### Fixed
 
@@ -112,10 +116,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `create_sim` is no longer exported; build simulations with `Sim` + `set_*`/`add_*`
   (or use the high-level `sim_with`). `MicroMagnetic.create_sim(...)` still works and
   remains the factory used by the NEB/transition machinery
-- assigning a scalar to `sim.driver.alpha` (`sim.driver.alpha = 0.05`) is no longer supported and
-  throws an informative error (the driver does not know the mesh length); use
-  `set_alpha(sim, 0.05)` instead — scalars, arrays and functions are all accepted. Assignments to
-  the other driver fields keep the usual `setproperty!` conversion semantics
 - in-place writes into `sim.mu0_Ms`/`sim.mu_s`/`sim.pins` (`copyto!` or broadcast assignment)
   now throw while these fields hold a `Fill`; use `set_Ms`/`set_mu_s`/`set_pinning`, which
   replace the storage

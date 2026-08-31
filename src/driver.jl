@@ -24,12 +24,24 @@ mutable struct LLG{T<:AbstractFloat} <: Driver
     tol::Float64
 end
 
-# `sim.driver.alpha = <number>` cannot know the mesh length; the discrimination
-# between Fill and dense materialisation lives in `set_alpha`.
+# `sim.driver.alpha = <scalar>` stays supported: the scalar is converted in place to a
+# same-length `Fill` (O(1), the length comes from the current array, no mesh needed).
+# Arrays pass through with the eltype matched to the driver's precision; functions need
+# the mesh for spatial sampling and must go through `set_alpha(sim, ...)` instead.
 function Base.setproperty!(driver::LLG, name::Symbol, x)
-    if name === :alpha && !(x isa AbstractArray)
-        throw(ArgumentError("`sim.driver.alpha = $x` is no longer supported; " *
-                            "use `set_alpha(sim, $x)` instead."))
+    if name === :alpha
+        T = eltype(driver.alpha)
+        n = length(driver.alpha)
+        if x isa Function
+            throw(ArgumentError("`sim.driver.alpha = <function>` cannot be spatially " *
+                                "sampled without the mesh; use `set_alpha(sim, ...)` instead."))
+        elseif x isa Number
+            x = Fill(T(x), n)
+        elseif x isa AbstractArray
+            length(x) == n ||
+                throw(ArgumentError("`alpha` must have length $n, got $(length(x))."))
+            eltype(x) === T || (x = T.(x))
+        end
     end
     # default conversion semantics for the other (typed scalar) fields
     return invoke(setproperty!, Tuple{Any,Symbol,Any}, driver, name, x)
