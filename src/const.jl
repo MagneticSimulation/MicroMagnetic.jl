@@ -16,5 +16,9 @@ const Oe = 0.1 * mT
 const nm = 1e-9
 const ns = 1e-9
 
+# Singleton time modulation for static terms: identity by `===` marks a Zeeman as
+# static, so its precomputed field never needs a per-step rewrite.
+const _static_time = t -> 1.0
+
 export mu_0, mu_B, k_B, c_e, eV, meV, m_e, g_e, h_bar, gamma, mu_s_1, h_bar_gamma, mT,
        Gauss, Oe, nm, ns

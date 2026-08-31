@@ -94,8 +94,9 @@ function effective_field(demag::DirectDemag, sim::MicroSim, spin::AbstractArray{
 
     N = sim.n_total
     factor = 0.5 * sim.mesh.volume
-    #we borrow the zeeman kernel to compute the demag energy
-    zeeman_kernel!(default_backend[])(spin, heff, demag.energy, sim.mu0_Ms, T(factor); ndrange=N)
-    
+    #we borrow the zeeman energy kernel to compute the demag energy
+    zeeman_energy_kernel!(default_backend[])(spin, heff, demag.energy, sim.mu0_Ms,
+                                             T(factor); ndrange=N)
+
     return nothing
 end

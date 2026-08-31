@@ -1,33 +1,37 @@
+# Unpack a Zeeman time modulation into three scalar factors (a scalar return
+# applies to all components) and record them for the saver display.
+function _zeeman_time_factors(zee::Zeeman, t::Float64)
+    f = zee.ft(t)
+    if f isa Tuple
+        zee.time_fx = f[1]
+        zee.time_fy = f[2]
+        zee.time_fz = f[3]
+    else
+        zee.time_fx = f
+        zee.time_fy = f
+        zee.time_fz = f
+    end
+    return zee.time_fx, zee.time_fy, zee.time_fz
+end
+
 function effective_field(zee::Zeeman, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
     factor = sim.mesh.volume
+    tx, ty, tz = _zeeman_time_factors(zee, t)
 
     back = default_backend[]
-    zeeman_kernel!(back, groupsize[])(spin, zee.field, zee.energy, sim.mu0_Ms, T(factor);
-                                      ndrange=N)
-    return nothing
-end
-
-function effective_field(zee::TimeZeeman, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
-    N = sim.n_total
-    factor = sim.mesh.volume
-    if zee.is_scalar
-        tx = zee.time_fun(t)
-        zee.time_fx = tx
-        zee.time_fy = tx
-        zee.time_fz = tx
+    if zee.ft === _static_time
+        # the interaction field was materialised at add/update time and never
+        # changes, so only the energy needs refreshing
+        zeeman_energy_kernel!(back, groupsize[])(spin, zee.field, zee.energy,
+                                                 sim.mu0_Ms, T(factor); ndrange=N)
     else
-        tx, ty, tz = zee.time_fun(t)
-        zee.time_fx = tx
-        zee.time_fy = ty
-        zee.time_fz = tz
+        zeeman_field_kernel!(back, groupsize[])(spin, zee.field, zee.energy,
+                                                sim.mu0_Ms, zee.Hx, zee.Hy, zee.Hz,
+                                                T(factor), T(tx), T(ty), T(tz);
+                                                ndrange=N)
     end
-
-    kernel = time_zeeman_kernel!(default_backend[], groupsize[])
-    kernel(spin, zee.field, zee.init_field, zee.energy, sim.mu0_Ms, T(factor),
-           T(zee.time_fx), T(zee.time_fy), T(zee.time_fz); ndrange=N)
     return nothing
 end
 
@@ -86,7 +90,7 @@ function effective_field(anis::TwinMonoclinicAnisotropy, sim::MicroSim,
     return nothing
 end
 
-function effective_field(exch::SpatialExchange, sim::MicroSim, spin::AbstractArray{T,1},
+function effective_field(exch::Exchange, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     n_total = sim.n_total
     mesh = sim.mesh
@@ -94,23 +98,9 @@ function effective_field(exch::SpatialExchange, sim::MicroSim, spin::AbstractArr
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
-    exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms, exch.A,
+    exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
+                                        exch.Ax, exch.Ay, exch.Az,
                                         dx, dy, dz, mesh.ngbs, volume; ndrange=n_total)
-
-    return nothing
-end
-
-function effective_field(exch::UniformExchange, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
-    N = sim.n_total
-    mesh = sim.mesh
-    volume = T(mesh.volume)
-
-    dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
-    back = default_backend[]
-    uniform_exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
-                                                exch.Ax, exch.Ay, exch.Az, dx, dy, dz,
-                                                mesh.ngbs, volume; ndrange=N)
 
     return nothing
 end
@@ -326,8 +316,9 @@ function effective_field(torque::SAHETorqueField, sim::AbstractSim,
     return nothing
 end
 
-#we keep this function for debug and testing purpose, only works on CPU
-function effective_field_debug(exch::SpatialExchange, sim::MicroSim, spin::Array{Float64,1},
+#we keep this function for debug and testing purpose, only works on CPU.
+#It mirrors exchange_kernel! line by line so the two can be compared tightly.
+function effective_field_debug(exch::Exchange, sim::MicroSim, spin::Array{Float64,1},
                                t::Float64)
     mesh = sim.mesh
     dx = mesh.dx
@@ -337,12 +328,13 @@ function effective_field_debug(exch::SpatialExchange, sim::MicroSim, spin::Array
     n_total = sim.n_total
     field = exch.field
     energy = exch.energy
-    A = exch.A
+    Axs = Array(exch.Ax)
+    Ays = Array(exch.Ay)
+    Azs = Array(exch.Az)
     Ms = sim.mu0_Ms
-    ax = 2.0 / (dx * dx)
-    ay = 2.0 / (dy * dy)
-    az = 2.0 / (dz * dz)
-    nabla = (ax, ax, ay, ay, az, az)
+    nx = 2.0 / (dx * dx)
+    ny = 2.0 / (dy * dy)
+    nz = 2.0 / (dz * dz)
 
     for index in 1:n_total
         i = 3 * index - 2
@@ -353,16 +345,54 @@ function effective_field_debug(exch::SpatialExchange, sim::MicroSim, spin::Array
             field[i + 2] = 0.0
             continue
         end
+        Ax_I, Ay_I, Az_I = Axs[index], Ays[index], Azs[index]
         fx, fy, fz = 0.0, 0.0, 0.0
-        for j in 1:6
+
+        # ---- (±x) ----
+        for j in 1:2
             id = ngbs[j, index]
             if id > 0 && Ms[id] > 0
-                k = 3 * id - 2
-                fx += A[index] * nabla[j] * (spin[k] - spin[i])
-                fy += A[index] * nabla[j] * (spin[k + 1] - spin[i + 1])
-                fz += A[index] * nabla[j] * (spin[k + 2] - spin[i + 2])
+                Ax_n = Axs[id]
+                if Ax_I != 0 && Ax_n != 0
+                    k = 3 * id - 2
+                    A_eff = 2 * Ax_I * Ax_n / (Ax_I + Ax_n)
+                    fx += A_eff * nx * (spin[k] - spin[i])
+                    fy += A_eff * nx * (spin[k + 1] - spin[i + 1])
+                    fz += A_eff * nx * (spin[k + 2] - spin[i + 2])
+                end
             end
         end
+
+        # ---- (±y) ----
+        for j in 3:4
+            id = ngbs[j, index]
+            if id > 0 && Ms[id] > 0
+                Ay_n = Ays[id]
+                if Ay_I != 0 && Ay_n != 0
+                    k = 3 * id - 2
+                    A_eff = 2 * Ay_I * Ay_n / (Ay_I + Ay_n)
+                    fx += A_eff * ny * (spin[k] - spin[i])
+                    fy += A_eff * ny * (spin[k + 1] - spin[i + 1])
+                    fz += A_eff * ny * (spin[k + 2] - spin[i + 2])
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            id = ngbs[j, index]
+            if id > 0 && Ms[id] > 0
+                Az_n = Azs[id]
+                if Az_I != 0 && Az_n != 0
+                    k = 3 * id - 2
+                    A_eff = 2 * Az_I * Az_n / (Az_I + Az_n)
+                    fx += A_eff * nz * (spin[k] - spin[i])
+                    fy += A_eff * nz * (spin[k + 1] - spin[i + 1])
+                    fz += A_eff * nz * (spin[k + 2] - spin[i + 2])
+                end
+            end
+        end
+
         Ms_inv = 1.0 / Ms[index]
         energy[index] = -0.5 *
                         (fx * spin[i] + fy * spin[i + 1] + fz * spin[i + 2]) *
@@ -468,7 +498,7 @@ Parameters:
 
   spin : 1-d array that matches sim.mesh. 
 
-  t : Time in second. This term is used when TimeZeeman is added into sim.
+  t : Time in second. This term is used when a time-modulated Zeeman is added to sim.
 
 For example:
 
@@ -482,7 +512,9 @@ After running this function, the effective field is calculated and saved in sim.
 function effective_field(sim::AbstractSim, spin, t::Float64=0.0;)
     fill!(sim.field, 0.0)
     for interaction in sim.interactions
-        if !isa(interaction, Zeeman)
+        # a static Zeeman contributes its precomputed field only; a time-modulated
+        # one must refresh interaction.field every step
+        if !(interaction isa Zeeman && interaction.ft === _static_time)
             @timeit timer interaction.name effective_field(interaction, sim, spin, t)
         end
         vector_add(sim.field, interaction.field)
@@ -532,75 +564,18 @@ function effective_field_energy(sim::AbstractSim, spin, t::Float64=0.0)
     return nothing
 end
 
-function build_exch_matrix(exch::UniformExchange, sim::MicroSim)
+function build_exch_matrix(exch::Exchange, sim::MicroSim)
     mesh = sim.mesh
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
     ngbs = Array(mesh.ngbs)
     Ms = Array(sim.mu0_Ms)
-    ax = 2 * exch.Ax / (dx * dx)
-    ay = 2 * exch.Ay / (dy * dy)
-    az = 2 * exch.Az / (dz * dz)
-    nabla = (ax, ax, ay, ay, az, az)
-    n_total = sim.n_total
+    Axs = Array(exch.Ax)
+    Ays = Array(exch.Ay)
+    Azs = Array(exch.Az)
 
-    T = Float[]
-    
-    I = Int64[]
-    J = Int64[]
-    V = T[]
-    
-    for index in 1:n_total
-        if Ms[index] == 0.0
-            continue
-        end
-        
-        Ms_inv = 1.0 / Ms[index]
-        diag_sum = 0.0
-        for j in 1:6
-            id = ngbs[j, index]
-            if id > 0 && Ms[id] > 0
-                diag_sum -= nabla[j] * Ms_inv
-            end
-        end
-        push!(I, index)
-        push!(J, index)
-        push!(V, diag_sum)
-        
-        # neighbor contributions
-        for j in 1:6
-            id = ngbs[j, index]
-            if id > 0 && Ms[id] > 0
-                coeff = nabla[j] * Ms_inv
-                
-                push!(I, index)
-                push!(J, id)
-                push!(V, coeff)
-            end
-        end
-        
-    end
-    
-    Laplaian = sparse(I, J, V, n_total, n_total)
-
-    if default_backend[] != CPU()
-        Laplaian = GPUSparseMatrixCSR[](Laplaian)
-    end
-    
-    return Laplaian
-end
-
-
-function build_exch_matrix(exch::SpatialExchange, sim::MicroSim)
-    mesh = sim.mesh
-    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
-    ngbs = Array(mesh.ngbs)
-    Ms = Array(sim.mu0_Ms)
-    A = exch.A  
-
-    ax = 2 / (dx * dx)
-    ay = 2 / (dy * dy)
-    az = 2 / (dz * dz)
-    nabla = (ax, ax, ay, ay, az, az) 
+    nx = 2 / (dx * dx)
+    ny = 2 / (dy * dy)
+    nz = 2 / (dz * dz)
 
     n_total = sim.n_total
 
@@ -610,40 +585,42 @@ function build_exch_matrix(exch::SpatialExchange, sim::MicroSim)
 
     safe_div(a, b) = b == 0.0 ? 0.0 : a / b
 
-    for i in 1:n_total
-        if Ms[i] == 0.0
+    for index in 1:n_total
+        if Ms[index] == 0.0
             continue
         end
 
-        Ms_inv = 1.0 / Ms[i]
+        Ms_inv = 1.0 / Ms[index]
         diag_sum = 0.0
-
         for j in 1:6
-            id = ngbs[j, i]
-            if id > 0 && Ms[id] > 0.0
-                # Effective exchange stiffness for the pair (i, id)
-                A_eff = safe_div(2 * A[i] * A[id], A[i] + A[id])
-                coeff = A_eff * nabla[j] * Ms_inv
+            id = ngbs[j, index]
+            if id > 0 && Ms[id] > 0
+                # Effective exchange stiffness for the pair (index, id) along the
+                # bond direction (1:2 → x, 3:4 → y, 5:6 → z)
+                A_I, A_nb, nabla = j <= 2 ? (Axs[index], Axs[id], nx) :
+                                   j <= 4 ? (Ays[index], Ays[id], ny) :
+                                   (Azs[index], Azs[id], nz)
+                A_eff = safe_div(2 * A_I * A_nb, A_I + A_nb)
+                coeff = A_eff * nabla * Ms_inv
 
-                diag_sum -= coeff          # contribution to diagonal
-                # Off‑diagonal entry (i, id)
-                push!(I, i)
+                diag_sum -= coeff
+                push!(I, index)
                 push!(J, id)
                 push!(V, coeff)
             end
         end
 
         # Diagonal entry
-        push!(I, i)
-        push!(J, i)
+        push!(I, index)
+        push!(J, index)
         push!(V, diag_sum)
     end
 
-    Laplacian = sparse(I, J, V, n_total, n_total)
+    Laplaian = sparse(I, J, V, n_total, n_total)
 
     if default_backend[] != CPU()
-        Laplacian = GPUSparseMatrixCSR(Laplacian)
+        Laplaian = GPUSparseMatrixCSR[](Laplaian)
     end
 
-    return Laplacian
+    return Laplaian
 end

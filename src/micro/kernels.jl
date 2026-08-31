@@ -8,11 +8,12 @@
 end
 
 """
-    The kernel for the Zeeman interaction, works for both the micromagnetic and atomistic model,
-where factor = cell_size for the micromagnetic model and factor = 1 for atomistic model.
+    Energy-only Zeeman kernel for a precomputed field `h` (the static path and the
+direct-demag energy), where factor = cell_size for the micromagnetic model and
+factor = 1 for atomistic model.
 """
-@kernel function zeeman_kernel!(@Const(m), @Const(h), energy, mu0_Ms,
-                                factor::T) where {T<:AbstractFloat}
+@kernel function zeeman_energy_kernel!(@Const(m), @Const(h), energy, mu0_Ms,
+                                       factor::T) where {T<:AbstractFloat}
     id = @index(Global)
     j = 3 * (id - 1)
     @inbounds mh = m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3]
@@ -33,17 +34,17 @@ end
 end
 
 """
-Similar to the zeeman_kernel! that this kernel works for both the micromagnetic and atomistic model,
-and factor = cell_size for the micromagnetic model and factor = 1 for atomistic model.
+    Zeeman field kernel: writes `h = (Hx, Hy, Hz) .* (fx, fy, fz)` and the energy.
+The per-spin `Hx/Hy/Hz` components may be O(1) Fills for a uniform field.
 """
-@kernel function time_zeeman_kernel!(@Const(m), h, @Const(h_static), energy, mu0_Ms,
-                                     factor::T, fx::T, fy::T,
-                                     fz::T) where {T<:AbstractFloat}
+@kernel function zeeman_field_kernel!(@Const(m), h, energy, mu0_Ms, Hx, Hy, Hz,
+                                      factor::T, fx::T, fy::T,
+                                      fz::T) where {T<:AbstractFloat}
     I = @index(Global)
     j = 3 * (I - 1)
-    @inbounds h[j + 1] = h_static[j + 1] * fx
-    @inbounds h[j + 2] = h_static[j + 2] * fy
-    @inbounds h[j + 3] = h_static[j + 3] * fz
+    @inbounds h[j + 1] = Hx[I] * fx
+    @inbounds h[j + 2] = Hy[I] * fy
+    @inbounds h[j + 3] = Hz[I] * fz
     @inbounds mh::T = m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3]
     @inbounds energy[I] = -factor * mu0_Ms[I] * mh
 end
@@ -196,88 +197,88 @@ end
     end
 end
 
-@kernel function exchange_kernel!(@Const(m), h, energy, mu0_Ms, A,
-                                  dx::T, dy::T, dz::T, @Const(ngbs),
-                                  volume::T) where {T<:AbstractFloat}
+# Unified exchange kernel: the bond stiffness is direction-decomposed and read
+# per spin (uniform values arrive as O(1) Fills); neighbour pairs use the harmonic
+# mean A_eff, so the former uniform and spatial kernels share one version.
+@kernel function exchange_kernel!(
+        @Const(m), h, energy, mu0_Ms, Axs, Ays, Azs,
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
     I = @index(Global)
-    @inbounds Ms_local = mu0_Ms[I]
-    @inbounds A_I = A[I]
-
-    ax = T(2) / (dx * dx)
-    ay = T(2) / (dy * dy)
-    az = T(2) / (dz * dz)
-    nabla = (ax, ax, ay, ay, az, az)
-
     i = 3 * I - 2
-    if Ms_local == T(0) || A_I == T(0)
+    @inbounds Ms_local = mu0_Ms[I]
+    @inbounds Ax_I = Axs[I]
+    @inbounds Ay_I = Ays[I]
+    @inbounds Az_I = Azs[I]
+
+    nx = T(2) / (dx * dx)
+    ny = T(2) / (dy * dy)
+    nz = T(2) / (dz * dz)
+
+    if Ms_local == T(0)
         @inbounds energy[I] = T(0)
         @inbounds h[i]   = T(0)
         @inbounds h[i+1] = T(0)
         @inbounds h[i+2] = T(0)
     else
-        @inbounds s_i = (m[i], m[i+1], m[i+2])
         fx = T(0)
         fy = T(0)
         fz = T(0)
-        for j in 1:6
+
+        # ---- (±x) ----
+        for j in 1:2
             @inbounds id = ngbs[j, I]
             @inbounds if id > 0 && mu0_Ms[id] > 0
-                A_nb = A[id]
-                if A_nb != T(0)
+                Ax_n = Axs[id]
+                if Ax_I != 0 && Ax_n != 0
                     k = 3*id - 2
-                    A_eff = 2 * A_I * A_nb / (A_I + A_nb)
-                    coeff = A_eff * nabla[j]
-                    fx += coeff * (m[k] - m[i])
-                    fy += coeff * (m[k+1] - m[i+1])
-                    fz += coeff * (m[k+2] - m[i+2])
+                    A_eff = 2 * Ax_I * Ax_n / (Ax_I + Ax_n)
+                    c = A_eff * nx
+                    fx += c * (m[k]   - m[i])
+                    fy += c * (m[k+1] - m[i+1])
+                    fz += c * (m[k+2] - m[i+2])
                 end
             end
         end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Ay_n = Ays[id]
+                if Ay_I != 0 && Ay_n != 0
+                    k = 3*id - 2
+                    A_eff = 2 * Ay_I * Ay_n / (Ay_I + Ay_n)
+                    c = A_eff * ny
+                    fx += c * (m[k]   - m[i])
+                    fy += c * (m[k+1] - m[i+1])
+                    fz += c * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Az_n = Azs[id]
+                if Az_I != 0 && Az_n != 0
+                    k = 3*id - 2
+                    A_eff = 2 * Az_I * Az_n / (Az_I + Az_n)
+                    c = A_eff * nz
+                    fx += c * (m[k]   - m[i])
+                    fy += c * (m[k+1] - m[i+1])
+                    fz += c * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
         Ms_inv = 1.0 / Ms_local
         @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
         @inbounds h[i]   = fx * Ms_inv
         @inbounds h[i+1] = fy * Ms_inv
         @inbounds h[i+2] = fz * Ms_inv
-    end
-end
-
-
-@kernel function uniform_exchange_kernel!(@Const(m), h, energy, mu0_Ms, Ax::T,
-                                          Ay::T, Az::T, dx::T, dy::T, dz::T, @Const(ngbs),
-                                          volume::T) where {T<:AbstractFloat}
-    I = @index(Global)
-
-    @inbounds Ms_local = mu0_Ms[I]
-
-    ax::T = 2 * Ax / (dx * dx)
-    ay::T = 2 * Ay / (dy * dy)
-    az::T = 2 * Az / (dz * dz)
-    nabla = (ax, ax, ay, ay, az, az)
-
-    i = 3 * I - 2
-    if Ms_local == T(0)
-        @inbounds energy[I] = T(0)
-        @inbounds h[i] = T(0)
-        @inbounds h[i + 1] = T(0)
-        @inbounds h[i + 2] = T(0)
-    else
-        fx = T(0)
-        fy = T(0)
-        fz = T(0)
-        for j in 1:6
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
-                k = 3 * id - 2
-                @inbounds fx += nabla[j] * (m[k] - m[i])
-                @inbounds fy += nabla[j] * (m[k + 1] - m[i + 1])
-                @inbounds fz += nabla[j] * (m[k + 2] - m[i + 2])
-            end
-        end
-        Ms_inv = 1.0 / Ms_local
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i + 1] + fz * m[i + 2]) * volume
-        @inbounds h[i] = fx * Ms_inv
-        @inbounds h[i + 1] = fy * Ms_inv
-        @inbounds h[i + 2] = fz * Ms_inv
     end
 end
 

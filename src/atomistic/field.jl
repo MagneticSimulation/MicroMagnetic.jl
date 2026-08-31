@@ -1,31 +1,17 @@
 function effective_field(zee::Zeeman, sim::AtomisticSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
+    tx, ty, tz = _zeeman_time_factors(zee, t)
 
-    kernal = zeeman_kernel!(default_backend[], groupsize[])
-    kernal(spin, zee.field, zee.energy, sim.mu_s, T(1); ndrange=N)
-
-    return nothing
-end
-
-function effective_field(zee::TimeZeeman, sim::AtomisticSim, spin::AbstractArray{T,1},
-                         t::Float64) where {T<:AbstractFloat}
-    N = sim.n_total
-    if zee.is_scalar
-        tx = zee.time_fun(t)
-        zee.time_fx = tx
-        zee.time_fy = tx
-        zee.time_fz = tx
+    back = default_backend[]
+    if zee.ft === _static_time
+        zeeman_energy_kernel!(back, groupsize[])(spin, zee.field, zee.energy, sim.mu_s,
+                                                 T(1); ndrange=N)
     else
-        tx, ty, tz = zee.time_fun(t)
-        zee.time_fx = tx
-        zee.time_fy = ty
-        zee.time_fz = tz
+        zeeman_field_kernel!(back, groupsize[])(spin, zee.field, zee.energy, sim.mu_s,
+                                                zee.Hx, zee.Hy, zee.Hz, T(1), T(tx),
+                                                T(ty), T(tz); ndrange=N)
     end
-
-    kernel = time_zeeman_kernel!(default_backend[], groupsize[])
-    kernel(spin, zee.field, zee.init_field, zee.energy, sim.mu_s, T(1), T(zee.time_fx),
-           T(zee.time_fy), T(zee.time_fz); ndrange=N)
 
     return nothing
 end

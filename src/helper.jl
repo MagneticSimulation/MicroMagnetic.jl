@@ -42,6 +42,32 @@ function make_param(::Type{T}, v::NumberOrArrayOrFunction, mesh::Mesh, n_total::
     return a
 end
 
+"""
+    make_vector_param(T, v, mesh, n_total) -> (Hx, Hy, Hz)
+
+Three-component variant of [`make_param`](@ref): a 3-tuple input maps component-wise
+(numbers become O(1) `Fill`s, functions dense arrays), while an n_total-array or a
+function returning 3-tuples is materialised into three dense component segments.
+"""
+function make_vector_param(::Type{T}, v::TupleOrArrayOrFunction, mesh::Mesh,
+                           n_total::Int) where T
+    if v isa Tuple && length(v) == 3
+        return (make_param(T, v[1], mesh, n_total),
+                make_param(T, v[2], mesh, n_total),
+                make_param(T, v[3], mesh, n_total))
+    end
+    f = zeros(T, 3 * n_total)
+    init_vector!(f, mesh, v)
+    f_kb = kernel_array(f)
+    Hx = create_zeros(T, n_total)
+    Hy = create_zeros(T, n_total)
+    Hz = create_zeros(T, n_total)
+    Hx .= @view f_kb[1:n_total]
+    Hy .= @view f_kb[(n_total + 1):(2 * n_total)]
+    Hz .= @view f_kb[(2 * n_total + 1):(3 * n_total)]
+    return (Hx, Hy, Hz)
+end
+
 function init_scalar!(v::AbstractArray, mesh::Mesh, init::Number)
     v .= init
     return true

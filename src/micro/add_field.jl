@@ -4,36 +4,50 @@ export add_zeeman, update_zeeman, add_anis, update_anis, add_cubic_anis, add_hex
        add_thermal_noise, add_sot, add_stt, add_torque, rm_demag_charges, add_magnetoelastic, add_mel
 
 """
-    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
+    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, [ft::Function]; name="zeeman")
 
-Add a static Zeeman energy to the simulation.
+Add a Zeeman energy to the simulation. Without the time-modulation argument `ft`
+(or with `ft = t -> 1.0`) the field is static; a per-spin `H0` is stored as O(1)
+`Fill`s when uniform and as dense arrays otherwise.
 """
-function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
+function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function=_static_time;
+                    name="zeeman")
     n_total = sim.n_total
-
     T = Float[]
-    field = zeros(T, 3 * n_total)
 
-    init_vector!(field, sim.mesh, H0)
-
-    field_kb = kernel_array(field)
-    energy_kb = create_zeros(n_total)
-    if isa(H0, Tuple)
-        zeeman = Zeeman(H0, field_kb, energy_kb, name)
-    else
-        zeeman = Zeeman((0, 0, 0), field_kb, energy_kb, name)
+    if ft !== _static_time
+        f0 = ft(0)
+        ft_length = f0 isa Tuple ? length(f0) : 1
+        if ft_length != 3 && ft_length != 1
+            error("The time_fun function should return either 1 value (scalar) or 3 values (as a tuple).")
+        end
     end
+
+    Hx, Hy, Hz = make_vector_param(T, H0, sim.mesh, n_total)
+
+    field = create_zeros(3 * n_total)
+    energy_kb = create_zeros(n_total)
+    zeeman = Zeeman(Hx, Hy, Hz, ft, H0 isa Tuple ? H0 : (0, 0, 0),
+                    T(1), T(1), T(1), field, energy_kb, name)
+
+    # materialise the interaction field once; the dynamic path rewrites it per
+    # step, the static path keeps it until update_zeeman replaces the components
+    ms = sim isa AtomisticSim ? sim.mu_s : sim.mu0_Ms
+    zeeman_field_kernel!(default_backend[], groupsize[])(sim.spin, zeeman.field,
+                              zeeman.energy, ms, Hx, Hy, Hz, T(1), T(1), T(1), T(1);
+                              ndrange=n_total)
+
     push!(sim.interactions, zeeman)
 
     if sim.save_data
-        if name == "zeeman" #if the name is standard zeeman, then save Hx, Hy, Hz
-            field_item = SaverItem(("Hx", "Hy", "Hz"), ("<A/m>", "<A/m>", "<A/m>"),
-                                    o::AbstractSim -> zeeman.H0)
-            push!(sim.saver.items, field_item)
-        else
-            field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
-                                    string(name, "_Hz")), ("<A/m>", "<A/m>", "<A/m>"),
-                                    o::AbstractSim -> zeeman.H0)
+        unit = sim isa AtomisticSim ? "<Tesla>" : "<A/m>"
+        prefix = (ft === _static_time && name == "zeeman") ? "" : string(name, "_")
+        if (zeeman.H_repr isa Tuple && length(zeeman.H_repr) == 3) || ft === _static_time
+            field_item = SaverItem((string(prefix, "Hx"), string(prefix, "Hy"),
+                                    string(prefix, "Hz")), (unit, unit, unit),
+                                    o::AbstractSim -> (zeeman.H_repr[1] * zeeman.time_fx,
+                                                       zeeman.H_repr[2] * zeeman.time_fy,
+                                                       zeeman.H_repr[3] * zeeman.time_fz))
             push!(sim.saver.items, field_item)
         end
         push!(sim.saver.items,
@@ -41,7 +55,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; name="zeeman")
                         o::AbstractSim -> sum(zeeman.energy)))
     end
 
-    @info "Static Zeeman has been added."
+    @info "Zeeman has been added."
     send_sim_state(sim)
 
     return zeeman
@@ -62,139 +76,29 @@ H0_output is a tuple of 3 numbers that specifies the field components that will 
 function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; H_output=nothing, name="zeeman")
     n_total = sim.n_total
     T = Float[]
-    field = zeros(T, 3 * n_total)
-    init_vector!(field, sim.mesh, H0)
+    Hx, Hy, Hz = make_vector_param(T, H0, sim.mesh, n_total)
 
+    ms = sim isa AtomisticSim ? sim.mu_s : sim.mu0_Ms
     for i in sim.interactions
         if i.name == name
-            copyto!(i.field, field)
+            # replace the components instead of writing in place: they may be Fills
+            i.Hx = Hx
+            i.Hy = Hy
+            i.Hz = Hz
             if H_output !== nothing
-                i.H0 = H_output
+                i.H_repr = H_output
             elseif isa(H0, Tuple)
-                i.H0 = H0
+                i.H_repr = H0
             end
+            # re-materialise the interaction field; for a static term this is the
+            # update itself, a dynamic term rewrites it at every step anyway
+            zeeman_field_kernel!(default_backend[], groupsize[])(sim.spin, i.field,
+                                      i.energy, ms, Hx, Hy, Hz, T(1), T(1), T(1), T(1);
+                                      ndrange=n_total)
             return nothing
         end
     end
     return nothing
-end
-
-"""
-    add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function; name="timezeeman")
-
-Add a time-varying Zeeman interaction to the simulation system.
-
-# Arguments
-- `sim::AbstractSim`: The simulation object to which the Zeeman interaction will be added.
-- `H0::TupleOrArrayOrFunction`: The spatial field configuration, which can be:
-  - A tuple of 3 numbers representing a uniform field in x, y, z directions
-  - An array representing a spatially varying field
-  - A function that returns the field at specific spatial coordinates
-- `ft::Function`: The time-dependent function that modulates the field amplitude.
-- `name::String`: (Optional) A name identifier for this interaction. Defaults to "timezeeman".
-
-# Time Function Specification
-The time function `ft` should accept a time argument `t` and return either:
-- **Scalar return**: A single value that will be applied uniformly to all three field components
-- **Tuple return**: A 3-element tuple `(fx, fy, fz)` specifying individual scaling factors for x, y, z components
-
-The function is evaluated at each time step to modulate the applied field.
-
-# Examples
-
-## Example 1: Uniform rotating field with vector time function
-```julia
-function time_fun(t)
-    w = 2*pi*2.0e9  # 2 GHz frequency
-    return (sin(w*t), cos(w*t), 0)  # Rotating in xy-plane
-end
-
-function spatial_H(i, j, k, dx, dy, dz)
-    H = 1e3  # 1000 A/m base field strength
-    if i <= 2
-        return (H, H, 0)  # Apply field only in first two cells
-    end
-    return (0, 0, 0)      # Zero field elsewhere
-end
-
-add_zeeman(sim, spatial_H, time_fun)
-```
-
-## Example 2: Uniformly oscillating field with scalar time function
-```julia
-function time_fun_scalar(t)
-    w = 2*pi*1.0e9  # 1 GHz frequency
-    return sin(w*t)  # Same modulation for all components
-end
-
-# Apply uniform field in z-direction
-add_zeeman(sim, (0, 0, 1e3), time_fun_scalar)
-```
-
-## Example 3: Complex modulated field
-```julia
-function complex_time_fun(t)
-    w1 = 2*pi*1.0e9
-    w2 = 2*pi*0.5e9
-    # Different modulation for each component
-    fx = sin(w1*t) * cos(w2*t)
-    fy = 0.5 * (1 + sin(w1*t))
-    fz = exp(-t/1e-9)  # Exponential decay in z-component
-    return (fx, fy, fz)
-end
-
-# Spatially uniform initial field
-add_zeeman(sim, (1e3, 2e3, 0.5e3), complex_time_fun, name="modulated_zeeman")
-```
-
-# Field Initialization
-The `H0` parameter defines the spatial distribution of the field:
-- For uniform fields: Use a 3-element tuple `(Hx, Hy, Hz)`
-- For spatially varying fields: Provide a function with signature `(i, j, k, dx, dy, dz) -> (Hx, Hy, Hz)`
-  where `i, j, k` are grid indices and `dx, dy, dz` are spatial steps
-
-# Energy Calculation
-The Zeeman energy density is calculated as:
-E = -μ₀ * M ⋅ H
-where M is the magnetization and H is the applied field.
-"""
-function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function;
-                    name="timezeeman")
-    n_total = sim.n_total
-    T = Float[]
-
-    init_field = zeros(T, 3 * n_total)
-    init_vector!(init_field, sim.mesh, H0)
-
-    field_kb = kernel_array(init_field)
-    field = create_zeros(3 * n_total)
-    energy = create_zeros(n_total)
-
-    f0 = ft(0)
-    ft_length = f0 isa Tuple ? length(f0) : 1
-    if ft_length != 3 && ft_length != 1
-        error("The time_fun function should return either 1 value (scalar) or 3 values (as a tuple).")
-    end
-
-    is_scalar = ft_length == 1 ? true : false
-    zee = TimeZeeman(T(0), T(0), T(0), ft, is_scalar, field_kb, field, energy, name)
-    push!(sim.interactions, zee)
-
-    if sim.save_data
-        unit = isa(sim, MicroSim) ? "<A/m>" : "<Tesla>"
-        if isa(H0, Tuple) && length(H0) == 3
-            field_item = SaverItem((string(name, "_Hx"), string(name, "_Hy"),
-                                    string(name, "_Hz")), (unit, unit, unit),
-                                   o::AbstractSim -> (H0[1]*zee.time_fx, H0[2]*zee.time_fy,
-                                                      H0[3]*zee.time_fz))
-            push!(sim.saver.items, field_item)
-        end
-        push!(sim.saver.items,
-              SaverItem(string("E_", name), "J",
-                        o::AbstractSim -> sum(zee.energy)))
-    end
-    send_sim_state(sim)
-    return zee
 end
 
 @doc raw"""
@@ -237,14 +141,16 @@ function add_exch(sim::MicroSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
     energy = create_zeros(n_total)
 
     exch = nothing
-    if isa(A, Number)
-        exch = UniformExchange(T(A), T(A), T(A), field, energy, name)
-    elseif isa(A, Tuple) && length(A) == 3
-        exch = UniformExchange(T(A[1]), T(A[2]), T(A[3]), field, energy, name)
+    if isa(A, Tuple) && length(A) == 3
+        # per-direction bond stiffness; numbers become O(1) Fills, functions/arrays
+        # dense arrays — this also unlocks genuinely spatial anisotropic exchange
+        exch = Exchange(make_param(T, A[1], sim.mesh, n_total),
+                        make_param(T, A[2], sim.mesh, n_total),
+                        make_param(T, A[3], sim.mesh, n_total),
+                        field, energy, name)
     else
-        # a uniform number becomes an O(1) Fill, a function/array a dense array
         A_kb = make_param(T, A, sim.mesh, sim.n_total)
-        exch = SpatialExchange(A_kb, field, energy, name)
+        exch = Exchange(A_kb, A_kb, A_kb, field, energy, name)
     end
 
     push!(sim.interactions, exch)
@@ -1266,7 +1172,13 @@ function rm_demag_charges(sim::MicroSim, Ms; x::Tuple=(0, 0), y::Tuple=(0, 0), z
 
     copyto!(field, f)
 
-    zeeman = Zeeman((0, 0, 0), field, energy, name)
+    # split the precomputed field into per-spin components (a static Zeeman uses
+    # `field` directly, the components document the input for the saver)
+    Hx = kernel_array(f[1:3:length(f)])
+    Hy = kernel_array(f[2:3:length(f)])
+    Hz = kernel_array(f[3:3:length(f)])
+    zeeman = Zeeman(Hx, Hy, Hz, _static_time, (0, 0, 0), T(1), T(1), T(1), field, energy,
+                    name)
     push!(sim.interactions, zeeman)
 
     if sim.save_data

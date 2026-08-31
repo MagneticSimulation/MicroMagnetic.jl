@@ -151,7 +151,14 @@ mutable struct MicroSimFE{T<:AbstractFloat} <: AbstractSim
 end
 
 mutable struct Zeeman{T<:AbstractFloat} <: MicroEnergy
-    H0::Tuple
+    Hx::AbstractArray{T,1}  # per-spin static field components; uniform = O(1) Fill
+    Hy::AbstractArray{T,1}
+    Hz::AbstractArray{T,1}
+    ft::Function            # time modulation; the static term uses `_static_time`
+    H_repr::Any             # original input, kept for saver display / H_output
+    time_fx::T              # current time factors (saver display)
+    time_fy::T
+    time_fz::T
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
@@ -166,18 +173,6 @@ mutable struct Magnetoelastic{T<:AbstractFloat} <: MicroEnergy
     field_data::Any
     field::AbstractArray{T,1}   # effective field
     energy::AbstractArray{T,1}     # energy density
-    name::String
-end
-
-mutable struct TimeZeeman{T<:AbstractFloat} <: MicroEnergy
-    time_fx::T
-    time_fy::T
-    time_fz::T
-    time_fun::Function
-    is_scalar::Bool
-    init_field::AbstractArray{T,1}
-    field::AbstractArray{T,1}
-    energy::AbstractArray{T,1}
     name::String
 end
 
@@ -225,17 +220,10 @@ mutable struct TwinMonoclinicAnisotropy{T<:AbstractFloat} <: MicroEnergy
     name::String
 end
 
-mutable struct SpatialExchange{T<:AbstractFloat} <: MicroEnergy
-    A::AbstractArray{T,1}
-    field::AbstractArray{T,1}
-    energy::AbstractArray{T,1}
-    name::String
-end
-
-mutable struct UniformExchange{T<:AbstractFloat} <: MicroEnergy
-    Ax::Real
-    Ay::Real
-    Az::Real
+mutable struct Exchange{T<:AbstractFloat} <: MicroEnergy
+    Ax::AbstractArray{T,1}  # bond stiffness along x; uniform values are O(1) Fills
+    Ay::AbstractArray{T,1}  # bond stiffness along y
+    Az::AbstractArray{T,1}  # bond stiffness along z
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
