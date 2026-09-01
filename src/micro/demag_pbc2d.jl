@@ -1,166 +1,154 @@
-#True 2D-periodic demag (x, y periodic; z open) for the FD grid.
+#True 2D-periodic demag for arbitrary direction pairs (xy, xz, yz), the macro
+#pipeline route (the real-space split of Lebecki et al., J. Phys. D 41 (2008)
+#175005, cf. demag_pbc1d.jl): the quadrant kernel = the explicit image sum over
+#the 2D image lattice (the standard tensors_kernel_*! with two nonzero image
+#counts) plus the entry-wise analytic far-field tail -- the continuum integral
+#of the dipolar kernel over the images beyond the half-integer critical
+#rectangle (Wang et al., Comp. Mater. Sci. 49 (2010) 84, eq. 10-15) -- plus the
+#periodic-DC column fix.  The solve reuses the macro padded-FFT pipeline
+#unchanged (init_demag); the returned energy is the standard Demag.
+#The superseded spectral solver (2D batched FFT + layer convolution, xy only)
+#lives at commit 7d5e6295.
 #
-#Method (Wang et al., Comp. Mater. Sci. 49 (2010) 84): the in-plane-
-#periodized Newell kernel with the explicit images |p|<=Ic, |q|<=Jc plus the
-#analytic far-field tail N_inf (the continuum integral of the dipolar kernel
-#over the region outside the critical rectangle, closed forms Eq. 13; residual
-#error ~ gamma^-3/2, estimable), transformed per mode by the in-plane DFT.
-#The solve: 2D batched FFTs (no padding, no z-transform) + the O(nz^2) layer
-#convolution + the 2D inverse FFT.
-#The k=0 column (in-plane uniform) is analytic, not truncated: a uniform
-#in-plane magnetization produces no field, and a uniform M_z is demagnetized
-#by its own layer only (the +-M_z face-pair field is confined between its
-#faces), i.e. H_z = -M_z per layer.
-mutable struct DemagPBC2D{T<:AbstractFloat} <: MicroEnergy
-    nx::Int64
-    ny::Int64
-    nz::Int64
-    kernel::AbstractArray{Complex{T},4}   #(6, lenx, ny, 2nz-1) mode-space layer kernels
-    m_pad::AbstractArray{T,4}             #(nx, ny, nz, 3) the periodic cell itself
-    M_pad::AbstractArray{Complex{T},4}    #(lenx, ny, nz, 3) 2D spectrum
-    M_out::AbstractArray{Complex{T},4}    #the layer-convolution output (separate
-                                          #buffer: the convolution reads all layers
-                                          #of M_pad, so writing in place would race)
-    h_pad::AbstractArray{T,4}             #(nx, ny, nz, 3)
-    m_plan::Any
-    h_plan::Any
-    field::AbstractArray{T,1}
-    energy::AbstractArray{T,1}
-    name::String
-end
+#Periodic-DC column: the state uniform in the periodic plane carries no bound
+#charges, so its plane-summed kernel vanishes for every component except the
+#open-axis diagonal, whose self-layer plane-sum equals 1 exactly (the field
+#from the uniformly magnetized layer is -M between its faces, 0 outside; the
+#package convention H = -sum N M makes the sum +1).  The fix forces these
+#analytic targets, mirroring the spectral solver's k=0 override.
 
-#F functions: the closed-form quarter-plane integrals of the dipolar kernel
-#(the paper's Eq. 13); abc = the cell volume, Tx/Ty = the periods
-function make_F2d(abc::T, Tx::T, Ty::T) where {T<:AbstractFloat}
-    Fxx(p, q, z) = abc / (4pi * Tx * Ty) * p * q / ((p^2 + z^2) * sqrt(p^2 + q^2 + z^2))
-    Fyy(p, q, z) = abc / (4pi * Tx * Ty) * p * q / ((q^2 + z^2) * sqrt(p^2 + q^2 + z^2))
-    Fzz(p, q, z) = -abc / (4pi * Tx * Ty) * p * q * (p^2 + q^2 + 2z^2) /
+#the quarter-plane integrals of the dipolar kernel (Wang 2010, eq. 13);
+#module-level functions with explicit arguments (KA-kernel safe, no closures)
+@inline function f2d_xx(p::T, q::T, z::T, abc::T, Tx::T, Ty::T) where {T}
+    abc / (4pi * Tx * Ty) * p * q / ((p^2 + z^2) * sqrt(p^2 + q^2 + z^2))
+end
+@inline function f2d_yy(p::T, q::T, z::T, abc::T, Tx::T, Ty::T) where {T}
+    abc / (4pi * Tx * Ty) * p * q / ((q^2 + z^2) * sqrt(p^2 + q^2 + z^2))
+end
+@inline function f2d_zz(p::T, q::T, z::T, abc::T, Tx::T, Ty::T) where {T}
+    -abc / (4pi * Tx * Ty) * p * q * (p^2 + q^2 + 2z^2) /
         ((p^2 + z^2) * (q^2 + z^2) * sqrt(p^2 + q^2 + z^2))
-    Fxy(p, q, z) = -abc / (4pi * Tx * Ty) / sqrt(p^2 + q^2 + z^2)
-    Fxz(p, q, z) = abc / (4pi * Tx * Ty) * q * z / ((p^2 + z^2) * sqrt(p^2 + q^2 + z^2))
-    Fyz(p, q, z) = abc / (4pi * Tx * Ty) * p * z / ((q^2 + z^2) * sqrt(p^2 + q^2 + z^2))
-    return Fxx, Fyy, Fzz, Fxy, Fxz, Fyz
+end
+@inline function f2d_xy(p::T, q::T, z::T, abc::T, Tx::T, Ty::T) where {T}
+    -abc / (4pi * Tx * Ty) / sqrt(p^2 + q^2 + z^2)
+end
+@inline function f2d_xz(p::T, q::T, z::T, abc::T, Tx::T, Ty::T) where {T}
+    abc / (4pi * Tx * Ty) * q * z / ((p^2 + z^2) * sqrt(p^2 + q^2 + z^2))
+end
+@inline function f2d_yz(p::T, q::T, z::T, abc::T, Tx::T, Ty::T) where {T}
+    abc / (4pi * Tx * Ty) * p * z / ((q^2 + z^2) * sqrt(p^2 + q^2 + z^2))
 end
 
-#N_inf: the far-field tail = the continuum integral of the dipolar kernel over
-#the region outside the critical rectangle (the paper's Eq. 10-12); the four
-#F terms combine the two semi-infinite x-strips, the two y-strips and the
-#corners with the inclusion-exclusion signs
-function Ninf2d(comp::Int, x::T, y::T, z::T, Xc::T, Yc::T, F) where {T<:AbstractFloat}
-    Fxx, Fyy, Fzz, Fxy, Fxz, Fyz = F
+#the far-field tail of one canonical component: the continuum integral of the
+#dipolar kernel over {x'>Xc} ∪ {x'<-Xc} ∪ {y'>Yc} ∪ {y'<-Yc} (the semi-infinite
+#strips and the corners, inclusion-exclusion, Wang 2010 eq. 10-12); the
+#convention matches the package kernel (H = -sum N M)
+function pbc2d_tail(comp::Int, x::T, y::T, z::T, Xc::T, Yc::T, abc::T, Tx::T, Ty::T) where {T}
     p1 = x + Xc; p2 = x - Xc
     q1 = y - Yc; q2 = y + Yc
     if comp == 1
-        return Fxx(p1, q1, z) + Fxx(p2, q2, z) - Fxx(p1, q2, z) - Fxx(p2, q1, z)
+        return f2d_xx(p1, q1, z, abc, Tx, Ty) + f2d_xx(p2, q2, z, abc, Tx, Ty) -
+               f2d_xx(p1, q2, z, abc, Tx, Ty) - f2d_xx(p2, q1, z, abc, Tx, Ty)
     elseif comp == 2
-        return Fyy(p1, q1, z) + Fyy(p2, q2, z) - Fyy(p1, q2, z) - Fyy(p2, q1, z)
+        return f2d_yy(p1, q1, z, abc, Tx, Ty) + f2d_yy(p2, q2, z, abc, Tx, Ty) -
+               f2d_yy(p1, q2, z, abc, Tx, Ty) - f2d_yy(p2, q1, z, abc, Tx, Ty)
     elseif comp == 3
-        return Fzz(p1, q1, z) + Fzz(p2, q2, z) - Fzz(p1, q2, z) - Fzz(p2, q1, z)
+        return f2d_zz(p1, q1, z, abc, Tx, Ty) + f2d_zz(p2, q2, z, abc, Tx, Ty) -
+               f2d_zz(p1, q2, z, abc, Tx, Ty) - f2d_zz(p2, q1, z, abc, Tx, Ty)
     elseif comp == 4
-        return Fxy(p1, q1, z) + Fxy(p2, q2, z) - Fxy(p1, q2, z) - Fxy(p2, q1, z)
+        return f2d_xy(p1, q1, z, abc, Tx, Ty) + f2d_xy(p2, q2, z, abc, Tx, Ty) -
+               f2d_xy(p1, q2, z, abc, Tx, Ty) - f2d_xy(p2, q1, z, abc, Tx, Ty)
     elseif comp == 5
-        return Fxz(p1, q1, z) + Fxz(p2, q2, z) - Fxz(p1, q2, z) - Fxz(p2, q1, z)
+        return f2d_xz(p1, q1, z, abc, Tx, Ty) + f2d_xz(p2, q2, z, abc, Tx, Ty) -
+               f2d_xz(p1, q2, z, abc, Tx, Ty) - f2d_xz(p2, q1, z, abc, Tx, Ty)
     else
-        return Fyz(p1, q1, z) + Fyz(p2, q2, z) - Fyz(p1, q2, z) - Fyz(p2, q1, z)
+        return f2d_yz(p1, q1, z, abc, Tx, Ty) + f2d_yz(p2, q2, z, abc, Tx, Ty) -
+               f2d_yz(p1, q2, z, abc, Tx, Ty) - f2d_yz(p2, q1, z, abc, Tx, Ty)
     end
 end
 
-function init_demag_pbc2d(sim::MicroSim; Ic::Int=2, Jc::Int=2)
-    mesh = sim.mesh
-    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
-    dx = Float64(mesh.dx); dy = Float64(mesh.dy); dz = Float64(mesh.dz)
-    (nx < 2 || ny < 2) && error("pbc2d requires nx >= 2 and ny >= 2")
-    T = Float[]
-    lenx = nx ÷ 2 + 1
-    m_pad = create_zeros(nx, ny, nz, 3)
-    M_pad = create_zeros(Complex{T}, lenx, ny, nz, 3)
-    M_out = create_zeros(Complex{T}, lenx, ny, nz, 3)
-    h_pad = create_zeros(nx, ny, nz, 3)
+#add the tail of one canonical component to the quadrant tensor built
+#`build_idx`-th by init_demag (order xx, yy, zz, xy, xz, yz).
+#pair = 1 (xy), 2 (xz), 3 (yz): the canonical frame (X, Y, Z) with Z the open
+#axis is (x,y,z) / (x,z,y) / (y,z,x); e.g. for the xz pair the actual xy
+#coupling is H_X from M_Z (the canonical XZ), etc.
+const PBC2D_PCOMP = ((1, 2, 3, 4, 5, 6), (1, 3, 2, 5, 4, 6), (3, 1, 2, 5, 6, 4))
 
-    if default_backend[] == CPU()
-        FFTW.set_num_threads(max(Sys.CPU_THREADS, 1))
+@kernel function pbc2d_add_tail_kernel!(tensor, pair::Int64, pcomp::Int64,
+                                        Xc::Float64, Yc::Float64, abc::Float64,
+                                        Tx::Float64, Ty::Float64,
+                                        dx::Float64, dy::Float64, dz::Float64)
+    i, j, k = @index(Global, NTuple)
+    if pair == 1
+        x = (i - 1) * dx; y = (j - 1) * dy; z = (k - 1) * dz
+    elseif pair == 2
+        x = (i - 1) * dx; y = (k - 1) * dz; z = (j - 1) * dy
+    else
+        x = (j - 1) * dy; y = (k - 1) * dz; z = (i - 1) * dx
     end
-    m_plan = plan_rfft(m_pad, (1, 2))
-    h_plan = plan_irfft(M_pad, nx, (1, 2))
+    @inbounds tensor[i, j, k] += pbc2d_tail(pcomp, x, y, z, Xc, Yc, abc, Tx, Ty)
+end
 
-    #---- kernel construction (CPU; one-time) ----
+function pbc2d_add_tail!(tensor, pair::Int, build_idx::Int, Nx::Int, Ny::Int, Nz::Int,
+                         dx::Float64, dy::Float64, dz::Float64, nx::Int, ny::Int, nz::Int)
+    if pair == 1
+        n1, n2 = Nx, Ny; l1, l2 = nx * dx, ny * dy
+    elseif pair == 2
+        n1, n2 = Nx, Nz; l1, l2 = nx * dx, nz * dz
+    else
+        n1, n2 = Ny, Nz; l1, l2 = ny * dy, nz * dz
+    end
+    Xc = (n1 + 0.5) * l1
+    Yc = (n2 + 0.5) * l2
     abc = dx * dy * dz
-    Tx = nx * dx; Ty = ny * dy
-    Xc = (Ic + 0.5) * Tx; Yc = (Jc + 0.5) * Ty
-    F = make_F2d(abc, Tx, Ty)
-    Kreal = zeros(Float64, 6, nx, ny, 2nz - 1)   #comp, di, dj, n(+nz); built in F64
-    for n in -(nz-1):(nz-1), dj in 0:(ny-1), di in 0:(nx-1)
-        x = di * dx; y = dj * dy; z = n * dz
-        #explicit images; the tensor components at the image displacement (the
-        #axis permutation lives inside demag_tensor_ab, same as the macro path)
-        for p in -Ic:Ic, q in -Jc:Jc
-            xe = (di + p*nx) * dx; ye = (dj + q*ny) * dy
-            Kreal[1, di+1, dj+1, n+nz] += demag_tensor_xx(xe, ye, z, dx, dy, dz)
-            Kreal[2, di+1, dj+1, n+nz] += demag_tensor_xy(xe, ye, z, dx, dy, dz)
-            Kreal[3, di+1, dj+1, n+nz] += demag_tensor_xz(xe, ye, z, dx, dy, dz)
-            Kreal[4, di+1, dj+1, n+nz] += demag_tensor_yy(xe, ye, z, dx, dy, dz)
-            Kreal[5, di+1, dj+1, n+nz] += demag_tensor_yz(xe, ye, z, dx, dy, dz)
-            Kreal[6, di+1, dj+1, n+nz] += demag_tensor_zz(xe, ye, z, dx, dy, dz)
+    pcomp = PBC2D_PCOMP[pair][build_idx]
+    kernel! = pbc2d_add_tail_kernel!(default_backend[], groupsize[])
+    kernel!(tensor, pair, pcomp, Xc, Yc, abc, l1, l2, dx, dy, dz; ndrange=(nx, ny, nz))
+    return nothing
+end
+
+#force the plane-summed kernel (the sum over the two periodic axes at each
+#open-axis position) onto the analytic targets: 0 everywhere except +1 at the
+#self layer of the open-axis component; the correction is uniform in the
+#periodic plane, so it touches only the (fx=fy=0) mode
+@kernel function pbc2d_dc_kernel!(tensor, pair::Int64, self::Int64,
+                                  nx::Int64, ny::Int64, nz::Int64)
+    t = @index(Global)
+    target = (t == 1 && self == 1) ? 1.0 : 0.0
+    if pair == 1
+        cur = 0.0
+        for j in 1:ny, i in 1:nx
+            cur += tensor[i, j, t]
         end
-        #analytic far-field tail
-        Kreal[1, di+1, dj+1, n+nz] += Ninf2d(1, x, y, z, Xc, Yc, F)
-        Kreal[2, di+1, dj+1, n+nz] += Ninf2d(2, x, y, z, Xc, Yc, F)
-        Kreal[3, di+1, dj+1, n+nz] += Ninf2d(3, x, y, z, Xc, Yc, F)
-        Kreal[4, di+1, dj+1, n+nz] += Ninf2d(4, x, y, z, Xc, Yc, F)
-        Kreal[5, di+1, dj+1, n+nz] += Ninf2d(5, x, y, z, Xc, Yc, F)
-        Kreal[6, di+1, dj+1, n+nz] += Ninf2d(6, x, y, z, Xc, Yc, F)
+        corr = (target - cur) / (nx * ny)
+        for j in 1:ny, i in 1:nx
+            tensor[i, j, t] += corr
+        end
+    elseif pair == 2
+        cur = 0.0
+        for k in 1:nz, i in 1:nx
+            cur += tensor[i, t, k]
+        end
+        corr = (target - cur) / (nx * nz)
+        for k in 1:nz, i in 1:nx
+            tensor[i, t, k] += corr
+        end
+    else
+        cur = 0.0
+        for k in 1:nz, j in 1:ny
+            cur += tensor[t, j, k]
+        end
+        corr = (target - cur) / (ny * nz)
+        for k in 1:nz, j in 1:ny
+            tensor[t, j, k] += corr
+        end
     end
-    #in-plane DFT per (n, comp)
-    kernel_f64 = zeros(ComplexF64, 6, lenx, ny, 2nz - 1)
-    for nn in 1:(2nz-1), c in 1:6
-        kernel_f64[c, :, :, nn] .= rfft(Kreal[c, :, :, nn], (1, 2))
-    end
-    #analytic k=0 column (the whole column): the in-plane-uniform modes see only
-    #the per-layer self demag (the +-M_z face-pair field is confined between its
-    #own faces; inter-layer coupling is exactly zero) -> H_z = -M_z, H_in = 0
-    kernel_f64[:, 1, 1, :] .= 0.0
-    kernel_f64[6, 1, 1, nz] = 1.0
-    kernel = create_zeros(Complex{T}, 6, lenx, ny, 2nz - 1)
-    copyto!(kernel, kernel_f64)
-
-    field = create_zeros(3 * sim.n_total)
-    energy = create_zeros(sim.n_total)
-    return DemagPBC2D(nx, ny, nz, kernel, m_pad, M_pad, M_out, h_pad, m_plan, h_plan,
-                      field, energy, "Demag")
 end
 
-#layer convolution per mode: H_i(f, m) = sum_{m'} N_ij(f, m-m') M_j(f, m');
-#the tensor is symmetric, so the transposed products reuse the same kernel
-#slots (N_yx = kernel[2] with Mx, N_zx = kernel[3] with Mx, N_zy = kernel[5] with My)
-@kernel function pbc2d_conv_kernel!(M_out, @Const(M_pad), @Const(kernel), nz::Int64)
-    a, b, m = @index(Global, NTuple)
-    h1 = zero(M_pad[a, b, m, 1]); h2 = h1; h3 = h1
-    for m2 in 1:nz
-        n = (m - m2) + nz
-        mx = M_pad[a, b, m2, 1]; my = M_pad[a, b, m2, 2]; mz = M_pad[a, b, m2, 3]
-        k1 = kernel[1, a, b, n]; k2 = kernel[2, a, b, n]; k3 = kernel[3, a, b, n]
-        k4 = kernel[4, a, b, n]; k5 = kernel[5, a, b, n]; k6 = kernel[6, a, b, n]
-        h1 += k1 * mx + k2 * my + k3 * mz
-        h2 += k2 * mx + k4 * my + k5 * mz
-        h3 += k3 * mx + k5 * my + k6 * mz
-    end
-    @inbounds M_out[a, b, m, 1] = h1
-    @inbounds M_out[a, b, m, 2] = h2
-    @inbounds M_out[a, b, m, 3] = h3
-end
-
-function effective_field(demag::DemagPBC2D, sim::MicroSim, spin::AbstractArray{T,1},
-                         t::Float64; output=nothing) where {T<:AbstractFloat}
-    nx, ny, nz = demag.nx, demag.ny, demag.nz
-    mesh = sim.mesh
-    distribute_m(spin, demag.m_pad, sim.mu0_Ms, nx, ny, nz)
-    mul!(demag.M_pad, demag.m_plan, demag.m_pad)
-    kernel! = pbc2d_conv_kernel!(default_backend[], groupsize[])
-    kernel!(demag.M_out, demag.M_pad, demag.kernel, nz;
-            ndrange=(nx ÷ 2 + 1, ny, nz))
-    mul!(demag.h_pad, demag.h_plan, demag.M_out)
-    heff = output == nothing ? demag.field : output
-    collect_h_energy(heff, demag.energy, spin, demag.h_pad, sim.mu0_Ms,
-                     T(mesh.volume), nx, ny, nz)
+function pbc2d_dc_fix!(tensor, pair::Int, build_idx::Int, nx::Int, ny::Int, nz::Int)
+    self = (pair == 1 ? (build_idx == 3) : pair == 2 ? (build_idx == 2) : (build_idx == 1)) ? 1 : 0
+    ndrange = pair == 1 ? nz : pair == 2 ? ny : nx
+    kernel! = pbc2d_dc_kernel!(default_backend[], groupsize[])
+    kernel!(tensor, pair, self, nx, ny, nz; ndrange=ndrange)
     return nothing
 end

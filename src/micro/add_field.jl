@@ -381,9 +381,11 @@ Add Demag to the system. `Nx`, `Ny` and `Nz` can be used to describe the macro b
 the given mesh is repeated `2Nx+1`, `2Ny+1 and `2Nz+1` times in `x`, `y` and `z` direction, respectively.
 With `pbc3d=true` a true 3D-periodic demag is used instead (tin-foil convention:
 the uniform magnetization component produces no field); `Nx/Ny/Nz` are ignored.
-With `pbc2d=true` a true 2D-periodic demag (x, y periodic, z open) is used;
-`Ic`/`Jc` set the explicit image range of its far-field tail (field error
-~1e-3 at Ic=Jc=2, ~2e-4 at 4).
+With `pbc2d=true` a true 2D-periodic demag is used for any direction pair:
+exactly two of `Nx`/`Ny`/`Nz` must be > 0 and set both the periodic pair and
+the explicit image counts (e.g. `Nx=2, Nz=3` = x,z periodic); the bare
+`pbc2d=true` defaults to x,y periodic with `Ic`/`Jc` (field error ~1e-4 at
+Ic=Jc=2, ~2.5e-6 at 4).
 With `pbc1d=true` a true 1D-periodic demag is used (Lebecki et al., J. Phys. D 41
 (2008) 175005): exactly one of `Nx`/`Ny`/`Nz` must be > 0 and sets both the
 periodic axis and the explicit image count `Ic` (field error ~1e-4 at Ic=2).
@@ -393,7 +395,15 @@ function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true, pbc3
     if pbc3d
         demag = init_demag_pbc3d(sim)
     elseif pbc2d
-        demag = init_demag_pbc2d(sim; Ic=Ic, Jc=Jc)
+        cnt = (Nx > 0) + (Ny > 0) + (Nz > 0)
+        if cnt == 2
+            pair = Nx > 0 ? (Ny > 0 ? 1 : 2) : 3
+            demag = init_demag(sim, Nx, Ny, Nz; pbc2d_pair=pair)
+        elseif cnt == 0
+            demag = init_demag(sim, Ic, Jc, 0; pbc2d_pair=1)
+        else
+            error("pbc2d=true requires exactly two of Nx/Ny/Nz > 0 (the periodic pair and image counts)")
+        end
     elseif pbc1d
         cnt = (Nx > 0) + (Ny > 0) + (Nz > 0)
         cnt == 1 || error("pbc1d=true requires exactly one of Nx/Ny/Nz > 0 as the periodic axis")
