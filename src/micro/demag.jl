@@ -156,7 +156,10 @@ inv_transform!(h_pad, M_pad, h_plan, nx_fft::Int) = mul!(h_pad, h_plan, M_pad)
 # Note: the size of the demag tensors is reduced to ~nx*ny*nz by packing them
 # into the (y,z) parity fundamental domain, see pack_demag_tensor.
 # FIXME: add the real pbc (current imeplenation is macro pbc)
-function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
+#pbc1d_axis != 0 turns the macro image sum into a true 1D-periodic kernel: the
+#nonzero one of Nx/Ny/Nz is the image count Ic along the periodic axis and the
+#analytic far-field tail (demag_pbc1d.jl) is added to every quadrant tensor
+function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int; pbc1d_axis::Int=0)
     mesh = sim.mesh
     max_size = max(mesh.dx, mesh.dy, mesh.dz)
     dx = Float64(mesh.dx / max_size)
@@ -166,6 +169,7 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     nx = mesh.nx
     ny = mesh.ny
     nz = mesh.nz
+    pbc1d_n = pbc1d_axis == 1 ? Nx : pbc1d_axis == 2 ? Ny : Nz
 
     cn = 3
     nx_fft = mesh.nx > cn ? 2 * mesh.nx : 2 * mesh.nx - 1
@@ -204,31 +208,43 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
 
     #Nxx
     compute_demag_tensors(tensor, tensors_kernel_xx!, Nx, Ny, Nz, dx, dy, dz)
+    pbc1d_axis != 0 && pbc1d_add_tail!(tensor, pbc1d_axis, 1, pbc1d_n, dx, dy, dz, nx, ny, nz)
+    pbc1d_axis != 0 && pbc1d_dc_fix!(tensor, pbc1d_axis, 1, dx, dy, dz, nx, ny, nz)
     fill_tensors(mx_pad, tensor, false, false, false)
     tensor_xx = pack_demag_tensor(real(plan * mx_pad), 1, 1; tscale = tscale)
 
     #Nyy
     compute_demag_tensors(tensor, tensors_kernel_yy!, Nx, Ny, Nz, dx, dy, dz)
+    pbc1d_axis != 0 && pbc1d_add_tail!(tensor, pbc1d_axis, 2, pbc1d_n, dx, dy, dz, nx, ny, nz)
+    pbc1d_axis != 0 && pbc1d_dc_fix!(tensor, pbc1d_axis, 2, dx, dy, dz, nx, ny, nz)
     fill_tensors(mx_pad, tensor, false, false, false)
     tensor_yy = pack_demag_tensor(real(plan * mx_pad), 1, 1; tscale = tscale)
 
     #Nzz
     compute_demag_tensors(tensor, tensors_kernel_zz!, Nx, Ny, Nz, dx, dy, dz)
+    pbc1d_axis != 0 && pbc1d_add_tail!(tensor, pbc1d_axis, 3, pbc1d_n, dx, dy, dz, nx, ny, nz)
+    pbc1d_axis != 0 && pbc1d_dc_fix!(tensor, pbc1d_axis, 3, dx, dy, dz, nx, ny, nz)
     fill_tensors(mx_pad, tensor, false, false, false)
     tensor_zz = pack_demag_tensor(real(plan * mx_pad), 1, 1; tscale = tscale)
 
     #Nxy
     compute_demag_tensors(tensor, tensors_kernel_xy!, Nx, Ny, Nz, dx, dy, dz)
+    pbc1d_axis != 0 && pbc1d_add_tail!(tensor, pbc1d_axis, 4, pbc1d_n, dx, dy, dz, nx, ny, nz)
+    pbc1d_axis != 0 && pbc1d_dc_fix!(tensor, pbc1d_axis, 4, dx, dy, dz, nx, ny, nz)
     fill_tensors(mx_pad, tensor, true, true, false)
     tensor_xy = pack_demag_tensor(real(plan * mx_pad), -1, 1; tscale = tscale)
 
     #Nxz
     compute_demag_tensors(tensor, tensors_kernel_xz!, Nx, Ny, Nz, dx, dy, dz)
+    pbc1d_axis != 0 && pbc1d_add_tail!(tensor, pbc1d_axis, 5, pbc1d_n, dx, dy, dz, nx, ny, nz)
+    pbc1d_axis != 0 && pbc1d_dc_fix!(tensor, pbc1d_axis, 5, dx, dy, dz, nx, ny, nz)
     fill_tensors(mx_pad, tensor, true, false, true)
     tensor_xz = pack_demag_tensor(real(plan * mx_pad), 1, -1; tscale = tscale)
 
     #Nyz
     compute_demag_tensors(tensor, tensors_kernel_yz!, Nx, Ny, Nz, dx, dy, dz)
+    pbc1d_axis != 0 && pbc1d_add_tail!(tensor, pbc1d_axis, 6, pbc1d_n, dx, dy, dz, nx, ny, nz)
+    pbc1d_axis != 0 && pbc1d_dc_fix!(tensor, pbc1d_axis, 6, dx, dy, dz, nx, ny, nz)
     fill_tensors(mx_pad, tensor, false, true, true)
     tensor_yz = pack_demag_tensor(real(plan * mx_pad), -1, -1; tscale = tscale)
 

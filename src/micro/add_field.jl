@@ -375,7 +375,7 @@ end
 
 """
     add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true, pbc3d=false,
-              pbc2d=false, Ic=2, Jc=2)
+              pbc2d=false, pbc1d=false, Ic=2, Jc=2)
 
 Add Demag to the system. `Nx`, `Ny` and `Nz` can be used to describe the macro boundary conditions which means that
 the given mesh is repeated `2Nx+1`, `2Ny+1 and `2Nz+1` times in `x`, `y` and `z` direction, respectively.
@@ -384,13 +384,21 @@ the uniform magnetization component produces no field); `Nx/Ny/Nz` are ignored.
 With `pbc2d=true` a true 2D-periodic demag (x, y periodic, z open) is used;
 `Ic`/`Jc` set the explicit image range of its far-field tail (field error
 ~1e-3 at Ic=Jc=2, ~2e-4 at 4).
+With `pbc1d=true` a true 1D-periodic demag is used (Lebecki et al., J. Phys. D 41
+(2008) 175005): exactly one of `Nx`/`Ny`/`Nz` must be > 0 and sets both the
+periodic axis and the explicit image count `Ic` (field error ~1e-4 at Ic=2).
 """
 function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true, pbc3d=false,
-                   pbc2d=false, Ic=2, Jc=2)
+                   pbc2d=false, pbc1d=false, Ic=2, Jc=2)
     if pbc3d
         demag = init_demag_pbc3d(sim)
     elseif pbc2d
         demag = init_demag_pbc2d(sim; Ic=Ic, Jc=Jc)
+    elseif pbc1d
+        cnt = (Nx > 0) + (Ny > 0) + (Nz > 0)
+        cnt == 1 || error("pbc1d=true requires exactly one of Nx/Ny/Nz > 0 as the periodic axis")
+        demag = init_demag(sim, Nx, Ny, Nz;
+                           pbc1d_axis = Nx > 0 ? 1 : (Ny > 0 ? 2 : 3))
     elseif fft && Float[] != AbstractFloat
         demag = init_demag(sim, Nx, Ny, Nz)
     else
