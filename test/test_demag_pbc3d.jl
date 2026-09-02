@@ -1,4 +1,5 @@
-#Tests for the true 3D-periodic demag (add_demag(...; pbc3d=true), see
+#Tests for the true 3D-periodic demag (the mesh pbc="xyz" dispatches to
+#pbc3d via the bare add_demag, see
 #src/micro/demag_pbc3d.jl).  The reference is analytic:
 #  * the uniform (k=0) mode produces no field  (tin-foil convention),
 #  * a single Fourier mode M = Ms*cos(2*pi*u/L) along axis ax with polarization
@@ -36,10 +37,10 @@ function test_pbc3d_analytic(T = nothing)
     n = (nx, ny, nz)
     d = (dx, dy, dz)
     Ms = 8e5
-    mesh = FDMesh(; dx=dx, dy=dy, dz=dz, nx=nx, ny=ny, nz=nz)
+    mesh = FDMesh(; dx=dx, dy=dy, dz=dz, nx=nx, ny=ny, nz=nz, pbc="xyz")
     sim = Sim(mesh)
     set_Ms(sim, Ms)
-    add_demag(sim; pbc3d=true)
+    add_demag(sim)
 
     for ax in 1:3, pol in 1:3
         init_m0(sim, mode_spin(nx, ny, nz, dx, dy, dz, ax, pol); norm=false)
@@ -60,11 +61,11 @@ function test_pbc3d_analytic(T = nothing)
 end
 
 function test_pbc3d_uniform()
-    mesh = FDMesh(; dx=2e-9, dy=3e-9, dz=4e-9, nx=6, ny=5, nz=3)
+    mesh = FDMesh(; dx=2e-9, dy=3e-9, dz=4e-9, nx=6, ny=5, nz=3, pbc="xyz")
     sim = Sim(mesh)
     set_Ms(sim, 8e5)
     init_m0(sim, (0.3, -0.5, 0.81); norm=false)
-    add_demag(sim; pbc3d=true)
+    add_demag(sim)
     MicroMagnetic.effective_field(sim, sim.spin, 0.0)
     Tf = eltype(sim.spin)
     tol = Tf == Float32 ? 1e-3 : 1e-9
@@ -82,7 +83,7 @@ function test_pbc3d_refinement()
     errs = Float64[]
     for nx in (12, 24)
         dx = 2e-9
-        mesh = FDMesh(; dx=dx, dy=dx, dz=dx, nx=nx, ny=2, nz=1)
+        mesh = FDMesh(; dx=dx, dy=dx, dz=dx, nx=nx, ny=2, nz=1, pbc="xyz")
         sim = Sim(mesh)
         set_Ms(sim, Ms)
         m = zeros(3 * nx * 2)
@@ -92,7 +93,7 @@ function test_pbc3d_refinement()
         end
         init_m0(sim, m; norm=false)
 
-        add_demag(sim; pbc3d=true)
+        add_demag(sim)
         MicroMagnetic.effective_field(sim, sim.spin, 0.0)
         h_pbc = Array(sim.field)
         S = (sin(2pi / nx) / (2pi / nx))^2
@@ -108,7 +109,7 @@ function test_pbc3d_refinement()
         sim2 = Sim(mesh)
         set_Ms(sim2, Ms)
         init_m0(sim2, m; norm=false)
-        add_demag(sim2; Nx=6, Ny=6, Nz=6)   #same stacked geometry as pbc3d
+        add_demag(sim2; macroPBC=true, Nx=6, Ny=6, Nz=6)   #same stacked geometry as pbc3d
         MicroMagnetic.effective_field(sim2, sim2.spin, 0.0)
         push!(errs, maximum(abs.(Array(sim2.field) .- h_pbc)))
     end
