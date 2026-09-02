@@ -97,9 +97,16 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::AbstractArray{T,1}
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     back = default_backend[]
-    exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
-                                        exch.Ax, exch.Ay, exch.Az,
-                                        dx, dy, dz, mesh.ngbs, volume; ndrange=n_total)
+    cls, ok = _exchange_tables!(sim, exch)
+    if ok
+        exchange_partition_kernel!(back, groupsize[])(spin, exch.field, exch.energy,
+            cls, exch.pair_Ax, exch.pair_Ay, exch.pair_Az, sim.inv_ms,
+            dx, dy, dz, mesh.ngbs, volume; ndrange=n_total)
+    else
+        exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
+                                            exch.Ax, exch.Ay, exch.Az,
+                                            dx, dy, dz, mesh.ngbs, volume; ndrange=n_total)
+    end
 
     return nothing
 end
@@ -114,13 +121,27 @@ function effective_field(dmi::DMI, sim::MicroSim, spin::AbstractArray{T,1},
     tfac = T(dmi.ft(t))
     back = default_backend[]
     if dmi.type === :bulk
-        bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
-                                           dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz,
-                                           mesh.ngbs, volume, tfac; ndrange=N)
+        cls, ok = _dmi_tables!(sim, dmi)
+        if ok
+            bulkdmi_partition_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy,
+                cls, dmi.pair_Dx, dmi.pair_Dy, dmi.pair_Dz, sim.inv_ms,
+                dx, dy, dz, mesh.ngbs, volume; ndrange=N)
+        else
+            bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                                               dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz,
+                                               mesh.ngbs, volume, tfac; ndrange=N)
+        end
     else
-        interfacial_dmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy,
-                                                   sim.mu0_Ms, dmi.Dx, dx, dy, dz,
-                                                   mesh.ngbs, volume, tfac; ndrange=N)
+        cls, ok = _dmi_tables!(sim, dmi)
+        if ok
+            interfacial_dmi_partition_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy,
+                cls, dmi.pair_Dx, dmi.Dcls, sim.inv_ms,
+                dx, dy, mesh.ngbs, volume; ndrange=N)
+        else
+            interfacial_dmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy,
+                                                       sim.mu0_Ms, dmi.Dx, dx, dy, dz,
+                                                       mesh.ngbs, volume, tfac; ndrange=N)
+        end
     end
 
     return nothing

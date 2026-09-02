@@ -1,60 +1,61 @@
+authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>", "Boyao Lv <lvboyao@mail.ustc.edu.cn>"]
 name = "MicroMagnetic"
 uuid = "cef16ca0-16a8-11ef-389e-9fbcf1974e83"
-authors = ["Weiwei Wang <wangweiwei@ahu.edu.cn>", "Boyao Lv <lvboyao@mail.ustc.edu.cn>"]
 version = "0.7.0"
+
+[compat]
+FFTW = "1"
+HTTP = "1.10"
+JSON = "1"
+KernelAbstractions = "0.9"
+NearestNeighbors = "0.4"
+PoissonDiskSampling = "0.11"
+PrecompileTools = "1"
+ReadVTK = "0.2"
+StaticArrays = "1.9"
+TimerOutputs = "0.5"
+WriteVTK = "1.18"
+julia = "1.11"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
-StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-PoissonDiskSampling = "d57be0ce-7c7e-4f32-9a47-3bfb603400bb"
-NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
-ReadVTK = "dc215faf-f008-4882-a9f7-a79a826fadc3"
-TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
+PoissonDiskSampling = "d57be0ce-7c7e-4f32-9a47-3bfb603400bb"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+ReadVTK = "dc215faf-f008-4882-a9f7-a79a826fadc3"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
 
-[compat]
-julia = "1.11"
-FFTW = "1"
-KernelAbstractions = "0.9"
-TimerOutputs = "0.5"
-ReadVTK = "0.2"
-WriteVTK = "1.18"
-NearestNeighbors = "0.4"
-StaticArrays = "1.9"
-PoissonDiskSampling = "0.11"
-HTTP = "1.10"
-JSON = "1"
-PrecompileTools = "1"
+[extensions]
+AMDGPUExt = "AMDGPU"
+CUDAExt = "CUDA"
+CairoMakieExt = "CairoMakie"
+MetalExt = "Metal"
+oneAPIExt = "oneAPI"
+
+[extras]
+CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "DelimitedFiles", "NPZ"]
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
-CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-
-[extensions]
-CUDAExt = "CUDA"
-AMDGPUExt = "AMDGPU"
-MetalExt = "Metal"
-oneAPIExt = "oneAPI"
-CairoMakieExt = "CairoMakie"
-
-[extras]
-DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
-
-[targets]
-test = ["Test", "DelimitedFiles", "NPZ"]

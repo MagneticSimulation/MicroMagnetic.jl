@@ -143,10 +143,10 @@ function add_exch(sim::MicroSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
         exch = Exchange(make_param(T, A[1], sim.mesh, n_total),
                         make_param(T, A[2], sim.mesh, n_total),
                         make_param(T, A[3], sim.mesh, n_total),
-                        field, energy, name)
+                        field, energy, name, nothing, nothing, nothing, -1)
     else
         A_kb = make_param(T, A, sim.mesh, sim.n_total)
-        exch = Exchange(A_kb, A_kb, A_kb, field, energy, name)
+        exch = Exchange(A_kb, A_kb, A_kb, field, energy, name, nothing, nothing, nothing, -1)
     end
 
     push!(sim.interactions, exch)
@@ -202,17 +202,20 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
             dmi = DMI(make_param(T, D[1], sim.mesh, sim.n_total),
                           make_param(T, D[2], sim.mesh, sim.n_total),
                           make_param(T, D[3], sim.mesh, sim.n_total),
-                          _static_time, :bulk, field, energy, name)
+                          _static_time, :bulk, field, energy, name,
+                          nothing, nothing, nothing, T[], -1)
         else
             D_kb = make_param(T, D, sim.mesh, sim.n_total)
-            dmi = DMI(D_kb, D_kb, D_kb, _static_time, :bulk, field, energy, name)
+            dmi = DMI(D_kb, D_kb, D_kb, _static_time, :bulk, field, energy, name,
+                      nothing, nothing, nothing, T[], -1)
         end
 
         @info "Bulk DMI has been added."
     elseif type == "interfacial"
         D_kb = make_param(T, D, sim.mesh, n_total)
 
-        dmi = DMI(D_kb, D_kb, D_kb, _static_time, :interfacial, field, energy, name)
+        dmi = DMI(D_kb, D_kb, D_kb, _static_time, :interfacial, field, energy, name,
+                  nothing, nothing, nothing, T[], -1)
         @info "Interfacial DMI has been added."
 
     elseif type == "D2d"
@@ -220,7 +223,8 @@ function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", t
             dmi = DMI(make_param(T, -D, sim.mesh, sim.n_total),
                           make_param(T, D, sim.mesh, sim.n_total),
                           make_param(T, 0, sim.mesh, sim.n_total),
-                          _static_time, :bulk, field, energy, name)
+                          _static_time, :bulk, field, energy, name,
+                          nothing, nothing, nothing, T[], -1)
         else
             error("D2d only support uniform DMI!")
         end
@@ -250,10 +254,12 @@ function add_dmi(sim::MicroSim,D::NumberOrTupleOrArrayOrFunction, ft::Function; 
             dmi = DMI(make_param(T, D[1], sim.mesh, n_total),
                           make_param(T, D[2], sim.mesh, n_total),
                           make_param(T, D[3], sim.mesh, n_total),
-                          ft, :bulk, field, energy, name)
+                          ft, :bulk, field, energy, name,
+                          nothing, nothing, nothing, T[], -1)
     else
             D_kb = make_param(T, D, sim.mesh, n_total)
-            dmi = DMI(D_kb, D_kb, D_kb, ft, :bulk, field, energy, name)
+            dmi = DMI(D_kb, D_kb, D_kb, ft, :bulk, field, energy, name,
+                      nothing, nothing, nothing, T[], -1)
     end
 
     push!(sim.interactions, dmi)

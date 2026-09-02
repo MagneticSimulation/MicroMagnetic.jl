@@ -19,6 +19,7 @@ struct FDMesh{T} <: Mesh
     volume::T
     ngbs::AbstractArray{Int32,2}
     regions::AbstractArray{Int32,1}
+    layout_version::Base.RefValue{Int}  # bumped by set_region; invalidates stencil caches
 end
 
 @inline function index(i::Int64, j::Int64, k::Int64, nx::Int64, ny::Int64, nz::Int64)
@@ -91,7 +92,7 @@ function FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open", x0=-n
 
     T = Float[]
     mesh = FDMesh(T(dx), T(dy), T(dz), T(x0), T(y0), T(z0), nx, ny, nz, xperiodic,
-                  yperiodic, zperiodic, n_total, T(volume), ngbs_kb, regions)
+                  yperiodic, zperiodic, n_total, T(volume), ngbs_kb, regions, Ref(0))
 
     send_visualization_data(mesh=mesh) 
     return mesh
@@ -189,5 +190,6 @@ function set_region(mesh::FDMesh, region_id::Int; i=:, j=:, k=:)
     end
     
     isa(mesh.regions, Array) || copyto!(mesh.regions, a)
+    mesh.layout_version[] += 1
     return true
 end

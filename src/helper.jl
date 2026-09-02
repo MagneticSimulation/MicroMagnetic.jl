@@ -250,6 +250,7 @@ function set_region(mesh::FDMesh, region_id::Int, shape::CSGShape)
     end
     
     isa(mesh.regions, Array) || copyto!(mesh.regions, a)
+    mesh.layout_version[] += 1
     return true
 end
 

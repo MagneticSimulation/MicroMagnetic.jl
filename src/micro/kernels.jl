@@ -712,6 +712,217 @@ The kernel zhangli_torque_kernel! compute the effective field defined as
     @inbounds h[j + 2] = cross_z(mx, my, mz, fx, fy, fz) + xi[I] * fz
 end
 
+@kernel function exchange_partition_kernel!(
+        @Const(m), h, energy, @Const(mat_class), @Const(pair_Ax),
+        @Const(pair_Ay), @Const(pair_Az), @Const(inv_ms),
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds cI = mat_class[I]
+
+    nx = T(2) / (dx * dx)
+    ny = T(2) / (dy * dy)
+    nz = T(2) / (dz * dz)
+
+    if cI == UInt8(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                coeff = pair_Ax[cI+1, cNb+1] * nx
+                if coeff != T(0)
+                    k = 3*id - 2
+                    fx += coeff * (m[k]   - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                coeff = pair_Ay[cI+1, cNb+1] * ny
+                if coeff != T(0)
+                    k = 3*id - 2
+                    fx += coeff * (m[k]   - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                coeff = pair_Az[cI+1, cNb+1] * nz
+                if coeff != T(0)
+                    k = 3*id - 2
+                    fx += coeff * (m[k]   - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        @inbounds Ms_inv = inv_ms[I]
+        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+# Bulk DMI partition kernel — fast path when Dx/Dy/Dz are per-class uniform.
+# Static DMI only (dispatch gates ft === _static_time; tfac omitted since 1).
+@kernel function bulkdmi_partition_kernel!(
+        @Const(m), h, energy, @Const(mat_class), @Const(pair_Dx),
+        @Const(pair_Dy), @Const(pair_Dz), @Const(inv_ms),
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds cI = mat_class[I]
+
+    axes = (T(1/dx), T(-1/dx), T(1/dy), T(-1/dy), T(1/dz), T(-1/dz))
+
+    if cI == UInt8(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                D_eff = pair_Dx[cI+1, cNb+1]
+                if D_eff != T(0)
+                    ax = axes[j]
+                    k = 3*id - 2
+                    fy += D_eff * (-ax * m[k+2])
+                    fz += D_eff * ( ax * m[k+1])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                D_eff = pair_Dy[cI+1, cNb+1]
+                if D_eff != T(0)
+                    ay = axes[j]
+                    k = 3*id - 2
+                    fx += D_eff * ( ay * m[k+2])
+                    fz += D_eff * (-ay * m[k]  )
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                D_eff = pair_Dz[cI+1, cNb+1]
+                if D_eff != T(0)
+                    az = axes[j]
+                    k = 3*id - 2
+                    fx += D_eff * (-az * m[k+1])
+                    fy += D_eff * ( az * m[k]  )
+                end
+            end
+        end
+
+        @inbounds Ms_inv = inv_ms[I]
+        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+# Interfacial DMI partition kernel — fast path when D is per-class uniform.
+# Dcls[cI+1] gives the per-class D_I to guard D_I==0 (mirrors inline's
+# `if Ms_local==0 || D_I==0` early exit). Static DMI only.
+@kernel function interfacial_dmi_partition_kernel!(
+        @Const(m), h, energy, @Const(mat_class), @Const(pair_D),
+        @Const(Dcls), @Const(inv_ms),
+        dx::T, dy::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds cI = mat_class[I]
+
+    Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy))
+    ax = (T(0), T(0), T(-1), T(1))
+    ay = (T(1), T(-1), T(0), T(0))
+    az = (T(0), T(0), T(0), T(0))
+
+    if cI == UInt8(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        @inbounds D_I = Dcls[cI+1]
+        if D_I == T(0)
+            @inbounds energy[I] = T(0)
+            @inbounds h[i]   = T(0)
+            @inbounds h[i+1] = T(0)
+            @inbounds h[i+2] = T(0)
+        else
+            fx = T(0)
+            fy = T(0)
+            fz = T(0)
+            for j in 1:4
+                @inbounds id = ngbs[j, I]
+                @inbounds if id > 0
+                    cNb = mat_class[id]
+                    D_eff = pair_D[cI+1, cNb+1]
+                    if D_eff != T(0)
+                        coeff = D_eff * Dd[j]
+                        k = 3 * id - 2
+                        fx += coeff * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                        fy += coeff * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                        fz += coeff * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    end
+                end
+            end
+            @inbounds Ms_inv = inv_ms[I]
+            @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+            @inbounds h[i]   = fx * Ms_inv
+            @inbounds h[i+1] = fy * Ms_inv
+            @inbounds h[i+2] = fz * Ms_inv
+        end
+    end
+end
+
 """
 Magnetoelastic kernel (tensor model).
 General 6-component stress tensor.

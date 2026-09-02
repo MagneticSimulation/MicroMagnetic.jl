@@ -126,6 +126,14 @@ mutable struct MicroSim{T<:AbstractFloat} <: AbstractSim
     driver_name::String
     interactions::Array{MicroEnergy}
     save_data::Bool
+    # stencil-layer caches (see micro/stencil.jl): mat_class freshness keys on
+    # mesh.layout_version (set_region bumps it; set_Ms drops caches directly);
+    # inv_ms is derived at set_Ms. Both are caches — the parameter arrays stay
+    # the permanent source.
+    mat_class::Union{Nothing,AbstractArray}  # class per cell; 0 = vacuum; may be Fill
+    n_classes::Int                           # material classes are 1..R
+    mat_class_layout::Int
+    inv_ms::Union{Nothing,AbstractArray}     # 1/mu0_Ms in T; 0 for vacuum; may be Fill
     MicroSim{T}() where {T<:AbstractFloat} = new()
 end
 
@@ -233,6 +241,13 @@ mutable struct Exchange{T<:AbstractFloat} <: MicroEnergy
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
+    # stencil-layer caches (see micro/stencil.jl): pair_A* are harmonic-mean
+    # pair tables built when Ax/Ay/Az are per-class uniform; stencil_layout is
+    # the mesh.layout_version stamp of the last build (-1 = needs rebuild).
+    pair_Ax::Union{Nothing,AbstractArray{T,2}}
+    pair_Ay::Union{Nothing,AbstractArray{T,2}}
+    pair_Az::Union{Nothing,AbstractArray{T,2}}
+    stencil_layout::Int
 end
 
 mutable struct InterlayerExchange{T<:AbstractFloat} <: MicroEnergy
@@ -266,6 +281,15 @@ mutable struct DMI{T<:AbstractFloat} <: MicroEnergy
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     name::String
+    # stencil-layer caches (see micro/stencil.jl): pair_D* are pair tables
+    # built when Dx/Dy/Dz are per-class uniform; Dcls is the per-class D used
+    # for the interfacial D_I==0 neighbour guard. stencil_layout is the
+    # mesh.layout_version stamp of the last build (-1 = needs rebuild).
+    pair_Dx::Union{Nothing,AbstractArray{T,2}}
+    pair_Dy::Union{Nothing,AbstractArray{T,2}}
+    pair_Dz::Union{Nothing,AbstractArray{T,2}}
+    Dcls::AbstractArray{T,1}
+    stencil_layout::Int
 end
 
 mutable struct StochasticField{T<:AbstractFloat} <: MicroEnergy

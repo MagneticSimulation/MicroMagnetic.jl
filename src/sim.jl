@@ -78,6 +78,10 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     if isa(mesh, FDMesh)
         # 0 Ms means vacuum; a uniform default costs O(1) storage
         sim.mu0_Ms = Fill(T(0), n_total)
+        sim.mat_class = nothing
+        sim.n_classes = 0
+        sim.mat_class_layout = -1
+        sim.inv_ms = Fill(T(0), n_total)
     elseif isa(mesh, FEMesh)
         sim.mu0_Ms = zeros(T, sim.n_cells)
         sim.L_mu = create_zeros(3 * n_total)
@@ -136,6 +140,8 @@ function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
     elseif any(isnan, sim.mu0_Ms)
         error("NaN is given by the input Ms!")
     end
+    _update_inv_ms!(sim)
+    _drop_ms_caches!(sim)
     @info "Saturation magnetization has been set."
     send_visualization_data(sim)
     return true
@@ -153,6 +159,10 @@ function set_Ms(sim::AbstractSim, shape::CSGShape, Ms::Number)
         copyto!(sim.mu0_Ms, mu0_Ms)   # e.g. FEM keeps dense storage, update in place
     else
         sim.mu0_Ms = kernel_array(mu0_Ms)
+    end
+    if isa(sim, MicroSim)
+        _update_inv_ms!(sim)
+        _drop_ms_caches!(sim)
     end
     @info "Saturation magnetization has been set."
     send_visualization_data(sim)
