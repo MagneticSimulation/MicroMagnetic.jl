@@ -411,35 +411,29 @@ function _build_demag(sim, fft::Bool, Nx::Int, Ny::Int, Nz::Int, mode::Symbol, a
 end
 
 """
-    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true, pbc3d=false,
-              pbc2d=false, pbc1d=false, Ic=2, Jc=2)
+    add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true,
+              macroPBC=false, Ic=4, Jc=4)
 
-Add Demag to the system. `Nx`, `Ny` and `Nz` can be used to describe the macro boundary conditions which means that
-the given mesh is repeated `2Nx+1`, `2Ny+1 and `2Nz+1` times in `x`, `y` and `z` direction, respectively.
-With `pbc3d=true` a true 3D-periodic demag is used instead (tin-foil convention:
-the uniform magnetization component produces no field); `Nx/Ny/Nz` are ignored.
-With `pbc2d=true` a true 2D-periodic demag is used for any direction pair:
-exactly two of `Nx`/`Ny`/`Nz` must be > 0 and set both the periodic pair and
-the explicit image counts (e.g. `Nx=2, Nz=3` = x,z periodic); the bare
-`pbc2d=true` defaults to x,y periodic with `Ic`/`Jc` (field error ~1e-4 at
-Ic=Jc=2, ~2.5e-6 at 4).
-With `pbc1d=true` a true 1D-periodic demag is used (Lebecki et al., J. Phys. D 41
-(2008) 175005): exactly one of `Nx`/`Ny`/`Nz` must be > 0 and sets both the
-periodic axis and the explicit image count `Ic` (field error ~1e-4 at Ic=2).
-
-**Mesh-driven dispatch**: calling `add_demag(sim)` without any PBC kwarg or
-image count follows the mesh periodicity (`FDMesh(...; pbc=...)`) -- 0 periodic
-directions give the open demag, one gives pbc1d, two give pbc2d, three give
-pbc3d, with the image counts taken from `Ic`/`Jc`.  This keeps demag and
-exchange/DMI (which always follow the mesh) consistent.  The explicit kwargs
-override the mesh; a warning is emitted when they select periodic axes that
-differ from the mesh's.  `Nx`/`Ny`/`Nz` without a `pbcX` kwarg keep the legacy
-macro (truncated-image) meaning.
+Add Demag to the system.  The boundary conditions follow the mesh periodicity
+(`FDMesh(...; pbc=...)`), so the demag and exchange/DMI always agree: 0
+periodic directions give the open demag, one gives the true 1D-periodic solver
+(Lebecki et al., J. Phys. D 41 (2008) 175005), two give the true 2D-periodic
+solver (Wang et al., Comp. Mater. Sci. 49 (2010) 84), three give the true
+3D-periodic solver (tin-foil convention).  `Ic`/`Jc` are the explicit image
+counts behind the analytic far-field tails (field error ~1e-5 at the default 4)
+and rarely need attention.
+`macroPBC=true` overrides the automatic choice with the legacy truncated-image
+method, where `Nx`/`Ny`/`Nz` are the repetition counts (the mesh is repeated
+`2Nx+1` times in x, ...; accuracy ~1/N^2); for backward compatibility, positive
+`Nx`/`Ny`/`Nz` without `macroPBC` also select it.
 """
-function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true, pbc3d=false,
-                   pbc2d=false, pbc1d=false, Ic=2, Jc=2)
-    explicit = pbc3d || pbc2d || pbc1d || Nx > 0 || Ny > 0 || Nz > 0
-    if !explicit
+function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true,
+                   macroPBC=false, Ic=4, Jc=4)
+    if macroPBC || Nx > 0 || Ny > 0 || Nz > 0
+        #the legacy macro: truncated image sums, Nx/Ny/Nz = the repetition counts
+        pbc_mesh_check(sim, [a for (a, c) in ((1, Nx), (2, Ny), (3, Nz)) if c > 0])
+        demag = _build_demag(sim, fft, Nx, Ny, Nz, :open, 0)
+    else
         #mesh-driven dispatch: the mesh's periodic directions select the demag
         #solver, so demag and exchange/DMI always share the periodicity
         axes = Int[]
@@ -459,33 +453,6 @@ function add_demag(sim::MicroSim; name="demag", Nx=0, Ny=0, Nz=0, fft=true, pbc3
         else
             demag = _build_demag(sim, fft, Ic, Ic, Ic, :pbc3d, 0)
         end
-    elseif pbc3d
-        pbc_mesh_check(sim, [1, 2, 3])
-        demag = init_demag_pbc3d(sim)
-    elseif pbc2d
-        cnt = (Nx > 0) + (Ny > 0) + (Nz > 0)
-        if cnt == 2
-            pair = Nx > 0 ? (Ny > 0 ? 1 : 2) : 3
-            pbc_mesh_check(sim, pair == 1 ? [1, 2] : pair == 2 ? [1, 3] : [2, 3])
-            demag = init_demag(sim, Nx, Ny, Nz; pbc2d_pair=pair)
-        elseif cnt == 0
-            pbc_mesh_check(sim, [1, 2])
-            demag = init_demag(sim, Ic, Jc, 0; pbc2d_pair=1)
-        else
-            error("pbc2d=true requires exactly two of Nx/Ny/Nz > 0 (the periodic pair and image counts)")
-        end
-    elseif pbc1d
-        cnt = (Nx > 0) + (Ny > 0) + (Nz > 0)
-        cnt == 1 || error("pbc1d=true requires exactly one of Nx/Ny/Nz > 0 as the periodic axis")
-        axis = Nx > 0 ? 1 : (Ny > 0 ? 2 : 3)
-        pbc_mesh_check(sim, [axis])
-        demag = init_demag(sim, Nx, Ny, Nz; pbc1d_axis=axis)
-    elseif fft && Float[] != AbstractFloat
-        pbc_mesh_check(sim, [a for (a, c) in ((1, Nx), (2, Ny), (3, Nz)) if c > 0])
-        demag = init_demag(sim, Nx, Ny, Nz)
-    else
-        pbc_mesh_check(sim, [a for (a, c) in ((1, Nx), (2, Ny), (3, Nz)) if c > 0])
-        demag = init_direct_demag(sim, Nx, Ny, Nz)
     end
     demag.name = name
     push!(sim.interactions, demag)

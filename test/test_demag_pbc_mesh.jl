@@ -1,6 +1,6 @@
-#Tests for the mesh-driven demag PBC dispatch: add_demag(sim) without PBC
-#kwargs follows the mesh periodicity (FDMesh(...; pbc=...)) and must agree
-#with the explicit solver choice; conflicting explicit kwargs warn.
+#Tests for the mesh-driven demag PBC dispatch: the bare add_demag follows the
+#mesh periodicity; macroPBC=true overrides it with the legacy truncated-image
+#method; a macro periodicity that differs from the mesh warns.
 
 using MicroMagnetic
 using Random
@@ -30,46 +30,33 @@ function field_of(mesh, m; kwargs...)
 end
 
 function test_demag_pbc_mesh()
-    #1d: mesh pbc="y" dispatches to pbc1d on y
+    #the open mesh: the bare call and macro=true (no counts) both give the open demag
     nx, ny, nz = 6, 5, 3
-    mesh = FDMesh(; dx=2e-9, dy=3e-9, dz=4e-9, nx=nx, ny=ny, nz=nz, pbc="y")
-    m = mesh_random_m(nx, ny, nz; seed=1)
-    h1 = field_of(mesh, m)
-    h2 = field_of(mesh, m; pbc1d=true, Ny=2)
-    scale = maximum(abs, h2)
-    tol = eltype(h2) == Float32 ? 1e-4 : 1e-9
-    @test maximum(abs, h1 - h2) <= tol * scale
-
-    #2d: mesh pbc="xz" dispatches to pbc2d on x,z
-    mesh = FDMesh(; dx=2e-9, dy=3e-9, dz=4e-9, nx=nx, ny=ny, nz=nz, pbc="xz")
-    m = mesh_random_m(nx, ny, nz; seed=2)
-    h1 = field_of(mesh, m)
-    h2 = field_of(mesh, m; pbc2d=true, Nx=2, Nz=2)
-    scale = maximum(abs, h2)
-    @test maximum(abs, h1 - h2) <= tol * scale
-
-    #3d: mesh pbc="xyz" dispatches to pbc3d
-    mesh = FDMesh(; dx=2e-9, dy=3e-9, dz=4e-9, nx=4, ny=4, nz=4, pbc="xyz")
-    m = mesh_random_m(4, 4, 4; seed=3)
-    h1 = field_of(mesh, m)
-    h2 = field_of(mesh, m; pbc3d=true)
-    scale = maximum(abs, h2)
-    @test maximum(abs, h1 - h2) <= tol * scale
-
-    #open mesh: the bare call gives the open demag
     mesh = FDMesh(; dx=2e-9, dy=3e-9, dz=4e-9, nx=nx, ny=ny, nz=nz)
     m = mesh_random_m(nx, ny, nz; seed=4)
     h1 = field_of(mesh, m)
-    h2 = field_of(mesh, m; Nx=0, Ny=0, Nz=0)
-    @test maximum(abs, h1 - h2) <= tol * maximum(abs, h2)
+    h2 = field_of(mesh, m; macroPBC=true)
+    @test maximum(abs, h1 - h2) <= 1e-9 * maximum(abs, h2)
 
-    #conflicting explicit kwargs warn (mesh xy, demag 1d on x)
+    #macroPBC=true overrides the mesh pbc: the mesh pbc="y" + macroPBC, Ny=2
+    #gives the macro field -- close to, but distinct from, the true-pbc1d field
+    mesh = FDMesh(; dx=2e-9, dy=3e-9, dz=4e-9, nx=nx, ny=ny, nz=nz, pbc="y")
+    m = mesh_random_m(nx, ny, nz; seed=1)
+    h_true = field_of(mesh, m)                       #pbc1d, Ic=4
+    h_mac = field_of(mesh, m; macroPBC=true, Ny=2)
+    scale = maximum(abs, h_true)
+    d = maximum(abs, h_mac - h_true)
+    Tf = eltype(h_true)
+    @test d > 0                                      #the override took effect
+    @test d <= (Tf == Float32 ? 1e-1 : 1e-2) * scale #... and stays near the true field
+
+    #a macro periodicity that differs from the mesh warns
     mesh = FDMesh(; dx=2e-9, dy=3e-9, dz=4e-9, nx=nx, ny=ny, nz=nz, pbc="xy")
     m = mesh_random_m(nx, ny, nz; seed=5)
     sim = Sim(mesh)
     set_Ms(sim, 8e5)
     init_m0(sim, m; norm=false)
-    @test_logs (:warn,) match_mode=:any add_demag(sim; pbc1d=true, Nx=2)
+    @test_logs (:warn,) match_mode=:any add_demag(sim; macroPBC=true, Nx=2)
 end
 
 @using_gpu()
