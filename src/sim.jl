@@ -54,6 +54,7 @@ sim = Sim(mesh, driver="SD")
 """
 function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
              save_data=true)
+    _n_sims[] += 1
     T = Float[]
     driver = _normalize_driver_name(driver)
 

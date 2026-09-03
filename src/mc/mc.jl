@@ -4,6 +4,7 @@ using WriteVTK
 export MonteCarlo, run_mc
 
 function MonteCarlo(mesh::Mesh; name="mc", mc_2d=false)
+    _n_sims[] += 1
     if !isa(mesh, CubicMesh) && (!isa(mesh, TriangularMesh))
         error("Only support CubicMesh and TriangularMesh.")
     end
