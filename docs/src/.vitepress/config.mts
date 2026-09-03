@@ -27,7 +27,7 @@ const nav = [
   ...navTemp.nav,
   {
     text: '中文',
-    link: `${getBaseRepository(baseTemp.base)}zh/`
+    link: 'https://magneticsimulation.github.io/MicroMagnetic.jl/zh/'
   },
   {
     component: 'VersionPicker'

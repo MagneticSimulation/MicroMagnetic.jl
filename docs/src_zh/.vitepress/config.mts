@@ -27,7 +27,7 @@ const nav = [
   ...navTemp.nav,
   {
     text: 'English',
-    link: `${getBaseRepository(baseTemp.base)}dev/`
+    link: 'https://magneticsimulation.github.io/MicroMagnetic.jl/dev/'
   }
 ]
 
