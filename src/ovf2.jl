@@ -339,8 +339,7 @@ Optional Parameters:
         fname : output file name
         type : output data type which can be chosen from Float64, Float32 or String
 """
-
-function mag2ovf(m::Array{T, 1}, nx::Int, ny::Int, nz::Int; 
+function mag2ovf(m::Array{T, 1}, nx::Int, ny::Int, nz::Int;
     dx::Float64 = 1e-9, dy::Float64 = 1e-9, dz::Float64 = 1e-9, 
     fname::String = "mag", type::DataType = Float64) where T <: AbstractFloat
 

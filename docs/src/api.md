@@ -38,6 +38,7 @@ hopfion
 ## Interfaces 
 ```@docs
 set_region
+region_map
 sim_with
 set_backend
 set_precision
@@ -46,6 +47,7 @@ Sim
 NEB
 set_driver
 set_alpha(sim::AbstractSim, alpha::ArrayOrFunction)
+set_pinning(sim::AbstractSim, ids::ArrayOrFunction)
 init_m0
 add_zeeman
 add_anis
@@ -94,6 +96,11 @@ add_anis_kagome(sim::AtomisticSim, Ku::Float64; ax1=(-0.5, -sqrt(3) / 2, 0), ax2
 add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
 ```
 
+## Monte Carlo 
+```@docs
+run_mc
+```
+
 ## Saddle-point search and transition paths
 ```@docs
 HessianModes
@@ -118,6 +125,8 @@ plot_transition_paths
 save_vtk
 save_ovf
 read_ovf
+mag2ovf
+read_table
 ```
 
 
@@ -130,6 +139,9 @@ plot_ts
 plot_m
 ovf2png
 ovf2movie
+compute_skyrmion_number
+compute_guiding_center
+compute_magnetic_phase
 ```
 
 

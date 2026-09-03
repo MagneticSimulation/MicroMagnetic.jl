@@ -114,7 +114,6 @@ compute the total skyrmion number of the given ovf file and return a number.
       skx_number = compute_skyrmion_number("my.ovf")
   ```
 """
-
 function compute_skyrmion_number(fname::String)
     ovf = read_ovf(fname)
     m = ovf.data

@@ -495,7 +495,7 @@ function _ortho_basis_q1q2!(Q, mx, my, mz)
     return Q
 end
 
-raw"""
+@doc raw"""
 R z = m0   (R = orthonormal, right-handed)
 
 Columns of R are (tangent-1, tangent-2, m̂0).  Uses a singularity-free
