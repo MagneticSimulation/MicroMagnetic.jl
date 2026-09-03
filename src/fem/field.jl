@@ -28,9 +28,7 @@ function assemble_anis_matirx(anis::AnisotropyFE, sim::MicroSimFE)
         end
     end
 
-    if get_backend(sim.spin) != CPU()
-        anis.K_matrix = GPUSparseMatrixCSC[](K_mat)
-    end
+    anis.K_matrix = to_sparse_csc(sim.spin, K_mat)
     
 end
 
@@ -88,10 +86,7 @@ function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
     # Update the exchange matrix
     exch.K_matrix = K
     
-    # Handle GPU conversion if needed
-    if get_backend(sim.spin) != CPU()
-        exch.K_matrix = GPUSparseMatrixCSC[](K)
-    end
+    exch.K_matrix = to_sparse_csc(sim.spin, K)
 end
 
 # this function is used to build the exchange matrix used for GPSM
@@ -143,9 +138,7 @@ function build_exch_matrix(exch::ExchangeFE, sim::MicroSimFE)
     D = spdiagm(nodal_L_inv_neg)
     Laplacian = D * Laplacian
 
-    if get_backend(sim.spin) != CPU()
-        Laplacian = GPUSparseMatrixCSR[](Laplacian)
-    end
+    Laplacian = to_sparse_csr(sim.spin, Laplacian)
 
     return Laplacian
 end
@@ -246,9 +239,7 @@ function assemble_rkky_matirx(rkky::InterlayerExchangeFE, sim::MicroSimFE)
         end
     end
 
-    if get_backend(sim.spin) != CPU()
-        rkky.K_matrix = GPUSparseMatrixCSC[](K)
-    end
+    rkky.K_matrix = to_sparse_csc(sim.spin, K)
 end
 
 

@@ -20,9 +20,14 @@ const Float = Ref(Float64)
 const _n_sims = Ref(0)
 
 using SparseArrays
-const GPUSparseMatrixCSC = Ref(SparseMatrixCSC)
-const GPUSparseMatrixCSR = Ref(SparseMatrixCSC)
-const GPUMatrix = Ref(Matrix)
+using SparseArrays: AbstractSparseMatrixCSC
+
+# Host-assembled matrices are moved to the backend where `like` lives through
+# these hooks: package extensions (e.g. CUDAExt) add methods for their array
+# types; the CPU fallbacks are no-ops ("backend follows the data").
+to_sparse_csc(like::AbstractArray, A::AbstractSparseMatrixCSC) = A
+to_sparse_csr(like::AbstractArray, A::AbstractSparseMatrixCSC) = A
+to_dense_matrix(like::AbstractArray, A::AbstractMatrix) = A
 
 """
     set_precision(x::Type{<:AbstractFloat}=Float64)

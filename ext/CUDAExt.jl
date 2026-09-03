@@ -4,6 +4,7 @@ using MicroMagnetic
 using CUDA
 using CUDA.CUSPARSE
 using CUDA.CUFFT
+using SparseArrays: AbstractSparseMatrixCSC
 
 CUDA.allowscalar(false)
 
@@ -54,11 +55,13 @@ end
 function set_cuda_backend()
     MicroMagnetic.all_backends[1] = CUDA.CUDABackend()
     MicroMagnetic.set_backend("cuda")
-    MicroMagnetic.GPUSparseMatrixCSC[] = CuSparseMatrixCSC
-    MicroMagnetic.GPUSparseMatrixCSR[] = CuSparseMatrixCSR
-    MicroMagnetic.GPUMatrix[] = CuMatrix
     return nothing
 end
+
+# move host-assembled matrices onto the GPU (backend follows the data)
+MicroMagnetic.to_sparse_csc(like::CuArray, A::AbstractSparseMatrixCSC) = CuSparseMatrixCSC(A)
+MicroMagnetic.to_sparse_csr(like::CuArray, A::AbstractSparseMatrixCSC) = CuSparseMatrixCSR(A)
+MicroMagnetic.to_dense_matrix(like::CuArray, A::AbstractMatrix) = CuMatrix(A)
 
 set_cuda_backend()
 

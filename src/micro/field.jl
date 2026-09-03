@@ -616,9 +616,7 @@ function build_exch_matrix(exch::Exchange, sim::MicroSim)
 
     Laplaian = sparse(I, J, V, n_total, n_total)
 
-    if get_backend(sim.spin) != CPU()
-        Laplaian = GPUSparseMatrixCSR[](Laplaian)
-    end
+    Laplaian = to_sparse_csr(sim.spin, Laplaian)
 
     return Laplaian
 end
