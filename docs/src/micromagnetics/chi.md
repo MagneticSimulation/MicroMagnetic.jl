@@ -80,7 +80,7 @@ end
 
 function run_dynamics(sim)
     set_driver(sim; driver="LLG", alpha=0.015, gamma=2.211e5)
-    sim.driver.tol = 1e-8
+    sim.driver.integrator.tol = 1e-8
     add_zeeman(sim, (0, 500, 0), time_fun, name="zee")  # Apply external magnetic field in the y-direction
 
     run_sim(sim; steps=10000, dt=1e-12, save_m_every=-1)  # Run the simulation for 10000 steps

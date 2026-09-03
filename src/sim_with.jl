@@ -327,6 +327,7 @@ function sim_with(args::Union{NamedTuple,Dict})
     delete!(args, :task)
 
     driver = get(args, :driver, "SD")
+    integ = get(args, :integrator, "DormandPrince")
     stopping_dmdt = get(args, :stopping_dmdt, 0.1)
     max_steps = get(args, :max_steps, 10000)
     relax_data_every = get(args, :relax_data_every, 0)
@@ -425,10 +426,10 @@ function sim_with(args::Union{NamedTuple,Dict})
                   using_time_factor=using_time_factor)
         else  # dynamics
             if lowercase(string(driver)) == "sd"
-                # SD cannot run dynamics; switch to LLG and re-apply the driver
+                # SD cannot run dynamics; fall back to LLG and re-apply the driver
                 # parameters to the freshly created driver (I-03)
-                set_driver(sim; driver="LLG", integrator="DormandPrince")
-                set_driver_arguments(sim, copy(driver_kw))
+                @warn "driver=\"SD\" cannot run a Dynamics stage; switched to \"LLG\"."
+                set_driver(sim; driver="LLG", integrator=integ, driver_kw...)
             end
             set_initial_condition!(sim, sim.driver.integrator)
             _apply_torques!()
@@ -466,8 +467,7 @@ function sim_with(args::Union{NamedTuple,Dict})
         if _is_relax(task_)
             # honor driver_s for relax stages as well (I-05)
             if lowercase(string(driver_)) != lowercase(sim.driver_name)
-                set_driver(sim; driver=driver_)
-                set_driver_arguments(sim, copy(driver_kw))
+                set_driver(sim; driver=driver_, integrator=integ, driver_kw...)
             end
             _apply_torques!()
 
@@ -477,12 +477,11 @@ function sim_with(args::Union{NamedTuple,Dict})
 
         elseif _is_dynamics(task_)
             if lowercase(string(driver_)) == "sd"
-                # SD cannot run dynamics; switch to LLG (I-03: re-apply params)
-                set_driver(sim; driver="LLG", integrator="DormandPrince")
-                set_driver_arguments(sim, copy(driver_kw))
+                # SD cannot run dynamics; fall back to LLG (I-03: re-apply params)
+                @warn "driver=\"SD\" cannot run a Dynamics stage; switched to \"LLG\"."
+                set_driver(sim; driver="LLG", integrator=integ, driver_kw...)
             elseif lowercase(string(driver_)) != lowercase(sim.driver_name)
-                set_driver(sim; driver=driver_)
-                set_driver_arguments(sim, copy(driver_kw))
+                set_driver(sim; driver=driver_, integrator=integ, driver_kw...)
             end
             set_initial_condition!(sim, sim.driver.integrator)
             _apply_torques!()

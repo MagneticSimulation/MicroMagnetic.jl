@@ -143,7 +143,7 @@ function NEB(sim::AbstractSim, given_images::TupleOrArray,
     init_saver(neb)
     neb.driver = create_driver(driver, integrator, neb.n_total)
     if driver == "LLG"
-        neb.driver.tol = 1e-5
+        neb.driver.integrator.tol = 1e-5
         neb.driver.precession = false
         neb.driver.alpha = Fill(0.2, neb.n_total)
         set_initial_condition!(neb, neb.driver.integrator)

@@ -168,13 +168,13 @@ function extract_driver_info(driver)
         info["alpha"] = driver.alpha
         info["gamma"] = driver.gamma
         info["integrator"] = Base.nameof(typeof(driver.integrator)) |> string
-        info["tol"] = driver.tol
+        isdefined(driver.integrator, :tol) && (info["tol"] = driver.integrator.tol)
     elseif driver isa Main.MicroMagnetic.InertialLLG
         info["alpha"] = driver.alpha
         info["gamma"] = driver.gamma
         info["tau"] = driver.tau
         info["integrator"] = Base.nameof(typeof(driver.integrator)) |> string
-        info["tol"] = driver.tol
+        isdefined(driver.integrator, :tol) && (info["tol"] = driver.integrator.tol)
     elseif driver isa Main.MicroMagnetic.SD
         info["max_tau"] = driver.max_tau
         info["min_tau"] = driver.min_tau

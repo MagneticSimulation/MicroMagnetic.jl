@@ -15,13 +15,13 @@ end
 # usually an O(1) `Fill` for uniform damping: "spatial or not" is a
 # property of the value, not the type, so LLG serves uniform and spatial damping
 # alike (the former SpatialLLG driver was merged into it). Use `set_alpha` to
-# change it.
+# change it. The integration tolerance lives on `driver.integrator.tol` (the
+# only copy); set it via `set_driver(sim; tol=...)`.
 mutable struct LLG{T<:AbstractFloat} <: Driver
     precession::Bool
     alpha::AbstractArray{T, 1}
     gamma::T
     integrator::Integrator
-    tol::Float64
 end
 
 # `sim.driver.alpha = <scalar>` stays supported: the scalar is converted in place to a
@@ -47,13 +47,13 @@ function Base.setproperty!(driver::LLG, name::Symbol, x)
     return invoke(setproperty!, Tuple{Any,Symbol,Any}, driver, name, x)
 end
 
-# Inertial LLG driver (keeps a scalar alpha; not part of the array unification)
+# Inertial LLG driver (keeps a scalar alpha; not part of the array unification).
+# The integration tolerance lives on `driver.integrator.tol`, same as LLG.
 mutable struct InertialLLG{T<:AbstractFloat} <: Driver
     alpha::T
     gamma::T
     tau::T  # angular momentum relaxation time
     integrator::Integrator
-    tol::Float64
 end
 
 # "SpatialLLG" was merged into "LLG" when alpha became a (possibly Fill) array;
@@ -135,9 +135,9 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
 
     if driver == "LLG"
         # the default uniform alpha is an O(1) Fill: zero allocation
-        return LLG(true, Fill(T(0.1), n_total), T(2.21e5), dopri5, tol)
+        return LLG(true, Fill(T(0.1), n_total), T(2.21e5), dopri5)
     elseif driver == "InertialLLG"
-        return InertialLLG(T(0.01), T(2.21e5), T(10e-12), dopri5, tol)
+        return InertialLLG(T(0.01), T(2.21e5), T(10e-12), dopri5)
     end
 
     return nothing
