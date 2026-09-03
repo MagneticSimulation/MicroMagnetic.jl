@@ -1,9 +1,9 @@
 @kernel function spatiotemporal_kernel!(output, dx::T, dy::T, dz::T, x0::T, y0::T, z0::T,
                                         t::T, f::Function) where {T<:AbstractFloat}
     i, j, k = @index(Global, NTuple)
-    x::T = x0 + (i-0.5)*dx
-    y::T = y0 + (j-0.5)*dy
-    z::T = z0 + (k-0.5)*dz
+    x::T = x0 + (i - T(0.5)) * dx
+    y::T = y0 + (j - T(0.5)) * dy
+    z::T = z0 + (k - T(0.5)) * dz
     @inbounds output[i, j, k] = f(x, y, z, t)
 end
 
@@ -83,12 +83,12 @@ The kernel anisotropy_kernel! works for both the micromagnetic and atomistic mod
         @inbounds h[j + 2] = 0
         @inbounds h[j + 3] = 0
     else
-        Ms_inv::T = 2.0 / Ms_local
+        Ms_inv::T = T(2) / Ms_local
         @inbounds sa = m[j + 1] * ax + m[j + 2] * ay + m[j + 3] * az
         @inbounds h[j + 1] = Ku[id] * sa * ax * Ms_inv
         @inbounds h[j + 2] = Ku[id] * sa * ay * Ms_inv
         @inbounds h[j + 3] = Ku[id] * sa * az * Ms_inv
-        @inbounds energy[id] = Ku[id] * (1.0 - sa * sa) * volume
+        @inbounds energy[id] = Ku[id] * (T(1) - sa * sa) * volume
     end
 end
 
@@ -119,7 +119,7 @@ The kernel cubic_anisotropy_kernel! works for both the micromagnetic and atomist
         @inbounds a3x = axis3x[id]
         @inbounds a3y = axis3y[id]
         @inbounds a3z = axis3z[id]
-        Ms_inv::T = 4.0 * Kc[id] / Ms_local
+        Ms_inv::T = T(4) * Kc[id] / Ms_local
         @inbounds mxp = a1x * m[j + 1] + a1y * m[j + 2] + a1z * m[j + 3]
         @inbounds myp = a2x * m[j + 1] + a2y * m[j + 2] + a2z * m[j + 3]
         @inbounds mzp = a3x * m[j + 1] + a3y * m[j + 2] + a3z * m[j + 3]
@@ -150,7 +150,7 @@ The kernel hexagonal_anisotropy_kernel! works for both the micromagnetic and ato
         @inbounds h[j + 2] = 0
         @inbounds h[j + 3] = 0
     else
-        Ms_inv::T = 1.0 / Ms_local
+        Ms_inv::T = T(1) / Ms_local
         @inbounds mx = m[j + 1]
         @inbounds my = m[j + 2]
         @inbounds mz = m[j + 3]
@@ -297,8 +297,8 @@ end
             end
         end
 
-        Ms_inv = 1.0 / Ms_local
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        Ms_inv = T(1) / Ms_local
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
         @inbounds h[i]   = fx * Ms_inv
         @inbounds h[i+1] = fy * Ms_inv
         @inbounds h[i+2] = fz * Ms_inv
@@ -377,8 +377,8 @@ end
             end
         end
 
-        Ms_inv = 1.0 / Ms_local
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        Ms_inv = T(1) / Ms_local
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
         @inbounds h[i]   = fx * Ms_inv
         @inbounds h[i+1] = fy * Ms_inv
         @inbounds h[i+2] = fz * Ms_inv
@@ -424,8 +424,8 @@ end
                 end
             end
         end
-        Ms_inv = 1.0 / Ms_local
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        Ms_inv = T(1) / Ms_local
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
         @inbounds h[i]   = fx * Ms_inv
         @inbounds h[i+1] = fy * Ms_inv
         @inbounds h[i+2] = fz * Ms_inv
@@ -488,7 +488,7 @@ end
         @inbounds h[k1] = Ms_inv * mtx
         @inbounds h[k1 + 1] = Ms_inv * mty
         @inbounds h[k1 + 2] = Ms_inv * mtz
-        @inbounds energy[id1] = -0.5 *
+        @inbounds energy[id1] = -T(0.5) *
                         Ms1 *
                         (h[k1] * mbx + h[k1 + 1] * mby + h[k1 + 2] * mbz) *
                         volume
@@ -497,7 +497,7 @@ end
         @inbounds h[k2] = Ms_inv * mbx
         @inbounds h[k2 + 1] = Ms_inv * mby
         @inbounds h[k2 + 2] = Ms_inv * mbz
-        @inbounds energy[id2] = -0.5 *
+        @inbounds energy[id2] = -T(0.5) *
                         Ms2 *
                         (h[k2] * mtx + h[k2 + 1] * mty + h[k2 + 2] * mtz) *
                         volume
@@ -527,22 +527,22 @@ end
     @inbounds Ms2 = mu0_Ms[id2]
 
     if Ms1 > 0 && Ms2 > 0
-        Ms_inv = 1.0 / (Ms1 * dz)
+        Ms_inv = T(1) / (Ms1 * dz)
         @inbounds h[k1]     = Ms_inv * cross_x(Dx, Dy, Dz, mtx, mty, mtz)
         @inbounds h[k1 + 1] = Ms_inv * cross_y(Dx, Dy, Dz, mtx, mty, mtz)
         @inbounds h[k1 + 2] = Ms_inv * cross_z(Dx, Dy, Dz, mtx, mty, mtz)
 
-        @inbounds energy[id1] = -0.5 *
+        @inbounds energy[id1] = -T(0.5) *
                                 Ms1 *
                                 (h[k1] * mbx + h[k1 + 1] * mby + h[k1 + 2] * mbz) *
                                 volume
 
-        Ms_inv = -1.0 / (Ms2 * dz)
+        Ms_inv = -T(1) / (Ms2 * dz)
         @inbounds h[k2]     = Ms_inv * cross_x(Dx, Dy, Dz, mbx, mby, mbz)
         @inbounds h[k2 + 1] = Ms_inv * cross_y(Dx, Dy, Dz, mbx, mby, mbz)
         @inbounds h[k2 + 2] = Ms_inv * cross_z(Dx, Dy, Dz, mbx, mby, mbz)
 
-        @inbounds energy[id2] = -0.5 *
+        @inbounds energy[id2] = -T(0.5) *
                                 Ms2 *
                                 (h[k2] * mtx + h[k2 + 1] * mty + h[k2 + 2] * mtz) *
                                 volume
@@ -782,7 +782,7 @@ end
         end
 
         @inbounds Ms_inv = inv_ms[I]
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
         @inbounds h[i]   = fx * Ms_inv
         @inbounds h[i+1] = fy * Ms_inv
         @inbounds h[i+2] = fz * Ms_inv
@@ -859,7 +859,7 @@ end
         end
 
         @inbounds Ms_inv = inv_ms[I]
-        @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
         @inbounds h[i]   = fx * Ms_inv
         @inbounds h[i+1] = fy * Ms_inv
         @inbounds h[i+2] = fz * Ms_inv
@@ -915,7 +915,7 @@ end
                 end
             end
             @inbounds Ms_inv = inv_ms[I]
-            @inbounds energy[I] = -0.5 * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+            @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
             @inbounds h[i]   = fx * Ms_inv
             @inbounds h[i+1] = fy * Ms_inv
             @inbounds h[i+2] = fz * Ms_inv
