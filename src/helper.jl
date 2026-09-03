@@ -378,7 +378,7 @@ function omega_to_spin(omega::AbstractArray{T,1}, spin::AbstractArray{T,1},
         @inbounds c[j + 2] = (a31 * m1 + a32 * m2 + a33 * m3) / r
     end
 
-    local_kernal!(default_backend[], groupsize[])(omega, spin, spin_next; ndrange=N)
+    local_kernal!(get_backend(omega), groupsize[])(omega, spin, spin_next; ndrange=N)
     return nothing
 end
 

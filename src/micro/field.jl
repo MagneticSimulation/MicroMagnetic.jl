@@ -20,7 +20,7 @@ function effective_field(zee::Zeeman, sim::MicroSim, spin::AbstractArray{T,1},
     factor = sim.mesh.volume
     tx, ty, tz = _zeeman_time_factors(zee, t)
 
-    back = default_backend[]
+    back = get_backend(spin)
     if zee.ft === _static_time
         # the interaction field was materialised at add/update time and never
         # changes, so only the energy needs refreshing
@@ -40,7 +40,7 @@ function effective_field(anis::Anisotropy, sim::MicroSim, spin::AbstractArray{T,
     N = sim.n_total
     volume = T(sim.mesh.volume)
 
-    back = default_backend[]
+    back = get_backend(spin)
     anisotropy_kernel!(back, groupsize[])(spin, anis.field, anis.energy, anis.Ku,
                                           anis.axis_x, anis.axis_y, anis.axis_z,
                                           sim.mu0_Ms, volume; ndrange=N)
@@ -54,7 +54,7 @@ function effective_field(anis::CubicAnisotropy, sim::MicroSim, spin::AbstractArr
     volume = T(sim.mesh.volume)
 
     heff = output === nothing ? anis.field : output
-    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc,
+    cubic_anisotropy_kernel!(get_backend(spin))(spin, heff, anis.energy, anis.Kc,
                                                 anis.axis1x, anis.axis1y, anis.axis1z,
                                                 anis.axis2x, anis.axis2y, anis.axis2z,
                                                 anis.axis3x, anis.axis3y, anis.axis3z,
@@ -69,7 +69,7 @@ function effective_field(anis::HexagonalAnisotropy, sim::MicroSim, spin::Abstrac
     N = sim.n_total
     volume = T(sim.mesh.volume)
 
-    hexagonal_anisotropy_kernel!(default_backend[])(spin, anis.field, anis.energy, anis.K1,
+    hexagonal_anisotropy_kernel!(get_backend(spin))(spin, anis.field, anis.energy, anis.K1,
                                                     anis.K2, anis.K3, sim.mu0_Ms, volume;
                                                     ndrange=N)
 
@@ -81,7 +81,7 @@ function effective_field(anis::TwinMonoclinicAnisotropy, sim::MicroSim,
     N = sim.n_total
     volume = T(sim.mesh.volume)
 
-    twin_monoclinic_anisotropy_kernel!(default_backend[], groupsize[])(
+    twin_monoclinic_anisotropy_kernel!(get_backend(spin), groupsize[])(
         spin, anis.field, anis.energy, anis.axis_a, anis.axis_b, anis.axis_u111,
         sim.mu0_Ms, T(anis.Ka), T(anis.Kb), T(anis.Kaa), T(anis.Kbb),
         T(anis.Kab), T(anis.Ku), volume; ndrange=N)
@@ -96,7 +96,7 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::AbstractArray{T,1}
     volume = T(mesh.volume)
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
-    back = default_backend[]
+    back = get_backend(spin)
     cls, ok = _exchange_tables!(sim, exch)
     if ok
         exchange_partition_kernel!(back, groupsize[])(spin, exch.field, exch.energy,
@@ -119,7 +119,7 @@ function effective_field(dmi::DMI, sim::MicroSim, spin::AbstractArray{T,1},
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
     tfac = T(dmi.ft(t))
-    back = default_backend[]
+    back = get_backend(spin)
     if dmi.type === :bulk
         cls, ok = _dmi_tables!(sim, dmi)
         if ok
@@ -155,7 +155,7 @@ function effective_field(dmi::InterlayerDMI, sim::MicroSim, spin::AbstractArray{
     nx, ny = mesh.nx, mesh.ny
     dz = T(mesh.dz)
 
-    back = default_backend[]
+    back = get_backend(spin)
     interlayer_dmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
                                               dmi.Dx, dmi.Dy, dmi.Dz, dmi.k1, dmi.k2,
                                               Int32(nx), Int32(ny), dz, volume;
@@ -172,7 +172,7 @@ function effective_field(exch::InterlayerExchange, sim::MicroSim, spin::Abstract
     nx, ny = mesh.nx, mesh.ny
     dz = T(mesh.dz)
 
-    back = default_backend[]
+    back = get_backend(spin)
     interlayer_exch_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
                                                exch.Js, exch.k1, exch.k2, Int32(nx),
                                                Int32(ny), dz, volume; ndrange=(nx, ny))
@@ -195,7 +195,7 @@ function effective_field(st::StochasticField, sim::MicroSim, spin::AbstractArray
     gamma = sim.driver.gamma
     k_B = st.k_B
 
-    back = default_backend[]
+    back = get_backend(spin)
     # alpha enters per spin inside the kernel (uniform damping arrives as a Fill)
     factor = 2 * k_B / (volume * gamma * dt)
     if st.spatiotemporal_mode
@@ -226,7 +226,7 @@ function effective_field(torque::TorqueField, sim::AbstractSim, spin::AbstractAr
 
     torque.torque_fun(torque.field, spin, t)
 
-    back = default_backend[]
+    back = get_backend(spin)
     torque_kernel!(back, groupsize[])(spin, torque.field, gamma; ndrange=N)
 
     return nothing
@@ -238,12 +238,12 @@ function effective_field(me::Magnetoelastic, sim::MicroSim, spin::AbstractArray{
     volume = T(sim.mesh.volume)
     
     if me.model == :tensor
-        back = default_backend[]
+        back = get_backend(spin)
         magnetoelastic_tensor_kernel!(back, groupsize[])(spin, me.field, me.energy, me.field_data,
                                                        T(me.lambda_s),
                                                        sim.mu0_Ms, volume; ndrange=N)
     elseif me.model == :cubic
-        back = default_backend[]
+        back = get_backend(spin)
         magnetoelastic_cubic_kernel!(back, groupsize[])(spin, me.field, me.energy, me.field_data,
                                                   T(me.B1), T(me.B2),
                                                   sim.mu0_Ms, volume; ndrange=N)
@@ -259,7 +259,7 @@ function effective_field(torque::DFTorqueField, sim::AbstractSim, spin::Abstract
     N = sim.n_total
     gamma = sim.driver.gamma
 
-    back = default_backend[]
+    back = get_backend(spin)
     df_torque_kernel!(back, groupsize[])(spin, torque.field, gamma, torque.aj, torque.bj,
                                          torque.px, torque.py, torque.pz; ndrange=N)
 
@@ -274,7 +274,7 @@ function effective_field(torque::ZhangLiTorque, sim::AbstractSim, spin::Abstract
 
     ut = T(torque.ufun(t)/gamma)
 
-    back = default_backend[]
+    back = get_backend(spin)
     zhangli_torque_kernel!(back, groupsize[])(spin, torque.field, torque.bJx,
                                               torque.bJy, torque.bJz, mesh.ngbs,
                                               torque.xi, ut, T(mesh.dx), T(mesh.dy),
@@ -290,7 +290,7 @@ function effective_field(torque::SlonczewskiTorque, sim::AbstractSim,
     lambda_sq = T(torque.Lambda^2)
     ft = T(torque.ufun(t)*torque.beta)
 
-    back = default_backend[]
+    back = get_backend(spin)
     slonczewski_torque_kernel!(back, groupsize[])(spin, torque.field, torque.J, lambda_sq,
                                                   torque.P, torque.xi, ft, torque.px,
                                                   torque.py, torque.pz; ndrange=N)
@@ -303,7 +303,7 @@ function effective_field(torque::SAHETorqueField, sim::AbstractSim,
     N = sim.n_total
     gamma = sim.driver.gamma
 
-    back = default_backend[]
+    back = get_backend(spin)
     ms = isa(sim, MicroSim) ? sim.mu0_Ms : sim.mu_s
     sahe_torque_kernel!(back, groupsize[])(spin, torque.field, ms, torque.sigma_s_a1, torque.sigma_sa1_a1,
                                            torque.sigma_sa2, torque.a2, torque.a3,
@@ -616,7 +616,7 @@ function build_exch_matrix(exch::Exchange, sim::MicroSim)
 
     Laplaian = sparse(I, J, V, n_total, n_total)
 
-    if default_backend[] != CPU()
+    if get_backend(sim.spin) != CPU()
         Laplaian = GPUSparseMatrixCSR[](Laplaian)
     end
 

@@ -145,7 +145,7 @@ function _path_validation(path, active; norm_tolerance=1e-8)
     norm_errors = create_zeros(entry_count)
     zero_flags = create_zeros(entry_count)
     finite_flags = create_zeros(entry_count)
-    kernel! = _path_validation_kernel!(default_backend[], groupsize[])
+    kernel! = _path_validation_kernel!(get_backend(device_path), groupsize[])
     kernel!(norm_errors, zero_flags, finite_flags, device_path, active_device,
             site_count, eltype(device_path)(norm_tolerance); ndrange=entry_count)
     finite = Int(round(sum(finite_flags))) == entry_count
@@ -161,7 +161,7 @@ function _safe_interpolate_device(
     angle_tolerance=1e-10)
 
     output = create_zeros(length(a))
-    kernel! = _safe_slerp_kernel!(default_backend[], groupsize[])
+    kernel! = _safe_slerp_kernel!(get_backend(output), groupsize[])
     kernel!(output, a, b, eltype(a)(fraction), backend.active,
             eltype(a)(angle_tolerance); ndrange=length(backend.active_cpu))
     return output

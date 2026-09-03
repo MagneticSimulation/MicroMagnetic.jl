@@ -51,7 +51,7 @@ function llg_cayley_call_back(sim::AbstractSim, dw_dt::AbstractArray{T,1}, t::Fl
     omega_to_spin(omega, sim.prespin, sim.spin, N)
     effective_field(sim, sim.spin, t)
 
-    kernel! = llg_rhs_cayley_kernel!(default_backend[], groupsize[])
+    kernel! = llg_rhs_cayley_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(dw_dt, sim.spin, sim.field, omega, sim.pins, driver.alpha, driver.gamma,
             driver.precession; ndrange=N)
 

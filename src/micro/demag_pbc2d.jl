@@ -102,7 +102,7 @@ function pbc2d_add_tail!(tensor, pair::Int, build_idx::Int, Nx::Int, Ny::Int, Nz
     Yc = (n2 + 0.5) * l2
     abc = dx * dy * dz
     pcomp = PBC2D_PCOMP[pair][build_idx]
-    kernel! = pbc2d_add_tail_kernel!(default_backend[], groupsize[])
+    kernel! = pbc2d_add_tail_kernel!(get_backend(tensor), groupsize[])
     kernel!(tensor, pair, pcomp, Xc, Yc, abc, l1, l2, dx, dy, dz; ndrange=(nx, ny, nz))
     return nothing
 end
@@ -148,7 +148,7 @@ end
 function pbc2d_dc_fix!(tensor, pair::Int, build_idx::Int, nx::Int, ny::Int, nz::Int)
     self = (pair == 1 ? (build_idx == 3) : pair == 2 ? (build_idx == 2) : (build_idx == 1)) ? 1 : 0
     ndrange = pair == 1 ? nz : pair == 2 ? ny : nx
-    kernel! = pbc2d_dc_kernel!(default_backend[], groupsize[])
+    kernel! = pbc2d_dc_kernel!(get_backend(tensor), groupsize[])
     kernel!(tensor, pair, self, nx, ny, nz; ndrange=ndrange)
     return nothing
 end

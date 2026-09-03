@@ -32,7 +32,7 @@ function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function=_
 
     # materialise the interaction field once; the dynamic path rewrites it per
     # step, the static path keeps it until update_zeeman replaces the components
-    zeeman_write_field_kernel!(default_backend[], groupsize[])(zeeman.field, Hx, Hy,
+    zeeman_write_field_kernel!(get_backend(zeeman.field), groupsize[])(zeeman.field, Hx, Hy,
                                     Hz, T(1), T(1), T(1); ndrange=n_total)
 
     push!(sim.interactions, zeeman)
@@ -89,7 +89,7 @@ function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; H_output=no
             end
             # re-materialise the interaction field; for a static term this is the
             # update itself, a dynamic term rewrites it at every step anyway
-            zeeman_write_field_kernel!(default_backend[], groupsize[])(i.field, Hx, Hy,
+            zeeman_write_field_kernel!(get_backend(i.field), groupsize[])(i.field, Hx, Hy,
                                       Hz, T(1), T(1), T(1); ndrange=n_total)
             return nothing
         end

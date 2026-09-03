@@ -46,7 +46,7 @@ end
 function uniform_random_sphere(spin::AbstractArray{T,1}, rnd::AbstractArray{T,1},
                                N::Int64) where {T<:AbstractFloat}
     rand!(rnd)
-    kernel! = uniform_random_sphere_kernel!(default_backend[], groupsize[])
+    kernel! = uniform_random_sphere_kernel!(get_backend(spin), groupsize[])
     kernel!(spin, rnd; ndrange=N)
     
 
@@ -56,7 +56,7 @@ end
 function uniform_random_circle_xy(spin::AbstractArray{T,1}, rnd::AbstractArray{T,1},
                                   N::Int64) where {T<:AbstractFloat}
     rand!(rnd)
-    kernel! = uniform_random_circle_xy_kernel!(default_backend[], groupsize[])
+    kernel! = uniform_random_circle_xy_kernel!(get_backend(spin), groupsize[])
     kernel!(spin, rnd; ndrange=N)
     
 
@@ -69,7 +69,7 @@ function compute_dE_zeeman_anisotropy_energy(sim::MonteCarlo, za::AnisotropyMC, 
     cubic = isa(mesh, CubicMesh)
 
     ze = sim.zeeman
-    kernel! = dE_zeeman_anisotropy_energy_kernel!(default_backend[], groupsize[])
+    kernel! = dE_zeeman_anisotropy_energy_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(sim.spin, sim.nextspin, sim.shape, sim.delta_E, ze.Hx, ze.Hy, ze.Hz, za.Ku,
             za.Kc, za.axis[1], za.axis[2], za.axis[3], bias, cubic; ndrange=(nx, ny, nz))
     
@@ -78,7 +78,7 @@ end
 
 function compute_zeeman_anisotropy_energy(sim::MonteCarlo, za::AnisotropyMC)
     ze = sim.zeeman
-    kernel! = zeeman_anisotropy_energy_kernel!(default_backend[], groupsize[])
+    kernel! = zeeman_anisotropy_energy_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(sim.spin, sim.shape, sim.energy, ze.Hx, ze.Hy, ze.Hz, za.Ku, za.Kc, za.axis[1],
             za.axis[2], za.axis[3]; ndrange=sim.n_total)
     
@@ -91,7 +91,7 @@ function add_dE_exch_dmi_energy(sim::MonteCarlo, exch::ExchangeDMI, bias::Int64)
     cubic = isa(mesh, CubicMesh)
 
     ex = exch
-    kernel! = add_dE_exch_dmi_energy_kernel!(default_backend[], groupsize[])
+    kernel! = add_dE_exch_dmi_energy_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(sim.spin, sim.nextspin, sim.shape, sim.delta_E, mesh.ngbs, mesh.n_ngbs, ex.Jx,
             ex.Jy, ex.Jz, ex.D, bias, cubic; ndrange=(nx, ny, nz))
     
@@ -101,7 +101,7 @@ end
 function add_exch_dmi_energy(sim::MonteCarlo, exch::ExchangeDMI)
     mesh = sim.mesh
     ex = exch
-    kernel! = add_exch_dmi_energy_kernel!(default_backend[], groupsize[])
+    kernel! = add_exch_dmi_energy_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(sim.spin, sim.shape, sim.energy, mesh.ngbs, mesh.n_ngbs, ex.Jx, ex.Jy, ex.Jz,
             ex.D; ndrange=sim.n_total)
     
@@ -123,7 +123,7 @@ function run_step_bias(sim::MonteCarlo, bias::Int64)
 
     cubic = isa(mesh, CubicMesh)
 
-    kernel! = run_monte_carlo_kernel!(default_backend[], groupsize[])
+    kernel! = run_monte_carlo_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(sim.spin, sim.nextspin, sim.rnd, sim.shape, sim.delta_E, sim.T, bias, cubic;
             ndrange=(nx, ny, nz))
     

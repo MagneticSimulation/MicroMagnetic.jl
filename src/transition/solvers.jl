@@ -174,7 +174,7 @@ end
 
 function _atlas_residuals!(state, backend, images, forces, energy_scale)
     n_sites = div(size(images, 1), 3)
-    kernel! = _atlas_gradient_kernel!(default_backend[], groupsize[])
+    kernel! = _atlas_gradient_kernel!(get_backend(images), groupsize[])
     kernel!(state.residuals, images, forces, state.coordinates,
             backend.active, inv(Float64(energy_scale)), n_sites;
             ndrange=n_sites * size(images, 2))
@@ -222,13 +222,13 @@ end
 function _atlas_transform_charts!(state, backend, images)
     n_sites = size(state.coordinates, 1)
     n_total = n_sites * size(state.coordinates, 2)
-    metric! = _atlas_metric_kernel!(default_backend[], groupsize[])
+    metric! = _atlas_metric_kernel!(get_backend(images), groupsize[])
     metric!(state.factors, state.coordinates, images, n_sites; ndrange=n_total)
     needs_change = Float64(minimum(state.factors)) < -0.6
     needs_change || return false
-    factors! = _atlas_chart_factors_kernel!(default_backend[], groupsize[])
+    factors! = _atlas_chart_factors_kernel!(get_backend(images), groupsize[])
     factors!(state.factors, state.coordinates, images, n_sites; ndrange=n_total)
-    scale! = _atlas_scale_kernel!(default_backend[], groupsize[])
+    scale! = _atlas_scale_kernel!(get_backend(images), groupsize[])
     for vectors in (state.directions, state.residuals_last,
                     state.updates..., state.gradient_updates...)
         scale!(vectors, state.factors, n_sites; ndrange=n_total)
@@ -259,7 +259,7 @@ function _atlas_step!(state::_LBFGSAtlasState, backend, images, forces;
     end
     scaling = rms > state.maxmove ? state.maxmove / rms : 1.0
     state.directions .*= scaling
-    kernel! = _atlas_rotate_kernel!(default_backend[], groupsize[])
+    kernel! = _atlas_rotate_kernel!(get_backend(images), groupsize[])
     kernel!(images, state.coordinates, state.directions, backend.active, n_sites;
             ndrange=n_sites * size(images, 2))
     _atlas_transform_charts!(state, backend, images)

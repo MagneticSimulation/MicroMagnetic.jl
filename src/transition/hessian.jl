@@ -244,7 +244,7 @@ function _prepare_transition_hessian(backend::_TransitionBackend, spin)
     effective_field_energy(sim, sim.spin, 0.0)
     base_gradient = create_zeros(length(spin))
     kernel! = _transition_euclidean_gradient_kernel!(
-        default_backend[], groupsize[])
+        get_backend(spin), groupsize[])
     kernel!(base_gradient, sim.field, backend.weights, backend.active;
             ndrange=length(backend.active_cpu))
     return (constant_field=constant_field, base_gradient=base_gradient)
@@ -291,7 +291,7 @@ function _transition_gradient!(gradient, backend::_TransitionBackend, spin)
     sim = backend.evaluator
     _set_transition_spin!(sim, spin)
     effective_field_energy(sim, sim.spin, 0.0)
-    kernel! = _transition_gradient_kernel!(default_backend[], groupsize[])
+    kernel! = _transition_gradient_kernel!(get_backend(spin), groupsize[])
     kernel!(gradient, sim.field, spin, backend.weights, backend.active;
             ndrange=length(backend.active_cpu))
     return gradient
@@ -304,7 +304,7 @@ function _transition_energy_gradient!(gradient, backend::_TransitionBackend, spi
     sim = backend.evaluator
     _set_transition_spin!(sim, spin)
     effective_field_energy(sim, sim.spin, 0.0)
-    kernel! = _transition_gradient_kernel!(default_backend[], groupsize[])
+    kernel! = _transition_gradient_kernel!(get_backend(spin), groupsize[])
     kernel!(gradient, sim.field, spin, backend.weights, backend.active;
             ndrange=length(backend.active_cpu))
     return Float64(sum(sim.energy))
@@ -313,14 +313,14 @@ end
 function _project_tangent!(vector, spin, backend::_TransitionBackend)
     length(vector) == length(spin) ||
         throw(DimensionMismatch("Vector and spin arrays must have equal length."))
-    kernel! = _project_tangent_kernel!(default_backend[], groupsize[])
+    kernel! = _project_tangent_kernel!(get_backend(spin), groupsize[])
     kernel!(vector, spin, backend.active; ndrange=length(backend.active_cpu))
     return vector
 end
 
 function _maximum_site_norm(vector, backend::_TransitionBackend)
     site_norms = create_zeros(length(backend.active_cpu))
-    kernel! = _site_norm_kernel!(default_backend[], groupsize[])
+    kernel! = _site_norm_kernel!(get_backend(vector), groupsize[])
     kernel!(site_norms, vector, backend.active; ndrange=length(backend.active_cpu))
     return Float64(maximum(site_norms))
 end
@@ -342,7 +342,7 @@ end
 
 function _geodesic_step!(output, spin, direction, step_size,
                          backend::_TransitionBackend)
-    kernel! = _geodesic_step_kernel!(default_backend[], groupsize[])
+    kernel! = _geodesic_step_kernel!(get_backend(spin), groupsize[])
     kernel!(output, spin, direction, eltype(spin)(step_size), backend.active;
             ndrange=length(backend.active_cpu))
     return output
@@ -350,7 +350,7 @@ end
 
 function _transport_tangent!(output, vector, spin_from, spin_to,
                              backend::_TransitionBackend)
-    kernel! = _transport_tangent_kernel!(default_backend[], groupsize[])
+    kernel! = _transport_tangent_kernel!(get_backend(spin_from), groupsize[])
     kernel!(output, vector, spin_from, spin_to, backend.active;
             ndrange=length(backend.active_cpu))
     _project_tangent!(output, spin_to, backend)
@@ -473,7 +473,7 @@ end
 function _build_tangent_basis!(backend::_TransitionBackend, spin)
     n_sites = length(backend.active_cpu)
     basis = create_zeros(6 * n_sites)
-    kernel! = _tangent_basis_kernel!(default_backend[], groupsize[])
+    kernel! = _tangent_basis_kernel!(get_backend(spin), groupsize[])
     kernel!(basis, spin, backend.active; ndrange=n_sites)
     # GPU kernels cannot call error() (string formatting is unsupported on
     # device). The kernel writes NaN sentinels for degenerate sites; check
@@ -487,7 +487,7 @@ end
 # Project a 3N device vector to 2N coordinates.
 function _project_vector_to_2N!(output_2N, vector_3N, basis, backend::_TransitionBackend)
     n_sites = length(backend.active_cpu)
-    kernel! = _project_to_2N_kernel!(default_backend[], groupsize[])
+    kernel! = _project_to_2N_kernel!(get_backend(vector_3N), groupsize[])
     kernel!(output_2N, vector_3N, basis, backend.active, n_sites;
             ndrange=2 * n_sites)
     return output_2N
@@ -496,7 +496,7 @@ end
 # Lift a 2N device vector back to 3N.
 function _lift_vector_from_2N!(output_3N, vector_2N, basis, backend::_TransitionBackend)
     n_sites = length(backend.active_cpu)
-    kernel! = _lift_from_2N_kernel!(default_backend[], groupsize[])
+    kernel! = _lift_from_2N_kernel!(get_backend(vector_2N), groupsize[])
     kernel!(output_3N, vector_2N, basis, backend.active, n_sites;
             ndrange=n_sites)
     return output_3N
@@ -544,7 +544,7 @@ function _apply_transition_hessian!(
         _set_transition_spin!(sim, direction)
         effective_field_energy(sim, sim.spin, 0.0)
         kernel! = _transition_affine_hessian_kernel!(
-            default_backend[], groupsize[])
+            get_backend(sim.spin), groupsize[])
         kernel!(
             output, sim.field, hessian_context.constant_field,
             hessian_context.base_gradient, spin, direction,

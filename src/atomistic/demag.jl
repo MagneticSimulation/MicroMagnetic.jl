@@ -252,7 +252,7 @@ end
 
 function distribute_m_atomistic(m, m_pad, mu_s::AbstractArray{T,1},
                                 nx::Int64, ny::Int64, nz::Int64) where {T<:AbstractFloat}
-    kernel! = distribute_m_atomistic_kernel!(default_backend[], groupsize[])
+    kernel! = distribute_m_atomistic_kernel!(get_backend(m), groupsize[])
     kernel!(m, m_pad, mu_s; ndrange=(nx, ny, nz))
     return nothing
 end
@@ -274,7 +274,7 @@ end
 function collect_h_atomistic_energy(h, energy, m, h_pad, mu_s::AbstractArray{T,1},
                                     nx::Int64, ny::Int64,
                                     nz::Int64) where {T<:AbstractFloat}
-    kernel! = collect_h_atomistic_kernel!(default_backend[], groupsize[])
+    kernel! = collect_h_atomistic_kernel!(get_backend(m), groupsize[])
     kernel!(h, energy, m, h_pad, mu_s; ndrange=(nx, ny, nz))
     return nothing
 end

@@ -310,7 +310,7 @@ end
 #ignore FFTW and are left untouched.
 function tune_fftw_threads(m_pad::AbstractArray{T,4}, M_pad::AbstractArray{Complex{T},4},
                            nx_fft::Int, make_ip_plan::Function) where {T<:AbstractFloat}
-    default_backend[] != CPU() && return nothing
+    get_backend(m_pad) != CPU() && return nothing
     if length(m_pad) < 2^16 #threading cannot pay off on small problems
         FFTW.set_num_threads(1)
         return nothing
@@ -639,7 +639,7 @@ end
 end
 
 function distribute_m(m, m_pad, Ms, nx::Int64, ny::Int64, nz::Int64)
-    kernel! = distribute_m_kernel!(default_backend[])
+    kernel! = distribute_m_kernel!(get_backend(m))
     kernel!(m, m_pad, Ms; ndrange=(nx, ny, nz))
     return nothing
 end
@@ -662,7 +662,7 @@ end
 
 function collect_h_energy(h, energy, m, h_pad, Ms, volume::T, nx::Int64, ny::Int64,
                           nz::Int64) where {T<:AbstractFloat}
-    kernel! = collect_h_kernel!(default_backend[])
+    kernel! = collect_h_kernel!(get_backend(m))
     kernel!(h, energy, m, h_pad, Ms, volume; ndrange=(nx, ny, nz))
     return nothing
 end
@@ -716,7 +716,7 @@ end
 
 function add_tensor_M(M_pad, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz,
                       tensor_yz, ny_fft::Int64, nz_fft::Int64)
-    kernel! = add_tensor_M_kernel!(default_backend[], groupsize[])
+    kernel! = add_tensor_M_kernel!(get_backend(M_pad), groupsize[])
     lenx, ny2, nz2 = size(tensor_xx)
     nspec = lenx * ny_fft * nz_fft
     kernel!(M_pad, tensor_xx, tensor_yy, tensor_zz, tensor_xy, tensor_xz, tensor_yz,

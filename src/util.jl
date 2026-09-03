@@ -104,7 +104,7 @@ function vector_add(A::AbstractArray{T,1}, B::AbstractArray{T,1}) where {T<:Abst
         i = @index(Global)
         @inbounds a[i] = a[i] + b[i]
     end
-    kernel! = vector_add_kernel!(default_backend[])
+    kernel! = vector_add_kernel!(get_backend(A))
     kernel!(A, B; ndrange=length(A))
     return nothing
 end
@@ -116,7 +116,7 @@ function vector_add2(a::A, a1::A, a2::A,
         i = @index(Global)
         @inbounds a[i] = a1[i] + c * a2[i]
     end
-    kernel! = vector_add2_kernal!(default_backend[], groupsize[])
+    kernel! = vector_add2_kernal!(get_backend(a), groupsize[])
     kernel!(a, a1, a2, c2; ndrange=length(a))
     return nothing
 end
@@ -128,7 +128,7 @@ function vector_add3(a::A, a1::A, a2::A, a3::A, c2::S,
         i = @index(Global)
         @inbounds a[i] = a1[i] + c2 * a2[i] + c3 * a3[i]
     end
-    kernel! = vector_add3_kernal!(default_backend[], groupsize[])
+    kernel! = vector_add3_kernal!(get_backend(a), groupsize[])
     kernel!(a, a1, a2, a3, c2, c3; ndrange=length(a))
     return nothing
 end
@@ -141,7 +141,7 @@ function vector_add4(a::A, a1::A, a2::A, a3::A, a4::A, c2::S, c3::S,
         i = @index(Global)
         @inbounds a[i] = a1[i] + c2 * a2[i] + c3 * a3[i] + c4 * a4[i]
     end
-    kernel! = vector_add4_kernel!(default_backend[], groupsize[])
+    kernel! = vector_add4_kernel!(get_backend(a), groupsize[])
     kernel!(a, a1, a2, a3, a4, c2, c3, c4; ndrange=length(a))
     return nothing
 end
@@ -154,7 +154,7 @@ function vector_add5(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, c2::S, c3::S, c4::
         i = @index(Global)
         @inbounds a[i] = a1[i] + c2 * a2[i] + c3 * a3[i] + c4 * a4[i] + c5 * a5[i]
     end
-    kernel! = vector_add5_kernel!(default_backend[], groupsize[])
+    kernel! = vector_add5_kernel!(get_backend(a), groupsize[])
     kernel!(a, a1, a2, a3, a4, a5, c2, c3, c4, c5; ndrange=length(a))
     return nothing
 end
@@ -167,7 +167,7 @@ function vector_add5b(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, c1::S, c2::S, c3:
         i = @index(Global)
         @inbounds a[i] = c1 * a1[i] + c2 * a2[i] + c3 * a3[i] + c4 * a4[i] + c5 * a5[i]
     end
-    kernel! = vector_add5b_kernel!(default_backend[], groupsize[])
+    kernel! = vector_add5b_kernel!(get_backend(a), groupsize[])
     kernel!(a, a1, a2, a3, a4, a5, c1, c2, c3, c4, c5; ndrange=length(a))
     return nothing
 end
@@ -186,7 +186,7 @@ function vector_add6(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, a6::A, c2::S, c3::
                          c5 * a5[i] +
                          c6 * a6[i]
     end
-    kernel! = vector_add6_kernel!(default_backend[], groupsize[])
+    kernel! = vector_add6_kernel!(get_backend(a), groupsize[])
     kernel!(a, a1, a2, a3, a4, a5, a6, c2, c3, c4, c5, c6; ndrange=length(a))
     return nothing
 end
@@ -205,7 +205,7 @@ function vector_add6b(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, a6::A, c1::S, c2:
                          c5 * a5[i] +
                          c6 * a6[i]
     end
-    kernel! = vector_add6b_kernel!(default_backend[], groupsize[])
+    kernel! = vector_add6b_kernel!(get_backend(a), groupsize[])
     return kernel!(a, a1, a2, a3, a4, a5, a6, c1, c2, c3, c4, c5, c6; ndrange=length(a))
 end
 
