@@ -26,11 +26,8 @@ const navTemp = {
 const nav = [
   ...navTemp.nav,
   {
-    text: '中文',
-    link: `${getBaseRepository(baseTemp.base)}zh/`
-  },
-  {
-    component: 'VersionPicker'
+    text: 'English',
+    link: `${getBaseRepository(baseTemp.base)}dev/`
   }
 ]
 
@@ -41,6 +38,10 @@ export default withMermaid (defineConfig({
   description: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
   lastUpdated: true,
   cleanUrls: true,
+  // Docstrings (English, shared with the English site) contain section @refs like
+  // `[Micromagnetic model](@ref)` that only resolve against English page headings.
+  // Ignore just those unresolved `@ref` hrefs; genuine dead links still fail the build.
+  ignoreDeadLinks: [/\/@ref/],
   outDir: 'REPLACE_ME_DOCUMENTER_VITEPRESS', // This is required for MarkdownVitepress to work correctly...
   head: [
     ['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }],
