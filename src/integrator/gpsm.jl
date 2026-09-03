@@ -22,17 +22,16 @@ mutable struct GPSM{T<:AbstractFloat} <: Integrator
     GPSM{T}() where {T<:AbstractFloat} = new()
 end
 
-function GPSM(n_total::Int64, step::Float64)
-    T = Float[]
+function GPSM(::Type{T}, n_total::Int64, step::Float64) where {T<:AbstractFloat}
     gpsm = GPSM{T}()
     gpsm.step = step
     gpsm.nsteps = 0
     gpsm.t = 0
     gpsm.initialized = false
-    gpsm.gn1 = create_zeros(n_total)
-    gpsm.gn2 = create_zeros(n_total)
-    gpsm.gn3 = create_zeros(n_total)
-    gpsm.rhs = create_zeros(n_total)
+    gpsm.gn1 = create_zeros(T, n_total)
+    gpsm.gn2 = create_zeros(T, n_total)
+    gpsm.gn3 = create_zeros(T, n_total)
+    gpsm.rhs = create_zeros(T, n_total)
     return gpsm
 end
 

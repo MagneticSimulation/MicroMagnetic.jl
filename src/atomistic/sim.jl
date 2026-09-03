@@ -30,7 +30,7 @@ The `circular_shape` function here assigns `2 * mu_B` to atoms within a circle o
     while setting it to `0.0` outside this region.
 """
 function set_mu_s(sim::AtomisticSim, init::NumberOrArrayOrFunction)
-    T = Float[]
+    T = eltype(sim.spin)
     # a uniform number is stored as an O(1) Fill; functions/arrays are materialised
     sim.mu_s = make_param(T, init, sim.mesh, sim.n_total)
 
@@ -53,7 +53,7 @@ This sets the magnetic moment to `2 * mu_B` for all sites in the Kagome lattice.
 """
 function set_mu_s_kagome(sim::AtomisticSim, Ms::Number)
     mesh = sim.mesh
-    T = Float[]
+    T = eltype(sim.spin)
     mu_s = zeros(T, sim.n_total)
     for k in 1:(mesh.nz), j in 1:(mesh.ny), i in 1:(mesh.nx)
         id = index(i, j, k, mesh.nx, mesh.ny, mesh.nz)
@@ -109,7 +109,7 @@ If an array is provided for J1, J2, J3, or J4, its length must match the number 
 """
 function add_exch(sim::AtomisticSim, J1::NumberOrArray; name="exch", J2=0, J3=0, J4=0)
     mesh = sim.mesh
-    T = Float[]
+    T = eltype(sim.spin)
 
     Js = create_zeros(mesh.n_ngbs)
     if isa(J1, Number)
@@ -187,7 +187,7 @@ Add biquadratic exchange interaction to the atomistic simulation `sim`. The biqu
 """
 function add_exch_bq(sim::AtomisticSim, K::NumberOrArray; name="exch_bq")
     mesh = sim.mesh
-    T = Float[]
+    T = eltype(sim.spin)
 
     Ks = create_zeros(mesh.n_ngbs)
     if isa(K, Number)
@@ -317,7 +317,7 @@ Examples:
 function add_dmi(sim::AtomisticSim, D::Real; name="dmi", type="bulk")
     N = sim.n_total
     mesh = sim.mesh
-    T = Float[]
+    T = eltype(sim.spin)
     field = create_zeros(3 * N)
     energy = create_zeros(N)
 
@@ -442,7 +442,7 @@ add_dmi(sim, Dij)
 function add_dmi(sim::AtomisticSim, Dij::Array{<:Real,2}; name="dmi")
     N = sim.n_total
     mesh = sim.mesh
-    T = Float[]
+    T = eltype(sim.spin)
     field = create_zeros(3 * N)
     energy = create_zeros(N)
 

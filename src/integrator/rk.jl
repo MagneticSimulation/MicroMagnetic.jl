@@ -11,11 +11,11 @@ mutable struct RungeKutta{T<:AbstractFloat} <: Integrator
     rhs_fun::Function
 end
 
-function RungeKutta(n_total::Int64, rhs_fun, step::Float64)
-    k1 = create_zeros(3 * n_total)
-    k2 = create_zeros(3 * n_total)
-    k3 = create_zeros(3 * n_total)
-    k4 = create_zeros(3 * n_total)
+function RungeKutta(::Type{T}, n_total::Int64, rhs_fun, step::Float64) where {T<:AbstractFloat}
+    k1 = create_zeros(T, 3 * n_total)
+    k2 = create_zeros(T, 3 * n_total)
+    k3 = create_zeros(T, 3 * n_total)
+    k4 = create_zeros(T, 3 * n_total)
 
     return RungeKutta(0.0, step, 0, k1, k2, k3, k4, rhs_fun)
 end

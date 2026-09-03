@@ -58,7 +58,7 @@ function add_dmi(sim::MonteCarlo; D=0, Dz=0, type="bulk")
     D = D / k_B
     Dz = Dz / k_B
 
-    Dij = zeros(Float[], (3, mesh.n_ngbs))
+    Dij = zeros(eltype(sim.spin), (3, mesh.n_ngbs))
     if isa(mesh, TriangularMesh)
         for i in 1:6
             theta = (i - 1) * 2 * pi / 6
@@ -131,7 +131,7 @@ Add Anisotropy for kagome system, where the energy density is given by
 and u is one of ax1=(-0.5,-sqrt(3)/2,0), ax2=(1,0,0) and ax3=(-0.5,sqrt(3)/2,0).
 """
 function add_anis_kagome(sim::MonteCarlo; Ku=0)
-    T = Float[]
+    T = eltype(sim.spin)
 
     sim.anis = KagomeAnisotropyMC(T(0))
     sim.anis.Ku = Ku / k_B
@@ -140,7 +140,7 @@ function add_anis_kagome(sim::MonteCarlo; Ku=0)
 end
 
 function add_anis_kagome_6fold(sim::MonteCarlo; K1=0, K2=0)
-    T = Float[]
+    T = eltype(sim.spin)
 
     sim.anis = KagomeAnisotropy6FoldMC(T(0), T(0))
     sim.anis.K1 = K1 / k_B
@@ -150,7 +150,7 @@ function add_anis_kagome_6fold(sim::MonteCarlo; K1=0, K2=0)
 end
 
 function init_m0(sim::MonteCarlo, m0::TupleOrArrayOrFunction; norm=true)
-    spin = zeros(Float[], 3 * sim.n_total)
+    spin = zeros(eltype(sim.spin), 3 * sim.n_total)
     init_vector!(spin, sim.mesh, m0)
     if norm
         normalise(spin, sim.n_total)

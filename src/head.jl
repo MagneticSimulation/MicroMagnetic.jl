@@ -152,7 +152,7 @@ mutable struct MicroSimFE{T<:AbstractFloat} <: AbstractSim
     n_cells::Int64
     name::String
     driver_name::String
-    interactions::Array
+    interactions::Array{MicroEnergy}
     save_data::Bool
     kwargs::Any
     MicroSimFE{T}() where {T<:AbstractFloat} = new()

@@ -18,10 +18,9 @@ mutable struct ModifiedEuler{T<:AbstractFloat} <: Integrator
    rhs_fun::Function
 end
 
-function ModifiedEuler(n_total::Int64, rhs_fun, step::Float64)
-  T = Float[]
-  k1 = create_zeros(3 * n_total)
-  k2 = create_zeros(3 * n_total)
+function ModifiedEuler(::Type{T}, n_total::Int64, rhs_fun, step::Float64) where {T<:AbstractFloat}
+  k1 = create_zeros(T, 3 * n_total)
+  k2 = create_zeros(T, 3 * n_total)
   return ModifiedEuler(0.0, step, 0, k1, k2, rhs_fun)
 end
 

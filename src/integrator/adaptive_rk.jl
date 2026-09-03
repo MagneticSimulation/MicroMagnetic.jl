@@ -54,15 +54,15 @@ mutable struct AdaptiveRK{T<:AbstractFloat,A<:AbstractArray{T}} <: Integrator
     y_temp::A # Pre-allocated temporary storage for RK stages
 end
 
-function AdaptiveRK(n_total::Int64, method::M, rhs_fun,
-                    tol::Float64) where {M<:AbstractRKMethod}
+function AdaptiveRK(::Type{T}, n_total::Int64, method::M, rhs_fun,
+                    tol::Float64) where {M<:AbstractRKMethod,T<:AbstractFloat}
     stages = method.stages
 
     # Allocate storage
-    y_current = create_zeros(3 * n_total)
-    y_next = create_zeros(3 * n_total)
-    ks = [create_zeros(3 * n_total) for _ in 1:stages]
-    y_temp = create_zeros(3 * n_total)  # Pre-allocate temporary storage
+    y_current = create_zeros(T, 3 * n_total)
+    y_next = create_zeros(T, 3 * n_total)
+    ks = [create_zeros(T, 3 * n_total) for _ in 1:stages]
+    y_temp = create_zeros(T, 3 * n_total)  # Pre-allocate temporary storage
 
     facmax = 5.0
     facmin = 0.2
@@ -246,24 +246,24 @@ function get_current_time(integrator::AdaptiveRK)
 end
 
 # Constructors for specific methods
-function DormandPrince(n_total::Int64, rhs_fun, tol::Float64)
+function DormandPrince(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) where {T<:AbstractFloat}
     method = DOPRI54Method("DOPRI54", 7, 5, 4, false)
-    return AdaptiveRK(n_total, method, rhs_fun, tol)
+    return AdaptiveRK(T, n_total, method, rhs_fun, tol)
 end
 
-function BogackiShampine23(n_total::Int64, rhs_fun, tol::Float64)
+function BogackiShampine23(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) where {T<:AbstractFloat}
     method = BS23Method("BS23", 4, 3, 2, true)
-    return AdaptiveRK(n_total, method, rhs_fun, tol)
+    return AdaptiveRK(T, n_total, method, rhs_fun, tol)
 end
 
-function CashKarp54(n_total::Int64, rhs_fun, tol::Float64)
+function CashKarp54(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) where {T<:AbstractFloat}
     method = CashKarp54Method("CashKarp54", 6, 5, 4, false)
-    return AdaptiveRK(n_total, method, rhs_fun, tol)
+    return AdaptiveRK(T, n_total, method, rhs_fun, tol)
 end
 
-function Fehlberg54(n_total::Int64, rhs_fun, tol::Float64)
+function Fehlberg54(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) where {T<:AbstractFloat}
     method = Fehlberg54Method("Fehlberg54", 6, 5, 4, false)
-    return AdaptiveRK(n_total, method, rhs_fun, tol)
+    return AdaptiveRK(T, n_total, method, rhs_fun, tol)
 end
 
 function run_step(sim::AbstractSim, driver::LLG)

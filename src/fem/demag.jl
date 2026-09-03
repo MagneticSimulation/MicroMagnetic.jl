@@ -1,7 +1,7 @@
 using Printf
 using LinearAlgebra
 
-mutable struct DemagFE{T<:AbstractFloat}
+mutable struct DemagFE{T<:AbstractFloat} <: MicroEnergy
     D::AbstractSparseMatrix
     G::AbstractSparseMatrix
     K1::Any
@@ -284,7 +284,7 @@ end
 function init_demag(sim::MicroSimFE, method; kwargs...)
     mesh = sim.mesh
 
-    T = Float[]
+    T = eltype(sim.spin)
     demag = DemagFE{T}()
     demag.method = method
 

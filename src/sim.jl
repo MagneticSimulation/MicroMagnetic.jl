@@ -97,7 +97,7 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     end
 
     sim.driver_name = driver
-    sim.driver = create_driver(driver, integrator, n_total)
+    sim.driver = create_driver(T, driver, integrator, n_total)
     sim.interactions = []
     sim.save_data = save_data
     sim.saver = create_saver(_saver_name(name, driver), driver)
@@ -135,7 +135,7 @@ set_Ms(sim, circular_Ms)
 ```
 """
 function set_Ms(sim::MicroSim, Ms::NumberOrArrayOrFunction)
-    T = Float[]
+    T = eltype(sim.spin)
     sim.mu0_Ms = make_param(T, Ms, sim.mesh, sim.n_total; scale=mu_0)
 
     if sim.mu0_Ms isa Fill
@@ -601,7 +601,7 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
 
     # FIXME : Does not work if only the integrator changes
     if sim.driver_name != driver
-        sim.driver = create_driver(driver, integrator, sim.n_total)
+        sim.driver = create_driver(eltype(sim.spin), driver, integrator, sim.n_total)
         sim.driver_name = driver
         # SD and EmptyDriver carry no integrator (see relax's hasproperty dispatch)
         if isdefined(sim.driver, :integrator) && sim.driver.integrator isa AdaptiveRK

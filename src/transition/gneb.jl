@@ -517,7 +517,7 @@ function _gneb_velocity_projection_step!(
         kernel! = _gneb_retraction_step_kernel!(
             default_backend[], groupsize[])
         kernel!(
-            view(band.images, :, image), displacement, Float[](scale),
+            view(band.images, :, image), displacement, eltype(displacement)(scale),
             band.backend.active; ndrange=length(band.backend.active_cpu))
     end
     return band

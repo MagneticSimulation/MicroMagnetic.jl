@@ -13,7 +13,7 @@ Add a Zeeman energy to the simulation. Without the time-modulation argument `ft`
 function add_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction, ft::Function=_static_time;
                     name="zeeman")
     n_total = sim.n_total
-    T = Float[]
+    T = eltype(sim.spin)
 
     if ft !== _static_time
         f0 = ft(0)
@@ -73,7 +73,7 @@ H0_output is a tuple of 3 numbers that specifies the field components that will 
 """
 function update_zeeman(sim::AbstractSim, H0::TupleOrArrayOrFunction; H_output=nothing, name="zeeman")
     n_total = sim.n_total
-    T = Float[]
+    T = eltype(sim.spin)
     Hx, Hy, Hz = make_vector_param(T, H0, sim.mesh, n_total)
 
     for i in sim.interactions
@@ -132,7 +132,7 @@ or
 """
 function add_exch(sim::MicroSim, A::NumberOrTupleOrArrayOrFunction; name="exch")
     n_total = sim.n_total
-    T = Float[]
+    T = eltype(sim.spin)
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)
 
@@ -191,7 +191,7 @@ or
 """
 function add_dmi(sim::MicroSim, D::NumberOrTupleOrArrayOrFunction; name="dmi", type="bulk")
     n_total = sim.n_total
-    T = Float[]
+    T = eltype(sim.spin)
     field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
 
@@ -247,7 +247,7 @@ end
 
 function add_dmi(sim::MicroSim,D::NumberOrTupleOrArrayOrFunction, ft::Function; name="time_dmi")
     n_total = sim.n_total
-    T = Float[]
+    T = eltype(sim.spin)
     field = KernelAbstractions.zeros(default_backend[], T, 3 * n_total)
     energy = KernelAbstractions.zeros(default_backend[], T, n_total)
     if isa(D, Tuple) && length(D) == 3
@@ -303,7 +303,7 @@ end
 #need the FFT pipeline, fft=false falls back to the direct demag with
 #truncated images (macro-style)
 function _build_demag(sim, fft::Bool, Nx::Int, Ny::Int, Nz::Int, mode::Symbol, a::Int)
-    if !(fft && Float[] != AbstractFloat)
+    if !(fft && eltype(sim.spin) != AbstractFloat)
         return init_direct_demag(sim, Nx, Ny, Nz)
     end
     if mode == :pbc1d
@@ -385,7 +385,7 @@ Add Anisotropy to the system, where the energy density is given by
 function add_anis(sim::AbstractSim, Ku::NumberOrArrayOrFunction;
                   axis::TupleOrArrayOrFunction=(0, 0, 1), name="anis")
     n_total = sim.n_total
-    T = Float[]
+    T = eltype(sim.spin)
     Kus_kb = make_param(T, Ku, sim.mesh, n_total)
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)
@@ -521,7 +521,7 @@ end
 function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1, 0, 0),
                         axis2=(0, 1, 0), name="cubic")
     n_total = sim.n_total
-    T = Float[]
+    T = eltype(sim.spin)
     Kcs_kb = make_param(T, Kc, sim.mesh, n_total)
 
     a1, v1, uni1 = _cubic_axis(axis1, T, sim.mesh, n_total)
@@ -583,7 +583,7 @@ function add_hex_anis(sim::AbstractSim; K1=0, K2=0, K3=0, name="hex")
     field = create_zeros(3 * n_total)
     energy = create_zeros(n_total)
 
-    T = Float[]
+    T = eltype(sim.spin)
     anis = HexagonalAnisotropy(T(K1), T(K2), T(K3), field, energy, name)
     push!(sim.interactions, anis)
 
@@ -624,7 +624,7 @@ function add_twin_mono_anis(sim::AbstractSim; Ka=0, Kb=0, Kaa=0, Kbb=0, Kab=0, K
                             name="twin_mono_anis")
     n_total = sim.n_total
 
-    T = Float[]
+    T = eltype(sim.spin)
     axes_a = zeros(T, 3 * n_total)
     axes_b = zeros(T, 3 * n_total)
     axes_u111 = zeros(T, 3 * n_total)
@@ -725,7 +725,7 @@ add_thermal_noise(sim, dynamic_temp)
 function add_thermal_noise(sim::AbstractSim, Temp::NumberOrArrayOrFunction; name="thermal",
                            T0=0, scaling=t -> 1.0, k_B=k_B)
     N = sim.n_total
-    T = Float[]
+    T = eltype(sim.spin)
     field = create_zeros(3 * N)
     energy = create_zeros(N)
 
@@ -833,7 +833,7 @@ function add_dmi_int(sim::MicroSim, D::Tuple{Real,Real,Real}; k1=1, k2=-1, name=
         k2 = sim.mesh.nz
     end
 
-    T = Float[]
+    T = eltype(sim.spin)
     dmi = InterlayerDMI(T(D[1]), T(D[2]), T(D[3]), Int32(k1), Int32(k2), field, energy,
                         name)
 
@@ -891,7 +891,7 @@ function add_sahe_torque(sim::AbstractSim, sigma_s::TupleOrArrayOrFunction;
     n_total = sim.n_total
     mesh = sim.mesh
 
-    T = Float[]
+    T = eltype(sim.spin)
     field = create_zeros(T, 3 * n_total)
     sv = zeros(T, 3 * n_total)
     sa1v = zeros(T, 3 * n_total)
@@ -946,7 +946,7 @@ function add_sot(sim::AbstractSim, aj::NumberOrArrayOrFunction,
     n_total = sim.n_total
     field = create_zeros(3 * n_total)
 
-    T = Float[]
+    T = eltype(sim.spin)
     aj_zb = make_param(T, aj, sim.mesh, n_total)
     px, py, pz = make_vector_param(T, p, sim.mesh, n_total)
 
@@ -1159,7 +1159,7 @@ function add_zhang_li_torque(sim::AbstractSim, name, params::Dict)
         throw(ArgumentError("Zhang-Li model requires either `b` or `(P, Ms)` parameters"))
     end
 
-    T = Float[]
+    T = eltype(sim.spin)
     n_total = sim.n_total
     xi = make_param(T, xi_init, sim.mesh, n_total)
 
@@ -1212,7 +1212,7 @@ function add_slonczewski_torque(sim::AbstractSim, name, params::Dict)
 
     beta = h_bar/(mu_0*Ms*c_e*tf)
 
-    T = Float[]
+    T = eltype(sim.spin)
     n_total = sim.n_total
 
     J = make_param(T, params[:J], sim.mesh, n_total)
@@ -1296,7 +1296,7 @@ function rm_demag_charges(sim::MicroSim, Ms; x::Tuple=(0, 0), y::Tuple=(0, 0), z
 
     # split the precomputed field into per-spin components (a static Zeeman uses
     # `field` directly, the components document the input for the saver)
-    T = Float[]
+    T = eltype(sim.spin)
     Hx = kernel_array(T.(f[1:3:length(f)]))
     Hy = kernel_array(T.(f[2:3:length(f)]))
     Hz = kernel_array(T.(f[3:3:length(f)]))

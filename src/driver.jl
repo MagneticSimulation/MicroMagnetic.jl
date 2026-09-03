@@ -69,7 +69,8 @@ function _normalize_driver_name(driver::String)
 end
 
 
-function create_driver(driver::String, integrator::String, n_total::Int64)
+function create_driver(::Type{T}, driver::String, integrator::String,
+                       n_total::Int64) where {T<:AbstractFloat}
     if driver in ("LLG_STT", "LLG_CPP", "LLG_STT_CPP")
         replacement = driver == "LLG_CPP" ? "`add_sot(sim; ...)`" :
                       "`add_stt(sim; model=..., ...)`"
@@ -82,17 +83,15 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
         error("Supported drivers: ", join(supported_drivers, " "))
     end
 
-    T = Float[]
-
     if driver == "None"
         return EmptyDriver()
     end
 
     if driver == "SD"
-        gk = create_zeros(3 * n_total)
-        ss = create_zeros(n_total)
-        sf = create_zeros(n_total)
-        ff = create_zeros(n_total)
+        gk = create_zeros(T, 3 * n_total)
+        ss = create_zeros(T, n_total)
+        sf = create_zeros(T, n_total)
+        ff = create_zeros(T, n_total)
         max_tau = 1.0
         return SD(gk, ss, sf, ff, T(0.0), T(max_tau), T(1e-10), 0)
     end
@@ -114,23 +113,23 @@ function create_driver(driver::String, integrator::String, n_total::Int64)
 
     tol = 1e-6
     if integrator == "Heun"
-        dopri5 = ModifiedEuler(n_total, call_back_fun, 1e-14)
+        dopri5 = ModifiedEuler(T, n_total, call_back_fun, 1e-14)
     elseif integrator == "RungeKutta"
-        dopri5 = RungeKutta(n_total, call_back_fun, 5e-14)
+        dopri5 = RungeKutta(T, n_total, call_back_fun, 5e-14)
     elseif integrator == "RungeKuttaCayley"
-        dopri5 = RungeKuttaCayley(n_total, call_back_fun, 5e-14)
+        dopri5 = RungeKuttaCayley(T, n_total, call_back_fun, 5e-14)
     elseif integrator == "DormandPrince" || integrator == "DOPRI54"
-        dopri5 = DormandPrince(n_total, call_back_fun, tol)
+        dopri5 = DormandPrince(T, n_total, call_back_fun, tol)
     elseif integrator == "BS23"
-        dopri5 = BogackiShampine23(n_total, call_back_fun, tol)
+        dopri5 = BogackiShampine23(T, n_total, call_back_fun, tol)
     elseif integrator == "CashKarp54"
-        dopri5 = CashKarp54(n_total, call_back_fun, tol)
+        dopri5 = CashKarp54(T, n_total, call_back_fun, tol)
     elseif integrator == "Fehlberg54" || integrator == "RKF54"
-        dopri5 = Fehlberg54(n_total, call_back_fun, tol)
+        dopri5 = Fehlberg54(T, n_total, call_back_fun, tol)
     elseif integrator == "DormandPrinceCayley"
-        dopri5 = DormandPrinceCayley(n_total, call_back_fun, tol)
+        dopri5 = DormandPrinceCayley(T, n_total, call_back_fun, tol)
     elseif integrator == "GPSM"
-        dopri5 = GPSM(n_total, 1e-13)
+        dopri5 = GPSM(T, n_total, 1e-13)
     end
 
     if driver == "LLG"

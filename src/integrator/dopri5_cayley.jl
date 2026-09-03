@@ -22,16 +22,16 @@ mutable struct DormandPrinceCayley{T<:AbstractFloat} <: IntegratorCayley
     succeed::Bool
 end
 
-function DormandPrinceCayley(n_total::Int64, rhs_fun, tol::Float64)
-    omega = create_zeros(3 * n_total)
-    dw_dt = create_zeros(3 * n_total)
-    k1 = create_zeros(3 * n_total)
-    k2 = create_zeros(3 * n_total)
-    k3 = create_zeros(3 * n_total)
-    k4 = create_zeros(3 * n_total)
-    k5 = create_zeros(3 * n_total)
-    k6 = create_zeros(3 * n_total)
-    k7 = create_zeros(3 * n_total)
+function DormandPrinceCayley(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) where {T<:AbstractFloat}
+    omega = create_zeros(T, 3 * n_total)
+    dw_dt = create_zeros(T, 3 * n_total)
+    k1 = create_zeros(T, 3 * n_total)
+    k2 = create_zeros(T, 3 * n_total)
+    k3 = create_zeros(T, 3 * n_total)
+    k4 = create_zeros(T, 3 * n_total)
+    k5 = create_zeros(T, 3 * n_total)
+    k6 = create_zeros(T, 3 * n_total)
+    k7 = create_zeros(T, 3 * n_total)
     facmax = 5.0
     facmin = 0.2
     safety = 0.824

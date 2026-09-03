@@ -91,7 +91,7 @@ function NEB(sim::AbstractSim, given_images::TupleOrArray,
         error("The number of free images should larger than 1 (typically 10~20).")
     end
 
-    F = Float[]
+    F = eltype(sim.spin)
     neb = NEB{F}()
     neb.n_images = n_images
     neb.n_total = n_total * n_images
@@ -141,7 +141,7 @@ function NEB(sim::AbstractSim, given_images::TupleOrArray,
     effective_field_energy(neb, neb.spin)
 
     init_saver(neb)
-    neb.driver = create_driver(driver, integrator, neb.n_total)
+    neb.driver = create_driver(eltype(sim.spin), driver, integrator, neb.n_total)
     if driver == "LLG"
         neb.driver.integrator.tol = 1e-5
         neb.driver.precession = false

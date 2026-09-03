@@ -198,7 +198,8 @@ end
 function _TransitionBackend(create_sim::F) where {F}
     sim = create_sim()
     sim isa AbstractSim || error("create_sim must return an AbstractSim.")
-    weights_cpu = Float[].(_transition_weights(sim))
+    T = eltype(sim.spin)
+    weights_cpu = T.(_transition_weights(sim))
     active_cpu = BitVector(weights_cpu .> 0)
     if hasproperty(sim, :pins)
         pins = BitVector(Array(sim.pins))
@@ -342,7 +343,7 @@ end
 function _geodesic_step!(output, spin, direction, step_size,
                          backend::_TransitionBackend)
     kernel! = _geodesic_step_kernel!(default_backend[], groupsize[])
-    kernel!(output, spin, direction, Float[](step_size), backend.active;
+    kernel!(output, spin, direction, eltype(spin)(step_size), backend.active;
             ndrange=length(backend.active_cpu))
     return output
 end
@@ -610,7 +611,7 @@ end
 
 function _lanczos_start(start, spin, backend, locked, rng, symmetry)
     q = if isnothing(start)
-        _device_vector(randn(rng, Float[], length(spin)))
+        _device_vector(randn(rng, eltype(spin), length(spin)))
     else
         _device_vector(start)
     end
@@ -621,7 +622,7 @@ function _lanczos_start(start, spin, backend, locked, rng, symmetry)
     end
     _orthogonalize!(q, locked)
     if norm(q) <= 1e-14
-        copyto!(q, randn(rng, Float[], length(spin)))
+        copyto!(q, randn(rng, eltype(spin), length(spin)))
         _project_tangent!(q, spin, backend)
         if !isnothing(symmetry)
             source = copy(q)
@@ -738,13 +739,13 @@ function _lanczos_start_2N(start_3N, spin, basis, backend, locked_2N, rng, symme
     end
 
     q = if isnothing(start_3N)
-        _symmetric_tangent_2N(randn(rng, Float[], length(spin)))
+        _symmetric_tangent_2N(randn(rng, eltype(spin), length(spin)))
     else
         _symmetric_tangent_2N(start_3N)
     end
     _orthogonalize!(q, locked_2N)
     if norm(q) <= 1e-14
-        q = _symmetric_tangent_2N(randn(rng, Float[], length(spin)))
+        q = _symmetric_tangent_2N(randn(rng, eltype(spin), length(spin)))
         _orthogonalize!(q, locked_2N)
     end
     nrm = norm(q)
