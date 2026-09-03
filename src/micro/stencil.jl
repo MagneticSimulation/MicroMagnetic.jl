@@ -63,7 +63,7 @@ precision T so partition kernels divide by multiplying the precomputed inverse
 (no per-cell division, no Float64 promotion). Called by set_Ms.
 """
 function _update_inv_ms!(sim::MicroSim)
-    T = Float[]
+    T = eltype(sim.mu0_Ms)
     ms = sim.mu0_Ms
     if ms isa Fill
         v = ms.value
@@ -231,7 +231,7 @@ their uniform value. Otherwise return nothing.
 Fill inputs are trivially uniform across all classes and short-circuit.
 """
 function _class_uniform_values(sim::MicroSim, a::AbstractArray)
-    T = Float[]
+    T = eltype(sim.spin)
     cls, R, R_ok = _fresh_mat_class(sim)
     R_ok || return nothing
     if a isa Fill

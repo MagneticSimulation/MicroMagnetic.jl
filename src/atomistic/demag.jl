@@ -19,7 +19,7 @@ function init_demag(sim::AtomisticSim, Nx::Int, Ny::Int, Nz::Int)
 
     lenx = (nx_fft % 2 > 0) ? nx : nx + 1
 
-    T = Float[]
+    T = eltype(sim.spin)
     #one batched buffer for the 3 magnetization components (see micro/demag.jl)
     m_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)
     M_pad = create_zeros(Complex{T}, lenx, ny_fft, nz_fft, 3)

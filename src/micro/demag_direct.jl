@@ -21,7 +21,7 @@ function init_direct_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int)
     ny = mesh.ny
     nz = mesh.nz
 
-    T = Float[]
+    T = eltype(sim.spin)
     N = length(sim.spin)
     tensor = zeros(T, N, N)
     tensor_xx = zeros(T, nx, ny, nz)

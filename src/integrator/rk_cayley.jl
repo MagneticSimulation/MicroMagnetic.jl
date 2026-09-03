@@ -13,15 +13,15 @@ mutable struct RungeKuttaCayley{T<:AbstractFloat} <: Integrator
     rhs_fun::Function
 end
 
-function RungeKuttaCayley(n_total::Int64, rhs_fun, step::Float64)
+function RungeKuttaCayley(::Type{T}, n_total::Int64, rhs_fun, step::Float64) where {T<:AbstractFloat}
 
-    omega = create_zeros(3 * n_total)
-    dw_dt = create_zeros(3 * n_total)
+    omega = create_zeros(T, 3 * n_total)
+    dw_dt = create_zeros(T, 3 * n_total)
 
-    k1 = create_zeros(3 * n_total)
-    k2 = create_zeros(3 * n_total)
-    k3 = create_zeros(3 * n_total)
-    k4 = create_zeros(3 * n_total)
+    k1 = create_zeros(T, 3 * n_total)
+    k2 = create_zeros(T, 3 * n_total)
+    k3 = create_zeros(T, 3 * n_total)
+    k4 = create_zeros(T, 3 * n_total)
 
     return RungeKuttaCayley(0.0, step, 0, omega, dw_dt, k1, k2, k3, k4, rhs_fun)
 end

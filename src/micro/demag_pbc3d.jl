@@ -34,7 +34,7 @@ end
 function init_demag_pbc3d(sim::MicroSim)
     mesh = sim.mesh
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
-    T = Float[]
+    T = eltype(sim.spin)
     m_pad = create_zeros(nx, ny, nz, 3)
     M_pad = create_zeros(Complex{T}, nx ÷ 2 + 1, ny, nz, 3)
     if inplace_inverse(M_pad)

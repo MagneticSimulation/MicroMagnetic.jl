@@ -178,7 +178,7 @@ function init_demag(sim::MicroSim, Nx::Int, Ny::Int, Nz::Int; pbc1d_axis::Int=0,
 
     lenx = (nx_fft % 2 > 0) ? nx : nx + 1
 
-    T = Float[]
+    T = eltype(sim.spin)
     #one batched buffer for the 3 magnetization components (avoids 3 plan calls
     #per FFT stage and enables batched transforms on GPU backends)
     m_pad = create_zeros(nx_fft, ny_fft, nz_fft, 3)

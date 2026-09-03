@@ -104,7 +104,7 @@ function add_anis(sim::MicroSimFE, Ku::NumberOrArrayOrFunction; axis::TupleOrArr
     init_scalar!(Kus, sim.mesh, Ku)
 
     N = sim.n_total
-    T = Float[]
+    T = eltype(sim.spin)
     field = create_zeros(3*N)
     energy = create_zeros(N)
 
@@ -164,7 +164,7 @@ function add_exch(sim::MicroSimFE, A::NumberOrArrayOrFunction; name="exch", meth
     #initialize a sparse matrix on CPU
     K_mat = spzeros(3 * N, 3 * N)
 
-    T = Float[]
+    T = eltype(sim.spin)
     field = create_zeros(3*N)
     energy = create_zeros(N)
 

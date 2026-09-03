@@ -576,7 +576,7 @@ function build_exch_matrix(exch::Exchange, sim::MicroSim)
 
     n_total = sim.n_total
 
-    T = Float[]
+    T = eltype(sim.spin)
     I = Int64[]
     J = Int64[]
     V = T[]
