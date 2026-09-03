@@ -43,6 +43,26 @@ Or to specify a certain data type:
 """
 function save_ovf(sim::AbstractSim, fname::String; type::DataType = Float64)
     mesh = sim.mesh
+    if isa(mesh, CylindricalTubeMesh)
+        # the tube is exported as a pseudo grid (nr, 1, nz): the ring index runs along
+        # x, matching the spin ordering id = (k - 1) * nr + i used by init_vector!
+        n_total = mesh.n_total
+        ovf = OVF2{Float64}()
+        ovf.xnodes = mesh.nr
+        ovf.ynodes = 1
+        ovf.znodes = mesh.nz
+        ovf.xstepsize = 2 * pi * mesh.R / mesh.nr
+        ovf.ystepsize = mesh.dz
+        ovf.zstepsize = mesh.dz
+        ovf.type = type
+        ovf.name = sim.name
+        ovf.data = zeros(Float64, 3 * n_total)
+        copyto!(ovf.data, sim.spin)
+
+        mkpath(dirname(fname))
+        save_ovf(ovf, fname)
+        return fname
+    end
     n_total = mesh.nx*mesh.ny*mesh.nz
 
     ovf = OVF2{Float64}()

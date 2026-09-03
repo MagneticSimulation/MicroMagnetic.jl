@@ -323,7 +323,7 @@ end
         end
 
         # the bottom neighbour
-        @inbounds id = ngbs[3, i]
+        @inbounds id = ngbs[3, I]
         if id > 0 && mu_s[id] > 0
             x = 3 * id - 2
             @inbounds fx += cross_x(T(0), T(0), -D, m[x], m[x + 1], m[x + 2])
