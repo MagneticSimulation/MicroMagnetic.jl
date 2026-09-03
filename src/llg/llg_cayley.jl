@@ -34,9 +34,9 @@
         @inbounds wz = omega[j + 2]
 
         wf = wx * f1 + wy * f2 + wz * f3
-        @inbounds dw_dt[j] = f1 - 0.5 * cross_x(wx, wy, wz, f1, f2, f3) + 0.25 * wf * wx
-        @inbounds dw_dt[j + 1] = f2 - 0.5 * cross_y(wx, wy, wz, f1, f2, f3) + 0.25 * wf * wy
-        @inbounds dw_dt[j + 2] = f3 - 0.5 * cross_z(wx, wy, wz, f1, f2, f3) + 0.25 * wf * wz
+        @inbounds dw_dt[j] = f1 - T(0.5) * cross_x(wx, wy, wz, f1, f2, f3) + T(0.25) * wf * wx
+        @inbounds dw_dt[j + 1] = f2 - T(0.5) * cross_y(wx, wy, wz, f1, f2, f3) + T(0.25) * wf * wy
+        @inbounds dw_dt[j + 2] = f3 - T(0.5) * cross_z(wx, wy, wz, f1, f2, f3) + T(0.25) * wf * wz
     end
 end
 
