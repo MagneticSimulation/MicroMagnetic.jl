@@ -21,6 +21,19 @@ draft = get(ENV, "DOCS_DRAFT", "false") == "true"
 # Exported for fillMissingMedia() in src_zh/.vitepress/config.mts (TODO.md #3, Option B).
 ENV["DOCUMENTER_MD_ROOT"] = abspath(joinpath(@__DIR__, "build_zh", ".documenter"))
 
+# On tag pushes (docs.yml triggers on `tags: '*'`) the English build deploys
+# versioned folders (`vX.Y.Z/`, `stable/`). Without pinning, this build's
+# deploy_decision would resolve to the same version subfolder and the Chinese
+# deploy would overwrite the English versioned docs with the (partial) Chinese
+# tree. Pin the subfolder to `zh` so this build only ever owns `zh/`.
+zh_deploy_decision = if startswith(get(ENV, "GITHUB_REF", ""), "refs/tags/")
+    Documenter.DeployDecision(; all_ok = true,
+                              repo = "github.com/MagneticSimulation/MicroMagnetic.jl",
+                              branch = "gh-pages", is_preview = false, subfolder = "zh")
+else
+    nothing
+end
+
 makedocs(;
     sitename = "MicroMagnetic.jl",
     modules = [MicroMagnetic,
@@ -28,7 +41,7 @@ makedocs(;
     warnonly = true,
     checkdocs=:all,
     format= MarkdownVitepress(; repo="github.com/MagneticSimulation/MicroMagnetic.jl",
-                           devbranch="master", devurl="zh"),
+                           devbranch="master", devurl="zh", deploy_decision=zh_deploy_decision),
     draft = draft,
     source = "src_zh",
     build = "build_zh",
