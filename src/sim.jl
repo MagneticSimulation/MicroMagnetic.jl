@@ -5,6 +5,12 @@ export Sim, init_m0, set_Ms, run_until, relax, run_sim,
        set_driver, set_pinning, advance_step, set_alpha,
        hysteresis
 
+# Saver output file name "<name>_<driver-tag>.txt" with the InertialLLG tag shortened
+# to "illg"; shared by the Sim constructor and set_driver so the two never diverge.
+_saver_name(name::AbstractString, driver::AbstractString) =
+    driver === "InertialLLG" ? @sprintf("%s_illg.txt", name) :
+    @sprintf("%s_%s.txt", name, lowercase(driver))
+
 """
     Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
              save_data=true)
@@ -93,11 +99,7 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.driver = create_driver(driver, integrator, n_total)
     sim.interactions = []
     sim.save_data = save_data
-    saver_name = @sprintf("%s_%s.txt", name, lowercase(driver))
-    if driver === "InertialLLG"
-        saver_name = @sprintf("%s_illg.txt", name)
-    end
-    sim.saver = create_saver(saver_name, driver)
+    sim.saver = create_saver(_saver_name(name, driver), driver)
 
     if isa(mesh, FDMesh)
         @info "MicroSim (FD) has been created."
@@ -303,32 +305,45 @@ end
 """
     set_driver_arguments(sim::AbstractSim, args::Dict)
 
-Set the parameters of the driver. 
+Apply driver parameters (`alpha`, `gamma`, `tol`) to the current driver. Dispatches on
+the driver type; a key counts as consumed only when it was actually applied, so
+unsupported keys stay in `args` (e.g. everything stays for SD, and `tol` stays when
+the integrator has no tolerance, like GPSM or the fixed-step methods).
 """
 function set_driver_arguments(sim::AbstractSim, args::Dict)
+    _apply_driver_args!(sim, sim.driver, args)
+    return nothing
+end
 
-    # FIXME: we have to consider all the situations here
-
-    # driver = string(typeof(sim.driver))
-    driver = sim.driver_name
-
-    if haskey(args, :alpha) && startswith(driver, "LLG")
-        T = eltype(sim.driver.alpha)  # match the driver's precision
-        sim.driver.alpha = make_param(T, args[:alpha], sim.mesh, sim.n_total)
-        delete!(args, :alpha)
+function _apply_driver_args!(sim::AbstractSim, driver::LLG, args::Dict)
+    if haskey(args, :alpha)
+        set_alpha(sim, pop!(args, :alpha))
     end
-
-    if haskey(args, :gamma) && startswith(driver, "LLG")
-        sim.driver.gamma = args[:gamma]
-        delete!(args, :gamma)
+    if haskey(args, :gamma)
+        driver.gamma = pop!(args, :gamma)
     end
-
-    # FIXME: check the type of sim.driver.integrator
-    if haskey(args, :tol) && startswith(driver, "LLG")
-        sim.driver.integrator.tol = args[:tol]
-        delete!(args, :tol)
+    # tol only exists on adaptive integrators (fixed-step ones and GPSM have no
+    # such field): applied there, left unconsumed otherwise
+    if haskey(args, :tol) && isdefined(driver.integrator, :tol)
+        driver.integrator.tol = pop!(args, :tol)
     end
 end
+
+function _apply_driver_args!(sim::AbstractSim, driver::InertialLLG, args::Dict)
+    if haskey(args, :alpha)
+        driver.alpha = pop!(args, :alpha)  # scalar alpha, no mesh sampling
+    end
+    if haskey(args, :gamma)
+        driver.gamma = pop!(args, :gamma)
+    end
+    if haskey(args, :tol) && isdefined(driver.integrator, :tol)  # same rule as LLG
+        driver.integrator.tol = pop!(args, :tol)
+    end
+end
+
+# SD and EmptyDriver have no configurable parameters; unknown future driver types
+# fall through here too (their kwargs are silently ignored, matching SD)
+_apply_driver_args!(sim::AbstractSim, ::Driver, args::Dict) = nothing
 
 function send_visualization_data(sim)
     if sim isa AtomisticSim
@@ -587,35 +602,25 @@ function set_driver(sim::AbstractSim; driver="LLG", integrator="DormandPrince", 
     if sim.driver_name != driver
         sim.driver = create_driver(driver, integrator, sim.n_total)
         sim.driver_name = driver
-        if sim.driver.integrator isa AdaptiveRK
+        # SD and EmptyDriver carry no integrator (see relax's hasproperty dispatch)
+        if isdefined(sim.driver, :integrator) && sim.driver.integrator isa AdaptiveRK
             set_initial_condition!(sim, sim.driver.integrator)
         end
 
         saver = sim.saver
-
-        saver_name = @sprintf("%s_%s.txt", sim.name, lowercase(driver))
-        if driver === "InertialLLG"
-            saver_name = @sprintf("%s_illg.txt", sim.name)
-        end
-
-        saver.name = saver_name
+        saver.name = _saver_name(sim.name, driver)
         saver.t = 0
         saver.nsteps = 0
         saver.header_saved = false
-        contains_time = false
-        for item in saver.items
-            if item.name == "time"
-                contains_time = true
-            end
-        end
+        contains_time = any(item -> item.name == "time", saver.items)
         if driver != "SD" && !contains_time
             time = SaverItem("time", "<s>", o::AbstractSim -> o.saver.t)
             insert!(saver.items, 2, time)
-            #push!(saver.items, time)
         end
     end
 
-    return set_driver_arguments(sim, args)
+    set_driver_arguments(sim, args)
+    return nothing
 end
 
 """
