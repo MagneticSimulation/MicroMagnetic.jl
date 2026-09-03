@@ -446,7 +446,7 @@ end
 # build_matrix public API — now with matrixfree kwarg
 # =============================================================================
 
-raw"""
+@doc raw"""
     build_matrix(sim; gamma=2.21e5, sparse=false, alpha=0.01, matrixfree=false)
 
 Build the linearised LLG Jacobian `B` that maps tangent perturbations

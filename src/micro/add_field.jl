@@ -483,20 +483,6 @@ function update_anis(sim::MicroSim, Ku::NumberOrArrayOrFunction; name="anis")  #
     return nothing
 end
 
-@doc raw"""
-    add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,0,0), axis2=(0,1,0), name="cubic")
-
-add a cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1). The third axis is defined as axis3 = axis1 x axis2.
-
-```math
-  E_\mathrm{cubic} = -\int_{V} K_c (m_x^4 + m_y^4 + m_z^4) \, dV
-```
-
-# Example
-```julia
-    add_cubic_anis(sim, 1e3, (1, 1, 0), (1, -1, 0))
-```
-"""
 # Normalise a cubic-anisotropy axis given as a uniform 3-tuple (stored as O(1)
 # Fills) or an array/function (per-spin, stored as three dense component arrays).
 # Returns ((x, y, z), normalised values or nothing, is_uniform); the values are the
@@ -518,6 +504,20 @@ function _cubic_axis(v, T, mesh, n_total)
     return (x, y, z), nothing, false
 end
 
+@doc raw"""
+    add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1,0,0), axis2=(0,1,0), name="cubic")
+
+add a cubic anisotropy with default axis (1,0,0) , (0,1,0), and (0,0,1). The third axis is defined as axis3 = axis1 x axis2.
+
+```math
+  E_\mathrm{cubic} = -\int_{V} K_c (m_x^4 + m_y^4 + m_z^4) \, dV
+```
+
+# Example
+```julia
+    add_cubic_anis(sim, 1e3, (1, 1, 0), (1, -1, 0))
+```
+"""
 function add_cubic_anis(sim::AbstractSim, Kc::NumberOrArrayOrFunction; axis1=(1, 0, 0),
                         axis2=(0, 1, 0), name="cubic")
     n_total = sim.n_total

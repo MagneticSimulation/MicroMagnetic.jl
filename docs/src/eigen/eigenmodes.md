@@ -1,5 +1,6 @@
 ```@meta
 ShareDefaultModule = true
+CurrentModule = MicroMagnetic
 ```
 
 # Eigenmode Analysis
