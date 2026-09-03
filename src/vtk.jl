@@ -1,6 +1,7 @@
 using WriteVTK
 using ReadVTK
 using Printf
+using StaticArrays: SVector
 
 export save_vtk, ovf2vtk, read_vtk
 
@@ -35,6 +36,24 @@ Save magnetization or other fields to vtk.
 """
 function save_vtk(sim::AbstractSim, fname::String; fields::Array{String,1}=String[])
     mesh = sim.mesh
+    if isa(mesh, CylindricalTubeMesh)
+        # unstructured export: nodes come from mesh.coordinates (3 x n_total), no cells
+        coords = Array(mesh.coordinates)
+        pts = reinterpret(SVector{3,eltype(coords)}, coords)
+        vtk = vtk_grid(fname, pts)
+        m = isa(sim.spin, Array) ? sim.spin : Array(sim.spin)
+        vtk_point_data(vtk, reinterpret(SVector{3,eltype(m)}, m), "m")
+        if length(fields) > 0
+            fields = Set(fields)
+            for i in sim.interactions
+                if i.name in fields
+                    MicroMagnetic.effective_field(i, sim, sim.spin, 0.0)
+                    vtk_point_data(vtk, Array(i.field), i.name)
+                end
+            end
+        end
+        return vtk_save(vtk)
+    end
     nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
     xyz = zeros(Float32, 3, nx + 1, ny + 1, nz + 1)
     dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
