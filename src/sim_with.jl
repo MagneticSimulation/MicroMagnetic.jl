@@ -506,3 +506,47 @@ end
 function sim_with(; args...)
     return sim_with(Dict(args))
 end
+
+function extract_sweep_keys(dict::Dict)
+    result = Dict{Symbol,Any}()
+
+    for (key, value) in dict
+        if endswith(String(key), "_sweep")
+            new_key = Symbol(replace(String(key), "_sweep" => ""))
+            result[new_key] = value
+            delete!(dict, key)
+        end
+
+        if endswith(String(key), "_s") && String(key) != "mu_s"
+            new_key = Symbol(replace(String(key), "_s" => ""))
+            result[new_key] = value
+            delete!(dict, key)
+        end
+    end
+
+    return result
+end
+
+function check_sweep_lengths(dict::Dict)
+    range_keys = filter(key -> endswith(String(key), "_sweep") ||
+                               (endswith(String(key), "_s") && String(key) != "mu_s"),
+                        keys(dict))
+    lengths = Int[]
+    for key in range_keys
+        value = dict[key]
+        if !(value isa AbstractArray)
+            throw(ArgumentError("The value of `$key` should be an array of per-stage " *
+                                "values, got `$(typeof(value))`."))
+        end
+        push!(lengths, length(value))
+    end
+
+    if length(lengths) > 1 && length(unique(lengths)) > 1
+        throw(ErrorException("Error: not all `_s`/`_sweep` arrays have the same length."))
+    end
+
+    if length(lengths) == 0
+        return 0
+    end
+    return lengths[1]
+end
