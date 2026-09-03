@@ -14,6 +14,11 @@ export reset_timer
 
 const Float = Ref(Float64)
 
+# Number of Sims created so far (Sim() factory + MonteCarlo()). `set_precision`/
+# `set_backend` are constructor-time defaults that only affect Sims created
+# afterwards; this counter lets them warn when older Sims are around.
+const _n_sims = Ref(0)
+
 using SparseArrays
 const GPUSparseMatrixCSC = Ref(SparseMatrixCSC)
 const GPUSparseMatrixCSR = Ref(SparseMatrixCSC)
@@ -26,6 +31,12 @@ Set the precision for MicroMagnetic simulations.
 
 This function allows you to specify the precision of floating-point numbers to be used in MicroMagnetic simulations. 
 By default, it sets the precision to `Float64`. If single-precision computation is required, you can specify `Float32`.
+The allowed values are `Float64`, `Float32` and `AbstractFloat`; the last one enables
+the symbolic mode required by the eigenvalue analysis (see the eigenmodes page).
+
+!!! note "Call before creating Sims"
+    `set_precision` is a constructor-time default: it only affects simulations created
+    afterwards, and Sims that already exist keep the precision they were created with.
 
 # Example
 ```julia
@@ -33,6 +44,12 @@ set_precision(Float32)
 ```
 """
 function set_precision(x::Type{<:AbstractFloat}=Float64)
+    if !(x === Float64 || x === Float32 || x === AbstractFloat)
+        error("`set_precision` only accepts `Float64`, `Float32` or `AbstractFloat` (got $x). Use `AbstractFloat` for the symbolic mode required by the eigenvalue analysis.")
+    end
+    if _n_sims[] > 0
+        @warn "There are $(_n_sims[]) existing Sim(s); this setting only affects Sims created afterwards."
+    end
     return Float[] = x
 end
 export set_precision
@@ -88,8 +105,15 @@ set_backend("cpu")
 set_backend("cuda")
 ```
 
+!!! note "Call before creating Sims"
+    Like `set_precision`, `set_backend` is a constructor-time default: it decides where
+    buffers of simulations created afterwards are allocated. Sims that already exist
+    keep the backend their data lives on.
 """
 function set_backend(backend="cuda")
+    if _n_sims[] > 0
+        @warn "There are $(_n_sims[]) existing Sim(s); this setting only affects Sims created afterwards."
+    end
     backend_names = ["CUDA", "AMDGPU", "oneAPI", "Metal"]
     card_id = 0
     x = lowercase(backend)
