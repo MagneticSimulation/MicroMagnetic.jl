@@ -6,6 +6,7 @@ import footnote from "markdown-it-footnote";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
 import path from 'path'
+import fs from 'node:fs'
 
 const mathjax = mathjaxPlugin()
 
@@ -26,9 +27,76 @@ const navTemp = {
 const nav = [
   ...navTemp.nav,
   {
+    text: '中文',
+    link: `${getBaseRepository(baseTemp.base)}zh/`
+  },
+  {
     component: 'VersionPicker'
   }
 ]
+
+// docs/TODO.md #3 (Option B): before the Vitepress bundling step, create placeholder
+// files for any referenced `public/` media that was not generated at build time
+// (e.g. an example block failed or ran in draft mode), so that a single page cannot
+// break the whole build with "Could not resolve". The make script exports
+// DOCUMENTER_MD_ROOT (the markdown output directory, e.g. `build/.documenter`).
+const mediaPlaceholders: Record<string, Buffer> = {
+  png: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+  jpg: Buffer.from('/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPDUzNDP/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64'),
+  jpeg: Buffer.from('/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPDUzNDP/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64'),
+  gif: Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'),
+  svg: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#ddd"/></svg>'),
+  pdf: Buffer.from('%PDF-1.4\n')
+}
+
+function fillMissingMedia(): void {
+  const mdRoot = process.env.DOCUMENTER_MD_ROOT
+  if (!mdRoot || !fs.existsSync(mdRoot)) return
+  const exts = 'mp4|webm|png|jpe?g|gif|svg|pdf'
+  const publicRegex = new RegExp(`public\\/[\\w.\\-/]+\\.(?:${exts})`, 'g')
+  const imgRegex = new RegExp(`!\\[[^\\]]*\\]\\(([^)\\s]+\\.(?:${exts}))\\)`, 'g')
+  const imgHtmlRegex = new RegExp(`<img[^>]+src=["']([^"'\s]+\\.(?:${exts}))["']`, 'g')
+  const targets = new Set<string>()
+  const walk = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === '.vitepress' || e.name === 'public' || e.name === 'node_modules') continue
+      const p = path.join(dir, e.name)
+      if (e.isDirectory()) walk(p)
+      else if (e.name.endsWith('.md')) {
+        const text = fs.readFileSync(p, 'utf8')
+        for (const m of text.matchAll(publicRegex)) targets.add(path.join(mdRoot, 'public', m[0].slice('public/'.length)))
+        for (const m of text.matchAll(imgRegex)) {
+          if (m[1].startsWith('http') || m[1].startsWith('/')) continue
+          targets.add(path.resolve(dir, m[1]))
+        }
+        let rewritten = text
+        for (const m of text.matchAll(imgHtmlRegex)) {
+          const src = m[1]
+          if (src.startsWith('http') || src.startsWith('/') || src.startsWith('./') || src.startsWith('../')) continue
+          targets.add(path.resolve(dir, src))
+          // Draft-mode Documenter emits raw `<img src="x.png">`; a bare specifier is
+          // resolved as a module id by Vite and fails even when the file exists.
+          rewritten = rewritten.split(`src="${src}"`).join(`src="./${src}"`)
+          rewritten = rewritten.split(`src='${src}'`).join(`src='./${src}'`)
+        }
+        if (rewritten !== text) fs.writeFileSync(p, rewritten)
+      }
+    }
+  }
+  walk(mdRoot)
+  const missing: string[] = []
+  for (const target of targets) {
+    if (fs.existsSync(target)) continue
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    const ext = target.split('.').pop()!.toLowerCase()
+    fs.writeFileSync(target, mediaPlaceholders[ext] ?? Buffer.alloc(0))
+    missing.push(path.relative(mdRoot, target))
+  }
+  if (missing.length > 0) {
+    console.warn(`[fillMissingMedia] created ${missing.length} placeholder file(s) for missing media: ${missing.join(', ')}`)
+  }
+}
+fillMissingMedia()
 
 // https://vitepress.dev/reference/site-config
 export default withMermaid (defineConfig({
