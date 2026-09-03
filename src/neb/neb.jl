@@ -235,7 +235,7 @@ function compute_distance(neb::NEB, spin::AbstractArray)
     dof = neb.dof
     ds = neb.sim.energy #we borrow the sim.energy
 
-    kernel! = compute_distance_kernel!(default_backend[], groupsize[])
+    kernel! = compute_distance_kernel!(get_backend(spin), groupsize[])
 
     for n in 0:N
         m1 = n == 0 ? neb.image_l : view(neb.spin, ((n - 1) * dof + 1):(n * dof))
@@ -251,11 +251,11 @@ end
 function compute_tangents(neb::NEB, spin::AbstractArray)
     N = neb.n_images
 
-    kernel! = compute_tangents_kernel!(default_backend[], groupsize[])
+    kernel! = compute_tangents_kernel!(get_backend(spin), groupsize[])
     kernel!(neb.tangent, spin, neb.image_l, neb.image_r, neb.energy, N, neb.dof;
             ndrange=neb.dof)
 
-    kernel! = reduce_tangent_kernel!(default_backend[], groupsize[])
+    kernel! = reduce_tangent_kernel!(get_backend(spin), groupsize[])
     kernel!(neb.tangent, spin; ndrange=neb.n_total)
 
     dof = neb.dof

@@ -110,7 +110,7 @@ function _project_transition_spin!(
 
     sx, sy, sz = symmetry.signs
     kernel! = _project_transition_spin_symmetry_kernel!(
-        default_backend[], groupsize[])
+        get_backend(input), groupsize[])
     kernel!(output, input, symmetry.partner, eltype(output)(sx), eltype(output)(sy),
             eltype(output)(sz), backend.active;
             ndrange=length(backend.active_cpu))
@@ -123,7 +123,7 @@ function _project_transition_vector!(
 
     sx, sy, sz = symmetry.signs
     kernel! = _project_transition_vector_symmetry_kernel!(
-        default_backend[], groupsize[])
+        get_backend(input), groupsize[])
     kernel!(output, input, symmetry.partner, eltype(output)(sx), eltype(output)(sy),
             eltype(output)(sz), backend.active;
             ndrange=length(backend.active_cpu))

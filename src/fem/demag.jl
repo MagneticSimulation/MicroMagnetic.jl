@@ -195,7 +195,7 @@ function assemble_matirx_DGK1K2(demag::DemagFE, sim::MicroSimFE; using_constrain
         
     end
 
-    if default_backend[] != CPU()
+    if get_backend(sim.spin) != CPU()
         demag.D = GPUSparseMatrixCSC[](D)
         demag.G = GPUSparseMatrixCSC[](G)
         demag.K1 = GPUSparseMatrixCSR[](K1)
@@ -273,7 +273,7 @@ function assemble_matrix_B(demag::DemagFE, sim::MicroSimFE)
         end
     end
 
-    if default_backend[] != CPU()
+    if get_backend(sim.spin) != CPU()
         demag.B = GPUMatrix[](B)
     else
         demag.B = B
@@ -304,7 +304,7 @@ function init_demag(sim::MicroSimFE, method; kwargs...)
     assemble_matirx_DGK1K2(demag, sim, using_constraint = constraint)
 
     try
-        if default_backend[] == CPU()
+        if get_backend(sim.spin) == CPU()
             demag.K1 = cholesky(demag.K1)  
         else
             demag.K1 = ldlt(demag.K1) # cudss version of cholesky give wrong results? 

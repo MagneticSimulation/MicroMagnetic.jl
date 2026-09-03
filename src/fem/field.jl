@@ -28,7 +28,7 @@ function assemble_anis_matirx(anis::AnisotropyFE, sim::MicroSimFE)
         end
     end
 
-    if default_backend[] != CPU()
+    if get_backend(sim.spin) != CPU()
         anis.K_matrix = GPUSparseMatrixCSC[](K_mat)
     end
     
@@ -89,7 +89,7 @@ function assemble_exch_matirx(exch::ExchangeFE, sim::MicroSimFE)
     exch.K_matrix = K
     
     # Handle GPU conversion if needed
-    if default_backend[] != CPU()
+    if get_backend(sim.spin) != CPU()
         exch.K_matrix = GPUSparseMatrixCSC[](K)
     end
 end
@@ -143,7 +143,7 @@ function build_exch_matrix(exch::ExchangeFE, sim::MicroSimFE)
     D = spdiagm(nodal_L_inv_neg)
     Laplacian = D * Laplacian
 
-    if default_backend[] != CPU()
+    if get_backend(sim.spin) != CPU()
         Laplacian = GPUSparseMatrixCSR[](Laplacian)
     end
 
@@ -246,7 +246,7 @@ function assemble_rkky_matirx(rkky::InterlayerExchangeFE, sim::MicroSimFE)
         end
     end
 
-    if default_backend[] != CPU()
+    if get_backend(sim.spin) != CPU()
         rkky.K_matrix = GPUSparseMatrixCSC[](K)
     end
 end
@@ -258,7 +258,7 @@ function effective_field(zee::Zeeman, sim::MicroSimFE, spin::AbstractArray{T,1},
     N = sim.n_total
     v_coeff = sim.mesh.unit_length^3
 
-    back = default_backend[]
+    back = get_backend(spin)
     zeeman_fe_kernel!(back, groupsize[])(spin, zee.field, zee.energy, sim.L_mu, T(v_coeff);
                                       ndrange=N)
     return nothing
@@ -274,7 +274,7 @@ function effective_field(anis::Union{AnisotropyFE, ExchangeFE}, sim::MicroSimFE,
     anis.field .*= mesh.L_inv_neg
 
     v_coeff = 0.5 * mesh.unit_length^3
-    back = default_backend[]
+    back = get_backend(spin)
     zeeman_fe_kernel!(back, groupsize[])(spin, anis.field, anis.energy, sim.L_mu, T(v_coeff);
                                       ndrange=N)
 
@@ -289,7 +289,7 @@ function effective_field(rkky::InterlayerExchangeFE, sim::MicroSimFE,
     mul!(rkky.field, rkky.K_matrix, spin)
     
     v_coeff = 0.5 * mesh.unit_length^3
-    back = default_backend[]
+    back = get_backend(spin)
     zeeman_fe_kernel!(back, groupsize[])(spin, rkky.field, rkky.energy, sim.L_mu, T(v_coeff);
                                       ndrange=N)
 
@@ -335,7 +335,7 @@ function effective_field(demag::DemagFE, sim::MicroSimFE, spin::AbstractArray{T,
     demag.field .*= mesh.L_inv_neg
 
     v_coeff = 0.5 * mesh.unit_length^3
-    backend = default_backend[]
+    backend = get_backend(spin)
     zeeman_fe_kernel!(backend, groupsize[])(spin, demag.field, demag.energy, sim.L_mu, T(v_coeff); ndrange=sim.n_total)
 
 end

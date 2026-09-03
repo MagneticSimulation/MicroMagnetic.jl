@@ -133,7 +133,7 @@ end
 end
 
 function _gneb_log_map!(output, spin_from, spin_to, backend)
-    kernel! = _gneb_log_map_kernel!(default_backend[], groupsize[])
+    kernel! = _gneb_log_map_kernel!(get_backend(spin_from), groupsize[])
     kernel!(output, spin_from, spin_to, backend.active;
             ndrange=length(backend.active_cpu))
     return output
@@ -515,7 +515,7 @@ function _gneb_velocity_projection_step!(
         scale = 1.0
         local_scale == 0 && continue
         kernel! = _gneb_retraction_step_kernel!(
-            default_backend[], groupsize[])
+            get_backend(band.images), groupsize[])
         kernel!(
             view(band.images, :, image), displacement, eltype(displacement)(scale),
             band.backend.active; ndrange=length(band.backend.active_cpu))

@@ -108,7 +108,7 @@ function pbc1d_add_tail!(tensor, axis::Int, build_idx::Int, Nimages::Int,
     daxis = axis == 1 ? dx : axis == 2 ? dy : dz
     Xc = (Nimages + 0.5) * n * daxis
     pcomp = PBC1D_PCOMP[axis][build_idx]
-    kernel! = pbc1d_add_tail_kernel!(default_backend[], groupsize[])
+    kernel! = pbc1d_add_tail_kernel!(get_backend(tensor), groupsize[])
     kernel!(tensor, axis, pcomp, Xc, dx, dy, dz, n; ndrange=(nx, ny, nz))
     return nothing
 end
@@ -185,7 +185,7 @@ function pbc1d_dc_fix!(tensor, axis::Int, build_idx::Int,
     daxis = axis == 1 ? dx : axis == 2 ? dy : dz
     Xc = (PBC1D_DC_M + 0.5) * daxis
     pcomp = PBC1D_PCOMP[axis][build_idx]
-    kernel! = pbc1d_dc_kernel!(default_backend[], groupsize[])
+    kernel! = pbc1d_dc_kernel!(get_backend(tensor), groupsize[])
     ndrange = axis == 1 ? (ny, nz) : axis == 2 ? (nx, nz) : (nx, ny)
     kernel!(tensor, axis, build_idx, pcomp, PBC1D_DC_M, Xc, dx, dy, dz, nx, ny, nz;
             ndrange=ndrange)

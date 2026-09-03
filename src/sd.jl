@@ -56,14 +56,14 @@ end
 function compute_tau(driver::SD, m_pre::AbstractArray{T,1}, m::AbstractArray{T,1},
                      h::AbstractArray{T,1}, N::Int64) where {T<:AbstractFloat}
     if driver.steps == 0
-        kernel! = compute_gk_kernel_1!(default_backend[], groupsize[])
+        kernel! = compute_gk_kernel_1!(get_backend(m), groupsize[])
         kernel!(driver.gk, m, h; ndrange=N)
 
         driver.tau = driver.min_tau
         return nothing
     end
 
-    kernel! = compute_gk_kernel_2!(default_backend[], groupsize[])
+    kernel! = compute_gk_kernel_2!(get_backend(m), groupsize[])
     kernel!(driver.gk, driver.ss, driver.sf, driver.ff, m, m_pre, h; ndrange=N)
 
     sum1 = sum(driver.ss) #Is it better to use Float64 for driver.ss?
@@ -87,7 +87,7 @@ function run_step(sim::AbstractSim, driver::SD)
 
     sim.prespin .= sim.spin
 
-    kernel! = run_step_kernel!(default_backend[], groupsize[])
+    kernel! = run_step_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(driver.gk, sim.spin, sim.field, sim.pins, driver.tau; ndrange=sim.n_total)
     driver.steps += 1
     #max_length_error = error_length_m(sim.spin, sim.n_total)

@@ -137,7 +137,7 @@ function inertial_llg_call_back(sim::AbstractSim, dy_dt::AbstractArray{T,1},
     # TODO: For the test in test_illg.jl, the error of inertial_llg_rhs_kernel_b! is much smaller (~8.4e-15),
     # however, it will take 217757 nfevals. As a comparsion, the inertial_llg_rhs_kernel! requires 8800 nfevals
     # and the error is (~8.6e-12). 
-    kernel! = inertial_llg_rhs_kernel!(default_backend[], groupsize[])
+    kernel! = inertial_llg_rhs_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(dy_dt, y, sim.field, sim.pins, T(driver.alpha), T(driver.gamma), T(driver.tau), 3*N, ndrange=N)
 
     return nothing

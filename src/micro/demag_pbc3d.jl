@@ -99,7 +99,7 @@ function effective_field(demag::DemagPBC3D, sim::MicroSim, spin::AbstractArray{T
 
     mul!(demag.M_pad, demag.m_plan, demag.m_pad)
 
-    kernel! = spectral_project_kernel!(default_backend[], groupsize[])
+    kernel! = spectral_project_kernel!(get_backend(spin), groupsize[])
     kernel!(demag.M_pad, nx, ny, nz,
             T(2π / (nx * mesh.dx)), T(2π / (ny * mesh.dy)), T(2π / (nz * mesh.dz)),
             demag.tscale; ndrange=(nx ÷ 2 + 1, ny, nz))

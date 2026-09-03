@@ -55,7 +55,7 @@ function llg_call_back(sim::AbstractSim, dm_dt::AbstractArray{T,1},
     effective_field(sim, spin, t)
 
     @timeit MicroMagnetic.timer "llg" begin
-        kernel! = llg_rhs_kernel!(default_backend[], groupsize[])
+        kernel! = llg_rhs_kernel!(get_backend(sim.spin), groupsize[])
         kernel!(dm_dt, spin, sim.field, sim.pins, driver.alpha, T(driver.gamma),
                 driver.precession; ndrange=N)
     end

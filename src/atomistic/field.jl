@@ -3,7 +3,7 @@ function effective_field(zee::Zeeman, sim::AtomisticSim, spin::AbstractArray{T,1
     N = sim.n_total
     tx, ty, tz = _zeeman_time_factors(zee, t)
 
-    back = default_backend[]
+    back = get_backend(spin)
     if zee.ft === _static_time
         zeeman_energy_kernel!(back, groupsize[])(spin, zee.field, zee.energy, sim.mu_s,
                                                  T(1); ndrange=N)
@@ -21,7 +21,7 @@ function effective_field(anis::Anisotropy, sim::AtomisticSim, spin::AbstractArra
     N = sim.n_total
 
     heff = output === nothing ? anis.field : output
-    kernal = anisotropy_kernel!(default_backend[])
+    kernal = anisotropy_kernel!(get_backend(spin))
     kernal(spin, heff, anis.energy, anis.Ku, anis.axis_x, anis.axis_y, anis.axis_z,
            sim.mu_s, T(1); ndrange=N)
 
@@ -32,7 +32,7 @@ function effective_field(anis::HexagonalAnisotropy, sim::AtomisticSim,
                          spin::AbstractArray{T,1}, t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
 
-    hexagonal_anisotropy_kernel!(default_backend[])(spin, anis.field, anis.energy, anis.K1,
+    hexagonal_anisotropy_kernel!(get_backend(spin))(spin, anis.field, anis.energy, anis.K1,
                                                     anis.K2, anis.K3, sim.mu_s, T(1);
                                                     ndrange=N)
 
@@ -44,7 +44,7 @@ function effective_field(anis::CubicAnisotropy, sim::AtomisticSim, spin::Abstrac
     N = sim.n_total
 
     heff = output === nothing ? anis.field : output
-    cubic_anisotropy_kernel!(default_backend[])(spin, heff, anis.energy, anis.Kc,
+    cubic_anisotropy_kernel!(get_backend(spin))(spin, heff, anis.energy, anis.Kc,
                                                 anis.axis1x, anis.axis1y, anis.axis1z,
                                                 anis.axis2x, anis.axis2y, anis.axis2z,
                                                 anis.axis3x, anis.axis3y, anis.axis3z,
@@ -57,7 +57,7 @@ end
 function effective_field(anis::TubeAnisotropy, sim::AtomisticSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
     N = sim.n_total
-    kernal = tube_anisotropy_kernel!(default_backend[], groupsize[])
+    kernal = tube_anisotropy_kernel!(get_backend(spin), groupsize[])
     kernal(spin, anis.field, anis.energy, anis.Ku, anis.axes, sim.mu_s, T(1); ndrange=N)
 
     return nothing
@@ -72,7 +72,7 @@ function effective_field(exch::HeisenbergExchange, sim::AtomisticSim,
     heff = output == nothing ? exch.field : output
 
     # The exchange interaction for nearest neighbours
-    kernal = atomistic_exchange_kernel!(default_backend[])
+    kernal = atomistic_exchange_kernel!(get_backend(spin))
     kernal(heff, exch.energy, exch.Js1, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs, T(0);
            ndrange=N)
 
@@ -102,7 +102,7 @@ function effective_field(exch::BiquadraticExchange, sim::AtomisticSim,
     N = sim.n_total
     mesh = sim.mesh
 
-    kernel! = atomistic_exchange_bq_kernel!(default_backend[])
+    kernel! = atomistic_exchange_bq_kernel!(get_backend(spin))
     kernel!(exch.field, exch.energy, exch.Ks, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
             ndrange=N)
     return nothing
@@ -113,7 +113,7 @@ function effective_field(exch::SpatialHeisenberg, sim::AtomisticSim,
     N = sim.n_total
     mesh = sim.mesh
 
-    kernal = atomistic_spatial_exchange_kernel!(default_backend[], groupsize[])
+    kernal = atomistic_spatial_exchange_kernel!(get_backend(spin), groupsize[])
     kernal(exch.field, exch.energy, exch.Js, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
            ndrange=N)
     return nothing
@@ -124,7 +124,7 @@ function effective_field(dmi::HeisenbergDMI, sim::AtomisticSim, spin::AbstractAr
     N = sim.n_total
     mesh = sim.mesh
 
-    kernal = atomistic_dmi_kernel!(default_backend[], groupsize[])
+    kernal = atomistic_dmi_kernel!(get_backend(spin), groupsize[])
     kernal(dmi.field, dmi.energy, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
            ndrange=N)
 
@@ -136,7 +136,7 @@ function effective_field(dmi::SpatialHeisenbergDMI, sim::AtomisticSim,
     N = sim.n_total
     mesh = sim.mesh
 
-    kernal = atomistic_spatial_dmi_kernel!(default_backend[], groupsize[])
+    kernal = atomistic_spatial_dmi_kernel!(get_backend(spin), groupsize[])
     kernal(dmi.field, dmi.energy, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
            ndrange=N)
 
@@ -148,7 +148,7 @@ function effective_field(dmi::HeisenbergCantedDMI, sim::AtomisticSim,
     N = sim.n_total
     mesh = sim.mesh
 
-    kernal = atomistic_canted_dmi_kernel!(default_backend[], groupsize[])
+    kernal = atomistic_canted_dmi_kernel!(get_backend(spin), groupsize[])
     kernal(dmi.field, dmi.energy, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs;
            ndrange=(mesh.nx, mesh.ny, mesh.nz))
 
@@ -160,7 +160,7 @@ function effective_field(dmi::HeisenbergTubeBulkDMI, sim::AtomisticSim,
     N = sim.n_total
     mesh = sim.mesh
 
-    kernal = tube_bulk_dmi_kernel!(default_backend[], groupsize[])
+    kernal = tube_bulk_dmi_kernel!(get_backend(spin), groupsize[])
     kernal(dmi.field, dmi.energy, dmi.D, dmi.Dij, spin, sim.mu_s, mesh.ngbs, mesh.n_ngbs,
            mesh.nr; ndrange=N)
 
@@ -186,7 +186,7 @@ function effective_field(stochastic::StochasticField, sim::AtomisticSim,
 
     stochastic.scaling_factor = scaling_factor
 
-    stochastic_field_kernel!(default_backend[], groupsize[])(spin, stochastic.field,
+    stochastic_field_kernel!(get_backend(spin), groupsize[])(spin, stochastic.field,
                                                              stochastic.energy, sim.mu_s,
                                                              stochastic.eta,
                                                              stochastic.temperature,
