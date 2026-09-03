@@ -27,11 +27,8 @@ const navTemp = {
 const nav = [
   ...navTemp.nav,
   {
-    text: '中文',
-    link: `${getBaseRepository(baseTemp.base)}zh/`
-  },
-  {
-    component: 'VersionPicker'
+    text: 'English',
+    link: `${getBaseRepository(baseTemp.base)}dev/`
   }
 ]
 
@@ -39,7 +36,7 @@ const nav = [
 // files for any referenced `public/` media that was not generated at build time
 // (e.g. an example block failed or ran in draft mode), so that a single page cannot
 // break the whole build with "Could not resolve". The make script exports
-// DOCUMENTER_MD_ROOT (the markdown output directory, e.g. `build/.documenter`).
+// DOCUMENTER_MD_ROOT (the markdown output directory, e.g. `build_zh/.documenter`).
 const mediaPlaceholders: Record<string, Buffer> = {
   png: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
   jpg: Buffer.from('/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPDUzNDP/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64'),
@@ -105,6 +102,10 @@ export default withMermaid (defineConfig({
   description: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
   lastUpdated: true,
   cleanUrls: true,
+  // Docstrings (English, shared with the English site) contain section @refs like
+  // `[Micromagnetic model](@ref)` that only resolve against English page headings.
+  // Ignore just those unresolved `@ref` hrefs; genuine dead links still fail the build.
+  ignoreDeadLinks: [/\/@ref/],
   outDir: 'REPLACE_ME_DOCUMENTER_VITEPRESS', // This is required for MarkdownVitepress to work correctly...
   head: [
     ['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }],

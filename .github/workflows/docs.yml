@@ -25,12 +25,21 @@ jobs:
       - uses: julia-actions/cache@v2
       - name: Install dependencies
         run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Check translation drift (warn only)
+        run: julia docs/check_zh_drift.jl
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # If authenticating with GitHub Actions token
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
         run: julia --project=docs/ docs/make.jl warnonly=true
-          
+      - name: Build and deploy (Chinese)
+        # Deploys to the `zh/` folder of the same gh-pages branch; must run after the
+        # English deploy. See docs/TODO.md #7.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+        run: julia --project=docs/ docs/make_zh.jl warnonly=true
+         
   sync:
     needs: build
     runs-on: ubuntu-latest
