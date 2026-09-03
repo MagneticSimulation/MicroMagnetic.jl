@@ -223,6 +223,7 @@ function plot_hysteresis end
 function ovf2movie end
 
 export ovf2png, plot_m, plot_ts, plot_hysteresis, ovf2movie
+export compute_magnetic_phase, LTEM
 
 include("server.jl")
 include("const.jl")
@@ -292,6 +293,8 @@ include("transition/minimum_mode.jl")
 include("transition/gneb.jl")
 include("transition/transition.jl")
 
+include("tools/rotation.jl")
+include("tools/projection.jl")
 include("tools/ltem.jl")
 include("precompile.jl")
 

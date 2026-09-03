@@ -50,6 +50,7 @@ include("atomistic/test_anis.jl")
 include("test_mc.jl")
 include("test_neb.jl")
 include("test_voronoi.jl")
+include("test_ltem.jl")
 include("transition/test_transition.jl")
 include("transition/test_solvers.jl")
 
