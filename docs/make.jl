@@ -39,15 +39,18 @@ PAGES = ["Home" => "index.md",
          "API" => API]
 
 
-makedocs(; 
-    sitename = "MicroMagnetic.jl", 
-    modules = [MicroMagnetic, 
+# DOCS_DRAFT=true skips executing example blocks (layout-only iteration runs).
+draft = get(ENV, "DOCS_DRAFT", "false") == "true"
+
+makedocs(;
+    sitename = "MicroMagnetic.jl",
+    modules = [MicroMagnetic,
               isdefined(Base, :get_extension) ? Base.get_extension(MicroMagnetic, :CairoMakieExt) : MicroMagnetic.CairoMakieExt],
     warnonly = true,
     checkdocs=:all,
     format= MarkdownVitepress(; repo="github.com/MagneticSimulation/MicroMagnetic.jl",
                            devbranch="master", devurl="dev"),
-    draft = false,
+    draft = draft,
     source = "src",
     build = "build",
     pagesonly = true,
