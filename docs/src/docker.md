@@ -1,16 +1,57 @@
 # Container
 
-This guide covers using the MicroMagnetic.jl container with Docker and Singularity/Apptainer.
+This guide covers using the MicroMagnetic.jl containers with Docker and Singularity/Apptainer.
 
 ## Image Overview
 
-The [container image](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl) includes:
+Two images are provided:
 
-- Julia 1.10 with CUDA.jl pre-installed
-- MicroMagnetic.jl (development version from `master`)
-- CairoMakie (simplied version) for visualization
+| Image | Contents | Size (uncompressed) |
+|---|---|---|
+| `micromagnetic.jl:latest` (CUDA) | Julia 1.12 + CUDA.jl (runtime & compiler from artifacts) + MicroMagnetic + CairoMakie, **sysimage baked** | ~3.3 GB |
+| `micromagnetic.jl:cpu` | Julia + MicroMagnetic + CairoMakie, **sysimage baked** | ~1.5 GB |
 
-**Image size**: ~4.2 GB
+Cold-container full-path timings measured on a 64-core A100 workstation: CUDA
+image 26 s (GPU simulation + plotting + movie export), CPU image 1.9 s
+(atomistic + FDMesh simulations).
+
+CUDA libraries come from CUDA.jl's artifact distribution and the NVIDIA driver is
+injected by nvidia-container-toolkit at runtime, so the image carries no system
+CUDA toolkit; the bulk is the depot artifacts plus the ~1.5 GB sysimage that
+makes startup instant. For a small download, use the CPU image.
+
+Both images ship a [PackageCompiler](https://github.com/JuliaLang/PackageCompiler.jl) system
+image (`/opt/micromagnetic.so`) with MicroMagnetic, its dependencies and the hot simulation
+kernels pre-compiled. Startup no longer depends on a warmed Julia depot: `using MicroMagnetic`
+takes a few seconds instead of ~30–60 s, and the first GPU kernel launch is fast instead of
+paying a ~9 s JIT compile per kernel (measured on A100, Julia 1.12; see below).
+
+Notes:
+
+- CUDA kernels in the sysimage are baked for the **compute capability of the GPU present at
+  image build time** (e.g. sm_80 for A100). On other GPU generations the affected kernels are
+  JIT-compiled once on first use, as before.
+- CUDA runtime & compiler libraries come from the CUDA.jl artifact distribution (CUDA 13.3);
+  the NVIDIA driver is injected at runtime by nvidia-container-toolkit and never baked into
+  the image.
+- The host must have an NVIDIA driver that supports CUDA 13 (driver ≥ 580).
+
+## Building the images
+
+The CUDA sysimage must be built on a machine with an NVIDIA GPU (and `nvidia-container-toolkit`
+installed), because `docker build` cannot access GPUs. [`docker/build_cuda.sh`](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/docker/build_cuda.sh)
+does the three steps for you: `docker build` (dependencies) → `docker run --gpus all`
+(sysimage) → `docker commit` (final image):
+
+```bash
+./docker/build_cuda.sh ghcr.io/magneticsimulation/micromagnetic.jl:latest
+```
+
+The CPU image builds in one step (no GPU needed):
+
+```bash
+docker build -f docker/Dockerfile.cpu -t ghcr.io/magneticsimulation/micromagnetic.jl:cpu .
+```
 
 ## Docker Usage
 
@@ -27,45 +68,57 @@ docker pull ghcr.io/magneticsimulation/micromagnetic.jl:latest
 ```
 
 Alternatively, you can pull the image from `ghcr.nju.edu.cn` to speed up the download:
-
 ```bash
 docker pull ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
 ```
 
-**Run a simulation script:**
+**Run a simulation script.** The entrypoint is `julia -J /opt/micromagnetic.so`, so pass the
+script path directly (no leading `julia`):
 ```bash
 docker run --rm --gpus all -v $(pwd):/workspace \
   ghcr.io/magneticsimulation/micromagnetic.jl:latest \
-  julia /workspace/run_simulation.jl
+  /workspace/run_simulation.jl
 ```
 
-**Start an interactive Julia session:**
+**Start an interactive Julia session (with the sysimage):**
 ```bash
-docker run -it --rm --gpus all -v $(pwd):/workspace \
+docker run -it --rm --gpus all ghcr.io/magneticsimulation/micromagnetic.jl:latest
+```
+
+**Extra Julia options** (threads, project, …) can be appended the same way:
+```bash
+docker run --rm --gpus all -v $(pwd):/workspace \
+  ghcr.io/magneticsimulation/micromagnetic.jl:latest \
+  -t 8 /workspace/run_simulation.jl
+```
+
+**Plain Julia without the sysimage** (e.g. to `Pkg.add` into the depot):
+```bash
+docker run -it --rm --gpus all --entrypoint julia \
   ghcr.io/magneticsimulation/micromagnetic.jl:latest
 ```
 
-**Persistent cache (recommended for faster repeated runs):**
-
-To reuse precompiled packages across multiple runs, bind a persistent directory to `/depot`:
-
+**Persistent depot (optional).** With the baked sysimage, startup is fast even with a fresh
+depot, so a persistent depot is no longer required. If you want to install extra packages that
+survive across runs, mount a directory and point `JULIA_DEPOT_PATH` at it:
 ```bash
 mkdir -p ~/julia_depot
-
 docker run --rm --gpus all \
+  -e JULIA_DEPOT_PATH=/depot \
   -v ~/julia_depot:/depot \
   -v $(pwd):/workspace \
   ghcr.io/magneticsimulation/micromagnetic.jl:latest \
-  julia /workspace/run_simulation.jl
+  /workspace/run_simulation.jl
 ```
-
-Without this, precompiled packages are discarded after each run, causing slower startup.
 
 ## Singularity Usage
 
-Singularity/Apptainer is the standard container runtime on HPC clusters. It runs without root privileges and integrates with SLURM.
+Singularity/Apptainer is the standard container runtime on HPC clusters. It runs without root
+privileges and integrates with SLURM.
 
-**Important**: Singularity mounts containers as read-only by default. You **must** bind a writable directory to `/depot` for Julia to function.
+**Important**: Singularity mounts containers as read-only by default. If Julia needs to write
+(temporary output, Pkg operations), bind a writable directory; the baked sysimage itself needs
+no writable depot.
 
 ### Prerequisites
 
@@ -79,28 +132,18 @@ Singularity/Apptainer is the standard container runtime on HPC clusters. It runs
 singularity pull micromagnetic.sif docker://ghcr.io/magneticsimulation/micromagnetic.jl:latest
 ```
 
-Alternatively, you can pull the image from `ghcr.nju.edu.cn` to speed up the download:
+**Run a script** (the entrypoint carries the sysimage, pass the script path directly):
 ```bash
-singularity pull micromagnetic.sif docker://ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
-```
-
-**Run a script (with required depot binding):**
-```bash
-mkdir -p /work/${USER}/julia_depot
-
 singularity exec \
-  --bind /work/${USER}/julia_depot:/depot \
+  --bind $(pwd):/workspace \
   --nv \
   micromagnetic.sif \
-  julia /path/to/script.jl
+  /workspace/run_simulation.jl
 ```
 
 **Interactive session:**
 ```bash
-singularity shell \
-  --bind /work/${USER}/julia_depot:/depot \
-  --nv \
-  micromagnetic.sif
+singularity shell --nv micromagnetic.sif
 ```
 
 ### SLURM Job Example
@@ -110,35 +153,35 @@ singularity shell \
 #SBATCH --gpus=1
 #SBATCH --time=01:00:00
 
-export JULIA_DEPOT=/work/${USER}/julia_depot
-mkdir -p $JULIA_DEPOT
-
 singularity exec \
-  --bind $JULIA_DEPOT:/depot \
   --bind $(pwd):/workspace \
   --nv \
   micromagnetic.sif \
-  julia /workspace/run_simulation.jl
+  /workspace/run_simulation.jl
 ```
+
 ---
 
 ## Common Issues
-
-### Singularity: read-only file system
-
-**Error**: `read-only file system` when running Julia.
-
-**Solution**: Bind a writable directory to `/depot`:
-```bash
-mkdir -p ~/julia_depot
-singularity exec --bind ~/julia_depot:/depot ...
-```
 
 ### GPU not detected
 
 - **Docker**: Ensure `--gpus all` is included
 - **Singularity**: Ensure `--nv` is included
 - Verify NVIDIA drivers are installed on the host system
+
+### CUDA driver too old
+
+The CUDA image uses CUDA 13.3 runtime libraries (from the CUDA.jl artifact); the
+host driver must support CUDA 13 (≥ 580). For older drivers, build with an older
+runtime via `--build-arg CUDA_BASE=nvidia/cuda:12.4.1-base-ubuntu22.04` and pin
+the runtime version, or install an older CUDA.jl.
+
+### Kernels recompile on a different GPU
+
+The sysimage bakes CUDA kernels for the build-time GPU's compute capability. On a different GPU
+generation the kernels JIT-compile once (and are cached in the depot); rebuild the image on a
+machine with that GPU to bake them.
 
 ### singularity not found in HPC clusters
 - try `module load singularity` to load the Singularity module
