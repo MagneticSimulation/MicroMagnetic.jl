@@ -195,17 +195,10 @@ function assemble_matirx_DGK1K2(demag::DemagFE, sim::MicroSimFE; using_constrain
         
     end
 
-    if get_backend(sim.spin) != CPU()
-        demag.D = GPUSparseMatrixCSC[](D)
-        demag.G = GPUSparseMatrixCSC[](G)
-        demag.K1 = GPUSparseMatrixCSR[](K1)
-        demag.K2 = GPUSparseMatrixCSR[](K2)
-    else
-        demag.D = D
-        demag.G = G
-        demag.K1 = K1
-        demag.K2 = K2
-    end
+    demag.D = to_sparse_csc(sim.spin, D)
+    demag.G = to_sparse_csc(sim.spin, G)
+    demag.K1 = to_sparse_csr(sim.spin, K1)
+    demag.K2 = to_sparse_csr(sim.spin, K2)
 
 end
 
@@ -273,11 +266,7 @@ function assemble_matrix_B(demag::DemagFE, sim::MicroSimFE)
         end
     end
 
-    if get_backend(sim.spin) != CPU()
-        demag.B = GPUMatrix[](B)
-    else
-        demag.B = B
-    end
+    demag.B = to_dense_matrix(sim.spin, B)
     
 end
 
