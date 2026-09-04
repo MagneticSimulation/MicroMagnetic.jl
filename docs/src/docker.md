@@ -121,6 +121,11 @@ RUN julia -e 'using Pkg; Pkg.add("MyPackage")'
 Singularity/Apptainer is the standard container runtime on HPC clusters. It runs without
 root privileges and integrates with SLURM.
 
+`--writable-tmpfs` is required for GPU runs: the CUDA stack writes a scratch usage log into
+the (read-only) image depot at startup, and this flag provides an ephemeral writable layer.
+The GPU path (simulation with demag, plotting, movie export) is verified with this exact
+invocation.
+
 ### Pull the image
 
 ```bash
@@ -133,6 +138,7 @@ Apptainer's `exec` runs the given command *instead of* the image entrypoint, so 
 must be passed explicitly with `-J`:
 ```bash
 singularity exec \
+  --writable-tmpfs \
   --bind $(pwd):/workspace \
   --nv \
   micromagnetic.sif \
@@ -143,7 +149,7 @@ singularity exec \
 
 `run` follows the image entrypoint and starts the REPL with the sysimage:
 ```bash
-singularity run --nv micromagnetic.sif
+singularity run --nv --writable-tmpfs micromagnetic.sif
 ```
 
 ### SLURM Job Example
@@ -154,6 +160,7 @@ singularity run --nv micromagnetic.sif
 #SBATCH --time=01:00:00
 
 singularity exec \
+  --writable-tmpfs \
   --bind $(pwd):/workspace \
   --nv \
   micromagnetic.sif \

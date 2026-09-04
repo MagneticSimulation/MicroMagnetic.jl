@@ -19,7 +19,7 @@
 # official linux x86_64 install dir; build_cuda.sh auto-supplies the host's
 # own install). This avoids downloading the tarball at build time.
 
-ARG CUDA_BASE=nvidia/cuda:12.6.3-base-ubuntu22.04
+ARG CUDA_BASE=nvidia/cuda:12.6.3-base-ubuntu24.04
 FROM ${CUDA_BASE}
 
 LABEL org.opencontainers.image.authors="Weiwei Wang" \
@@ -75,6 +75,17 @@ RUN julia -e 'using MicroMagnetic, CUDA, CUDSS, CairoMakie, NPZ; println("deps o
                      end; \
                  end; \
                  println("cuda artifacts prefetched")'
+
+# Singularity/Apptainer runs the container as the invoking user (arbitrary
+# uid) on a read-only filesystem: make the depot's runtime-writable
+# *directories* world-writable (dirs only — file chmod would copy up their
+# data) and drop the build-time scratch usage log, so scratch logs and JIT
+# caches work there (a writable layer such as `--writable-tmpfs` is still
+# needed at run time).
+RUN rm -f /usr/local/share/julia/logs/scratch_usage.toml \
+    && find /usr/local/share/julia/logs /usr/local/share/julia/compiled \
+            /usr/local/share/julia/scratchspaces /usr/local/share/julia/environments \
+            -type d -exec chmod 777 {} + 2>/dev/null || true
 
 COPY docker/gpu_workload.jl /opt/gpu_workload.jl
 COPY docker/build_sysimage.jl /opt/build_sysimage.jl
