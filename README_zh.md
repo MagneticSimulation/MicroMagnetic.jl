@@ -19,17 +19,18 @@ _一个支持 GPU 的经典自旋动力学与微磁学模拟 Julia 包。_
 
 ### 功能特性
 
-- 支持经典自旋动力学与微磁学模拟。
-- 提供交互式网页 GUI,可实时可视化磁化动力学过程。
-- 兼容 CPU 与多种 GPU 平台,包括 NVIDIA、AMD、Intel 和 Apple GPU。
-- 支持双精度与单精度计算。
+- 支持经典自旋动力学与微磁学模拟(LLG、惯性 LLG 与能量最小化),内置自适应与定步长积分器。
 - 支持原子模型的蒙特卡洛模拟。
-- 实现了 NEB(弹性带)方法,可用于计算能量势垒。
-- 支持系统的鞍点搜索与测地线 NEB 跃迁路径发现。
-- 支持自旋转移矩,包括 Zhang-Li 和 Slonczewski 模型。
+- 实现 NEB(弹性带)方法计算能量势垒,并支持系统鞍点搜索与测地线 NEB 跃迁路径发现。
+- 支持自旋转移矩(Zhang-Li、Slonczewski)与自旋轨道矩。
+- 支持微磁本征模分析。
+- 内置分析工具:斯格明子数(拓扑荷)、导引中心、LTEM 相位 / Fresnel 散焦像模拟(含倾斜样品)。
+- 退磁场的真周期性边界条件(1D/2D/3D),根据网格自动选择求解器。
 - 内置多种能量项与热涨落。
 - 支持构造实体几何(CSG)。
-- 支持周期性边界条件。
+- 兼容 CPU 与多种 GPU 平台,包括 NVIDIA、AMD、Intel 和 Apple GPU。
+- 支持双精度与单精度计算。
+- 提供交互式网页 GUI,可实时可视化磁化动力学过程。
 - 易于扩展新功能。
 
 ## 网站
@@ -45,7 +46,7 @@ _一个支持 GPU 的经典自旋动力学与微磁学模拟 Julia 包。_
 
 ## Docker / Singularity 快速上手
 
-我们提供了预构建的[容器镜像](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl),内置 MicroMagnetic.jl 与 CUDA 支持,详见[完整文档](https://magneticsimulation.github.io/MicroMagnetic.jl/zh/docker.html)。
+我们提供了预构建的[容器镜像](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl):完整 CUDA 版(约 3.3 GB)与精简 CPU 版(约 1.5 GB)。两者都烘焙了系统镜像(sysimage),`using MicroMagnetic` 数秒即完成启动,GPU 核函数首次调用也无需 JIT 等待。详见[完整文档](https://magneticsimulation.github.io/MicroMagnetic.jl/zh/docker.html)。
 
 ## 安装
 
