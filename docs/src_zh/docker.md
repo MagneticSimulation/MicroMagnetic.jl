@@ -6,135 +6,165 @@
 
 提供两个镜像：
 
-| 镜像 | 内容 | 典型大小 |
+| 镜像 | 内容 | 压缩拉取体积 |
 |---|---|---|
-| `micromagnetic.jl:latest`（CUDA） | Julia + CUDA toolkit（系统） + MicroMagnetic + CairoMakie，**内置 sysimage** | ~4 GB |
-| `micromagnetic.jl:cpu` | Julia + MicroMagnetic + CairoMakie，**内置 sysimage** | ~1.5 GB |
+| `ghcr.io/magneticsimulation/micromagnetic.jl:latest` | CUDA 版：Julia 1.12、CUDA 13.3 运行时与编译器（CUDA.jl artifact）、MicroMagnetic、CairoMakie、CUDSS、NPZ、**内置 sysimage** | 3.1 GB |
+| `ghcr.io/magneticsimulation/micromagnetic.jl:cpu` | CPU 版：Julia 1.12、MicroMagnetic、CairoMakie、NPZ、**内置 sysimage** | 1.4 GB |
 
-两个镜像都带有用 [PackageCompiler](https://github.com/JuliaLang/PackageCompiler.jl) 构建的
-系统镜像（`/opt/micromagnetic.so`），其中预编译了 MicroMagnetic、其依赖以及常用的模拟内核。
-启动不再依赖预热好的 Julia depot：`using MicroMagnetic` 只需几秒而不是约 30–60 秒，
-首次 GPU kernel 启动也是即时的，无需为每个 kernel 支付约 9 秒的 JIT 编译
-（在 A100、Julia 1.12 上测得；见下文）。
+两个镜像都用 [PackageCompiler](https://github.com/JuliaLang/PackageCompiler.jl) 构建了系统镜像
+（`/opt/micromagnetic.so`），其中预编译了 MicroMagnetic、其依赖以及常用的模拟内核。
+冷容器无需任何 depot 预热：在 64 核 A100 工作站上实测，CUDA 镜像 26 秒即可完成一条完整链路
+（含 demag 的 GPU 模拟、绘图、导出视频），CPU 镜像 1.9 秒跑完完整 workload，全程零下载。
 
-注意：
+两个镜像的入口点均为 `julia -J /opt/micromagnetic.so`：脚本直接按路径传入（见下文示例），
+不带参数的 `docker run -it` 会启动一个 sysimage 生效的 Julia REPL。
 
+### 可用标签
+
+| 标签 | 内容 |
+|---|---|
+| `:latest` | CUDA 版（默认） |
+| `:cuda` | `:latest` 的别名 |
+| `:cpu` | 纯 CPU 版 |
+| `:0.7.0`、`:0.7.0-cpu` | 冻结在 MicroMagnetic v0.7.0 的镜像 |
+
+CUDA 镜像重建时会自动打上 `:cuda` 以及 `Project.toml` 中包版本对应的标签
+（见 `docker/build_cuda.sh`）。
+
+说明：
+
+- CUDA 运行时与编译器库来自 CUDA.jl 的 artifact 分发；NVIDIA 驱动在运行时由
+  nvidia-container-toolkit 注入，**不会**打进镜像。
+- 宿主机驱动需支持 CUDA 13（驱动 ≥ 580）。
 - sysimage 中的 CUDA kernel 是针对**构建镜像时所用 GPU 的计算能力**预编译的
   （例如 A100 为 sm_80）。在其他代际的 GPU 上，受影响的 kernel 会在首次使用时
-  像以前一样 JIT 编译一次。
-- CUDA 镜像设置了 `local_toolkit` preference，因此 CUDA.jl 使用基础镜像中安装的
-  toolkit，而不是把数 GB 的运行时 artifact 下载进 Julia depot。找不到系统 toolkit 时
-  会自动回退到 artifact。
-- 宿主机需要安装与镜像 CUDA toolkit 兼容的 NVIDIA 驱动
-  （CUDA 12.6 ⇔ 驱动 ≥ 560）。
+  JIT 编译一次。
 
 ## 构建镜像
 
-CUDA sysimage 必须在有 NVIDIA GPU 的机器上构建（并安装 `nvidia-container-toolkit`），
-因为 `docker build` 无法访问 GPU。[docker/build_cuda.sh](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/docker/build_cuda.sh)
-帮你完成三步：`docker build`（依赖）→ `docker run --gpus all`
-（sysimage）→ `docker commit`（最终镜像）：
+CUDA sysimage 必须在装有 NVIDIA GPU 和 nvidia-container-toolkit 的机器上构建，
+因为 `docker build` 无法访问 GPU。
+[`docker/build_cuda.sh`](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/docker/build_cuda.sh)
+把三个步骤串了起来：`docker build`（依赖）→ `docker run --gpus all`
+（烘 sysimage + 全路径探针）→ `docker commit`（成品镜像，自动打 `:latest`、`:cuda`
+以及 `Project.toml` 版本号标签）：
 
 ```bash
 ./docker/build_cuda.sh ghcr.io/magneticsimulation/micromagnetic.jl:latest
 ```
 
-CPU 镜像一步即可构建（无需 GPU）：
+CPU 镜像无需 GPU，一步构建：
 
 ```bash
 docker build -f docker/Dockerfile.cpu -t ghcr.io/magneticsimulation/micromagnetic.jl:cpu .
 ```
 
-## Docker 用法
+## Docker 使用
 
 ### 前置条件
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)（GPU 支持需要）
+- [Docker](https://docs.docker.com/engine/install/)
+- GPU 支持需要 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+  以及驱动 ≥ 580
 
-### 常用命令
+### 拉取镜像
 
-**拉取镜像：**
 ```bash
 docker pull ghcr.io/magneticsimulation/micromagnetic.jl:latest
 ```
 
-也可以从 `ghcr.nju.edu.cn` 拉取镜像以加速下载：
+国内用户可通过 NJU 镜像源拉取：
+
 ```bash
 docker pull ghcr.nju.edu.cn/magneticsimulation/micromagnetic.jl:latest
 ```
 
-**运行模拟脚本。** 入口点是 `julia -J /opt/micromagnetic.so`，直接传脚本路径即可
-（不要带前导 `julia`）：
+### 运行模拟脚本
+
+入口点为 `julia -J /opt/micromagnetic.so`，直接传脚本路径即可（**不要**再写前导 `julia`）：
 ```bash
 docker run --rm --gpus all -v $(pwd):/workspace \
   ghcr.io/magneticsimulation/micromagnetic.jl:latest \
   /workspace/run_simulation.jl
 ```
 
-**启动交互式 Julia 会话（使用 sysimage）：**
+纯 CPU 主机使用 `:cpu` 镜像并去掉 `--gpus all`：
+```bash
+docker run --rm -v $(pwd):/workspace \
+  ghcr.io/magneticsimulation/micromagnetic.jl:cpu \
+  /workspace/run_simulation.jl
+```
+
+### 交互式会话
+
 ```bash
 docker run -it --rm --gpus all ghcr.io/magneticsimulation/micromagnetic.jl:latest
 ```
 
-**附加 Julia 选项**（线程、project 等）可以同样追加：
+附加 Julia 参数写在镜像名之后、脚本之前：
 ```bash
 docker run --rm --gpus all -v $(pwd):/workspace \
   ghcr.io/magneticsimulation/micromagnetic.jl:latest \
   -t 8 /workspace/run_simulation.jl
 ```
 
-**不使用 sysimage 的纯 Julia**（例如要 `Pkg.add` 到 depot 里）：
+### 不带 sysimage 的原生 Julia
+
+调试包问题时，可用原生系统镜像启动 Julia：
 ```bash
 docker run -it --rm --gpus all --entrypoint julia \
   ghcr.io/magneticsimulation/micromagnetic.jl:latest
 ```
 
-**持久化 depot（可选）。** 有了内置 sysimage，即使 depot 是全新的，启动也很快，
-因此不再需要持久化 depot。如果想安装能在多次运行之间保留的额外软件包，
-可以挂载一个目录并把 `JULIA_DEPOT_PATH` 指向它：
+### 安装额外的包
+
+镜像内置的 depot（`/usr/local/share/julia`）已包含运行所需的一切。若要永久添加包，
+在容器里安装后提交：
+
 ```bash
-mkdir -p ~/julia_depot
-docker run --rm --gpus all \
-  -e JULIA_DEPOT_PATH=/depot \
-  -v ~/julia_depot:/depot \
-  -v $(pwd):/workspace \
-  ghcr.io/magneticsimulation/micromagnetic.jl:latest \
-  /workspace/run_simulation.jl
+docker run -it --name mm-extra ghcr.io/magneticsimulation/micromagnetic.jl:latest
+# 容器内：julia -e 'using Pkg; Pkg.add("MyPackage")'，然后 exit
+docker commit mm-extra my-micromagnetic && docker rm mm-extra
 ```
 
-## Singularity 用法
+或派生一个镜像：
 
-Singularity/Apptainer 是 HPC 集群上的标准容器运行时。它无需 root 权限即可运行，
-并与 SLURM 集成。
+```dockerfile
+FROM ghcr.io/magneticsimulation/micromagnetic.jl:latest
+RUN julia -e 'using Pkg; Pkg.add("MyPackage")'
+```
 
-**重要**：Singularity 默认以只读方式挂载容器。如果 Julia 需要写入
-（临时输出、Pkg 操作等），请绑定一个可写目录；内置 sysimage 本身不需要可写 depot。
+## Singularity / Apptainer 使用
 
-### 前置条件
+Singularity/Apptainer 是 HPC 集群上的标准容器运行时，无需 root 权限，并与 SLURM 集成。
 
-- SingularityCE 3.0+ 或 Apptainer 1.0+
-- GPU 支持需要 `--nv` 选项
+`--writable-tmpfs` 是 GPU 运行的必需参数：CUDA 栈启动时会向（只读的）镜像 depot 写入
+scratch 使用日志，该参数提供一层临时的可写层。下述 GPU 链路（含 demag 的模拟、绘图、
+视频导出）已用这条命令实测通过。
 
-### 常用命令
+### 拉取镜像
 
-**拉取镜像：**
 ```bash
 singularity pull micromagnetic.sif docker://ghcr.io/magneticsimulation/micromagnetic.jl:latest
 ```
 
-**运行脚本**（入口点已带 sysimage，直接传脚本路径）：
+### 运行模拟脚本
+
+Apptainer 的 `exec` 会用给定命令**替代**镜像入口点，因此需要用 `-J` 显式指定 sysimage：
 ```bash
 singularity exec \
+  --writable-tmpfs \
   --bind $(pwd):/workspace \
   --nv \
   micromagnetic.sif \
-  /workspace/run_simulation.jl
+  julia -J /opt/micromagnetic.so /workspace/run_simulation.jl
 ```
 
-**交互式会话：**
+### 交互式会话
+
+`run` 会遵循镜像入口点，启动 sysimage 生效的 REPL：
 ```bash
-singularity shell --nv micromagnetic.sif
+singularity run --nv --writable-tmpfs micromagnetic.sif
 ```
 
 ### SLURM 作业示例
@@ -145,33 +175,39 @@ singularity shell --nv micromagnetic.sif
 #SBATCH --time=01:00:00
 
 singularity exec \
+  --writable-tmpfs \
   --bind $(pwd):/workspace \
   --nv \
   micromagnetic.sif \
-  /workspace/run_simulation.jl
+  julia -J /opt/micromagnetic.so /workspace/run_simulation.jl
 ```
-
----
 
 ## 常见问题
 
-### 检测不到 GPU
+### GPU 未被识别
 
-- **Docker**：确保命令中包含 `--gpus all`
-- **Singularity**：确保命令中包含 `--nv`
-- 确认宿主机已安装 NVIDIA 驱动
+- **Docker**：确认带了 `--gpus all`
+- **Singularity**：确认带了 `--nv`
+- 先在宿主机确认驱动正常（`nvidia-smi` 可用）
 
 ### CUDA 驱动过旧
 
-CUDA 镜像自带 CUDA 12.6 toolkit，宿主机驱动必须 ≥ 560。若驱动较旧，
-可通过 `--build-arg CUDA_BASE=nvidia/cuda:12.4.1-devel-ubuntu22.04` 用旧版 toolkit 构建。
+CUDA 镜像内置 CUDA 13.3 运行时库，宿主机驱动需 ≥ 580。若要在更旧的驱动上运行，
+可在 `docker/Dockerfile.cuda` 中重建镜像时用官方 API 锁定旧版运行时
+（在包安装之后、sysimage 构建之前的任意位置）：
 
-### 换 GPU 后 kernel 重新编译
+```dockerfile
+RUN julia -e 'using CUDA; CUDA.set_runtime_version!(v"12.6")'
+```
 
-sysimage 为构建时 GPU 的计算能力预编译了 CUDA kernel。在其他代际的 GPU 上，
-kernel 会 JIT 编译一次（并缓存到 depot 中）；要在该 GPU 上预编译，请在装有该 GPU 的
-机器上重新构建镜像。
+CUDA 12.6 的 artifact 可运行于驱动 ≥ 525。
+
+### 在不同 GPU 上 kernel 重新编译
+
+sysimage 中的 CUDA kernel 是按构建时 GPU 的计算能力烘焙的。在其他代际的 GPU 上，
+kernel 会 JIT 编译一次（并缓存进 depot）；如需消除，可在装该 GPU 的机器上重建镜像。
 
 ### HPC 集群上找不到 singularity
-- 尝试 `module load singularity` 加载 Singularity 模块
-- 或按照 https://apptainer.org/ 的说明自行安装
+
+- 先试 `module load singularity`（或 `module load apptainer`）
+- 否则按 https://apptainer.org/ 的说明安装
