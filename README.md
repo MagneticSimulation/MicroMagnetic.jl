@@ -19,17 +19,18 @@ _A Julia package for classical spin dynamics and micromagnetic simulations with 
 
 ### Features
 
-- Supports classical spin dynamics and micromagnetic simulations.
-- An interactive web-based GUI for real-time visualization of magnetization dynamics.
-- Compatible with CPU and multiple GPU platforms, including NVIDIA, AMD, Intel, and Apple GPUs.
-- Supports both double and single precision.
+- Supports classical spin dynamics and micromagnetic simulations (LLG, inertial LLG, and energy minimization) with adaptive and fixed-step integrators.
 - Supports Monte Carlo simulations for atomistic models.
-- Implements the Nudged-Elastic-Band method for energy barrier computations.
-- Supports systematic saddle-point search and geodesic NEB transition discovery.
-- Supports Spin-transfer torques, including Zhang-Li and Slonczewski models.
+- Implements the Nudged-Elastic-Band method for energy barrier computations, with systematic saddle-point search and geodesic NEB transition discovery.
+- Supports spin-transfer torques (Zhang-Li and Slonczewski) and spin-orbit torques.
+- Micromagnetic eigenmode analysis.
+- Built-in analysis tools: skyrmion number (topological charge), guiding center, and LTEM phase / Fresnel image simulation, including tilted samples.
+- True periodic boundary conditions (1D/2D/3D) for the demagnetization field, selected automatically from the mesh.
 - Incorporates various energy terms and thermal fluctuations.
 - Supports constructive solid geometry.
-- Supports periodic boundary conditions.
+- Compatible with CPU and multiple GPU platforms, including NVIDIA, AMD, Intel, and Apple GPUs.
+- Supports both double and single precision.
+- An interactive web-based GUI for real-time visualization of magnetization dynamics.
 - Easily extensible to add new features.
 
 ## Website
@@ -46,7 +47,7 @@ We have a QQ group. If you have any questions related to Micromagnetic.jl, pleas
 
 ## Docker / Singularity Quick Start
 
-We provide a pre-built [container](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl) image with MicroMagnetic.jl and CUDA support, see the [full documentation](https://magneticsimulation.github.io/MicroMagnetic.jl/dev/docker).
+We provide pre-built [container images](https://github.com/MagneticSimulation/MicroMagnetic.jl/pkgs/container/micromagnetic.jl): a full CUDA image (~3.3 GB) and a slim CPU-only image (~1.5 GB). Both bake in a system image (sysimage), so `using MicroMagnetic` starts in seconds with no JIT overhead on the first GPU kernels. See the [full documentation](https://magneticsimulation.github.io/MicroMagnetic.jl/dev/docker).
 
 ## Installation
 
