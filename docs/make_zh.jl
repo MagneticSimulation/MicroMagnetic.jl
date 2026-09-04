@@ -28,7 +28,10 @@ for (root, dirs, files) in walkdir(ZH), f in files
 end
 
 PAGES = ["首页" => "index.md",
-         "手册" => ["install.md", "gui.md", "docker.md", "basics.md", "units.md", "fem.md", "equations.md", "eigen/eigenmodes.md", "contrib.md"],
+         "用户手册" => ["install.md", "basics.md", "units.md", "gpu.md", "pbc.md",
+                     "dataio.md", "tools.md", "fem.md", "eigen/eigenmodes.md",
+                     "gui.md", "docker.md"],
+         "物理" => ["equations.md"],
          "原子模型" => ["atomistic/skyrmion.md",
                      "atomistic/saddle_point_search.md",
                      "atomistic/skyrmion_lattice.md",
@@ -45,11 +48,13 @@ PAGES = ["首页" => "index.md",
                           "micromagnetics/stoner_wohlfarth.md",
                           "micromagnetics/chi.md"],
          "微磁模型 (FE)" => ["fem/sphere_demag.md",
-                          "fem/hysteresis.md"],
+                          "fem/hysteresis.md",
+                          "fem/rkky.md"],
          "杂项" => ["monte_carlo/skyrmion.md",
                   "monte_carlo/M_T_curve.md",
                   "neb/neb_skx.md"],
-         "API" => ["api.md", "api_dev.md"]]
+         "API" => ["api.md"],
+         "开发者" => ["contrib.md"]]
 
 # DOCS_DRAFT=true skips executing example blocks (layout-only iteration runs).
 draft = get(ENV, "DOCS_DRAFT", "false") == "true"
