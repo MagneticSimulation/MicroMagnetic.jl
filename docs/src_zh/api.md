@@ -164,3 +164,22 @@ NumberOrArrayOrFunction
 NumberOrTupleOrArrayOrFunction
 TupleOrArrayOrFunction
 ```
+
+## LTEM 工具
+
+```@docs
+compute_magnetic_phase
+LTEM
+MicroMagnetic.magnetic_phase_fft
+MicroMagnetic.rotate3d
+MicroMagnetic.warp2d
+MicroMagnetic.euler_matrix
+MicroMagnetic.project3d
+MicroMagnetic.vector_field_projection
+MicroMagnetic.vector_padding
+MicroMagnetic.pad_array
+MicroMagnetic.rotation_grid_size
+MicroMagnetic.electron_wavelength
+MicroMagnetic.interaction_constant
+MicroMagnetic.compute_electric_phase
+```
