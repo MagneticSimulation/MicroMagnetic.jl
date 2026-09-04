@@ -108,8 +108,21 @@ function effective_field(exch::Exchange, sim::MicroSim, spin::AbstractArray{T,1}
     nd = (mesh.nx, mesh.ny, mesh.nz)
     wg = _stencil_wg(mesh)
     back = get_backend(spin)
+    on_cpu = back isa KernelAbstractions.CPU
     cls, ok = _exchange_tables!(sim, exch)
-    if ok
+    if on_cpu
+        # CPU: ngbs reads are L1-resident and the flat loop vectorises — see the
+        # "ngbs-table stencil kernels" note in micro/kernels.jl
+        if ok
+            exchange_ngbs_partition_kernel!(back, 512)(spin, exch.field, exch.energy,
+                cls, exch.pair_Ax, exch.pair_Ay, exch.pair_Az, sim.inv_ms,
+                dx, dy, dz, mesh.ngbs, volume; ndrange=sim.n_total)
+        else
+            exchange_ngbs_kernel!(back, 512)(spin, exch.field, exch.energy, sim.mu0_Ms,
+                exch.Ax, exch.Ay, exch.Az, dx, dy, dz, mesh.ngbs, volume;
+                ndrange=sim.n_total)
+        end
+    elseif ok
         exchange_partition_kernel!(back, wg)(spin, exch.field, exch.energy,
             cls, exch.pair_Ax, exch.pair_Ay, exch.pair_Az, sim.inv_ms,
             dx, dy, dz, volume, nx, ny, nz, px, py, pz; ndrange=nd)
@@ -134,9 +147,20 @@ function effective_field(dmi::DMI, sim::MicroSim, spin::AbstractArray{T,1},
     wg = _stencil_wg(mesh)
     tfac = T(dmi.ft(t))
     back = get_backend(spin)
+    on_cpu = back isa KernelAbstractions.CPU
     if dmi.type === :bulk
         cls, ok = _dmi_tables!(sim, dmi)
-        if ok
+        if on_cpu
+            if ok
+                bulkdmi_ngbs_partition_kernel!(back, 512)(spin, dmi.field, dmi.energy,
+                    cls, dmi.pair_Dx, dmi.pair_Dy, dmi.pair_Dz, sim.inv_ms,
+                    dx, dy, dz, mesh.ngbs, volume; ndrange=sim.n_total)
+            else
+                bulkdmi_ngbs_kernel!(back, 512)(spin, dmi.field, dmi.energy, sim.mu0_Ms,
+                    dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz, mesh.ngbs, volume, tfac;
+                    ndrange=sim.n_total)
+            end
+        elseif ok
             bulkdmi_partition_kernel!(back, wg)(spin, dmi.field, dmi.energy,
                 cls, dmi.pair_Dx, dmi.pair_Dy, dmi.pair_Dz, sim.inv_ms,
                 dx, dy, dz, volume, nx, ny, nz, px, py, pz; ndrange=nd)
@@ -147,7 +171,17 @@ function effective_field(dmi::DMI, sim::MicroSim, spin::AbstractArray{T,1},
         end
     else
         cls, ok = _dmi_tables!(sim, dmi)
-        if ok
+        if on_cpu
+            if ok
+                interfacial_dmi_ngbs_partition_kernel!(back, 512)(spin, dmi.field, dmi.energy,
+                    cls, dmi.pair_Dx, dmi.Dcls, sim.inv_ms,
+                    dx, dy, mesh.ngbs, volume; ndrange=sim.n_total)
+            else
+                interfacial_dmi_ngbs_kernel!(back, 512)(spin, dmi.field, dmi.energy,
+                    sim.mu0_Ms, dmi.Dx, dx, dy, dz, mesh.ngbs, volume, tfac;
+                    ndrange=sim.n_total)
+            end
+        elseif ok
             interfacial_dmi_partition_kernel!(back, wg)(spin, dmi.field, dmi.energy,
                 cls, dmi.pair_Dx, dmi.Dcls, sim.inv_ms,
                 dx, dy, volume, nx, ny, nz, px, py, pz; ndrange=nd)
@@ -290,11 +324,18 @@ function effective_field(torque::ZhangLiTorque, sim::AbstractSim, spin::Abstract
     nx, ny, nz = Int32(mesh.nx), Int32(mesh.ny), Int32(mesh.nz)
     px, py, pz = mesh.xperiodic, mesh.yperiodic, mesh.zperiodic
     back = get_backend(spin)
-    zhangli_torque_kernel!(back, _stencil_wg(mesh))(spin, torque.field, torque.bJx,
-                                                    torque.bJy, torque.bJz,
-                                                    torque.xi, ut, T(mesh.dx), T(mesh.dy),
-                                                    T(mesh.dz), nx, ny, nz, px, py, pz;
-                                                    ndrange=(mesh.nx, mesh.ny, mesh.nz))
+    if back isa KernelAbstractions.CPU
+        zhangli_ngbs_torque_kernel!(back, 512)(spin, torque.field, torque.bJx,
+                                               torque.bJy, torque.bJz, mesh.ngbs,
+                                               torque.xi, ut, T(mesh.dx), T(mesh.dy),
+                                               T(mesh.dz); ndrange=sim.n_total)
+    else
+        zhangli_torque_kernel!(back, _stencil_wg(mesh))(spin, torque.field, torque.bJx,
+                                                        torque.bJy, torque.bJz,
+                                                        torque.xi, ut, T(mesh.dx), T(mesh.dy),
+                                                        T(mesh.dz), nx, ny, nz, px, py, pz;
+                                                        ndrange=(mesh.nx, mesh.ny, mesh.nz))
+    end
 
     return nothing
 end
