@@ -29,7 +29,7 @@ features:
   - icon: <img width="280" src="std5_center.png" />
     title: Standard Problem 5
     details: Vortex dynamics with spin transfer torques
-    link: /micromagnetics/std5.md
+    link: /micromagnetics/std5
   - icon: <img width="280" src="sw.png" />
     title: Stoner–Wohlfarth model
     details: Compute Stoner–Wohlfarth loop using a particle
@@ -44,7 +44,7 @@ features:
     link: /monte_carlo/M_T_curve
   - icon: <img width="280" src="chi.png" />
     title: Dynamical susceptibility
-    details: Compute dynamical susceptibility of a naonbar
+    details: Compute dynamical susceptibility of a nanobar
     link: /micromagnetics/chi
 
 

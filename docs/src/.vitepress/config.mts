@@ -6,8 +6,66 @@ import footnote from "markdown-it-footnote";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
 import path from 'path'
+import fs from 'fs'
 
 const mathjax = mathjaxPlugin()
+
+// Draft builds (DOCS_DRAFT=true) skip executing example blocks, so media that
+// examples generate at build time (e.g. eigen_fig2.png, public/*.mp4) is
+// missing and Vite's rollup fails on every unresolved import. Scan the
+// generated markdown for local media references and materialise placeholder
+// files; also normalise the bare <img src="x.png"> paths Documenter emits in
+// draft mode to ./x.png. In full builds the files exist and nothing is written.
+const PNG_1X1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64')
+
+function fillMissingMedia(root: string) {
+  const walk = (dir: string, acc: string[] = []): string[] => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name)
+      if (e.isDirectory()) {
+        if (e.name !== 'node_modules' && e.name !== '.vitepress') walk(p, acc)
+      } else if (e.name.endsWith('.md')) {
+        acc.push(p)
+      }
+    }
+    return acc
+  }
+  const placeholder = (p: string, kind: 'img' | 'video') => {
+    if (fs.existsSync(p)) return
+    fs.mkdirSync(path.dirname(p), { recursive: true })
+    fs.writeFileSync(p, kind === 'img' ? PNG_1X1 : Buffer.alloc(0))
+    console.warn(`[fillMissingMedia] placeholder: ${path.relative(root, p)}`)
+  }
+  const isLocal = (ref: string) => !/^[a-z]+:\/\//.test(ref) && !ref.startsWith('/') && !ref.startsWith('#')
+  for (const f of walk(root)) {
+    let txt = fs.readFileSync(f, 'utf8')
+    const orig = txt
+    txt = txt.replace(/(<(?:img|video|source)\s[^>]*?src=")([^"\/:][^"]*)(")/g,
+                      (m, a, src, z) => `${a}./${src}${z}`)
+    for (const m of txt.matchAll(/!\[[^\]]*\]\(([^)#?]+)\)/g)) {
+      const ref = m[1].trim()
+      if (!isLocal(ref)) continue
+      const target = path.resolve(path.dirname(f), decodeURIComponent(ref))
+      if (/\.(png|jpe?g|gif|svg)$/i.test(target)) placeholder(target, 'img')
+      else if (/\.(mp4|webm)$/i.test(target)) placeholder(target, 'video')
+    }
+    for (const m of txt.matchAll(/<img\s[^>]*?src="([^"]+)"/g)) {
+      const ref = m[1].trim()
+      if (!isLocal(ref)) continue
+      const target = path.resolve(path.dirname(f), decodeURIComponent(ref))
+      if (/\.(png|jpe?g|gif|svg)$/i.test(target)) placeholder(target, 'img')
+    }
+    for (const m of txt.matchAll(/<(?:video|source)\s[^>]*?src="([^"]+)"/g)) {
+      const ref = m[1].trim()
+      if (!isLocal(ref)) continue
+      const target = path.resolve(path.dirname(f), decodeURIComponent(ref))
+      if (/\.(mp4|webm)$/i.test(target)) placeholder(target, 'video')
+    }
+    if (txt !== orig) fs.writeFileSync(f, txt)
+  }
+}
 
 function getBaseRepository(base: string): string {
   if (!base || base === '/') return '/';
@@ -52,6 +110,12 @@ export default withMermaid (defineConfig({
   vite: {
     plugins: [
       mathjax.vitePlugin,
+      {
+        name: 'fill-missing-media',
+        buildStart() {
+          fillMissingMedia(path.resolve(__dirname, '..'))
+        },
+      },
     ],
     define: {
       __DEPLOY_ABSPATH__: JSON.stringify('REPLACE_ME_DOCUMENTER_VITEPRESS_DEPLOY_ABSPATH'),
