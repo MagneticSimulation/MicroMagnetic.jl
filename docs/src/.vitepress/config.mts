@@ -81,8 +81,18 @@ const navTemp = {
   nav: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
 }
 
+// The generated navbar lists every top-level section; fold the example
+// sections into one dropdown to keep the bar narrow.
+const navGenerated = [...navTemp.nav]
+const exampleSections = ['Atomistic', 'Micromagnetics (FD)', 'Micromagnetics (FE)', 'Miscellaneous']
 const nav = [
-  ...navTemp.nav,
+  ...(() => {
+    const items = navGenerated.filter((e) => exampleSections.includes(e.text)).flatMap((e) => e.items ?? [])
+    const folded = [...navGenerated.filter((e) => !exampleSections.includes(e.text))]
+    const i = folded.findIndex((e) => e.text === 'Manual')
+    folded.splice(i + 1, 0, { text: 'Examples', items })
+    return folded
+  })(),
   {
     text: '中文',
     link: 'https://magneticsimulation.github.io/MicroMagnetic.jl/zh/'
