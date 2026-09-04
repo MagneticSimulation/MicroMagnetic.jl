@@ -24,22 +24,19 @@ Micromagnetic = ["Nanobar" => "micromagnetics/nanobar.md",
 FE = ["Magnetized Sphere" => "fem/sphere_demag.md",
       "Hysteresis Loop" => "fem/hysteresis.md"]
 
-API = ["api.md"]
-
 Miscellaneous = ["Skyrmion Phase (Monte Carlo)" => "monte_carlo/skyrmion.md",
                  "M-T curve (Monte Carlo)" => "monte_carlo/M_T_curve.md",
                  "Skyrmion collapse (NEB)" => "neb/neb_skx.md"]
 
 PAGES = ["Home" => "index.md",
-         "User Guide" => ["install.md", "basics.md", "units.md", "gpu.md", "pbc.md",
-                          "dataio.md", "tools.md", "fem.md", "eigen/eigenmodes.md",
-                          "gui.md", "docker.md"],
-         "Physics" => ["equations.md"],
+         "User Guide" => ["install.md", "basics.md", "units.md", "equations.md",
+                          "gpu.md", "pbc.md", "dataio.md", "tools.md", "fem.md",
+                          "eigen/eigenmodes.md", "gui.md", "docker.md"],
          "Atomistic" => Atomistic,
          "Micromagnetics (FD)" => Micromagnetic,
          "Micromagnetics (FE)" => ["fem/sphere_demag.md", "fem/hysteresis.md", "fem/rkky.md"],
          "Miscellaneous" => Miscellaneous,
-         "API" => API,
+         "API" => ["api.md", "api_data.md", "api_transition.md"],
          "Developers" => ["dev/architecture.md", "dev/params.md", "dev/demag.md",
                           "dev/drivers.md", "dev/performance.md", "contrib.md",
                           "api_dev.md"]]
