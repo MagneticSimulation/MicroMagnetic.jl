@@ -1220,3 +1220,487 @@ Note: Removed trace term (-trace/3) from original formula. The B2 term has facto
         @inbounds h[j + 3] = -factor * (B1 * eps_zz * mz + B2 * (eps_xz * mx + eps_yz * my))
     end
 end
+
+# --------------------------------------------------------------------------------------
+# ngbs-table stencil kernels (CPU path)
+#
+# The arithmetic-addressing kernels above are GPU-optimised: on the GPU the ngbs
+# table is 24B/cell of DRAM traffic and the dimension-matched NTuple index is
+# free, so removing it wins ~1.4x. On the CPU the table is L1/L2-resident and
+# the flat 1D loop over `@index(Global)` auto-vectorises, while NTuple index
+# arithmetic costs ALU and blocks vectorisation (measured 2026-09-04: 256^2
+# exchange partition 416 μs ngbs vs 693 μs arith; pure addressing 99 vs 186 μs).
+# The launchers therefore dispatch: CPU -> *_ngbs_kernel!, GPU -> arith kernels.
+# The two families are kept bitwise-identical by test/test_stencil_pbc.jl.
+# --------------------------------------------------------------------------------------
+
+@kernel function exchange_ngbs_kernel!(
+        @Const(m), h, energy, mu0_Ms, Axs, Ays, Azs,
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds Ms_local = mu0_Ms[I]
+    @inbounds Ax_I = Axs[I]
+    @inbounds Ay_I = Ays[I]
+    @inbounds Az_I = Azs[I]
+
+    nx = T(2) / (dx * dx)
+    ny = T(2) / (dy * dy)
+    nz = T(2) / (dz * dz)
+
+    if Ms_local == T(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Ax_n = Axs[id]
+                if Ax_I != 0 && Ax_n != 0
+                    k = 3*id - 2
+                    A_eff = 2 * Ax_I * Ax_n / (Ax_I + Ax_n)
+                    c = A_eff * nx
+                    fx += c * (m[k]   - m[i])
+                    fy += c * (m[k+1] - m[i+1])
+                    fz += c * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Ay_n = Ays[id]
+                if Ay_I != 0 && Ay_n != 0
+                    k = 3*id - 2
+                    A_eff = 2 * Ay_I * Ay_n / (Ay_I + Ay_n)
+                    c = A_eff * ny
+                    fx += c * (m[k]   - m[i])
+                    fy += c * (m[k+1] - m[i+1])
+                    fz += c * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Az_n = Azs[id]
+                if Az_I != 0 && Az_n != 0
+                    k = 3*id - 2
+                    A_eff = 2 * Az_I * Az_n / (Az_I + Az_n)
+                    c = A_eff * nz
+                    fx += c * (m[k]   - m[i])
+                    fy += c * (m[k+1] - m[i+1])
+                    fz += c * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        Ms_inv = T(1) / Ms_local
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+@kernel function exchange_ngbs_partition_kernel!(
+        @Const(m), h, energy, @Const(mat_class), @Const(pair_Ax),
+        @Const(pair_Ay), @Const(pair_Az), @Const(inv_ms),
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds cI = mat_class[I]
+
+    nx = T(2) / (dx * dx)
+    ny = T(2) / (dy * dy)
+    nz = T(2) / (dz * dz)
+
+    if cI == UInt8(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                coeff = pair_Ax[cI+1, cNb+1] * nx
+                if coeff != T(0)
+                    k = 3*id - 2
+                    fx += coeff * (m[k]   - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                coeff = pair_Ay[cI+1, cNb+1] * ny
+                if coeff != T(0)
+                    k = 3*id - 2
+                    fx += coeff * (m[k]   - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                coeff = pair_Az[cI+1, cNb+1] * nz
+                if coeff != T(0)
+                    k = 3*id - 2
+                    fx += coeff * (m[k]   - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        @inbounds Ms_inv = inv_ms[I]
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+@kernel function bulkdmi_ngbs_kernel!(
+        @Const(m), h, energy, mu0_Ms, Dxs, Dys, Dzs,
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T, tfac::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds Ms_local = mu0_Ms[I]
+
+    axes = (T(1/dx), T(-1/dx), T(1/dy), T(-1/dy), T(1/dz), T(-1/dz))
+
+    if Ms_local == T(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        @inbounds Dx_I = tfac * Dxs[I]
+        @inbounds Dy_I = tfac * Dys[I]
+        @inbounds Dz_I = tfac * Dzs[I]
+
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Dx_n = tfac * Dxs[id]
+                if Dx_I != 0 && Dx_n != 0
+                    k = 3*id - 2
+                    D_eff = 2 * Dx_I * Dx_n / (Dx_I + Dx_n)
+                    ax = axes[j]
+                    fy += D_eff * (-ax * m[k+2])
+                    fz += D_eff * ( ax * m[k+1])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Dy_n = tfac * Dys[id]
+                if Dy_I != 0 && Dy_n != 0
+                    k = 3*id - 2
+                    D_eff = 2 * Dy_I * Dy_n / (Dy_I + Dy_n)
+                    ay = axes[j]
+                    fx += D_eff * ( ay * m[k+2])
+                    fz += D_eff * (-ay * m[k]  )
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Dz_n = tfac * Dzs[id]
+                if Dz_I != 0 && Dz_n != 0
+                    k = 3*id - 2
+                    D_eff = 2 * Dz_I * Dz_n / (Dz_I + Dz_n)
+                    az = axes[j]
+                    fx += D_eff * (-az * m[k+1])
+                    fy += D_eff * ( az * m[k]  )
+                end
+            end
+        end
+
+        Ms_inv = T(1) / Ms_local
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+@kernel function bulkdmi_ngbs_partition_kernel!(
+        @Const(m), h, energy, @Const(mat_class), @Const(pair_Dx),
+        @Const(pair_Dy), @Const(pair_Dz), @Const(inv_ms),
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds cI = mat_class[I]
+
+    axes = (T(1/dx), T(-1/dx), T(1/dy), T(-1/dy), T(1/dz), T(-1/dz))
+
+    if cI == UInt8(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                D_eff = pair_Dx[cI+1, cNb+1]
+                if D_eff != T(0)
+                    ax = axes[j]
+                    k = 3*id - 2
+                    fy += D_eff * (-ax * m[k+2])
+                    fz += D_eff * ( ax * m[k+1])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                D_eff = pair_Dy[cI+1, cNb+1]
+                if D_eff != T(0)
+                    ay = axes[j]
+                    k = 3*id - 2
+                    fx += D_eff * ( ay * m[k+2])
+                    fz += D_eff * (-ay * m[k]  )
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                D_eff = pair_Dz[cI+1, cNb+1]
+                if D_eff != T(0)
+                    az = axes[j]
+                    k = 3*id - 2
+                    fx += D_eff * (-az * m[k+1])
+                    fy += D_eff * ( az * m[k]  )
+                end
+            end
+        end
+
+        @inbounds Ms_inv = inv_ms[I]
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+@kernel function interfacial_dmi_ngbs_kernel!(@Const(m), h, energy, mu0_Ms, Ds,
+                                              dx::T, dy::T, dz::T, @Const(ngbs),
+                                              volume::T, tfac::T) where {T<:AbstractFloat}
+    I = @index(Global)
+    @inbounds Ms_local = mu0_Ms[I]
+    @inbounds D_I = tfac * Ds[I]
+
+    Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy))
+    ax = (T(0), T(0), T(-1), T(1))
+    ay = (T(1), T(-1), T(0), T(0))
+    az = (T(0), T(0), T(0), T(0))
+
+    i = 3 * I - 2
+    if Ms_local == T(0) || D_I == T(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i] = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+        for j in 1:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                D_nb = tfac * Ds[id]
+                if D_nb != T(0)
+                    k = 3 * id - 2
+                    D_eff = 2 * D_I * D_nb / (D_I + D_nb)
+                    coeff = D_eff * Dd[j]
+                    fx += coeff * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    fy += coeff * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    fz += coeff * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                end
+            end
+        end
+        Ms_inv = T(1) / Ms_local
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+@kernel function interfacial_dmi_ngbs_partition_kernel!(
+        @Const(m), h, energy, @Const(mat_class), @Const(pair_D),
+        @Const(Dcls), @Const(inv_ms),
+        dx::T, dy::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds cI = mat_class[I]
+
+    Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy))
+    ax = (T(0), T(0), T(-1), T(1))
+    ay = (T(1), T(-1), T(0), T(0))
+    az = (T(0), T(0), T(0), T(0))
+
+    if cI == UInt8(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        @inbounds D_I = Dcls[cI+1]
+        if D_I == T(0)
+            @inbounds energy[I] = T(0)
+            @inbounds h[i]   = T(0)
+            @inbounds h[i+1] = T(0)
+            @inbounds h[i+2] = T(0)
+        else
+            fx = T(0)
+            fy = T(0)
+            fz = T(0)
+            for j in 1:4
+                @inbounds id = ngbs[j, I]
+                @inbounds if id > 0
+                    cNb = mat_class[id]
+                    D_eff = pair_D[cI+1, cNb+1]
+                    if D_eff != T(0)
+                        coeff = D_eff * Dd[j]
+                        k = 3 * id - 2
+                        fx += coeff * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                        fy += coeff * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                        fz += coeff * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    end
+                end
+            end
+            @inbounds Ms_inv = inv_ms[I]
+            @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+            @inbounds h[i]   = fx * Ms_inv
+            @inbounds h[i+1] = fy * Ms_inv
+            @inbounds h[i+2] = fz * Ms_inv
+        end
+    end
+end
+
+@kernel function zhangli_ngbs_torque_kernel!(@Const(m), h, bJx, bJy, bJz, @Const(ngbs), xi,
+                                             ut::T, dx::T, dy::T, dz::T) where {T<:AbstractFloat}
+    I = @index(Global)
+    j = 3 * I - 2
+
+    fx::T, fy::T, fz::T = T(0), T(0), T(0)
+
+    #x-direction
+    i1::Int32 = ngbs[1, I] #we assume that i1<0 for the area with Ms=0
+    i2::Int32 = ngbs[2, I]
+    # i1 * i2 may overflow
+    factor::T = (i1 > 0 && i2 > 0) ? 1 / (2 * dx) : 1 / dx
+    i1 < 0 && (i1 = I)
+    i2 < 0 && (i2 = I)
+    j1 = 3 * i1 - 2
+    j2 = 3 * i2 - 2
+    @inbounds u = bJx[I] * factor
+    @inbounds fx += u * (m[j2] - m[j1])
+    @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
+    @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
+
+    #y-direction
+    i1 = ngbs[3, I]
+    i2 = ngbs[4, I]
+    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dy) : 1 / dy
+    i1 < 0 && (i1 = I)
+    i2 < 0 && (i2 = I)
+    j1 = 3 * i1 - 2
+    j2 = 3 * i2 - 2
+    @inbounds u = bJy[I] * factor
+    @inbounds fx += u * (m[j2] - m[j1])
+    @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
+    @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
+
+    #z-direction
+    i1 = ngbs[5, I]
+    i2 = ngbs[6, I]
+    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dz) : 1 / dz
+    i1 < 0 && (i1 = I)
+    i2 < 0 && (i2 = I)
+    j1 = 3 * i1 - 2
+    j2 = 3 * i2 - 2
+    @inbounds u = bJz[I] * factor
+    @inbounds fx += u * (m[j2] - m[j1])
+    @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
+    @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
+
+    fx = ut * fx
+    fy = ut * fy
+    fz = ut * fz
+
+    # the above part is h = (b/gamma)*ut*(J.nabla) m, note we have divided ut by gamma.
+
+    @inbounds mx::T = m[j + 0]
+    @inbounds my::T = m[j + 1]
+    @inbounds mz::T = m[j + 2]
+    @inbounds h[j + 0] = cross_x(mx, my, mz, fx, fy, fz) + xi[I] * fx
+    @inbounds h[j + 1] = cross_y(mx, my, mz, fx, fy, fz) + xi[I] * fy
+    @inbounds h[j + 2] = cross_z(mx, my, mz, fx, fy, fz) + xi[I] * fz
+end
