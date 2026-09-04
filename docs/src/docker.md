@@ -41,7 +41,8 @@ Notes:
 The CUDA sysimage must be built on a machine with an NVIDIA GPU (and `nvidia-container-toolkit`
 installed), because `docker build` cannot access GPUs. [`docker/build_cuda.sh`](https://github.com/MagneticSimulation/MicroMagnetic.jl/blob/master/docker/build_cuda.sh)
 does the three steps for you: `docker build` (dependencies) → `docker run --gpus all`
-(sysimage) → `docker commit` (final image):
+(sysimage + full-path probe) → `docker commit` (final image, tagged `:latest`, `:cuda` and
+with the version from `Project.toml`):
 
 ```bash
 ./docker/build_cuda.sh ghcr.io/magneticsimulation/micromagnetic.jl:latest
@@ -52,6 +53,18 @@ The CPU image builds in one step (no GPU needed):
 ```bash
 docker build -f docker/Dockerfile.cpu -t ghcr.io/magneticsimulation/micromagnetic.jl:cpu .
 ```
+
+### Available tags
+
+| Tag | Contents |
+|---|---|
+| `:latest` | CUDA build (default) |
+| `:cuda` | alias of `:latest` |
+| `:cpu` | CPU-only build |
+| `:0.7.0`, `:0.7.0-cpu` | images frozen at MicroMagnetic v0.7.0 |
+
+Rebuilds of the CUDA image are automatically tagged `:cuda` and with the package version from
+`Project.toml` (see `docker/build_cuda.sh`).
 
 ## Docker Usage
 
@@ -80,6 +93,13 @@ docker run --rm --gpus all -v $(pwd):/workspace \
   /workspace/run_simulation.jl
 ```
 
+**CPU-only hosts:** use the `:cpu` image and drop `--gpus all`:
+```bash
+docker run --rm -v $(pwd):/workspace \
+  ghcr.io/magneticsimulation/micromagnetic.jl:cpu \
+  /workspace/run_simulation.jl
+```
+
 **Start an interactive Julia session (with the sysimage):**
 ```bash
 docker run -it --rm --gpus all ghcr.io/magneticsimulation/micromagnetic.jl:latest
@@ -98,17 +118,19 @@ docker run -it --rm --gpus all --entrypoint julia \
   ghcr.io/magneticsimulation/micromagnetic.jl:latest
 ```
 
-**Persistent depot (optional).** With the baked sysimage, startup is fast even with a fresh
-depot, so a persistent depot is no longer required. If you want to install extra packages that
-survive across runs, mount a directory and point `JULIA_DEPOT_PATH` at it:
+**Installing extra packages.** The image's Julia depot (`/usr/local/share/julia`) already
+contains everything needed to run — do **not** point `JULIA_DEPOT_PATH` at an empty mounted
+directory: that hides the baked CUDA artifacts and registries and forces a multi-GB
+re-download. To add packages permanently, commit a container after installing them,
 ```bash
-mkdir -p ~/julia_depot
-docker run --rm --gpus all \
-  -e JULIA_DEPOT_PATH=/depot \
-  -v ~/julia_depot:/depot \
-  -v $(pwd):/workspace \
-  ghcr.io/magneticsimulation/micromagnetic.jl:latest \
-  /workspace/run_simulation.jl
+docker run -it --name mm-extra ghcr.io/magneticsimulation/micromagnetic.jl:latest
+# inside: julia -e 'using Pkg; Pkg.add("MyPackage")'; exit
+docker commit mm-extra my-micromagnetic && docker rm mm-extra
+```
+or derive an image:
+```dockerfile
+FROM ghcr.io/magneticsimulation/micromagnetic.jl:latest
+RUN julia -e 'using Pkg; Pkg.add("MyPackage")'
 ```
 
 ## Singularity Usage
