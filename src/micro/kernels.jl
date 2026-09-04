@@ -220,27 +220,46 @@ end
     end
 end
 
+# Arithmetic neighbour addressing (EXCH_DMI_OPT §2.1): neighbour ids are
+# recomputed in registers from the cartesian index instead of loading mesh.ngbs.
+# Values are bit-identical to mesh.jl's indexpbc; out-of-mesh cells clamp to
+# `lid` (self) and the _valid_* predicates report the geometry validity that
+# ngbs encoded as -1.
+#
+# Bitwise discipline: difference-form stencils (exchange) may drop the validity
+# test — a clamped bond contributes c*(m[i]-m[i]) = +0.0, which is neutral
+# because the accumulator starts at +0.0 and can never become -0.0. Linear-form
+# stencils (DMI, zhangli) must keep the validity test.
+@inline _ngb_neg(c, lid, n, p::Bool, s) = c > 1 ? lid - s : (p ? lid + s * (n - 1) : lid)
+@inline _ngb_pos(c, lid, n, p::Bool, s) = c < n ? lid + s : (p ? lid - s * (n - 1) : lid)
+@inline _valid_neg(c, p::Bool) = c > 1 || p
+@inline _valid_pos(c, n, p::Bool) = c < n || p
+
 # Unified exchange kernel: the bond stiffness is direction-decomposed and read
 # per spin (uniform values arrive as O(1) Fills); neighbour pairs use the harmonic
 # mean A_eff, so the former uniform and spatial kernels share one version.
+# Arithmetic addressing with clamp-to-self; vacuum cells are tested through
+# mat_class (0 ⟺ Ms = 0) and the tail divides by the precomputed inv_ms.
 @kernel function exchange_kernel!(
-        @Const(m), h, energy, mu0_Ms, Axs, Ays, Azs,
-        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+        @Const(m), h, energy, @Const(mat_class), Axs, Ays, Azs, @Const(inv_ms),
+        dx::T, dy::T, dz::T, volume::T,
+        nx, ny, nz, px::Bool, py::Bool, pz::Bool
     ) where {T<:AbstractFloat}
 
-    I = @index(Global)
-    i = 3 * I - 2
-    @inbounds Ms_local = mu0_Ms[I]
-    @inbounds Ax_I = Axs[I]
-    @inbounds Ay_I = Ays[I]
-    @inbounds Az_I = Azs[I]
+    ci, cj, ck = @index(Global, NTuple)
+    lid = (ck - 1) * nx * ny + (cj - 1) * nx + ci
+    i = 3 * lid - 2
+    @inbounds im = inv_ms[lid]
+    @inbounds Ax_I = Axs[lid]
+    @inbounds Ay_I = Ays[lid]
+    @inbounds Az_I = Azs[lid]
 
-    nx = T(2) / (dx * dx)
-    ny = T(2) / (dy * dy)
-    nz = T(2) / (dz * dz)
+    nxs = T(2) / (dx * dx)
+    nys = T(2) / (dy * dy)
+    nzs = T(2) / (dz * dz)
 
-    if Ms_local == T(0)
-        @inbounds energy[I] = T(0)
+    if im == T(0)
+        @inbounds energy[lid] = T(0)
         @inbounds h[i]   = T(0)
         @inbounds h[i+1] = T(0)
         @inbounds h[i+2] = T(0)
@@ -250,185 +269,268 @@ end
         fz = T(0)
 
         # ---- (±x) ----
-        for j in 1:2
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
-                Ax_n = Axs[id]
-                if Ax_I != 0 && Ax_n != 0
-                    k = 3*id - 2
-                    A_eff = 2 * Ax_I * Ax_n / (Ax_I + Ax_n)
-                    c = A_eff * nx
-                    fx += c * (m[k]   - m[i])
-                    fy += c * (m[k+1] - m[i+1])
-                    fz += c * (m[k+2] - m[i+2])
-                end
+        @inbounds begin
+            id = _ngb_neg(ci, lid, nx, px, 1)
+            Ax_n = Axs[id]
+            if Ax_I != 0 && Ax_n != 0 && mat_class[id] != 0
+                k = 3 * id - 2
+                A_eff = 2 * Ax_I * Ax_n / (Ax_I + Ax_n)
+                c = A_eff * nxs
+                fx += c * (m[k]   - m[i])
+                fy += c * (m[k+1] - m[i+1])
+                fz += c * (m[k+2] - m[i+2])
+            end
+            id = _ngb_pos(ci, lid, nx, px, 1)
+            Ax_n = Axs[id]
+            if Ax_I != 0 && Ax_n != 0 && mat_class[id] != 0
+                k = 3 * id - 2
+                A_eff = 2 * Ax_I * Ax_n / (Ax_I + Ax_n)
+                c = A_eff * nxs
+                fx += c * (m[k]   - m[i])
+                fy += c * (m[k+1] - m[i+1])
+                fz += c * (m[k+2] - m[i+2])
             end
         end
 
         # ---- (±y) ----
-        for j in 3:4
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
-                Ay_n = Ays[id]
-                if Ay_I != 0 && Ay_n != 0
-                    k = 3*id - 2
-                    A_eff = 2 * Ay_I * Ay_n / (Ay_I + Ay_n)
-                    c = A_eff * ny
-                    fx += c * (m[k]   - m[i])
-                    fy += c * (m[k+1] - m[i+1])
-                    fz += c * (m[k+2] - m[i+2])
-                end
+        @inbounds begin
+            id = _ngb_neg(cj, lid, ny, py, nx)
+            Ay_n = Ays[id]
+            if Ay_I != 0 && Ay_n != 0 && mat_class[id] != 0
+                k = 3 * id - 2
+                A_eff = 2 * Ay_I * Ay_n / (Ay_I + Ay_n)
+                c = A_eff * nys
+                fx += c * (m[k]   - m[i])
+                fy += c * (m[k+1] - m[i+1])
+                fz += c * (m[k+2] - m[i+2])
+            end
+            id = _ngb_pos(cj, lid, ny, py, nx)
+            Ay_n = Ays[id]
+            if Ay_I != 0 && Ay_n != 0 && mat_class[id] != 0
+                k = 3 * id - 2
+                A_eff = 2 * Ay_I * Ay_n / (Ay_I + Ay_n)
+                c = A_eff * nys
+                fx += c * (m[k]   - m[i])
+                fy += c * (m[k+1] - m[i+1])
+                fz += c * (m[k+2] - m[i+2])
             end
         end
 
         # ---- (±z) ----
-        for j in 5:6
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
-                Az_n = Azs[id]
-                if Az_I != 0 && Az_n != 0
-                    k = 3*id - 2
-                    A_eff = 2 * Az_I * Az_n / (Az_I + Az_n)
-                    c = A_eff * nz
-                    fx += c * (m[k]   - m[i])
-                    fy += c * (m[k+1] - m[i+1])
-                    fz += c * (m[k+2] - m[i+2])
-                end
+        @inbounds begin
+            id = _ngb_neg(ck, lid, nz, pz, nx * ny)
+            Az_n = Azs[id]
+            if Az_I != 0 && Az_n != 0 && mat_class[id] != 0
+                k = 3 * id - 2
+                A_eff = 2 * Az_I * Az_n / (Az_I + Az_n)
+                c = A_eff * nzs
+                fx += c * (m[k]   - m[i])
+                fy += c * (m[k+1] - m[i+1])
+                fz += c * (m[k+2] - m[i+2])
+            end
+            id = _ngb_pos(ck, lid, nz, pz, nx * ny)
+            Az_n = Azs[id]
+            if Az_I != 0 && Az_n != 0 && mat_class[id] != 0
+                k = 3 * id - 2
+                A_eff = 2 * Az_I * Az_n / (Az_I + Az_n)
+                c = A_eff * nzs
+                fx += c * (m[k]   - m[i])
+                fy += c * (m[k+1] - m[i+1])
+                fz += c * (m[k+2] - m[i+2])
             end
         end
 
-        Ms_inv = T(1) / Ms_local
-        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
-        @inbounds h[i]   = fx * Ms_inv
-        @inbounds h[i+1] = fy * Ms_inv
-        @inbounds h[i+2] = fz * Ms_inv
+        @inbounds energy[lid] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * im
+        @inbounds h[i+1] = fy * im
+        @inbounds h[i+2] = fz * im
     end
 end
 
 # Unified bulk DMI kernel: the D components are read per spin (a uniform D arrives
 # as an O(1) Fill) and `tfac` is a scalar time factor (1 for the static term).
+# Arithmetic addressing; DMI is linear in the neighbour spin, so out-of-mesh
+# bonds keep the validity test instead of clamp-to-self.
 @kernel function bulkdmi_kernel!(
-        @Const(m), h, energy, mu0_Ms, Dxs, Dys, Dzs,
-        dx::T, dy::T, dz::T, @Const(ngbs), volume::T, tfac::T
+        @Const(m), h, energy, @Const(mat_class), Dxs, Dys, Dzs, @Const(inv_ms),
+        dx::T, dy::T, dz::T, volume::T, tfac::T,
+        nx, ny, nz, px::Bool, py::Bool, pz::Bool
     ) where {T<:AbstractFloat}
 
-    I = @index(Global)
-    i = 3 * I - 2
-    @inbounds Ms_local = mu0_Ms[I]
+    ci, cj, ck = @index(Global, NTuple)
+    lid = (ck - 1) * nx * ny + (cj - 1) * nx + ci
+    i = 3 * lid - 2
+    @inbounds im = inv_ms[lid]
 
     axes = (T(1/dx), T(-1/dx), T(1/dy), T(-1/dy), T(1/dz), T(-1/dz))
 
-    if Ms_local == T(0)
-        @inbounds energy[I] = T(0)
+    if im == T(0)
+        @inbounds energy[lid] = T(0)
         @inbounds h[i]   = T(0)
         @inbounds h[i+1] = T(0)
         @inbounds h[i+2] = T(0)
     else
-        @inbounds Dx_I = tfac * Dxs[I]
-        @inbounds Dy_I = tfac * Dys[I]
-        @inbounds Dz_I = tfac * Dzs[I]
+        @inbounds Dx_I = tfac * Dxs[lid]
+        @inbounds Dy_I = tfac * Dys[lid]
+        @inbounds Dz_I = tfac * Dzs[lid]
 
         fx = T(0)
         fy = T(0)
         fz = T(0)
 
         # ---- (±x) ----
-        for j in 1:2
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
-                Dx_n = tfac * Dxs[id]
-                if Dx_I != 0 && Dx_n != 0
-                    k = 3*id - 2
-                    D_eff = 2 * Dx_I * Dx_n / (Dx_I + Dx_n)
-                    ax = axes[j]
-                    fy += D_eff * (-ax * m[k+2])
-                    fz += D_eff * ( ax * m[k+1])
-                end
+        @inbounds begin
+            id = _ngb_neg(ci, lid, nx, px, 1)
+            Dx_n = tfac * Dxs[id]
+            if _valid_neg(ci, px) && mat_class[id] != 0 && Dx_I != 0 && Dx_n != 0
+                k = 3 * id - 2
+                D_eff = 2 * Dx_I * Dx_n / (Dx_I + Dx_n)
+                ax = axes[1]
+                fy += D_eff * (-ax * m[k+2])
+                fz += D_eff * ( ax * m[k+1])
+            end
+            id = _ngb_pos(ci, lid, nx, px, 1)
+            Dx_n = tfac * Dxs[id]
+            if _valid_pos(ci, nx, px) && mat_class[id] != 0 && Dx_I != 0 && Dx_n != 0
+                k = 3 * id - 2
+                D_eff = 2 * Dx_I * Dx_n / (Dx_I + Dx_n)
+                ax = axes[2]
+                fy += D_eff * (-ax * m[k+2])
+                fz += D_eff * ( ax * m[k+1])
             end
         end
 
         # ---- (±y) ----
-        for j in 3:4
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
-                Dy_n = tfac * Dys[id]
-                if Dy_I != 0 && Dy_n != 0
-                    k = 3*id - 2
-                    D_eff = 2 * Dy_I * Dy_n / (Dy_I + Dy_n)
-                    ay = axes[j]
-                    fx += D_eff * ( ay * m[k+2])
-                    fz += D_eff * (-ay * m[k]  )
-                end
+        @inbounds begin
+            id = _ngb_neg(cj, lid, ny, py, nx)
+            Dy_n = tfac * Dys[id]
+            if _valid_neg(cj, py) && mat_class[id] != 0 && Dy_I != 0 && Dy_n != 0
+                k = 3 * id - 2
+                D_eff = 2 * Dy_I * Dy_n / (Dy_I + Dy_n)
+                ay = axes[3]
+                fx += D_eff * ( ay * m[k+2])
+                fz += D_eff * (-ay * m[k]  )
+            end
+            id = _ngb_pos(cj, lid, ny, py, nx)
+            Dy_n = tfac * Dys[id]
+            if _valid_pos(cj, ny, py) && mat_class[id] != 0 && Dy_I != 0 && Dy_n != 0
+                k = 3 * id - 2
+                D_eff = 2 * Dy_I * Dy_n / (Dy_I + Dy_n)
+                ay = axes[4]
+                fx += D_eff * ( ay * m[k+2])
+                fz += D_eff * (-ay * m[k]  )
             end
         end
 
         # ---- (±z) ----
-        for j in 5:6
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
-                Dz_n = tfac * Dzs[id]
-                if Dz_I != 0 && Dz_n != 0
-                    k = 3*id - 2
-                    D_eff = 2 * Dz_I * Dz_n / (Dz_I + Dz_n)
-                    az = axes[j]
-                    fx += D_eff * (-az * m[k+1])
-                    fy += D_eff * ( az * m[k]  )
-                end
+        @inbounds begin
+            id = _ngb_neg(ck, lid, nz, pz, nx * ny)
+            Dz_n = tfac * Dzs[id]
+            if _valid_neg(ck, pz) && mat_class[id] != 0 && Dz_I != 0 && Dz_n != 0
+                k = 3 * id - 2
+                D_eff = 2 * Dz_I * Dz_n / (Dz_I + Dz_n)
+                az = axes[5]
+                fx += D_eff * (-az * m[k+1])
+                fy += D_eff * ( az * m[k]  )
+            end
+            id = _ngb_pos(ck, lid, nz, pz, nx * ny)
+            Dz_n = tfac * Dzs[id]
+            if _valid_pos(ck, nz, pz) && mat_class[id] != 0 && Dz_I != 0 && Dz_n != 0
+                k = 3 * id - 2
+                D_eff = 2 * Dz_I * Dz_n / (Dz_I + Dz_n)
+                az = axes[6]
+                fx += D_eff * (-az * m[k+1])
+                fy += D_eff * ( az * m[k]  )
             end
         end
 
-        Ms_inv = T(1) / Ms_local
-        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
-        @inbounds h[i]   = fx * Ms_inv
-        @inbounds h[i+1] = fy * Ms_inv
-        @inbounds h[i+2] = fz * Ms_inv
+        @inbounds energy[lid] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * im
+        @inbounds h[i+1] = fy * im
+        @inbounds h[i+2] = fz * im
     end
 end
 
 
 
-@kernel function interfacial_dmi_kernel!(@Const(m), h, energy, mu0_Ms, Ds,
-                                         dx::T, dy::T, dz::T, @Const(ngbs),
-                                         volume::T, tfac::T) where {T<:AbstractFloat}
-    I = @index(Global)
-    @inbounds Ms_local = mu0_Ms[I]
-    @inbounds D_I = tfac * Ds[I]
+@kernel function interfacial_dmi_kernel!(@Const(m), h, energy, @Const(mat_class), Ds,
+                                         @Const(inv_ms), dx::T, dy::T, dz::T,
+                                         volume::T, tfac::T,
+                                         nx, ny, nz, px::Bool, py::Bool, pz::Bool) where {T<:AbstractFloat}
+    ci, cj, ck = @index(Global, NTuple)
+    lid = (ck - 1) * nx * ny + (cj - 1) * nx + ci
+    @inbounds im = inv_ms[lid]
+    @inbounds D_I = tfac * Ds[lid]
 
     Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy))
     ax = (T(0), T(0), T(-1), T(1))
     ay = (T(1), T(-1), T(0), T(0))
     az = (T(0), T(0), T(0), T(0))
 
-    i = 3 * I - 2
-    if Ms_local == T(0) || D_I == T(0)
-        @inbounds energy[I] = T(0)
+    i = 3 * lid - 2
+    if im == T(0) || D_I == T(0)
+        @inbounds energy[lid] = T(0)
         @inbounds h[i] = T(0)
         @inbounds h[i+1] = T(0)
         @inbounds h[i+2] = T(0)
     else
-        @inbounds s_i = (m[i], m[i+1], m[i+2])
         fx = T(0)
         fy = T(0)
         fz = T(0)
-        for j in 1:4
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0 && mu0_Ms[id] > 0
+        @inbounds begin
+            id = _ngb_neg(ci, lid, nx, px, 1)
+            if _valid_neg(ci, px) && mat_class[id] != 0
                 D_nb = tfac * Ds[id]
                 if D_nb != T(0)
                     k = 3 * id - 2
                     D_eff = 2 * D_I * D_nb / (D_I + D_nb)
-                    coeff = D_eff * Dd[j]
-                    fx += coeff * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
-                    fy += coeff * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
-                    fz += coeff * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    coeff = D_eff * Dd[1]
+                    fx += coeff * cross_x(ax[1], ay[1], az[1], m[k], m[k+1], m[k+2])
+                    fy += coeff * cross_y(ax[1], ay[1], az[1], m[k], m[k+1], m[k+2])
+                    fz += coeff * cross_z(ax[1], ay[1], az[1], m[k], m[k+1], m[k+2])
+                end
+            end
+            id = _ngb_pos(ci, lid, nx, px, 1)
+            if _valid_pos(ci, nx, px) && mat_class[id] != 0
+                D_nb = tfac * Ds[id]
+                if D_nb != T(0)
+                    k = 3 * id - 2
+                    D_eff = 2 * D_I * D_nb / (D_I + D_nb)
+                    coeff = D_eff * Dd[2]
+                    fx += coeff * cross_x(ax[2], ay[2], az[2], m[k], m[k+1], m[k+2])
+                    fy += coeff * cross_y(ax[2], ay[2], az[2], m[k], m[k+1], m[k+2])
+                    fz += coeff * cross_z(ax[2], ay[2], az[2], m[k], m[k+1], m[k+2])
+                end
+            end
+            id = _ngb_neg(cj, lid, ny, py, nx)
+            if _valid_neg(cj, py) && mat_class[id] != 0
+                D_nb = tfac * Ds[id]
+                if D_nb != T(0)
+                    k = 3 * id - 2
+                    D_eff = 2 * D_I * D_nb / (D_I + D_nb)
+                    coeff = D_eff * Dd[3]
+                    fx += coeff * cross_x(ax[3], ay[3], az[3], m[k], m[k+1], m[k+2])
+                    fy += coeff * cross_y(ax[3], ay[3], az[3], m[k], m[k+1], m[k+2])
+                    fz += coeff * cross_z(ax[3], ay[3], az[3], m[k], m[k+1], m[k+2])
+                end
+            end
+            id = _ngb_pos(cj, lid, ny, py, nx)
+            if _valid_pos(cj, ny, py) && mat_class[id] != 0
+                D_nb = tfac * Ds[id]
+                if D_nb != T(0)
+                    k = 3 * id - 2
+                    D_eff = 2 * D_I * D_nb / (D_I + D_nb)
+                    coeff = D_eff * Dd[4]
+                    fx += coeff * cross_x(ax[4], ay[4], az[4], m[k], m[k+1], m[k+2])
+                    fy += coeff * cross_y(ax[4], ay[4], az[4], m[k], m[k+1], m[k+2])
+                    fz += coeff * cross_z(ax[4], ay[4], az[4], m[k], m[k+1], m[k+2])
                 end
             end
         end
-        Ms_inv = T(1) / Ms_local
-        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
-        @inbounds h[i]   = fx * Ms_inv
-        @inbounds h[i+1] = fy * Ms_inv
-        @inbounds h[i+2] = fz * Ms_inv
+        @inbounds energy[lid] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * im
+        @inbounds h[i+1] = fy * im
+        @inbounds h[i+2] = fz * im
     end
 end
 
@@ -651,49 +753,44 @@ end
 The kernel zhangli_torque_kernel! compute the effective field defined as 
    H = (b/gamma)*[m x (J.nabla) m + xi (J.nabla) m]
 """
-@kernel function zhangli_torque_kernel!(@Const(m), h, bJx, bJy, bJz, @Const(ngbs), xi,
-                                        ut::T, dx::T, dy::T, dz::T) where {T<:AbstractFloat}
-    I = @index(Global)
-    j = 3 * I - 2
+@kernel function zhangli_torque_kernel!(@Const(m), h, bJx, bJy, bJz, xi,
+                                        ut::T, dx::T, dy::T, dz::T,
+                                        nx, ny, nz, px::Bool, py::Bool, pz::Bool) where {T<:AbstractFloat}
+    ci, cj, ck = @index(Global, NTuple)
+    lid = (ck - 1) * nx * ny + (cj - 1) * nx + ci
+    j = 3 * lid - 2
 
     fx::T, fy::T, fz::T = T(0), T(0), T(0)
 
-    #x-direction
-    i1::Int32 = ngbs[1, I] #we assume that i1<0 for the area with Ms=0
-    i2::Int32 = ngbs[2, I]
-    # i1 * i2 may overflow
-    factor::T = (i1 > 0 && i2 > 0) ? 1 / (2 * dx) : 1 / dx
-    i1 < 0 && (i1 = I)
-    i2 < 0 && (i2 = I)
+    #x-direction (centre difference, one-sided 1/dx factor when a side is missing)
+    i1 = _ngb_neg(ci, lid, nx, px, 1)
+    i2 = _ngb_pos(ci, lid, nx, px, 1)
+    factor::T = (_valid_neg(ci, px) && _valid_pos(ci, nx, px)) ? 1 / (2 * dx) : 1 / dx
     j1 = 3 * i1 - 2
     j2 = 3 * i2 - 2
-    @inbounds u = bJx[I] * factor
+    @inbounds u = bJx[lid] * factor
     @inbounds fx += u * (m[j2] - m[j1])
     @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
     @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
 
     #y-direction
-    i1 = ngbs[3, I]
-    i2 = ngbs[4, I]
-    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dy) : 1 / dy
-    i1 < 0 && (i1 = I)
-    i2 < 0 && (i2 = I)
+    i1 = _ngb_neg(cj, lid, ny, py, nx)
+    i2 = _ngb_pos(cj, lid, ny, py, nx)
+    factor = (_valid_neg(cj, py) && _valid_pos(cj, ny, py)) ? 1 / (2 * dy) : 1 / dy
     j1 = 3 * i1 - 2
     j2 = 3 * i2 - 2
-    @inbounds u = bJy[I] * factor
+    @inbounds u = bJy[lid] * factor
     @inbounds fx += u * (m[j2] - m[j1])
     @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
     @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
 
     #z-direction
-    i1 = ngbs[5, I]
-    i2 = ngbs[6, I]
-    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dz) : 1 / dz
-    i1 < 0 && (i1 = I)
-    i2 < 0 && (i2 = I)
+    i1 = _ngb_neg(ck, lid, nz, pz, nx * ny)
+    i2 = _ngb_pos(ck, lid, nz, pz, nx * ny)
+    factor = (_valid_neg(ck, pz) && _valid_pos(ck, nz, pz)) ? 1 / (2 * dz) : 1 / dz
     j1 = 3 * i1 - 2
     j2 = 3 * i2 - 2
-    @inbounds u = bJz[I] * factor
+    @inbounds u = bJz[lid] * factor
     @inbounds fx += u * (m[j2] - m[j1])
     @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
     @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
@@ -707,27 +804,33 @@ The kernel zhangli_torque_kernel! compute the effective field defined as
     @inbounds mx::T = m[j + 0]
     @inbounds my::T = m[j + 1]
     @inbounds mz::T = m[j + 2]
-    @inbounds h[j + 0] = cross_x(mx, my, mz, fx, fy, fz) + xi[I] * fx
-    @inbounds h[j + 1] = cross_y(mx, my, mz, fx, fy, fz) + xi[I] * fy
-    @inbounds h[j + 2] = cross_z(mx, my, mz, fx, fy, fz) + xi[I] * fz
+    @inbounds h[j + 0] = cross_x(mx, my, mz, fx, fy, fz) + xi[lid] * fx
+    @inbounds h[j + 1] = cross_y(mx, my, mz, fx, fy, fz) + xi[lid] * fy
+    @inbounds h[j + 2] = cross_z(mx, my, mz, fx, fy, fz) + xi[lid] * fz
 end
 
+# Exchange partition kernel — fast path when A is per-class uniform. Arithmetic
+# neighbour addressing with clamp-to-self: a clamped bond reads the self class
+# (never 0 on this path) and contributes c*(m[i]-m[i]) = +0.0, bitwise neutral
+# versus the previous `if id > 0` skip (validated variant of EXCH_DMI_OPT §7).
 @kernel function exchange_partition_kernel!(
         @Const(m), h, energy, @Const(mat_class), @Const(pair_Ax),
         @Const(pair_Ay), @Const(pair_Az), @Const(inv_ms),
-        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+        dx::T, dy::T, dz::T, volume::T,
+        nx, ny, nz, px::Bool, py::Bool, pz::Bool
     ) where {T<:AbstractFloat}
 
-    I = @index(Global)
-    i = 3 * I - 2
-    @inbounds cI = mat_class[I]
+    ci, cj, ck = @index(Global, NTuple)
+    lid = (ck - 1) * nx * ny + (cj - 1) * nx + ci
+    i = 3 * lid - 2
+    @inbounds cI = mat_class[lid]
 
-    nx = T(2) / (dx * dx)
-    ny = T(2) / (dy * dy)
-    nz = T(2) / (dz * dz)
+    nxs = T(2) / (dx * dx)
+    nys = T(2) / (dy * dy)
+    nzs = T(2) / (dz * dz)
 
     if cI == UInt8(0)
-        @inbounds energy[I] = T(0)
+        @inbounds energy[lid] = T(0)
         @inbounds h[i]   = T(0)
         @inbounds h[i+1] = T(0)
         @inbounds h[i+2] = T(0)
@@ -736,75 +839,92 @@ end
         fy = T(0)
         fz = T(0)
 
-        # ---- (±x) ----
-        for j in 1:2
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0
-                cNb = mat_class[id]
-                coeff = pair_Ax[cI+1, cNb+1] * nx
-                if coeff != T(0)
-                    k = 3*id - 2
-                    fx += coeff * (m[k]   - m[i])
-                    fy += coeff * (m[k+1] - m[i+1])
-                    fz += coeff * (m[k+2] - m[i+2])
-                end
+        # ---- (±x), baseline bond order: -x then +x ----
+        @inbounds begin
+            id = _ngb_neg(ci, lid, nx, px, 1)
+            coeff = pair_Ax[cI + 1, mat_class[id] + 1] * nxs
+            if coeff != T(0)
+                k = 3 * id - 2
+                fx += coeff * (m[k]   - m[i])
+                fy += coeff * (m[k+1] - m[i+1])
+                fz += coeff * (m[k+2] - m[i+2])
+            end
+            id = _ngb_pos(ci, lid, nx, px, 1)
+            coeff = pair_Ax[cI + 1, mat_class[id] + 1] * nxs
+            if coeff != T(0)
+                k = 3 * id - 2
+                fx += coeff * (m[k]   - m[i])
+                fy += coeff * (m[k+1] - m[i+1])
+                fz += coeff * (m[k+2] - m[i+2])
             end
         end
-
         # ---- (±y) ----
-        for j in 3:4
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0
-                cNb = mat_class[id]
-                coeff = pair_Ay[cI+1, cNb+1] * ny
-                if coeff != T(0)
-                    k = 3*id - 2
-                    fx += coeff * (m[k]   - m[i])
-                    fy += coeff * (m[k+1] - m[i+1])
-                    fz += coeff * (m[k+2] - m[i+2])
-                end
+        @inbounds begin
+            id = _ngb_neg(cj, lid, ny, py, nx)
+            coeff = pair_Ay[cI + 1, mat_class[id] + 1] * nys
+            if coeff != T(0)
+                k = 3 * id - 2
+                fx += coeff * (m[k]   - m[i])
+                fy += coeff * (m[k+1] - m[i+1])
+                fz += coeff * (m[k+2] - m[i+2])
+            end
+            id = _ngb_pos(cj, lid, ny, py, nx)
+            coeff = pair_Ay[cI + 1, mat_class[id] + 1] * nys
+            if coeff != T(0)
+                k = 3 * id - 2
+                fx += coeff * (m[k]   - m[i])
+                fy += coeff * (m[k+1] - m[i+1])
+                fz += coeff * (m[k+2] - m[i+2])
             end
         end
-
         # ---- (±z) ----
-        for j in 5:6
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0
-                cNb = mat_class[id]
-                coeff = pair_Az[cI+1, cNb+1] * nz
-                if coeff != T(0)
-                    k = 3*id - 2
-                    fx += coeff * (m[k]   - m[i])
-                    fy += coeff * (m[k+1] - m[i+1])
-                    fz += coeff * (m[k+2] - m[i+2])
-                end
+        @inbounds begin
+            id = _ngb_neg(ck, lid, nz, pz, nx * ny)
+            coeff = pair_Az[cI + 1, mat_class[id] + 1] * nzs
+            if coeff != T(0)
+                k = 3 * id - 2
+                fx += coeff * (m[k]   - m[i])
+                fy += coeff * (m[k+1] - m[i+1])
+                fz += coeff * (m[k+2] - m[i+2])
+            end
+            id = _ngb_pos(ck, lid, nz, pz, nx * ny)
+            coeff = pair_Az[cI + 1, mat_class[id] + 1] * nzs
+            if coeff != T(0)
+                k = 3 * id - 2
+                fx += coeff * (m[k]   - m[i])
+                fy += coeff * (m[k+1] - m[i+1])
+                fz += coeff * (m[k+2] - m[i+2])
             end
         end
 
-        @inbounds Ms_inv = inv_ms[I]
-        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
-        @inbounds h[i]   = fx * Ms_inv
-        @inbounds h[i+1] = fy * Ms_inv
-        @inbounds h[i+2] = fz * Ms_inv
+        @inbounds im = inv_ms[lid]
+        @inbounds energy[lid] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * im
+        @inbounds h[i+1] = fy * im
+        @inbounds h[i+2] = fz * im
     end
 end
 
 # Bulk DMI partition kernel — fast path when Dx/Dy/Dz are per-class uniform.
 # Static DMI only (dispatch gates ft === _static_time; tfac omitted since 1).
+# Arithmetic addressing; DMI is linear in the neighbour spin, so out-of-mesh
+# bonds keep the validity test instead of clamp-to-self.
 @kernel function bulkdmi_partition_kernel!(
         @Const(m), h, energy, @Const(mat_class), @Const(pair_Dx),
         @Const(pair_Dy), @Const(pair_Dz), @Const(inv_ms),
-        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+        dx::T, dy::T, dz::T, volume::T,
+        nx, ny, nz, px::Bool, py::Bool, pz::Bool
     ) where {T<:AbstractFloat}
 
-    I = @index(Global)
-    i = 3 * I - 2
-    @inbounds cI = mat_class[I]
+    ci, cj, ck = @index(Global, NTuple)
+    lid = (ck - 1) * nx * ny + (cj - 1) * nx + ci
+    i = 3 * lid - 2
+    @inbounds cI = mat_class[lid]
 
     axes = (T(1/dx), T(-1/dx), T(1/dy), T(-1/dy), T(1/dz), T(-1/dz))
 
     if cI == UInt8(0)
-        @inbounds energy[I] = T(0)
+        @inbounds energy[lid] = T(0)
         @inbounds h[i]   = T(0)
         @inbounds h[i+1] = T(0)
         @inbounds h[i+2] = T(0)
@@ -814,14 +934,25 @@ end
         fz = T(0)
 
         # ---- (±x) ----
-        for j in 1:2
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0
+        @inbounds begin
+            id = _ngb_neg(ci, lid, nx, px, 1)
+            if _valid_neg(ci, px)
                 cNb = mat_class[id]
                 D_eff = pair_Dx[cI+1, cNb+1]
                 if D_eff != T(0)
-                    ax = axes[j]
-                    k = 3*id - 2
+                    ax = axes[1]
+                    k = 3 * id - 2
+                    fy += D_eff * (-ax * m[k+2])
+                    fz += D_eff * ( ax * m[k+1])
+                end
+            end
+            id = _ngb_pos(ci, lid, nx, px, 1)
+            if _valid_pos(ci, nx, px)
+                cNb = mat_class[id]
+                D_eff = pair_Dx[cI+1, cNb+1]
+                if D_eff != T(0)
+                    ax = axes[2]
+                    k = 3 * id - 2
                     fy += D_eff * (-ax * m[k+2])
                     fz += D_eff * ( ax * m[k+1])
                 end
@@ -829,14 +960,25 @@ end
         end
 
         # ---- (±y) ----
-        for j in 3:4
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0
+        @inbounds begin
+            id = _ngb_neg(cj, lid, ny, py, nx)
+            if _valid_neg(cj, py)
                 cNb = mat_class[id]
                 D_eff = pair_Dy[cI+1, cNb+1]
                 if D_eff != T(0)
-                    ay = axes[j]
-                    k = 3*id - 2
+                    ay = axes[3]
+                    k = 3 * id - 2
+                    fx += D_eff * ( ay * m[k+2])
+                    fz += D_eff * (-ay * m[k]  )
+                end
+            end
+            id = _ngb_pos(cj, lid, ny, py, nx)
+            if _valid_pos(cj, ny, py)
+                cNb = mat_class[id]
+                D_eff = pair_Dy[cI+1, cNb+1]
+                if D_eff != T(0)
+                    ay = axes[4]
+                    k = 3 * id - 2
                     fx += D_eff * ( ay * m[k+2])
                     fz += D_eff * (-ay * m[k]  )
                 end
@@ -844,40 +986,54 @@ end
         end
 
         # ---- (±z) ----
-        for j in 5:6
-            @inbounds id = ngbs[j, I]
-            @inbounds if id > 0
+        @inbounds begin
+            id = _ngb_neg(ck, lid, nz, pz, nx * ny)
+            if _valid_neg(ck, pz)
                 cNb = mat_class[id]
                 D_eff = pair_Dz[cI+1, cNb+1]
                 if D_eff != T(0)
-                    az = axes[j]
-                    k = 3*id - 2
+                    az = axes[5]
+                    k = 3 * id - 2
+                    fx += D_eff * (-az * m[k+1])
+                    fy += D_eff * ( az * m[k]  )
+                end
+            end
+            id = _ngb_pos(ck, lid, nz, pz, nx * ny)
+            if _valid_pos(ck, nz, pz)
+                cNb = mat_class[id]
+                D_eff = pair_Dz[cI+1, cNb+1]
+                if D_eff != T(0)
+                    az = axes[6]
+                    k = 3 * id - 2
                     fx += D_eff * (-az * m[k+1])
                     fy += D_eff * ( az * m[k]  )
                 end
             end
         end
 
-        @inbounds Ms_inv = inv_ms[I]
-        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
-        @inbounds h[i]   = fx * Ms_inv
-        @inbounds h[i+1] = fy * Ms_inv
-        @inbounds h[i+2] = fz * Ms_inv
+        @inbounds im = inv_ms[lid]
+        @inbounds energy[lid] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * im
+        @inbounds h[i+1] = fy * im
+        @inbounds h[i+2] = fz * im
     end
 end
 
 # Interfacial DMI partition kernel — fast path when D is per-class uniform.
 # Dcls[cI+1] gives the per-class D_I to guard D_I==0 (mirrors inline's
-# `if Ms_local==0 || D_I==0` early exit). Static DMI only.
+# `if Ms_local==0 || D_I==0` early exit). Static DMI only. Arithmetic
+# addressing; out-of-mesh bonds keep the validity test (linear form).
 @kernel function interfacial_dmi_partition_kernel!(
         @Const(m), h, energy, @Const(mat_class), @Const(pair_D),
         @Const(Dcls), @Const(inv_ms),
-        dx::T, dy::T, @Const(ngbs), volume::T
+        dx::T, dy::T, volume::T,
+        nx, ny, nz, px::Bool, py::Bool, pz::Bool
     ) where {T<:AbstractFloat}
 
-    I = @index(Global)
-    i = 3 * I - 2
-    @inbounds cI = mat_class[I]
+    ci, cj, ck = @index(Global, NTuple)
+    lid = (ck - 1) * nx * ny + (cj - 1) * nx + ci
+    i = 3 * lid - 2
+    @inbounds cI = mat_class[lid]
 
     Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy))
     ax = (T(0), T(0), T(-1), T(1))
@@ -885,14 +1041,14 @@ end
     az = (T(0), T(0), T(0), T(0))
 
     if cI == UInt8(0)
-        @inbounds energy[I] = T(0)
+        @inbounds energy[lid] = T(0)
         @inbounds h[i]   = T(0)
         @inbounds h[i+1] = T(0)
         @inbounds h[i+2] = T(0)
     else
         @inbounds D_I = Dcls[cI+1]
         if D_I == T(0)
-            @inbounds energy[I] = T(0)
+            @inbounds energy[lid] = T(0)
             @inbounds h[i]   = T(0)
             @inbounds h[i+1] = T(0)
             @inbounds h[i+2] = T(0)
@@ -900,25 +1056,61 @@ end
             fx = T(0)
             fy = T(0)
             fz = T(0)
-            for j in 1:4
-                @inbounds id = ngbs[j, I]
-                @inbounds if id > 0
+            @inbounds begin
+                id = _ngb_neg(ci, lid, nx, px, 1)
+                if _valid_neg(ci, px)
                     cNb = mat_class[id]
                     D_eff = pair_D[cI+1, cNb+1]
                     if D_eff != T(0)
-                        coeff = D_eff * Dd[j]
+                        coeff = D_eff * Dd[1]
                         k = 3 * id - 2
-                        fx += coeff * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
-                        fy += coeff * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
-                        fz += coeff * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                        fx += coeff * cross_x(ax[1], ay[1], az[1], m[k], m[k+1], m[k+2])
+                        fy += coeff * cross_y(ax[1], ay[1], az[1], m[k], m[k+1], m[k+2])
+                        fz += coeff * cross_z(ax[1], ay[1], az[1], m[k], m[k+1], m[k+2])
+                    end
+                end
+                id = _ngb_pos(ci, lid, nx, px, 1)
+                if _valid_pos(ci, nx, px)
+                    cNb = mat_class[id]
+                    D_eff = pair_D[cI+1, cNb+1]
+                    if D_eff != T(0)
+                        coeff = D_eff * Dd[2]
+                        k = 3 * id - 2
+                        fx += coeff * cross_x(ax[2], ay[2], az[2], m[k], m[k+1], m[k+2])
+                        fy += coeff * cross_y(ax[2], ay[2], az[2], m[k], m[k+1], m[k+2])
+                        fz += coeff * cross_z(ax[2], ay[2], az[2], m[k], m[k+1], m[k+2])
+                    end
+                end
+                id = _ngb_neg(cj, lid, ny, py, nx)
+                if _valid_neg(cj, py)
+                    cNb = mat_class[id]
+                    D_eff = pair_D[cI+1, cNb+1]
+                    if D_eff != T(0)
+                        coeff = D_eff * Dd[3]
+                        k = 3 * id - 2
+                        fx += coeff * cross_x(ax[3], ay[3], az[3], m[k], m[k+1], m[k+2])
+                        fy += coeff * cross_y(ax[3], ay[3], az[3], m[k], m[k+1], m[k+2])
+                        fz += coeff * cross_z(ax[3], ay[3], az[3], m[k], m[k+1], m[k+2])
+                    end
+                end
+                id = _ngb_pos(cj, lid, ny, py, nx)
+                if _valid_pos(cj, ny, py)
+                    cNb = mat_class[id]
+                    D_eff = pair_D[cI+1, cNb+1]
+                    if D_eff != T(0)
+                        coeff = D_eff * Dd[4]
+                        k = 3 * id - 2
+                        fx += coeff * cross_x(ax[4], ay[4], az[4], m[k], m[k+1], m[k+2])
+                        fy += coeff * cross_y(ax[4], ay[4], az[4], m[k], m[k+1], m[k+2])
+                        fz += coeff * cross_z(ax[4], ay[4], az[4], m[k], m[k+1], m[k+2])
                     end
                 end
             end
-            @inbounds Ms_inv = inv_ms[I]
-            @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
-            @inbounds h[i]   = fx * Ms_inv
-            @inbounds h[i+1] = fy * Ms_inv
-            @inbounds h[i+2] = fz * Ms_inv
+            @inbounds im = inv_ms[lid]
+            @inbounds energy[lid] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+            @inbounds h[i]   = fx * im
+            @inbounds h[i+1] = fy * im
+            @inbounds h[i+2] = fz * im
         end
     end
 end

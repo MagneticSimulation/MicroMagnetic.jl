@@ -89,23 +89,34 @@ function effective_field(anis::TwinMonoclinicAnisotropy, sim::MicroSim,
     return nothing
 end
 
+# Dimension-matched workgroup for the ngbs-free stencil kernels
+# (EXCH_DMI_OPT §7.2/K1): with NTuple global indices a 1D workgroup forces a
+# per-thread integer div/mod linearisation, while a shape-matched one reduces
+# to group-origin plus local arithmetic. set_groupsize no longer affects them.
+# Shapes picked by a 2D/3D sweep (uniform/piecewise/disc x 128^3): 2D (128,4,1)
+# wins the vacuum/multi-class cases by ~8% and ties uniform; 3D (128,2,2).
+@inline _stencil_wg(mesh) = mesh.nz == 1 ? (128, 4, 1) : (128, 2, 2)
+
 function effective_field(exch::Exchange, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
-    n_total = sim.n_total
     mesh = sim.mesh
     volume = T(mesh.volume)
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+    nx, ny, nz = Int32(mesh.nx), Int32(mesh.ny), Int32(mesh.nz)
+    px, py, pz = mesh.xperiodic, mesh.yperiodic, mesh.zperiodic
+    nd = (mesh.nx, mesh.ny, mesh.nz)
+    wg = _stencil_wg(mesh)
     back = get_backend(spin)
     cls, ok = _exchange_tables!(sim, exch)
     if ok
-        exchange_partition_kernel!(back, groupsize[])(spin, exch.field, exch.energy,
+        exchange_partition_kernel!(back, wg)(spin, exch.field, exch.energy,
             cls, exch.pair_Ax, exch.pair_Ay, exch.pair_Az, sim.inv_ms,
-            dx, dy, dz, mesh.ngbs, volume; ndrange=n_total)
+            dx, dy, dz, volume, nx, ny, nz, px, py, pz; ndrange=nd)
     else
-        exchange_kernel!(back, groupsize[])(spin, exch.field, exch.energy, sim.mu0_Ms,
-                                            exch.Ax, exch.Ay, exch.Az,
-                                            dx, dy, dz, mesh.ngbs, volume; ndrange=n_total)
+        exchange_kernel!(back, wg)(spin, exch.field, exch.energy,
+            cls, exch.Ax, exch.Ay, exch.Az, sim.inv_ms,
+            dx, dy, dz, volume, nx, ny, nz, px, py, pz; ndrange=nd)
     end
 
     return nothing
@@ -113,34 +124,37 @@ end
 
 function effective_field(dmi::DMI, sim::MicroSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
-    N = sim.n_total
     mesh = sim.mesh
     volume = T(mesh.volume)
 
     dx, dy, dz = T(mesh.dx), T(mesh.dy), T(mesh.dz)
+    nx, ny, nz = Int32(mesh.nx), Int32(mesh.ny), Int32(mesh.nz)
+    px, py, pz = mesh.xperiodic, mesh.yperiodic, mesh.zperiodic
+    nd = (mesh.nx, mesh.ny, mesh.nz)
+    wg = _stencil_wg(mesh)
     tfac = T(dmi.ft(t))
     back = get_backend(spin)
     if dmi.type === :bulk
         cls, ok = _dmi_tables!(sim, dmi)
         if ok
-            bulkdmi_partition_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy,
+            bulkdmi_partition_kernel!(back, wg)(spin, dmi.field, dmi.energy,
                 cls, dmi.pair_Dx, dmi.pair_Dy, dmi.pair_Dz, sim.inv_ms,
-                dx, dy, dz, mesh.ngbs, volume; ndrange=N)
+                dx, dy, dz, volume, nx, ny, nz, px, py, pz; ndrange=nd)
         else
-            bulkdmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy, sim.mu0_Ms,
-                                               dmi.Dx, dmi.Dy, dmi.Dz, dx, dy, dz,
-                                               mesh.ngbs, volume, tfac; ndrange=N)
+            bulkdmi_kernel!(back, wg)(spin, dmi.field, dmi.energy,
+                cls, dmi.Dx, dmi.Dy, dmi.Dz, sim.inv_ms,
+                dx, dy, dz, volume, tfac, nx, ny, nz, px, py, pz; ndrange=nd)
         end
     else
         cls, ok = _dmi_tables!(sim, dmi)
         if ok
-            interfacial_dmi_partition_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy,
+            interfacial_dmi_partition_kernel!(back, wg)(spin, dmi.field, dmi.energy,
                 cls, dmi.pair_Dx, dmi.Dcls, sim.inv_ms,
-                dx, dy, mesh.ngbs, volume; ndrange=N)
+                dx, dy, volume, nx, ny, nz, px, py, pz; ndrange=nd)
         else
-            interfacial_dmi_kernel!(back, groupsize[])(spin, dmi.field, dmi.energy,
-                                                       sim.mu0_Ms, dmi.Dx, dx, dy, dz,
-                                                       mesh.ngbs, volume, tfac; ndrange=N)
+            interfacial_dmi_kernel!(back, wg)(spin, dmi.field, dmi.energy,
+                cls, dmi.Dx, sim.inv_ms, dx, dy, dz, volume, tfac,
+                nx, ny, nz, px, py, pz; ndrange=nd)
         end
     end
 
@@ -268,17 +282,19 @@ end
 
 function effective_field(torque::ZhangLiTorque, sim::AbstractSim, spin::AbstractArray{T,1},
                          t::Float64) where {T<:AbstractFloat}
-    N = sim.n_total
     gamma = sim.driver.gamma
     mesh = sim.mesh
 
     ut = T(torque.ufun(t)/gamma)
 
+    nx, ny, nz = Int32(mesh.nx), Int32(mesh.ny), Int32(mesh.nz)
+    px, py, pz = mesh.xperiodic, mesh.yperiodic, mesh.zperiodic
     back = get_backend(spin)
-    zhangli_torque_kernel!(back, groupsize[])(spin, torque.field, torque.bJx,
-                                              torque.bJy, torque.bJz, mesh.ngbs,
-                                              torque.xi, ut, T(mesh.dx), T(mesh.dy),
-                                              T(mesh.dz); ndrange=N)
+    zhangli_torque_kernel!(back, _stencil_wg(mesh))(spin, torque.field, torque.bJx,
+                                                    torque.bJy, torque.bJz,
+                                                    torque.xi, ut, T(mesh.dx), T(mesh.dy),
+                                                    T(mesh.dz), nx, ny, nz, px, py, pz;
+                                                    ndrange=(mesh.nx, mesh.ny, mesh.nz))
 
     return nothing
 end

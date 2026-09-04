@@ -87,12 +87,14 @@ function FDMesh(; dx=1e-9, dy=1e-9, dz=1e-9, nx=1, ny=1, nz=1, pbc="open", x0=-n
     volume = dx * dy * dz
     n_total = nx * ny * nz
 
-    ngbs_kb = default_backend[] == CPU() ? ngbs : kernel_array(ngbs)
+    # mesh.ngbs stays on the host: the stencil kernels address neighbours
+    # arithmetically (micro/kernels.jl) and the remaining consumers
+    # (util.jl partial_xy, effective_field_debug, tests) are host-side.
     regions = zeros(Int32, n_total)
 
     T = Float[]
     mesh = FDMesh(T(dx), T(dy), T(dz), T(x0), T(y0), T(z0), nx, ny, nz, xperiodic,
-                  yperiodic, zperiodic, n_total, T(volume), ngbs_kb, regions, Ref(0))
+                  yperiodic, zperiodic, n_total, T(volume), ngbs, regions, Ref(0))
 
     send_visualization_data(mesh=mesh) 
     return mesh
