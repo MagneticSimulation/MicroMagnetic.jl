@@ -1,0 +1,1030 @@
+@kernel function spatiotemporal_kernel!(output, dx::T, dy::T, dz::T, x0::T, y0::T, z0::T,
+                                        t::T, f::Function) where {T<:AbstractFloat}
+    i, j, k = @index(Global, NTuple)
+    x::T = x0 + (i - T(0.5)) * dx
+    y::T = y0 + (j - T(0.5)) * dy
+    z::T = z0 + (k - T(0.5)) * dz
+    @inbounds output[i, j, k] = f(x, y, z, t)
+end
+
+"""
+    Energy-only Zeeman kernel for a precomputed field `h` (the static path and the
+direct-demag energy), where factor = cell_size for the micromagnetic model and
+factor = 1 for atomistic model.
+"""
+@kernel function zeeman_energy_kernel!(@Const(m), @Const(h), energy, mu0_Ms,
+                                       factor::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+    @inbounds mh = m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3]
+    @inbounds energy[id] = -factor * mu0_Ms[id] * mh
+end
+
+"""
+    The kernel for the Zeeman interaction, works for both the FE micromagnetic model.
+"""
+@kernel function zeeman_fe_kernel!(@Const(m), @Const(h), energy, @Const(L_mu),
+                                   factor::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+    @inbounds mh = m[j + 1] * h[j + 1] * L_mu[j+1] +
+                   m[j + 2] * h[j + 2] * L_mu[j+2] +
+                   m[j + 3] * h[j + 3] * L_mu[j+3]
+    @inbounds energy[id] = -factor * mh
+end
+
+"""
+    Zeeman field kernel: writes `h = (Hx, Hy, Hz) .* (fx, fy, fz)` and the energy.
+The per-spin `Hx/Hz` components may be O(1) Fills for a uniform field.
+"""
+@kernel function zeeman_field_kernel!(@Const(m), h, energy, mu0_Ms, Hx, Hy, Hz,
+                                      factor::T, fx::T, fy::T,
+                                      fz::T) where {T<:AbstractFloat}
+    I = @index(Global)
+    j = 3 * (I - 1)
+    @inbounds h[j + 1] = Hx[I] * fx
+    @inbounds h[j + 2] = Hy[I] * fy
+    @inbounds h[j + 3] = Hz[I] * fz
+    @inbounds mh::T = m[j + 1] * h[j + 1] + m[j + 2] * h[j + 2] + m[j + 3] * h[j + 3]
+    @inbounds energy[I] = -factor * mu0_Ms[I] * mh
+end
+
+"""
+    Field-write-only variant used at add/update time, when the energy is not yet
+meaningful and `mu0_Ms` may live on a different memory space (e.g. the CPU array
+of the FE model).
+"""
+@kernel function zeeman_write_field_kernel!(h, Hx, Hy, Hz, fx::T, fy::T,
+                                            fz::T) where {T<:AbstractFloat}
+    I = @index(Global)
+    j = 3 * (I - 1)
+    @inbounds h[j + 1] = Hx[I] * fx
+    @inbounds h[j + 2] = Hy[I] * fy
+    @inbounds h[j + 3] = Hz[I] * fz
+end
+
+"""
+The kernel anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
+"""
+@kernel function anisotropy_kernel!(@Const(m), h, energy, Ku, axis_x, axis_y, axis_z,
+                                    mu0_Ms,
+                                    volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu0_Ms[id]
+    @inbounds ax = axis_x[id]
+    @inbounds ay = axis_y[id]
+    @inbounds az = axis_z[id]
+
+    if Ms_local == 0.0
+        @inbounds energy[id] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        Ms_inv::T = T(2) / Ms_local
+        @inbounds sa = m[j + 1] * ax + m[j + 2] * ay + m[j + 3] * az
+        @inbounds h[j + 1] = Ku[id] * sa * ax * Ms_inv
+        @inbounds h[j + 2] = Ku[id] * sa * ay * Ms_inv
+        @inbounds h[j + 3] = Ku[id] * sa * az * Ms_inv
+        @inbounds energy[id] = Ku[id] * (T(1) - sa * sa) * volume
+    end
+end
+
+"""
+The kernel cubic_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
+"""
+@kernel function cubic_anisotropy_kernel!(@Const(m), h, energy, Kc, axis1x, axis1y,
+                                          axis1z, axis2x, axis2y, axis2z, axis3x, axis3y,
+                                          axis3z, mu0_Ms,
+                                          volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu0_Ms[id]
+
+    if Ms_local == 0.0
+        @inbounds energy[id] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        @inbounds a1x = axis1x[id]
+        @inbounds a1y = axis1y[id]
+        @inbounds a1z = axis1z[id]
+        @inbounds a2x = axis2x[id]
+        @inbounds a2y = axis2y[id]
+        @inbounds a2z = axis2z[id]
+        @inbounds a3x = axis3x[id]
+        @inbounds a3y = axis3y[id]
+        @inbounds a3z = axis3z[id]
+        Ms_inv::T = T(4) * Kc[id] / Ms_local
+        @inbounds mxp = a1x * m[j + 1] + a1y * m[j + 2] + a1z * m[j + 3]
+        @inbounds myp = a2x * m[j + 1] + a2y * m[j + 2] + a2z * m[j + 3]
+        @inbounds mzp = a3x * m[j + 1] + a3y * m[j + 2] + a3z * m[j + 3]
+        mxp3 = mxp * mxp * mxp
+        myp3 = myp * myp * myp
+        mzp3 = mzp * mzp * mzp
+        @inbounds h[j + 1] = Ms_inv * (mxp3 * a1x + myp3 * a2x + mzp3 * a3x)
+        @inbounds h[j + 2] = Ms_inv * (mxp3 * a1y + myp3 * a2y + mzp3 * a3y)
+        @inbounds h[j + 3] = Ms_inv * (mxp3 * a1z + myp3 * a2z + mzp3 * a3z)
+        @inbounds energy[id] = -Kc[id] * (mxp * mxp3 + myp * myp3 + mzp * mzp3) * volume
+    end
+end
+
+"""
+The kernel hexagonal_anisotropy_kernel! works for both the micromagnetic and atomistic model, and volume = 1 for atomistic model.
+"""
+@kernel function hexagonal_anisotropy_kernel!(@Const(m), h, energy, K1::T, K2::T, K3::T,
+                                              @Const(mu0_Ms),
+                                              volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu0_Ms[id]
+
+    if Ms_local == 0.0
+        @inbounds energy[id] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        Ms_inv::T = T(1) / Ms_local
+        @inbounds mx = m[j + 1]
+        @inbounds my = m[j + 2]
+        @inbounds mz = m[j + 3]
+        @inbounds h[j + 1] = -6*K3*Ms_inv*(mx^5-10*mx^3*my^2+5*mx*my^4)
+        @inbounds h[j + 2] = -6*K3*Ms_inv*(-5*mx^4*my+10*mx^2*my^3-my^5)
+        @inbounds h[j + 3] = 2*mz*Ms_inv*(K1 + 2*K2*(1-mz*mz))
+        @inbounds energy[id] = (K1*(1-mz*mz) +
+                                K2*(1-mz*mz)^2 +
+                                K3*(mx^6-15*mx^4*my^2+15*mx^2*my^4-my^6)) * volume
+    end
+end
+
+@kernel function twin_monoclinic_anisotropy_kernel!(@Const(m), h, energy,
+                                                    @Const(axis_a), @Const(axis_b),
+                                                    @Const(axis_u111), @Const(mu0_Ms),
+                                                    Ka::T, Kb::T, Kaa::T, Kbb::T,
+                                                    Kab::T, Ku::T,
+                                                    volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu0_Ms[id]
+
+    if Ms_local == T(0)
+        @inbounds energy[id] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        @inbounds mx = m[j + 1]
+        @inbounds my = m[j + 2]
+        @inbounds mz = m[j + 3]
+
+        @inbounds ax = axis_a[j + 1]
+        @inbounds ay = axis_a[j + 2]
+        @inbounds az = axis_a[j + 3]
+        @inbounds bx = axis_b[j + 1]
+        @inbounds by = axis_b[j + 2]
+        @inbounds bz = axis_b[j + 3]
+        @inbounds ux = axis_u111[j + 1]
+        @inbounds uy = axis_u111[j + 2]
+        @inbounds uz = axis_u111[j + 3]
+
+        alpha_a = mx * ax + my * ay + mz * az
+        alpha_b = mx * bx + my * by + mz * bz
+        alpha_u = mx * ux + my * uy + mz * uz
+
+        alpha_a2 = alpha_a * alpha_a
+        alpha_b2 = alpha_b * alpha_b
+
+        dE_da = 2 * Ka * alpha_a + 4 * Kaa * alpha_a2 * alpha_a +
+                2 * Kab * alpha_a * alpha_b2
+        dE_db = 2 * Kb * alpha_b + 4 * Kbb * alpha_b2 * alpha_b +
+                2 * Kab * alpha_b * alpha_a2
+        dE_du = -2 * Ku * alpha_u
+
+        Ms_inv::T = 1 / Ms_local
+        @inbounds h[j + 1] = -Ms_inv * (dE_da * ax + dE_db * bx + dE_du * ux)
+        @inbounds h[j + 2] = -Ms_inv * (dE_da * ay + dE_db * by + dE_du * uy)
+        @inbounds h[j + 3] = -Ms_inv * (dE_da * az + dE_db * bz + dE_du * uz)
+
+        @inbounds energy[id] = (Ka * alpha_a2 + Kb * alpha_b2 +
+                                Kaa * alpha_a2 * alpha_a2 +
+                                Kbb * alpha_b2 * alpha_b2 +
+                                Kab * alpha_a2 * alpha_b2 -
+                                Ku * alpha_u * alpha_u) * volume
+    end
+end
+
+# Unified exchange kernel: the bond stiffness is direction-decomposed and read
+# per spin (uniform values arrive as O(1) Fills); neighbour pairs use the harmonic
+# mean A_eff, so the former uniform and spatial kernels share one version.
+@kernel function exchange_kernel!(
+        @Const(m), h, energy, mu0_Ms, Axs, Ays, Azs,
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds Ms_local = mu0_Ms[I]
+    @inbounds Ax_I = Axs[I]
+    @inbounds Ay_I = Ays[I]
+    @inbounds Az_I = Azs[I]
+
+    nx = T(2) / (dx * dx)
+    ny = T(2) / (dy * dy)
+    nz = T(2) / (dz * dz)
+
+    if Ms_local == T(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Ax_n = Axs[id]
+                if Ax_I != 0 && Ax_n != 0
+                    k = 3*id - 2
+                    A_eff = 2 * Ax_I * Ax_n / (Ax_I + Ax_n)
+                    c = A_eff * nx
+                    fx += c * (m[k]   - m[i])
+                    fy += c * (m[k+1] - m[i+1])
+                    fz += c * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Ay_n = Ays[id]
+                if Ay_I != 0 && Ay_n != 0
+                    k = 3*id - 2
+                    A_eff = 2 * Ay_I * Ay_n / (Ay_I + Ay_n)
+                    c = A_eff * ny
+                    fx += c * (m[k]   - m[i])
+                    fy += c * (m[k+1] - m[i+1])
+                    fz += c * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Az_n = Azs[id]
+                if Az_I != 0 && Az_n != 0
+                    k = 3*id - 2
+                    A_eff = 2 * Az_I * Az_n / (Az_I + Az_n)
+                    c = A_eff * nz
+                    fx += c * (m[k]   - m[i])
+                    fy += c * (m[k+1] - m[i+1])
+                    fz += c * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        Ms_inv = T(1) / Ms_local
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+# Unified bulk DMI kernel: the D components are read per spin (a uniform D arrives
+# as an O(1) Fill) and `tfac` is a scalar time factor (1 for the static term).
+@kernel function bulkdmi_kernel!(
+        @Const(m), h, energy, mu0_Ms, Dxs, Dys, Dzs,
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T, tfac::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds Ms_local = mu0_Ms[I]
+
+    axes = (T(1/dx), T(-1/dx), T(1/dy), T(-1/dy), T(1/dz), T(-1/dz))
+
+    if Ms_local == T(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        @inbounds Dx_I = tfac * Dxs[I]
+        @inbounds Dy_I = tfac * Dys[I]
+        @inbounds Dz_I = tfac * Dzs[I]
+
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Dx_n = tfac * Dxs[id]
+                if Dx_I != 0 && Dx_n != 0
+                    k = 3*id - 2
+                    D_eff = 2 * Dx_I * Dx_n / (Dx_I + Dx_n)
+                    ax = axes[j]
+                    fy += D_eff * (-ax * m[k+2])
+                    fz += D_eff * ( ax * m[k+1])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Dy_n = tfac * Dys[id]
+                if Dy_I != 0 && Dy_n != 0
+                    k = 3*id - 2
+                    D_eff = 2 * Dy_I * Dy_n / (Dy_I + Dy_n)
+                    ay = axes[j]
+                    fx += D_eff * ( ay * m[k+2])
+                    fz += D_eff * (-ay * m[k]  )
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                Dz_n = tfac * Dzs[id]
+                if Dz_I != 0 && Dz_n != 0
+                    k = 3*id - 2
+                    D_eff = 2 * Dz_I * Dz_n / (Dz_I + Dz_n)
+                    az = axes[j]
+                    fx += D_eff * (-az * m[k+1])
+                    fy += D_eff * ( az * m[k]  )
+                end
+            end
+        end
+
+        Ms_inv = T(1) / Ms_local
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+
+
+@kernel function interfacial_dmi_kernel!(@Const(m), h, energy, mu0_Ms, Ds,
+                                         dx::T, dy::T, dz::T, @Const(ngbs),
+                                         volume::T, tfac::T) where {T<:AbstractFloat}
+    I = @index(Global)
+    @inbounds Ms_local = mu0_Ms[I]
+    @inbounds D_I = tfac * Ds[I]
+
+    Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy))
+    ax = (T(0), T(0), T(-1), T(1))
+    ay = (T(1), T(-1), T(0), T(0))
+    az = (T(0), T(0), T(0), T(0))
+
+    i = 3 * I - 2
+    if Ms_local == T(0) || D_I == T(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i] = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        @inbounds s_i = (m[i], m[i+1], m[i+2])
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+        for j in 1:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0 && mu0_Ms[id] > 0
+                D_nb = tfac * Ds[id]
+                if D_nb != T(0)
+                    k = 3 * id - 2
+                    D_eff = 2 * D_I * D_nb / (D_I + D_nb)
+                    coeff = D_eff * Dd[j]
+                    fx += coeff * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    fy += coeff * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    fz += coeff * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                end
+            end
+        end
+        Ms_inv = T(1) / Ms_local
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+# `alphas` is read per spin (uniform damping arrives as a Fill); `factor` carries
+# everything except alpha: 2*k_B/(volume*gamma*dt) scaled by the time profile.
+@kernel function stochastic_field_kernel!(@Const(m), h, energy, mu0_Ms, eta,
+                                          Temp, base_T::T, alphas, factor::T,
+                                          volume::T) where {T<:AbstractFloat}
+    I = @index(Global)
+
+    j = 3 * (I - 1)
+    @inbounds Ms_local = mu0_Ms[I]
+    @inbounds T_local = Temp[I] + base_T
+
+    if Ms_local > 0
+        @inbounds scale = sqrt(factor * alphas[I] * T_local / Ms_local)
+        @inbounds h[j + 1] = eta[j + 1] * scale
+        @inbounds h[j + 2] = eta[j + 2] * scale
+        @inbounds h[j + 3] = eta[j + 3] * scale
+        @inbounds energy[I] = -Ms_local *
+                              volume *
+                              (m[j + 1] * h[j + 1] +
+                               m[j + 2] * h[j + 2] +
+                               m[j + 3] * h[j + 3])
+    else
+        @inbounds energy[I] = 0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    end
+end
+
+@kernel function interlayer_exch_kernel!(@Const(m), h, energy, mu0_Ms, @Const(Js),
+                                         K1::Int32, K2::Int32, nx::Int32, ny::Int32, dz::T,
+                                         volume::T) where {T<:AbstractFloat}
+    i, j = @index(Global, NTuple)
+
+    id1 = (K1 - 1) * nx * ny + (j - 1) * nx + i
+    id2 = (K2 - 1) * nx * ny + (j - 1) * nx + i
+    id = (j - 1) * nx + i
+
+    k1 = 3 * id1 - 2
+    k2 = 3 * id2 - 2
+    @inbounds mbx = m[k1]
+    @inbounds mby = m[k1 + 1]
+    @inbounds mbz = m[k1 + 2]
+
+    @inbounds mtx = m[k2]
+    @inbounds mty = m[k2 + 1]
+    @inbounds mtz = m[k2 + 2]
+
+    @inbounds Ms1 = mu0_Ms[id1]
+    @inbounds Ms2 = mu0_Ms[id2]
+    @inbounds J = Js[id]
+    if Ms1 > 0 && Ms2 > 0
+        Ms_inv = J / (Ms1 * dz)
+        @inbounds h[k1] = Ms_inv * mtx
+        @inbounds h[k1 + 1] = Ms_inv * mty
+        @inbounds h[k1 + 2] = Ms_inv * mtz
+        @inbounds energy[id1] = -T(0.5) *
+                        Ms1 *
+                        (h[k1] * mbx + h[k1 + 1] * mby + h[k1 + 2] * mbz) *
+                        volume
+
+        Ms_inv = J / (Ms2 * dz)
+        @inbounds h[k2] = Ms_inv * mbx
+        @inbounds h[k2 + 1] = Ms_inv * mby
+        @inbounds h[k2 + 2] = Ms_inv * mbz
+        @inbounds energy[id2] = -T(0.5) *
+                        Ms2 *
+                        (h[k2] * mtx + h[k2 + 1] * mty + h[k2 + 2] * mtz) *
+                        volume
+    end
+end
+
+@kernel function interlayer_dmi_kernel!(@Const(m), h, energy, @Const(mu0_Ms), Dx::T, Dy::T,
+                                        Dz::T, K1::Int32, K2::Int32, nx::Int32, ny::Int32,
+                                        dz::T, volume::T) where {T<:AbstractFloat}
+    i, j = @index(Global, NTuple)
+
+    id1 = (K1 - 1) * nx * ny + (j - 1) * nx + i
+    id2 = (K2 - 1) * nx * ny + (j - 1) * nx + i
+
+    k1 = 3 * id1 - 2
+    k2 = 3 * id2 - 2
+
+    @inbounds mbx = m[k1]
+    @inbounds mby = m[k1 + 1]
+    @inbounds mbz = m[k1 + 2]
+
+    @inbounds mtx = m[k2]
+    @inbounds mty = m[k2 + 1]
+    @inbounds mtz = m[k2 + 2]
+
+    @inbounds Ms1 = mu0_Ms[id1]
+    @inbounds Ms2 = mu0_Ms[id2]
+
+    if Ms1 > 0 && Ms2 > 0
+        Ms_inv = T(1) / (Ms1 * dz)
+        @inbounds h[k1]     = Ms_inv * cross_x(Dx, Dy, Dz, mtx, mty, mtz)
+        @inbounds h[k1 + 1] = Ms_inv * cross_y(Dx, Dy, Dz, mtx, mty, mtz)
+        @inbounds h[k1 + 2] = Ms_inv * cross_z(Dx, Dy, Dz, mtx, mty, mtz)
+
+        @inbounds energy[id1] = -T(0.5) *
+                                Ms1 *
+                                (h[k1] * mbx + h[k1 + 1] * mby + h[k1 + 2] * mbz) *
+                                volume
+
+        Ms_inv = -T(1) / (Ms2 * dz)
+        @inbounds h[k2]     = Ms_inv * cross_x(Dx, Dy, Dz, mbx, mby, mbz)
+        @inbounds h[k2 + 1] = Ms_inv * cross_y(Dx, Dy, Dz, mbx, mby, mbz)
+        @inbounds h[k2 + 2] = Ms_inv * cross_z(Dx, Dy, Dz, mbx, mby, mbz)
+
+        @inbounds energy[id2] = -T(0.5) *
+                                Ms2 *
+                                (h[k2] * mtx + h[k2 + 1] * mty + h[k2 + 2] * mtz) *
+                                volume
+    end
+end
+
+"""
+The kernel sahe_torque_kernel! compute the effective field defined as 
+        (1/gamma)*(beta*sigma + m x sigma)
+and sigma = sigma_s_a1 - (m.a2)^2 sigma_sa1_a1 + (m.a3) sigma_s2 ⊙ m
+"""
+@kernel function sahe_torque_kernel!(@Const(m), h, @Const(mu0_Ms), 
+                                     @Const(sigma_s_a1), @Const(sigma_sa1_a1),
+                                     @Const(sigma_sa2), @Const(a2), @Const(a3),
+                                     gamma::T, beta::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds Ms_local = mu0_Ms[id]
+
+    if Ms_local == 0.0
+        @inbounds h[j + 1] = 0
+        @inbounds h[j + 2] = 0
+        @inbounds h[j + 3] = 0
+    else
+        @inbounds mx, my, mz = m[j+1], m[j+2], m[j+3]
+        @inbounds ma2 = (mx * a2[j + 1] + my * a2[j + 2] + mz * a2[j + 3])^2
+        @inbounds ma3 = mx * a3[j + 1] + my * a3[j + 2] + mz * a3[j + 3]
+        @inbounds sx = sigma_s_a1[j + 1] - ma2 * sigma_sa1_a1[j + 1] + ma3 * sigma_sa2[j + 1] * mx
+        @inbounds sy = sigma_s_a1[j + 2] - ma2 * sigma_sa1_a1[j + 2] + ma3 * sigma_sa2[j + 2] * my 
+        @inbounds sz = sigma_s_a1[j + 3] - ma2 * sigma_sa1_a1[j + 3] + ma3 * sigma_sa2[j + 3] * mz
+        @inbounds h[j + 1] = (beta*sx + cross_x(mx, my, mz, sx, sy, sz) ) / gamma
+        @inbounds h[j + 2] = (beta*sy + cross_y(mx, my, mz, sx, sy, sz) ) / gamma  
+        @inbounds h[j + 3] = (beta*sz + cross_z(mx, my, mz, sx, sy, sz) ) / gamma
+    end
+end
+
+"""
+The kernel df_torque_kernel! compute the effective field defined as 
+        H = (1/gamma)(a_J m x p +  b_J p)
+"""
+@kernel function df_torque_kernel!(@Const(m), h, gamma::T, aj, bj::T, px, py,
+                                   pz) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds a = aj[id] / gamma
+
+    b::T = bj / gamma
+    @inbounds p_x = px[id]
+    @inbounds p_y = py[id]
+    @inbounds p_z = pz[id]
+    @inbounds mx::T = m[j + 1]
+    @inbounds my::T = m[j + 2]
+    @inbounds mz::T = m[j + 3]
+    @inbounds h[j + 1] = a * cross_x(mx, my, mz, p_x, p_y, p_z) + b*p_x
+    @inbounds h[j + 2] = a * cross_y(mx, my, mz, p_x, p_y, p_z) + b*p_y
+    @inbounds h[j + 3] = a * cross_z(mx, my, mz, p_x, p_y, p_z) + b*p_z
+end
+
+"""
+The kernel torque_kernel! compute the effective field defined as 
+        H = (1/gamma) m x h
+"""
+@kernel function torque_kernel!(@Const(m), h, gamma::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    a::T = 1/gamma
+
+    @inbounds mx, my, mz = m[j+1], m[j+2], m[j+3]
+    @inbounds hx, hy, hz = h[j+1], h[j+2], h[j+3]
+
+    @inbounds h[j + 1] = a * cross_x(mx, my, mz, hx, hy, hz)
+    @inbounds h[j + 2] = a * cross_y(mx, my, mz, hx, hy, hz)
+    @inbounds h[j + 3] = a * cross_z(mx, my, mz, hx, hy, hz)
+end
+
+"""
+The kernel slonczewski_torque_kernel! compute the effective field defined as 
+        H = (beta*J)(epsilon* m x m_p +  xi*m_p)
+"""
+@kernel function slonczewski_torque_kernel!(@Const(m), h, J, lambda_sq::T, P::T,
+                                            xi::T, ft::T, px, py,
+                                            pz) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+
+    @inbounds mx::T = m[j + 1]
+    @inbounds my::T = m[j + 2]
+    @inbounds mz::T = m[j + 3]
+    @inbounds p_x = px[id]
+    @inbounds p_y = py[id]
+    @inbounds p_z = pz[id]
+
+    mp::T = mx * p_x + my * p_y + mz * p_z
+    epsilon::T = P * lambda_sq / (lambda_sq + 1 + (lambda_sq - 1) * mp);
+
+    @inbounds a = J[id]*ft # note ft is multiplied by the coefficient beta
+    @inbounds h[j + 1] = a * (epsilon*cross_x(mx, my, mz, p_x, p_y, p_z) + xi*p_x)
+    @inbounds h[j + 2] = a * (epsilon*cross_y(mx, my, mz, p_x, p_y, p_z) + xi*p_y)
+    @inbounds h[j + 3] = a * (epsilon*cross_z(mx, my, mz, p_x, p_y, p_z) + xi*p_z)
+end
+
+"""
+The kernel zhangli_torque_kernel! compute the effective field defined as 
+   H = (b/gamma)*[m x (J.nabla) m + xi (J.nabla) m]
+"""
+@kernel function zhangli_torque_kernel!(@Const(m), h, bJx, bJy, bJz, @Const(ngbs), xi,
+                                        ut::T, dx::T, dy::T, dz::T) where {T<:AbstractFloat}
+    I = @index(Global)
+    j = 3 * I - 2
+
+    fx::T, fy::T, fz::T = T(0), T(0), T(0)
+
+    #x-direction
+    i1::Int32 = ngbs[1, I] #we assume that i1<0 for the area with Ms=0
+    i2::Int32 = ngbs[2, I]
+    # i1 * i2 may overflow
+    factor::T = (i1 > 0 && i2 > 0) ? 1 / (2 * dx) : 1 / dx
+    i1 < 0 && (i1 = I)
+    i2 < 0 && (i2 = I)
+    j1 = 3 * i1 - 2
+    j2 = 3 * i2 - 2
+    @inbounds u = bJx[I] * factor
+    @inbounds fx += u * (m[j2] - m[j1])
+    @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
+    @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
+
+    #y-direction
+    i1 = ngbs[3, I]
+    i2 = ngbs[4, I]
+    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dy) : 1 / dy
+    i1 < 0 && (i1 = I)
+    i2 < 0 && (i2 = I)
+    j1 = 3 * i1 - 2
+    j2 = 3 * i2 - 2
+    @inbounds u = bJy[I] * factor
+    @inbounds fx += u * (m[j2] - m[j1])
+    @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
+    @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
+
+    #z-direction
+    i1 = ngbs[5, I]
+    i2 = ngbs[6, I]
+    factor = (i1 > 0 && i2 > 0) ? 1 / (2 * dz) : 1 / dz
+    i1 < 0 && (i1 = I)
+    i2 < 0 && (i2 = I)
+    j1 = 3 * i1 - 2
+    j2 = 3 * i2 - 2
+    @inbounds u = bJz[I] * factor
+    @inbounds fx += u * (m[j2] - m[j1])
+    @inbounds fy += u * (m[j2 + 1] - m[j1 + 1])
+    @inbounds fz += u * (m[j2 + 2] - m[j1 + 2])
+
+    fx = ut * fx
+    fy = ut * fy
+    fz = ut * fz
+
+    # the above part is h = (b/gamma)*ut*(J.nabla) m, note we have divided ut by gamma.
+
+    @inbounds mx::T = m[j + 0]
+    @inbounds my::T = m[j + 1]
+    @inbounds mz::T = m[j + 2]
+    @inbounds h[j + 0] = cross_x(mx, my, mz, fx, fy, fz) + xi[I] * fx
+    @inbounds h[j + 1] = cross_y(mx, my, mz, fx, fy, fz) + xi[I] * fy
+    @inbounds h[j + 2] = cross_z(mx, my, mz, fx, fy, fz) + xi[I] * fz
+end
+
+@kernel function exchange_partition_kernel!(
+        @Const(m), h, energy, @Const(mat_class), @Const(pair_Ax),
+        @Const(pair_Ay), @Const(pair_Az), @Const(inv_ms),
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds cI = mat_class[I]
+
+    nx = T(2) / (dx * dx)
+    ny = T(2) / (dy * dy)
+    nz = T(2) / (dz * dz)
+
+    if cI == UInt8(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                coeff = pair_Ax[cI+1, cNb+1] * nx
+                if coeff != T(0)
+                    k = 3*id - 2
+                    fx += coeff * (m[k]   - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                coeff = pair_Ay[cI+1, cNb+1] * ny
+                if coeff != T(0)
+                    k = 3*id - 2
+                    fx += coeff * (m[k]   - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                coeff = pair_Az[cI+1, cNb+1] * nz
+                if coeff != T(0)
+                    k = 3*id - 2
+                    fx += coeff * (m[k]   - m[i])
+                    fy += coeff * (m[k+1] - m[i+1])
+                    fz += coeff * (m[k+2] - m[i+2])
+                end
+            end
+        end
+
+        @inbounds Ms_inv = inv_ms[I]
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+# Bulk DMI partition kernel — fast path when Dx/Dy/Dz are per-class uniform.
+# Static DMI only (dispatch gates ft === _static_time; tfac omitted since 1).
+@kernel function bulkdmi_partition_kernel!(
+        @Const(m), h, energy, @Const(mat_class), @Const(pair_Dx),
+        @Const(pair_Dy), @Const(pair_Dz), @Const(inv_ms),
+        dx::T, dy::T, dz::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds cI = mat_class[I]
+
+    axes = (T(1/dx), T(-1/dx), T(1/dy), T(-1/dy), T(1/dz), T(-1/dz))
+
+    if cI == UInt8(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        fx = T(0)
+        fy = T(0)
+        fz = T(0)
+
+        # ---- (±x) ----
+        for j in 1:2
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                D_eff = pair_Dx[cI+1, cNb+1]
+                if D_eff != T(0)
+                    ax = axes[j]
+                    k = 3*id - 2
+                    fy += D_eff * (-ax * m[k+2])
+                    fz += D_eff * ( ax * m[k+1])
+                end
+            end
+        end
+
+        # ---- (±y) ----
+        for j in 3:4
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                D_eff = pair_Dy[cI+1, cNb+1]
+                if D_eff != T(0)
+                    ay = axes[j]
+                    k = 3*id - 2
+                    fx += D_eff * ( ay * m[k+2])
+                    fz += D_eff * (-ay * m[k]  )
+                end
+            end
+        end
+
+        # ---- (±z) ----
+        for j in 5:6
+            @inbounds id = ngbs[j, I]
+            @inbounds if id > 0
+                cNb = mat_class[id]
+                D_eff = pair_Dz[cI+1, cNb+1]
+                if D_eff != T(0)
+                    az = axes[j]
+                    k = 3*id - 2
+                    fx += D_eff * (-az * m[k+1])
+                    fy += D_eff * ( az * m[k]  )
+                end
+            end
+        end
+
+        @inbounds Ms_inv = inv_ms[I]
+        @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+        @inbounds h[i]   = fx * Ms_inv
+        @inbounds h[i+1] = fy * Ms_inv
+        @inbounds h[i+2] = fz * Ms_inv
+    end
+end
+
+# Interfacial DMI partition kernel — fast path when D is per-class uniform.
+# Dcls[cI+1] gives the per-class D_I to guard D_I==0 (mirrors inline's
+# `if Ms_local==0 || D_I==0` early exit). Static DMI only.
+@kernel function interfacial_dmi_partition_kernel!(
+        @Const(m), h, energy, @Const(mat_class), @Const(pair_D),
+        @Const(Dcls), @Const(inv_ms),
+        dx::T, dy::T, @Const(ngbs), volume::T
+    ) where {T<:AbstractFloat}
+
+    I = @index(Global)
+    i = 3 * I - 2
+    @inbounds cI = mat_class[I]
+
+    Dd = (T(1 / dx), T(1 / dx), T(1 / dy), T(1 / dy))
+    ax = (T(0), T(0), T(-1), T(1))
+    ay = (T(1), T(-1), T(0), T(0))
+    az = (T(0), T(0), T(0), T(0))
+
+    if cI == UInt8(0)
+        @inbounds energy[I] = T(0)
+        @inbounds h[i]   = T(0)
+        @inbounds h[i+1] = T(0)
+        @inbounds h[i+2] = T(0)
+    else
+        @inbounds D_I = Dcls[cI+1]
+        if D_I == T(0)
+            @inbounds energy[I] = T(0)
+            @inbounds h[i]   = T(0)
+            @inbounds h[i+1] = T(0)
+            @inbounds h[i+2] = T(0)
+        else
+            fx = T(0)
+            fy = T(0)
+            fz = T(0)
+            for j in 1:4
+                @inbounds id = ngbs[j, I]
+                @inbounds if id > 0
+                    cNb = mat_class[id]
+                    D_eff = pair_D[cI+1, cNb+1]
+                    if D_eff != T(0)
+                        coeff = D_eff * Dd[j]
+                        k = 3 * id - 2
+                        fx += coeff * cross_x(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                        fy += coeff * cross_y(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                        fz += coeff * cross_z(ax[j], ay[j], az[j], m[k], m[k+1], m[k+2])
+                    end
+                end
+            end
+            @inbounds Ms_inv = inv_ms[I]
+            @inbounds energy[I] = -T(0.5) * (fx * m[i] + fy * m[i+1] + fz * m[i+2]) * volume
+            @inbounds h[i]   = fx * Ms_inv
+            @inbounds h[i+1] = fy * Ms_inv
+            @inbounds h[i+2] = fz * Ms_inv
+        end
+    end
+end
+
+"""
+Magnetoelastic kernel (tensor model).
+General 6-component stress tensor.
+
+Energy density: E = -1.5 * lambda_s * sigma_ij * m_i * m_j
+    = -1.5 * lambda_s * (σxx*mx² + σyy*my² + σzz*mz² + 2σxy*mx*my + 2σxz*mx*mz + 2σyz*my*mz)
+Effective field: H_i = (3 * lambda_s / (mu0 * Ms)) * sigma_ij * m_j
+"""
+@kernel function magnetoelastic_tensor_kernel!(@Const(m), h, energy, @Const(sigma), lambda_s::T,
+                                                  @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+    s = 6 * (id - 1)  # stress index (6 components)
+    
+    @inbounds Ms_local = mu0_Ms[id]
+    
+    if Ms_local == T(0)
+        @inbounds energy[id] = T(0)
+        @inbounds h[j + 1] = T(0)
+        @inbounds h[j + 2] = T(0)
+        @inbounds h[j + 3] = T(0)
+    else
+        # Get stress components (Voigt: xx, yy, zz, xy, xz, yz)
+        @inbounds σxx = sigma[s + 1]
+        @inbounds σyy = sigma[s + 2]
+        @inbounds σzz = sigma[s + 3]
+        @inbounds σxy = sigma[s + 4]
+        @inbounds σxz = sigma[s + 5]
+        @inbounds σyz = sigma[s + 6]
+        
+        # Get magnetization
+        @inbounds mx = m[j + 1]
+        @inbounds my = m[j + 2]
+        @inbounds mz = m[j + 3]
+        
+        # Energy density: E = -1.5 * lambda_s * (σxx*mx² + σyy*my² + σzz*mz² + 2σxy*mx*my + 2σxz*mx*mz + 2σyz*my*mz)
+        @inbounds energy[id] = -T(1.5) * lambda_s * (
+            σxx * mx * mx + σyy * my * my + σzz * mz * mz +
+            T(2) * σxy * mx * my + T(2) * σxz * mx * mz + T(2) * σyz * my * mz
+        ) * volume
+        
+        # Effective field: H_i = 3*λs/(μ₀*Ms) * σ_ij * m_j
+        factor = T(3) * lambda_s / Ms_local
+        @inbounds h[j + 1] = factor * (σxx * mx + σxy * my + σxz * mz)
+        @inbounds h[j + 2] = factor * (σxy * mx + σyy * my + σyz * mz)
+        @inbounds h[j + 3] = factor * (σxz * mx + σyz * my + σzz * mz)
+    end
+end
+
+"""
+Magnetoelastic kernel (cubic crystal model).
+Fixed strain (no elastic feedback).
+
+Energy density: 
+E = B1*(εxx*mx² + εyy*my² + εzz*mz²) + 2*B2*(εxy*mx*my + εxz*mx*mz + εyz*my*mz)
+
+Effective field:
+H_x = -2/(μ₀*Ms) * [B1*εxx*mx + B2*(εxy*my + εxz*mz)]
+H_y = -2/(μ₀*Ms) * [B1*εyy*my + B2*(εxy*mx + εyz*mz)]
+H_z = -2/(μ₀*Ms) * [B1*εzz*mz + B2*(εxz*mx + εyz*my)]
+
+Note: Removed trace term (-trace/3) from original formula. The B2 term has factor 2.
+"""
+@kernel function magnetoelastic_cubic_kernel!(@Const(m), h, energy, @Const(strain), B1::T, B2::T,
+                                           @Const(mu0_Ms), volume::T) where {T<:AbstractFloat}
+    id = @index(Global)
+    j = 3 * (id - 1)
+    s = 6 * (id - 1)  # strain index
+    
+    @inbounds Ms_local = mu0_Ms[id]
+    
+    if Ms_local == T(0)
+        @inbounds energy[id] = T(0)
+        @inbounds h[j + 1] = T(0)
+        @inbounds h[j + 2] = T(0)
+        @inbounds h[j + 3] = T(0)
+    else
+        # Get strain components (Voigt: xx, yy, zz, xy, xz, yz)
+        @inbounds eps_xx = strain[s + 1]
+        @inbounds eps_yy = strain[s + 2]
+        @inbounds eps_zz = strain[s + 3]
+        @inbounds eps_xy = strain[s + 4]
+        @inbounds eps_xz = strain[s + 5]
+        @inbounds eps_yz = strain[s + 6]
+        
+        # Get magnetization
+        @inbounds mx = m[j + 1]
+        @inbounds my = m[j + 2]
+        @inbounds mz = m[j + 3]
+        
+        # Energy density: E = B1*(εxx*mx² + εyy*my² + εzz*mz²) + 2*B2*(εxy*mx*my + εxz*mx*mz + εyz*my*mz)
+        @inbounds energy[id] = (
+            B1 * (eps_xx * mx * mx + eps_yy * my * my + eps_zz * mz * mz) +
+            T(2) * B2 * (eps_xy * mx * my + eps_xz * mx * mz + eps_yz * my * mz)
+        ) * volume
+        
+        # Prefactor: 2 / (mu0 * Ms)
+        factor = T(2) / Ms_local
+        
+        # Effective field components
+        @inbounds h[j + 1] = -factor * (B1 * eps_xx * mx + B2 * (eps_xy * my + eps_xz * mz))
+        @inbounds h[j + 2] = -factor * (B1 * eps_yy * my + B2 * (eps_xy * mx + eps_yz * mz))
+        @inbounds h[j + 3] = -factor * (B1 * eps_zz * mz + B2 * (eps_xz * mx + eps_yz * my))
+    end
+end
