@@ -89,7 +89,8 @@ const nav = [
   ...(() => {
     const items = navGenerated.filter((e) => exampleSections.includes(e.text)).flatMap((e) => e.items ?? [])
     const folded = [...navGenerated.filter((e) => !exampleSections.includes(e.text))]
-    const i = folded.findIndex((e) => e.text === 'Manual')
+    let i = folded.findIndex((e) => e.text === 'User Guide')
+    if (i < 0) i = folded.findIndex((e) => e.text === 'API') - 1
     folded.splice(i + 1, 0, { text: 'Examples', items })
     return folded
   })(),
