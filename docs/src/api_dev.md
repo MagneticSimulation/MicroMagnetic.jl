@@ -6,11 +6,14 @@ CurrentModule = MicroMagnetic
 
 ## DataTypes
 ```@docs
-MicroMagnetic.NumberOrArrayOrFunction
-MicroMagnetic.NumberOrTupleOrArrayOrFunction
 MicroMagnetic.NumberOrArray
-MicroMagnetic.TupleOrArrayOrFunction
+MicroMagnetic.ArrayOrFunction
+MicroMagnetic.TupleOrArray
 ```
+
+(The aliases `NumberOrArrayOrFunction`, `NumberOrTupleOrArrayOrFunction` and
+`TupleOrArrayOrFunction` are documented on the user-facing
+[API page](api.md), "Others" section.)
 
 ## Kernels
 ```@docs

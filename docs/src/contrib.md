@@ -242,7 +242,22 @@ end
 ```
 
 #### 8. **Add Documentation**
+
 It's recommended to document the implementation for better clarity and user understanding.
+Docstrings must be written so that they actually attach (all three of these have
+bitten us before):
+
+- **No blank line** between the closing `"""` and the `function` definition — a
+  blank line silently breaks the attachment (verified on Julia 1.12);
+- Use plain `"""..."""` or **`@doc raw"""..."""`** for LaTeX-heavy docstrings; a
+  bare `raw"""..."""` is just a string literal and never attaches;
+- The docstring attaches to the **immediately following** expression — if you
+  insert a helper function between the docstring and its function, the docstring
+  ends up on the helper.
+
+After adding, check `docs/build/...` (or run a
+`DOCS_DRAFT=true julia --project=docs docs/make.jl` build) for
+`no docs found for ...` warnings, and add the entry to `docs/src/api.md`.
 
 
 ### Summary of Key Commands
