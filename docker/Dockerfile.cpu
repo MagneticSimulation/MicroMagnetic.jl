@@ -1,0 +1,58 @@
+# MicroMagnetic.jl CPU-only image with a baked Julia sysimage.
+#
+# Unlike the CUDA image, the sysimage can be built inside `docker build`
+# (no GPU needed), so a single stage suffices. See docker/build_cuda.sh for
+# the GPU variant.
+
+FROM julia:1.12-bookworm
+
+LABEL org.opencontainers.image.authors="Weiwei Wang" \
+      org.opencontainers.image.description="MicroMagnetic.jl (CPU, sysimage baked)" \
+      org.opencontainers.image.title="MicroMagnetic.jl" \
+      org.opencontainers.image.source="https://github.com/MagneticSimulation/MicroMagnetic.jl" \
+      org.opencontainers.image.licenses="MIT"
+
+ENV JULIA_DEPOT_PATH=/usr/local/share/julia
+# TUNA front door; artifact requests are load-balanced across the university
+# mirror backends by cernet's avoidtuna redirector.
+ENV JULIA_PKG_SERVER=https://mirrors.tuna.tsinghua.edu.cn/julia
+RUN umask 022
+
+# gcc + libc6-dev: PackageCompiler needs a C compiler to link the sysimage
+# (the official julia image ships neither)
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# MKL_jll is added explicitly (indirect dep of the dependency graph) so the
+# MKL artifact prefetch below can `using` it.
+RUN julia -e 'using Pkg; Pkg.add(["NPZ", "CairoMakie", "MKL_jll"])' \
+    && find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
+
+COPY Project.toml /opt/MicroMagnetic/Project.toml
+COPY src/ /opt/MicroMagnetic/src/
+COPY ext/ /opt/MicroMagnetic/ext/
+RUN julia -e 'using Pkg; Pkg.develop(path="/opt/MicroMagnetic")' \
+    && find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
+
+# Pre-fetch the MKL artifact: some load paths trigger it at runtime, which
+# would make a fresh container download ~200 MB on first run.
+RUN julia -e 'using MKL_jll, Pkg.Artifacts; \
+              toml = joinpath(dirname(dirname(pathof(MKL_jll))), "Artifacts.toml"); \
+              for name in keys(Artifacts.load_artifacts_toml(toml)) \
+                  Artifacts.ensure_artifact_installed(name, toml); \
+              end; \
+              println("mkl artifact prefetched")'
+
+COPY docker/cpu_workload.jl /opt/cpu_workload.jl
+RUN julia -e 'using Pkg; Pkg.add("PackageCompiler")' \
+    && julia -e 'using PackageCompiler; \
+              create_sysimage(["MicroMagnetic", "CairoMakie", "NPZ"]; \
+                  sysimage_path="/opt/micromagnetic.so", \
+                  precompile_execution_file="/opt/cpu_workload.jl")' \
+    && find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
+
+WORKDIR /workspace
+VOLUME ["/workspace"]
+
+ENTRYPOINT ["julia", "-J", "/opt/micromagnetic.so"]
+CMD []

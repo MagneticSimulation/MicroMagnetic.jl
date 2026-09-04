@@ -52,6 +52,20 @@ In certain cases, simulations can be simplified using **dimensionless units**, p
 | **Gilbert Damping**     | $ \alpha = 0.04 $ |
 
 
+In this situation, we have magnetic moment $\mu_s = \hbar \gamma S = 1$. The following
+conversion table can be used to convert the simulation results to physical units.
+
+!!! note "Unit conversion table for J = 1meV, S = 1, and a = 0.5 nm."
+    |Parameter | Conversion coefficients |  Value  |
+    | :----:   | :----: | :----: |
+    | Distance x   | $\hat{x}=a$ | 0.5nm |
+    | Time t   | $\hat{t}=\hbar S/J$ | 0.66 ps |
+    | Magnetic field H | $\hat{H} = J/(\hbar \gamma S)$ | 8.63T|
+    | Velocity v | $\hat{v} = Ja/(\hbar S)$ | 759.63 m/s |
+    | Frequency $\omega$ | $\hat{\omega} = J/(\hbar S)$ | 1519.3 GHz |
+    | Temperature T | $\hat{T} = J/k_B$  |  11.6 K |
+
+
 Below is an example of using dimensionless units for setting up a simulation in MicroMagnetic.jl:
 
 ```julia

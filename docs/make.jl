@@ -24,25 +24,29 @@ Micromagnetic = ["Nanobar" => "micromagnetics/nanobar.md",
 FE = ["Magnetized Sphere" => "fem/sphere_demag.md",
       "Hysteresis Loop" => "fem/hysteresis.md"]
 
-API = ["api.md", "api_dev.md"]
+API = ["api.md"]
 
 Miscellaneous = ["Skyrmion Phase (Monte Carlo)" => "monte_carlo/skyrmion.md",
                  "M-T curve (Monte Carlo)" => "monte_carlo/M_T_curve.md",
                  "Skyrmion collapse (NEB)" => "neb/neb_skx.md"]
 
 PAGES = ["Home" => "index.md",
-         "Manual" => ["install.md", "gui.md", "docker.md", "basics.md", "units.md", "fem.md", "equations.md", "eigen/eigenmodes.md", "ltem.md", "contrib.md"],
+         "User Guide" => ["install.md", "basics.md", "units.md", "gpu.md", "pbc.md",
+                          "dataio.md", "tools.md", "fem.md", "eigen/eigenmodes.md",
+                          "gui.md", "docker.md"],
+         "Physics" => ["equations.md"],
          "Atomistic" => Atomistic,
          "Micromagnetics (FD)" => Micromagnetic,
-         "Micromagnetics (FE)" => FE,
+         "Micromagnetics (FE)" => ["fem/sphere_demag.md", "fem/hysteresis.md", "fem/rkky.md"],
          "Miscellaneous" => Miscellaneous,
-         "API" => API]
+         "API" => API,
+         "Developers" => ["dev/architecture.md", "dev/params.md", "dev/demag.md",
+                          "dev/drivers.md", "dev/performance.md", "contrib.md",
+                          "api_dev.md"]]
 
 
 # DOCS_DRAFT=true skips executing example blocks (layout-only iteration runs).
 draft = get(ENV, "DOCS_DRAFT", "false") == "true"
-# Exported for fillMissingMedia() in src/.vitepress/config.mts (docs/TODO.md #3, Option B).
-ENV["DOCUMENTER_MD_ROOT"] = abspath(joinpath(@__DIR__, "build", ".documenter"))
 
 makedocs(;
     sitename = "MicroMagnetic.jl",

@@ -71,6 +71,8 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     if isa(mesh, FEMesh)
         n_total = mesh.number_nodes
         sim.n_cells = mesh.number_cells
+    elseif isa(mesh, CylindricalTubeMesh)
+        n_total = mesh.nr * mesh.nz
     else
         n_total = mesh.nx * mesh.ny * mesh.nz
     end
