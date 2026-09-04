@@ -573,7 +573,7 @@ E_\\mathrm{anis} = - K_{u} (\\vec{m} \\cdot \\hat{u})^2
 function add_anis_kagome(sim::AtomisticSim, Ku::Float64; ax1=(-0.5, -sqrt(3) / 2, 0),
                          ax2=(1, 0, 0), ax3=(-0.5, sqrt(3) / 2, 0), name="anis")
     n_total = sim.n_total
-    T = _cuda_using_double.x ? Float64 : Float32
+    T = Float[]
     field = zeros(T, 3 * n_total)
     energy = zeros(T, n_total)
     anis = KagomeAnisotropy(T(Ku), ax1, ax2, ax3, field, energy, T(0.0), name)
@@ -601,7 +601,7 @@ E_\mathrm{anis} = - K_{u} (\vec{m} \cdot \hat{u})^2
 """
 function add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
     n_total = sim.n_total
-    T = _cuda_using_double.x ? Float64 : Float32
+    T = Float[]
     field = zeros(T, 3 * n_total)
     energy = zeros(T, n_total)
     axes = zeros(T, 3, n_total)
@@ -613,7 +613,7 @@ function add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
         axes[2, i] = sin(theta)
     end
 
-    anis = TubeAnisotropy(T(Ku), CuArray(axes), field, energy, T(0.0), name)
+    anis = TubeAnisotropy(T(Ku), kernel_array(axes), field, energy, T(0.0), name)
     push!(sim.interactions, anis)
 
     if sim.save_data
@@ -624,6 +624,27 @@ function add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
     @info "Uniaxial Anisotropy for CylindricalTubeMesh has been added."
     send_sim_state(sim)
     return anis
+end
+
+# init_m0 dispatches here for the tube mesh: node id = (k - 1) * nr + i, i.e. the ring
+# position i runs fastest (theta = 2*pi*(i-1)/nr, cf. add_anis_tube) and k is the layer.
+function init_vector!(v::Array{T,1}, mesh::CylindricalTubeMesh, init::Function) where {T<:AbstractFloat}
+    nr, nz = mesh.nr, mesh.nz
+    nargs = methods(init)[1].nargs - 1
+    if nargs == 4
+        for k in 1:nz, i in 1:nr
+            id = (k - 1) * nr + i
+            vec_value = init(i, k, nr, nz)
+            if vec_value !== nothing
+                v[3*id-2] = vec_value[1]
+                v[3*id-1] = vec_value[2]
+                v[3*id] = vec_value[3]
+            end
+        end
+    else
+        error("The init function for CylindricalTubeMesh should have 4 arguments (i, k, nr, nz).")
+    end
+    return nothing
 end
 
 """
@@ -649,7 +670,7 @@ function add_magnetoelectric_laser(sim::AtomisticSim, lambda::Float64, E::Float6
                                    B::Float64, omega::Float64; delta=0, direction=001,
                                    name="lasers")
     n_total = sim.n_total
-    F = _cuda_using_double.x ? Float64 : Float32
+    F = Float[]
     field = zeros(F, 3 * n_total)
     energy = zeros(F, n_total)
 

@@ -1,6 +1,161 @@
 using Random
-
 export init_m0_random, vortex, skyrmion, bubble2d, skyrmion_lattice, hopfion
+
+function init_scalar!(v::AbstractArray, mesh::Mesh, init::Number)
+    v .= init
+    return true
+end
+
+function init_scalar!(v::AbstractArray{T1,1}, mesh::Mesh, init::Array{T2,1}) where {T1,T2}
+    v .= init
+    return true
+end
+
+function init_scalar!(v::AbstractArray{T,1}, mesh::FDMesh, init_fun::Function) where {T}
+    a = isa(v, Array) ? v : Array(v)
+
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    nargs = methods(init_fun)[1].nargs - 1
+    if nargs == 6
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            a[id] = init_fun(i, j, k, dx, dy, dz)
+        end
+    elseif nargs == 3
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            x = mesh.x0 + (i - 0.5)*dx
+            y = mesh.y0 + (j - 0.5)*dy
+            z = mesh.z0 + (k - 0.5)*dz
+            a[id] = init_fun(x, y, z)
+        end
+    elseif nargs == 1
+        # Function takes region ID as input.
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            region_id = mesh.regions[id]
+            a[id] = init_fun(region_id)
+        end
+    end
+    isa(v, Array) || copyto!(v, a)
+    return true
+end
+
+function init_scalar!(v::AbstractArray{T,1}, mesh::Mesh, shape::CSGShape,
+                      init::Number) where {T}
+    a = isa(v, Array) ? v : Array(v)
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    for k in 1:nz, j in 1:ny, i in 1:nx
+        id = index(i, j, k, nx, ny, nz)
+        x = mesh.x0 + (i - 0.5)*dx
+        y = mesh.y0 + (j - 0.5)*dy
+        z = mesh.z0 + (k - 0.5)*dz
+        if inside(shape, (x, y, z))
+            a[id] = init
+        end
+    end
+    isa(v, Array) || copyto!(v, a)
+    return true
+end
+
+function init_vector!(v::Array{T,1}, mesh::Mesh, init::Function) where {T<:AbstractFloat}
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    n_total = nx * ny * nz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    b = reshape(v, 3, n_total)
+
+    nargs = methods(init)[1].nargs - 1
+    if nargs == 6
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            vec_value = init(i, j, k, dx, dy, dz)
+            # ignore the values for specfic positions that the user do not want to provide or change.
+            if vec_value !== nothing
+                b[:, id] .= vec_value[:]
+            end
+        end
+
+    elseif nargs == 3
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            x = (i - 0.5 - nx / 2) * dx
+            y = (j - 0.5 - ny / 2) * dy
+            z = (k - 0.5 - nz / 2) * dz
+
+            vec_value = init(x, y, z)
+            # ignore the values for specfic positions that the user do not want to provide or change.
+            if vec_value !== nothing
+                b[:, id] .= vec_value[:]
+            end
+        end
+    else
+        error("The input function should have either 6 or 3 arguments.")
+    end
+
+    if NaN in v
+        error("NaN is given by the input function.")
+    end
+    return nothing
+end
+
+function init_vector6!(v::Array{T,1}, mesh::Mesh, init::Function) where {T<:AbstractFloat}
+    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
+    n_total = nx * ny * nz
+    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
+    b = reshape(v, 6, n_total)
+
+    nargs = methods(init)[1].nargs - 1
+    if nargs == 6
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            vec_value = init(i, j, k, dx, dy, dz)
+            # ignore the values for specfic positions that the user do not want to provide or change.
+            if vec_value !== nothing
+                b[:, id] .= vec_value[:]
+            end
+        end
+
+    elseif nargs == 3
+        for i in 1:nx, j in 1:ny, k in 1:nz
+            id = index(i, j, k, nx, ny, nz)
+            x = (i - 0.5 - nx / 2) * dx
+            y = (j - 0.5 - ny / 2) * dy
+            z = (k - 0.5 - nz / 2) * dz
+
+            vec_value = init(x, y, z)
+            # ignore the values for specfic positions that the user do not want to provide or change.
+            if vec_value !== nothing
+                b[:, id] .= vec_value[:]
+            end
+        end
+    else
+        error("The input function should have either 6 or 3 arguments.")
+    end
+
+    if NaN in v
+        error("NaN is given by the input function.")
+    end
+    return nothing
+end
+
+function init_vector!(v::Array{T,1}, mesh::Mesh,
+                      init::Tuple{Real,Real,Real}) where {T<:AbstractFloat}
+    N = length(v)
+    b = reshape(v, 3, div(N, 3))
+    b[1, :] .= init[1]
+    b[2, :] .= init[2]
+    b[3, :] .= init[3]
+    return nothing
+end
+
+function init_vector!(v::Array{T1,1}, mesh::Mesh,
+                      init::Array{T2,1}) where {T1,T2<:AbstractFloat}
+    v .= init
+    return nothing
+end
+
 
 """
     init_m0_random(sim::MicroSim; seed=nothing)

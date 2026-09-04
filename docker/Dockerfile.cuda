@@ -1,48 +1,86 @@
-#FROM ghcr.io/juliagpu/cuda.jl:dev-julia1.10-cuda12
-FROM ghcr.nju.edu.cn/juliagpu/cuda.jl:dev-julia1.10-cuda12
+# MicroMagnetic.jl CUDA image with a baked Julia sysimage.
+#
+# The sysimage build needs a GPU (CUDA kernels are baked for the GPU
+# architecture present at build time), and `docker build` cannot access
+# GPUs, so the final image is produced in two steps by docker/build_cuda.sh:
+#
+#   1. docker build -f docker/Dockerfile.cuda ...   (this file: toolkit,
+#      Julia, packages, workload; no sysimage yet)
+#   2. docker run --gpus all <stage> julia /opt/build_sysimage.jl
+#      && docker commit
+#
+# Size: CUDA runtime and compiler libraries come from CUDA.jl's artifacts
+# (the standard CUDA.jl distribution path); the NVIDIA driver is injected by
+# nvidia-container-toolkit at runtime. The slim `base` flavor carries no CUDA
+# toolkit. To pull the base image through a docker hub mirror, e.g.:
+#   --build-arg CUDA_BASE=docker.m.daocloud.io/nvidia/cuda:12.6.3-base-ubuntu22.04
+#
+# Julia is supplied as an additional build context named "julia" (a full
+# official linux x86_64 install dir; build_cuda.sh auto-supplies the host's
+# own install). This avoids downloading the tarball at build time.
+
+ARG CUDA_BASE=nvidia/cuda:12.6.3-base-ubuntu22.04
+FROM ${CUDA_BASE}
 
 LABEL org.opencontainers.image.authors="Weiwei Wang" \
-      org.opencontainers.image.description="MicroMagnetic.jl with CUDA support" \
+      org.opencontainers.image.description="MicroMagnetic.jl with CUDA support (sysimage baked)" \
       org.opencontainers.image.title="MicroMagnetic.jl" \
       org.opencontainers.image.source="https://github.com/MagneticSimulation/MicroMagnetic.jl" \
       org.opencontainers.image.licenses="MIT"
 
-RUN umask 022
+# Julia (Project.toml requires julia >= 1.11)
+ENV PATH="/usr/local/julia/bin:$PATH"
+COPY --from=julia / /usr/local/julia
+# Pkg needs CA certificates for HTTPS; PackageCompiler needs gcc to link
+# the sysimage (the `base` flavor ships neither, unlike `devel`)
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && julia --version
 
 ENV JULIA_DEPOT_PATH=/usr/local/share/julia
-ENV JULIA_PKG_SERVER=https://mirrors.nju.edu.cn/julia
-RUN mv /usr/local/share/julia/config/startup.jl /usr/local/share/julia/config/startup.jl.bak 2>/dev/null || true
+# TUNA front door; artifact requests are load-balanced across the university
+# mirror backends by cernet's avoidtuna redirector.
+ENV JULIA_PKG_SERVER=https://mirrors.tuna.tsinghua.edu.cn/julia
+RUN umask 022
 
-RUN julia -e 'using Pkg; Pkg.add(["NPZ", "CUDSS"])' && \
-    find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
+# Artifacts pre-seeded from the previous stage image (see build_cuda.sh);
+# anything missing is downloaded from the pkg server by Pkg.add below.
+COPY --from=seed / /usr/local/share/julia/artifacts/
 
-RUN curl -L -o ffmpeg.tar.gz https://github.com/MagneticSimulation/julia-packages/releases/download/ffmpeg/ffmpeg.tar.gz && \
-    tar -xzf ffmpeg.tar.gz -C /usr/local/bin/ && \
-    chmod +x /usr/local/bin/ffmpeg && \
-    rm ffmpeg.tar.gz
+# CUDA_Runtime_jll / CUDA_Compiler_jll are added explicitly (they are only
+# indirect deps of CUDA) so the lazy-artifact prefetch below can `using` them.
+RUN julia -e 'using Pkg; Pkg.add(["CUDA", "CUDSS", "NPZ", "CairoMakie", "PackageCompiler", "CUDA_Runtime_jll", "CUDA_Compiler_jll"])' \
+    && find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
 
-RUN curl -L -o Makie.tar https://github.com/MagneticSimulation/julia-packages/releases/download/makie/Makie.tar && \
-    tar -xf Makie.tar -C $JULIA_DEPOT_PATH && \
-    rm Makie.tar
+COPY Project.toml /opt/MicroMagnetic/Project.toml
+COPY src/ /opt/MicroMagnetic/src/
+COPY ext/ /opt/MicroMagnetic/ext/
+RUN julia -e 'using Pkg; Pkg.develop(path="/opt/MicroMagnetic")' \
+    && find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
 
-# Install MicroMagnetic.jl and common dependencies
-RUN julia -e 'using Pkg; Pkg.add(url="https://github.com/MagneticSimulation/MicroMagnetic.jl.git", rev="master"); using MicroMagnetic' && \
-            find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
+# Make sure everything loads and all depot artifacts needed at runtime are
+# in the image (GPU kernels are NOT baked here; no GPU is available during
+# `docker build`).
+# The second command force-downloads the lazy CUDA runtime/compiler
+# artifacts (a plain `using CUDA` bails out early with "driver not
+# functional" in a GPU-less build container), so the sysimage build in the
+# GPU container never has to download them.
+RUN julia -e 'using MicroMagnetic, CUDA, CUDSS, CairoMakie, NPZ; println("deps ok")' \
+    && julia -e 'using CUDA_Runtime_jll, CUDA_Compiler_jll, Pkg.Artifacts; \
+                 for jll in (CUDA_Runtime_jll, CUDA_Compiler_jll) \
+                     toml = joinpath(dirname(dirname(pathof(jll))), "Artifacts.toml"); \
+                     meta = Artifacts.load_artifacts_toml(toml); \
+                     for name in keys(meta) \
+                         Artifacts.ensure_artifact_installed(name, toml); \
+                     end; \
+                 end; \
+                 println("cuda artifacts prefetched")'
 
-RUN julia -e 'using Pkg; \
-              Pkg.develop(path="/usr/local/share/julia/ComputePipeline"); \
-              Pkg.develop(path="/usr/local/share/julia/Makie"); \
-              Pkg.develop(path="/usr/local/share/julia/CairoMakie");' && \
-              find /usr/local/share/julia/artifacts -type d -name share -exec sh -c 'find "$1" -mindepth 1 -not -name licenses -delete' _ {} \;
+COPY docker/gpu_workload.jl /opt/gpu_workload.jl
+COPY docker/build_sysimage.jl /opt/build_sysimage.jl
+COPY docker/smoke.jl /opt/smoke.jl
 
-
-RUN mv /usr/local/share/julia/config/startup.jl.bak /usr/local/share/julia/config/startup.jl 2>/dev/null || true
-
-# Set the working directory
 WORKDIR /workspace
+VOLUME ["/workspace"]
 
-# Volume mounts for data persistence
-VOLUME ["/depot", "/workspace"]
-
-# Default command to start Julia
 CMD ["julia"]

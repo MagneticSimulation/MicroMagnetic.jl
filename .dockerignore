@@ -1,0 +1,8 @@
+# Keep the build context tiny (the repo contains multi-GB simulation
+# output): only the docker assets and the package source are sent to the
+# daemon; the Dockerfiles COPY the source instead of cloning from GitHub.
+*
+!docker/
+!Project.toml
+!src/
+!ext/

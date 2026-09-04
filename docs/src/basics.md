@@ -152,7 +152,10 @@ set_Ms(sim::AbstractSim, geo::Shape, Ms::Number)
 ```
 ### Custom Shapes
 
-We can also define custom shapes using the `create_shape` function. Custom shapes can also be combined with basic shapes using boolean operations.
+Shapes created this way compose with each other through the boolean operators
+(`+` union, `-` difference, `*` intersection), so arbitrary geometries can be
+built from the basic ones. Shapes implement the `Shape` interface, which is
+what `set_Ms(sim, shape, Ms)` and `save_vtk(mesh, shape, ...)` consume.
 
 ## Energy Terms
 
@@ -200,10 +203,23 @@ graph LR;
     Driver --> ILLG
 ```
 
+STT and SOT are not separate drivers but torque terms applied on top of the LLG
+driver (`add_stt` / `add_sot`). The damping `alpha` can be a scalar or a
+cell-wise array (see [`set_alpha`](@ref)).
+
 
 ## Periodic Boundary conditions
 
+Periodic boundary conditions are declared once on the mesh, e.g.
 
+```julia
+mesh = FDMesh(dx=2.5e-9, dy=2.5e-9, dz=3e-9, nx=100, ny=50, nz=1, pbc="xy")
+```
+
+where `pbc` takes any combination of `"x"`, `"y"`, `"z"` (default `"open"`).
+Exchange and DMI then wrap around the periodic axes automatically, and the
+demagnetization solver switches to the matching periodic solver. See the
+[Periodic BC](pbc.md) page for the solver details, image counts and accuracy.
 
 ## High-Level Interface
 
@@ -273,7 +289,7 @@ sim_with(args)
 
 In this example, the system first relaxes to a stable configuration, and then the dynamics of the magnetization are simulated after applying an external field. By passing parameters as either a `NamedTuple` or `Dict`, you can easily explore various micromagnetic scenarios with just a few lines of code, making the `sim_with` function a powerful tool for research and development in micromagnetics.
 
-## Date Tables
+## Data Tables
 The default output is a table containing the time and other information such as the average magnetization and the total micromagnetic energy. For example, a typical output file, std4_llg.txt, for the standard problem 4 looks like this:
 ```bash
 #               step                time             E_total                 m_x                 m_y                 m_z              E_exch             E_demag           zeeman_Hx           zeeman_Hy           zeeman_Hz            E_zeeman 

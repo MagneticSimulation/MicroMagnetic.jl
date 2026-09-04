@@ -1,8 +1,6 @@
 using MicroMagnetic
 using Test
 
-MicroMagnetic.cuda_using_double(true)
-
 function m0_fun(i, k, nr, nz)
     theta = 2 * pi * (i - 1) / nr
 
@@ -13,7 +11,7 @@ function relax_system()
     J = 1 * meV
     D = 0.18 * J
 
-    mesh = CylindricalTubeMeshGPU(; nz=200, nr=30, R=30e-9, dz=2e-9, pbc="z")
+    mesh = CylindricalTubeMesh(; nz=200, nr=30, R=30e-9, dz=2e-9, pbc="z")
 
     sim = Sim(mesh; driver="SD", name="skx")
     set_mu_s(sim, mu_s_1)
@@ -29,7 +27,7 @@ function relax_system()
 
     relax(sim; max_steps=1000, stopping_dmdt=1e-5, using_time_factor=false)
 
-    return MicroMagnetic.save_vtu(sim, "skx")
+    return save_vtk(sim, "skx")
 
     #Q = compute_skyrmion_number(Array(sim.spin),mesh)
 end

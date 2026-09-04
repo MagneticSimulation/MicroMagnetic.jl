@@ -15,36 +15,36 @@ hero:
       link: /basics
     - theme: alt
       text: API
-      link: https://magneticsimulation.github.io/MicroMagnetic.jl/dev/api
+      link: /api
     - theme: alt
       text: GitHub 仓库
       link: https://github.com/MagneticSimulation/MicroMagnetic.jl
 
 features:
-  - icon: <img width="280" src="https://magneticsimulation.github.io/MicroMagnetic.jl/dev/std4.png" />
+  - icon: <img width="280" src="std4.png" />
     title: 标准问题 4
     details: 使用 sim_with 模拟标准问题 4
-    link: https://magneticsimulation.github.io/MicroMagnetic.jl/dev/micromagnetics/std4_sim_with
-  - icon: <img width="280" src="https://magneticsimulation.github.io/MicroMagnetic.jl/dev/std5_center.png" />
+    link: /micromagnetics/std4_sim_with
+  - icon: <img width="280" src="std5_center.png" />
     title: 标准问题 5
     details: 自旋转移矩驱动下的涡旋动力学
-    link: https://magneticsimulation.github.io/MicroMagnetic.jl/dev/micromagnetics/std5
-  - icon: <img width="280" src="https://magneticsimulation.github.io/MicroMagnetic.jl/dev/sw.png" />
+    link: /micromagnetics/std5
+  - icon: <img width="280" src="sw.png" />
     title: Stoner–Wohlfarth 模型
     details: 计算单轴颗粒的 Stoner–Wohlfarth 回线
-    link: https://magneticsimulation.github.io/MicroMagnetic.jl/dev/micromagnetics/stoner_wohlfarth
-  - icon: <img width="280" src="https://magneticsimulation.github.io/MicroMagnetic.jl/dev/skyrmion_phase_diagram.png" />
+    link: /micromagnetics/stoner_wohlfarth
+  - icon: <img width="280" src="skyrmion_phase_diagram.png" />
     title: 斯格明子相图
     details: 使用随机 LLG 计算斯格明子相图
-    link: https://magneticsimulation.github.io/MicroMagnetic.jl/dev/atomistic/phase_diagram
-  - icon: <img width="280" src="https://magneticsimulation.github.io/MicroMagnetic.jl/dev/M_T.png" />
+    link: /atomistic/phase_diagram
+  - icon: <img width="280" src="M_T.png" />
     title: 蒙特卡洛
     details: 使用蒙特卡洛方法计算 M-T 曲线
-    link: https://magneticsimulation.github.io/MicroMagnetic.jl/dev/monte_carlo/M_T_curve
-  - icon: <img width="280" src="https://magneticsimulation.github.io/MicroMagnetic.jl/dev/chi.png" />
+    link: /monte_carlo/M_T_curve
+  - icon: <img width="280" src="chi.png" />
     title: 动力学磁化率
     details: 计算纳米条的动力学磁化率
-    link: https://magneticsimulation.github.io/MicroMagnetic.jl/dev/micromagnetics/chi
+    link: /micromagnetics/chi
 
 
 ---

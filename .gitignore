@@ -1,2 +1,6 @@
 LocalPreferences.toml
 sandbox/
+
+# Chinese docs build assembly dir (docs/make_zh.jl)
+docs/src_zh_all/
+docs/TODO.md

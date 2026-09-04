@@ -10,16 +10,54 @@ using MicroMagnetic
 using DocumenterVitepress
 using CairoMakie
 
-# Only translated pages are listed; `pagesonly = true` keeps the rest out of the
-# build (and avoids re-running simulations on untranslated example pages).
+# Untranslated pages fall back to their verbatim English source so the Chinese
+# site stays complete. Each build assembles the gitignored union dir
+# `src_zh_all/`: the English tree (`src/`) as the base, with the translated
+# pages (`src_zh/`) overlaid on top — a page is Chinese as soon as
+# `src_zh/<page>` exists, nothing else needs to change. Overlaying (instead of
+# copying pages one by one) also brings along the per-page data files the
+# example blocks read (e.g. `micromagnetics/assets/chi.txt`).
+UNION = joinpath(@__DIR__, "src_zh_all")
+rm(UNION; recursive = true, force = true)
+cp(joinpath(@__DIR__, "src"), UNION)
+ZH = joinpath(@__DIR__, "src_zh")
+for (root, dirs, files) in walkdir(ZH), f in files
+    dst = joinpath(UNION, relpath(joinpath(root, f), ZH))
+    mkpath(dirname(dst))
+    cp(joinpath(root, f), dst; force = true)
+end
+
 PAGES = ["首页" => "index.md",
-         "手册" => ["install.md", "gui.md", "docker.md", "basics.md", "units.md", "fem.md", "equations.md", "contrib.md"],
-         "API" => ["api.md", "api_dev.md"]]
+         "用户手册" => ["install.md", "basics.md", "units.md", "gpu.md", "pbc.md",
+                     "dataio.md", "tools.md", "fem.md", "eigen/eigenmodes.md",
+                     "gui.md", "docker.md"],
+         "物理" => ["equations.md"],
+         "原子模型" => ["atomistic/skyrmion.md",
+                     "atomistic/saddle_point_search.md",
+                     "atomistic/skyrmion_lattice.md",
+                     "atomistic/hopfion.md",
+                     "atomistic/skyrmion_afm.md",
+                     "atomistic/sllg.md",
+                     "atomistic/phase_diagram.md"],
+         "微磁模型 (FD)" => ["micromagnetics/nanobar.md",
+                          "micromagnetics/vortex.md",
+                          "micromagnetics/std4.md",
+                          "micromagnetics/std4_sim_with.md",
+                          "micromagnetics/std5.md",
+                          "micromagnetics/std5_sim_with.md",
+                          "micromagnetics/stoner_wohlfarth.md",
+                          "micromagnetics/chi.md"],
+         "微磁模型 (FE)" => ["fem/sphere_demag.md",
+                          "fem/hysteresis.md",
+                          "fem/rkky.md"],
+         "杂项" => ["monte_carlo/skyrmion.md",
+                  "monte_carlo/M_T_curve.md",
+                  "neb/neb_skx.md"],
+         "API" => ["api.md"],
+         "开发者" => ["contrib.md"]]
 
 # DOCS_DRAFT=true skips executing example blocks (layout-only iteration runs).
 draft = get(ENV, "DOCS_DRAFT", "false") == "true"
-# Exported for fillMissingMedia() in src_zh/.vitepress/config.mts (TODO.md #3, Option B).
-ENV["DOCUMENTER_MD_ROOT"] = abspath(joinpath(@__DIR__, "build_zh", ".documenter"))
 
 # On tag pushes (docs.yml triggers on `tags: '*'`) the English build deploys
 # versioned folders (`vX.Y.Z/`, `stable/`). Without pinning, this build's
@@ -43,7 +81,7 @@ makedocs(;
     format= MarkdownVitepress(; repo="github.com/MagneticSimulation/MicroMagnetic.jl",
                            devbranch="master", devurl="zh", deploy_decision=zh_deploy_decision),
     draft = draft,
-    source = "src_zh",
+    source = "src_zh_all",
     build = "build_zh",
     pagesonly = true,
     pages = PAGES

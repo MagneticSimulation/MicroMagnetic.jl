@@ -90,7 +90,6 @@ function run_step(sim::AbstractSim, driver::SD)
     kernel! = run_step_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(driver.gk, sim.spin, sim.field, sim.pins, driver.tau; ndrange=sim.n_total)
     driver.steps += 1
-    #max_length_error = error_length_m(sim.spin, sim.n_total)
     if driver.steps % 10 == 0
         normalise(sim.spin, sim.n_total)
     end

@@ -42,18 +42,6 @@ end
     return -x2*y1 + x1*y2
 end
 
-macro cross_x(u1, u2, u3, v1, v2, v3)
-    return :($(esc(u2)) * $(esc(v3)) - $(esc(u3)) * $(esc(v2)))
-end
-
-macro cross_y(u1, u2, u3, v1, v2, v3)
-    return :($(esc(u3)) * $(esc(v1)) - $(esc(u1)) * $(esc(v3)))
-end
-
-macro cross_z(u1, u2, u3, v1, v2, v3)
-    return :($(esc(u1)) * $(esc(v2)) - $(esc(u2)) * $(esc(v1)))
-end
-
 @inline function cross_product(x1::T, x2::T, x3::T, y1::T, y2::T,
                                y3::T) where {T<:AbstractFloat}
     return (-x3*y2 + x2*y3, x3*y1 - x1*y3, -x2*y1 + x1*y2)
@@ -209,20 +197,6 @@ function vector_add6b(a::A, a1::A, a2::A, a3::A, a4::A, a5::A, a6::A, c1::S, c2:
     return kernel!(a, a1, a2, a3, a4, a5, a6, c1, c2, c3, c4, c5, c6; ndrange=length(a))
 end
 
-function abs!(a::Array{T,1}, b::Array{T,1}) where {T<:AbstractFloat}
-    a .= abs.(b)
-    return nothing
-end
-
-function abs!(a::Array{T,1}) where {T<:AbstractFloat}
-    for i in 1:length(a)
-        if a[i] < 0
-            @inbounds a[i] = -a[i]
-        end
-    end
-    return nothing
-end
-
 #The frequency of discrete FFT
 #f = [0, 1, ...,   N/2-1,     -N/2, ..., -1] / (d*N)   if n is even
 #f = [0, 1, ..., (N-1)/2, -(N-1)/2, ..., -1] / (d*N)   if n is odd
@@ -241,6 +215,111 @@ end
 
 function average(x::AbstractArray{T,1}) where {T<:AbstractFloat}
     return sum(x)/length(x)
+end
+
+function normalise(a::AbstractArray{T,1}, N::Int64) where {T<:AbstractFloat}
+    @kernel function local_kernel!(a)
+        id = @index(Global)
+        j = 3 * id - 2
+
+        @inbounds m2 = a[j] * a[j] + a[j + 1] * a[j + 1] + a[j + 2] * a[j + 2]
+        if m2 > 0
+            length::T = 1 / sqrt(m2)
+            @inbounds a[j] *= length
+            @inbounds a[j + 1] *= length
+            @inbounds a[j + 2] *= length
+        end
+    end
+
+    local_kernel!(get_backend(a), groupsize[])(a; ndrange=N)
+    return nothing
+end
+
+function compute_dm!(dm::AbstractArray{T,1}, m1::AbstractArray{T,1}, m2::AbstractArray{T,1},
+                     N::Int64) where {T<:AbstractFloat}
+    @kernel function local_kernel!(c, a, b)
+        I = @index(Global)
+        j = 3 * I - 2
+        @inbounds mx = a[j] - b[j]
+        @inbounds my = a[j + 1] - b[j + 1]
+        @inbounds mz = a[j + 2] - b[j + 2]
+        @inbounds c[I] = sqrt(mx * mx + my * my + mz * mz)
+    end
+
+    local_kernel!(get_backend(dm), groupsize[])(dm, m1, m2; ndrange=N)
+    return nothing
+end
+
+function omega_to_spin(omega::AbstractArray{T,1}, spin::AbstractArray{T,1},
+                       spin_next::AbstractArray{T,1}, N::Int64) where {T<:AbstractFloat}
+    #compute Cay(Omega).m where Cay(Omega) = (I - 1/2 Omega)^-1 (I + 1/2 Omega)
+    #where Omega = Skew[w1, w2, w3] = {{0, -w3, w2}, {w3, 0, -w1}, {-w2, w1, 0}}
+    @kernel function local_kernel!(a, b, c)
+        I = @index(Global)
+        j = 3 * I - 2
+        @inbounds w1 = a[j] * 0.5
+        @inbounds w2 = a[j + 1] * 0.5
+        @inbounds w3 = a[j + 2] * 0.5
+        @inbounds m1 = b[j]
+        @inbounds m2 = b[j + 1]
+        @inbounds m3 = b[j + 2]
+        r = 1 + w1 * w1 + w2 * w2 + w3 * w3
+        a11 = 1 + w1 * w1 - w2 * w2 - w3 * w3
+        a12 = 2 * (w1 * w2 - w3)
+        a13 = 2 * (w2 + w1 * w3)
+        a21 = 2 * (w1 * w2 + w3)
+        a22 = 1 - w1 * w1 + w2 * w2 - w3 * w3
+        a23 = -2 * (w1 - w2 * w3)
+        a31 = 2 * (-w2 + w1 * w3)
+        a32 = 2 * (w1 + w2 * w3)
+        a33 = 1 - w1 * w1 - w2 * w2 + w3 * w3
+        @inbounds c[j] = (a11 * m1 + a12 * m2 + a13 * m3) / r
+        @inbounds c[j + 1] = (a21 * m1 + a22 * m2 + a23 * m3) / r
+        @inbounds c[j + 2] = (a31 * m1 + a32 * m2 + a33 * m3) / r
+    end
+
+    local_kernel!(get_backend(omega), groupsize[])(omega, spin, spin_next; ndrange=N)
+    return nothing
+end
+
+function omega_to_spin(omega::Array{Float64,1}, spin::Array{Float64,1},
+                       spin_next::Array{Float64,1}, N::Int64)
+    #compute Cay(Omega).m where Cay(Omega) = (I - 1/2 Omega)^-1 (I + 1/2 Omega)
+    #where Omega = Skew[w1, w2, w3] = {{0, -w3, w2}, {w3, 0, -w1}, {-w2, w1, 0}}
+    for i in 0:(N - 1)
+        j = 3 * i + 1
+        w1 = omega[j] * 0.5
+        w2 = omega[j + 1] * 0.5
+        w3 = omega[j + 2] * 0.5
+        m1 = spin[j]
+        m2 = spin[j + 1]
+        m3 = spin[j + 2]
+        r = 1 + w1 * w1 + w2 * w2 + w3 * w3
+        a11 = 1 + w1 * w1 - w2 * w2 - w3 * w3
+        a12 = 2 * (w1 * w2 - w3)
+        a13 = 2 * (w2 + w1 * w3)
+        a21 = 2 * (w1 * w2 + w3)
+        a22 = 1 - w1 * w1 + w2 * w2 - w3 * w3
+        a23 = -2 * (w1 - w2 * w3)
+        a31 = 2 * (-w2 + w1 * w3)
+        a32 = 2 * (w1 + w2 * w3)
+        a33 = 1 - w1 * w1 - w2 * w2 + w3 * w3
+        spin_next[j] = (a11 * m1 + a12 * m2 + a13 * m3) / r
+        spin_next[j + 1] = (a21 * m1 + a22 * m2 + a23 * m3) / r
+        spin_next[j + 2] = (a31 * m1 + a32 * m2 + a33 * m3) / r
+    end
+end
+
+function compute_dm!(dm::Array{Float64,1}, m1::Array{Float64,1}, m2::Array{Float64,1},
+                     N::Int64)
+    for i in 1:N
+        j = 3 * i - 2
+        mx = m1[j] - m2[j]
+        my = m1[j + 1] - m2[j + 1]
+        mz = m1[j + 2] - m2[j + 2]
+        dm[i] = sqrt(mx * mx + my * my + mz * mz)
+    end
+    return nothing
 end
 
 """
@@ -295,64 +374,4 @@ function partial_xy(m::Array{T,1}, mesh::Mesh) where {T<:AbstractFloat}
         pym[j+2] = (m[j2+2] - m[j1+2]) * factor
     end
     return pxm, pym
-end
-
-function partial_x(u::Array{T,1}, mesh::Mesh, Ms::Array{T,1}) where {T<:AbstractFloat}
-    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
-    dx, dy = mesh.dx, mesh.dy
-    ngbs = mesh.ngbs
-    n_total = mesh.n_total
-    px = zeros(T, n_total)
-    for i in 1:n_total
-        #x-direction
-        i1 = ngbs[1, i]
-        i2 = ngbs[2, i]
-        i1>0 && Ms[i1]<0 && (i1 = -1)
-        i2>0 && Ms[i2]<0 && (i2 = -1)
-        factor = i1*i2>0 ? 1/(2*dx) : 1/dx
-        i1 < 0 && (i1 = i)
-        i2 < 0 && (i2 = i)
-        px[i] = (u[i2] - u[i1]) * factor
-    end
-    return px
-end
-
-function partial_y(u::Array{T,1}, mesh::Mesh, Ms::Array{T,1}) where {T<:AbstractFloat}
-    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
-    dx, dy = mesh.dx, mesh.dy
-    ngbs = mesh.ngbs
-    n_total = mesh.n_total
-    py = zeros(T, n_total)
-    for i in 1:n_total
-        #y-direction
-        i1 = ngbs[3, i]
-        i2 = ngbs[4, i]
-        i1>0 && Ms[i1]<0 && (i1 = -1)
-        i2>0 && Ms[i2]<0 && (i2 = -1)
-        factor = i1*i2>0 ? 1/(2*dy) : 1/dy
-        i1 < 0 && (i1 = i)
-        i2 < 0 && (i2 = i)
-        py[i] = (u[i2] - u[i1]) * factor
-    end
-    return py
-end
-
-function partial_z(u::Array{T,1}, mesh::Mesh, Ms::Array{T,1}) where {T<:AbstractFloat}
-    nx, ny, nz = mesh.nx, mesh.ny, mesh.nz
-    dx, dy, dz = mesh.dx, mesh.dy, mesh.dz
-    ngbs = mesh.ngbs
-    n_total = mesh.n_total
-    pz = zeros(T, n_total)
-    for i in 1:n_total
-        #y-direction
-        i1 = ngbs[5, i]
-        i2 = ngbs[6, i]
-        i1>0 && Ms[i1]<0 && (i1 = -1)
-        i2>0 && Ms[i2]<0 && (i2 = -1)
-        factor = i1*i2>0 ? 1/(2*dz) : 1/dz
-        i1 < 0 && (i1 = i)
-        i2 < 0 && (i2 = i)
-        pz[i] = (u[i2] - u[i1]) * factor
-    end
-    return pz
 end
