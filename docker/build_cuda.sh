@@ -86,6 +86,9 @@ docker commit \
   "$CONTAINER" "$TAG"
 # :latest doubles as the CUDA variant; keep the explicit :cuda alias in sync
 docker tag "$TAG" "${TAG%:*}:cuda"
+# Version alias from Project.toml (e.g. :0.7.0) so releases stay pullable
+MM_VERSION=$(grep -m1 '^version' Project.toml | cut -d'"' -f2)
+[ -n "$MM_VERSION" ] && docker tag "$TAG" "${TAG%:*}:$MM_VERSION"
 docker rm "$CONTAINER"
 
 echo "==> [4/4] smoke test"
