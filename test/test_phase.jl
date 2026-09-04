@@ -40,17 +40,16 @@ function phase_fft()
     my = sin(5/3*pi)
     Lx = 32
     Ly = 64
-    Lz = 16e-9
+    nz = 16
     Nx, Ny = 160, 160
-    dx, dy = 1e-9, 1e-9
-
-    mx_m = zeros(Lx, Ly)
-    my_m = zeros(Lx, Ly)
-    mx_m .= mx
-    my_m .= my
+    dx, dy, dz = 1e-9, 1e-9, 1e-9
 
     Ms = 1e5
-    phi = MicroMagnetic.compute_magnetic_phase_fft(mx_m, my_m, dx, dy, Lz, Ms, Nx=Nx, Ny=Ny)
+    m = zeros(3, Lx, Ly, nz)
+    m[1, :, :, :] .= mx
+    m[2, :, :, :] .= my
+
+    phi = compute_magnetic_phase(m; Ms=Ms, dx=dx, dy=dy, dz=dz, N=Nx)
     return phi
 end
 
