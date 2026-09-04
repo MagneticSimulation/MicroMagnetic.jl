@@ -1,3 +1,5 @@
+English | [简体中文](README_zh.md)
+
 <table>
   <tr>
     <td><img src="docs/src/public/logo.png" alt="Logo" width="64"/></td>
