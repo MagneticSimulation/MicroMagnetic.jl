@@ -43,6 +43,15 @@ RUN julia -e 'using MKL_jll, Pkg.Artifacts; \
               end; \
               println("mkl artifact prefetched")'
 
+# Singularity/Apptainer runs the container as the invoking user (arbitrary
+# uid) on a read-only filesystem: make the depot's runtime-writable
+# *directories* world-writable (dirs only — file chmod would copy up their
+# data) and drop the build-time scratch usage log.
+RUN rm -f /usr/local/share/julia/logs/scratch_usage.toml \
+    && find /usr/local/share/julia/logs /usr/local/share/julia/compiled \
+            /usr/local/share/julia/scratchspaces /usr/local/share/julia/environments \
+            -type d -exec chmod 777 {} + 2>/dev/null || true
+
 COPY docker/cpu_workload.jl /opt/cpu_workload.jl
 RUN julia -e 'using Pkg; Pkg.add("PackageCompiler")' \
     && julia -e 'using PackageCompiler; \

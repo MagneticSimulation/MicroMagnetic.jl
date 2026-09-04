@@ -65,12 +65,15 @@ rm -rf "$SEED_DIR"
 echo "==> [2/4] building sysimage inside a GPU container"
 # The probe after the sysimage build exercises the full user path (GPU sim,
 # plotting, movie export); runtime artifact downloads it triggers (MKL,
-# FFmpeg, ...) are baked into the image by the commit step.
+# FFmpeg, ...) are baked into the image by the commit step. The trailing rm
+# drops the root-owned scratch usage log that the build re-creates —
+# Singularity users (non-root) could not write to it otherwise.
 sysimg_ok=0
 for attempt in 1 2; do
     docker rm -f "$CONTAINER" 2>/dev/null || true
     if timeout 3600 docker run --name "$CONTAINER" --gpus all "$STAGE_TAG" \
-        bash -c "julia /opt/build_sysimage.jl && julia -J /opt/micromagnetic.so /opt/smoke.jl"; then
+        bash -c "julia /opt/build_sysimage.jl && julia -J /opt/micromagnetic.so /opt/smoke.jl \
+                 && rm -f /usr/local/share/julia/logs/scratch_usage.toml"; then
         sysimg_ok=1
         break
     fi
