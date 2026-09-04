@@ -1,4 +1,4 @@
-# API 速查
+# API -- 模拟与场
 
 > 本页的分组与导航为中文；各函数的详细文档由源码 docstring 自动生成，**内容为英文**。
 > 常用函数的一句话中文语义速查页后续补充。
@@ -104,57 +104,6 @@ add_anis_tube(sim::AtomisticSim, Ku::Float64; name="anis")
 run_mc
 ```
 
-## 鞍点搜索与过渡路径
-```@docs
-HessianModes
-SaddlePoint
-TransitionPath
-TransitionResult
-compute_hessian_modes
-find_saddle
-find_transitions
-GNEB
-relax_gneb!
-set_climbing_image!
-set_image_type!
-gneb_images
-plot_transition_paths
-```
-
-## 数据保存
-
-```@docs
-#save_m
-save_vtk
-save_ovf
-read_ovf
-mag2ovf
-read_table
-```
-
-
-## 工具/可视化
-
-```@docs
-voronoi
-ovf2vtk
-plot_ts
-plot_m
-ovf2png
-ovf2movie
-compute_skyrmion_number
-compute_guiding_center
-compute_magnetic_phase
-```
-
-
-## 服务/GUI
-
-```@docs
-start_server
-gui
-```
-
 ## 其他
 
 ```@docs
@@ -163,23 +112,4 @@ MicroMagnetic.AtomisticSim
 NumberOrArrayOrFunction
 NumberOrTupleOrArrayOrFunction
 TupleOrArrayOrFunction
-```
-
-## LTEM 工具
-
-```@docs
-compute_magnetic_phase
-LTEM
-MicroMagnetic.magnetic_phase_fft
-MicroMagnetic.rotate3d
-MicroMagnetic.warp2d
-MicroMagnetic.euler_matrix
-MicroMagnetic.project3d
-MicroMagnetic.vector_field_projection
-MicroMagnetic.vector_padding
-MicroMagnetic.pad_array
-MicroMagnetic.rotation_grid_size
-MicroMagnetic.electron_wavelength
-MicroMagnetic.interaction_constant
-MicroMagnetic.compute_electric_phase
 ```
