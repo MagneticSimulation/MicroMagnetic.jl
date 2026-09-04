@@ -53,7 +53,9 @@ PAGES = ["首页" => "index.md",
                   "monte_carlo/M_T_curve.md",
                   "neb/neb_skx.md"],
          "API" => ["api.md", "api_data.md", "api_transition.md"],
-         "开发者" => ["contrib.md"]]
+         "开发者" => ["dev/architecture.md", "dev/params.md", "dev/demag.md",
+                    "dev/drivers.md", "dev/performance.md", "contrib.md",
+                    "api_dev.md"]]
 
 # DOCS_DRAFT=true skips executing example blocks (layout-only iteration runs).
 draft = get(ENV, "DOCS_DRAFT", "false") == "true"
