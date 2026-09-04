@@ -84,6 +84,8 @@ docker commit \
   --change 'ENTRYPOINT ["julia", "-J", "/opt/micromagnetic.so"]' \
   --change 'CMD []' \
   "$CONTAINER" "$TAG"
+# :latest doubles as the CUDA variant; keep the explicit :cuda alias in sync
+docker tag "$TAG" "${TAG%:*}:cuda"
 docker rm "$CONTAINER"
 
 echo "==> [4/4] smoke test"
