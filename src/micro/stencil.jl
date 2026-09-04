@@ -349,13 +349,20 @@ function _exchange_tables!(sim::MicroSim, exch::Exchange{T}) where {T<:AbstractF
         return (cls, false)
     end
 
-    # build pair tables in Float64 -> T, then push to backend
-    pair_x = kernel_array(_pair_table(vx))
-    pair_y = kernel_array(_pair_table(vy))
-    pair_z = kernel_array(_pair_table(vz))
-    exch.pair_Ax = pair_x
-    exch.pair_Ay = pair_y
-    exch.pair_Az = pair_z
+    # build pair tables in Float64 -> T, then push to backend. With a single
+    # class and no vacuum (mat_class is Fill(1)) every lookup lands on [2, 2]:
+    # store the table as a Fill so the partition kernel's type specialisation
+    # folds the gather into a scalar (EXCH_DMI_OPT §7.2). The class-0 row/column
+    # is never read on this path because class 0 does not exist here.
+    if cls isa Fill && cls.value == UInt8(1)
+        exch.pair_Ax = Fill(_pair_table(vx)[2, 2], (2, 2))
+        exch.pair_Ay = Fill(_pair_table(vy)[2, 2], (2, 2))
+        exch.pair_Az = Fill(_pair_table(vz)[2, 2], (2, 2))
+    else
+        exch.pair_Ax = kernel_array(_pair_table(vx))
+        exch.pair_Ay = kernel_array(_pair_table(vy))
+        exch.pair_Az = kernel_array(_pair_table(vz))
+    end
     exch.stencil_layout = lv
     return (cls, true)
 end
@@ -368,9 +375,11 @@ Ensure dmi.pair_D{y,z} (and Dcls for interfacial) are fresh. Time-modulated DMI
 cannot be scaled by tfac.
 """
 function _dmi_tables!(sim::MicroSim, dmi::DMI{T}) where {T<:AbstractFloat}
-    # time-modulated DMI cannot use a static pair table
+    # time-modulated DMI cannot use a static pair table; the inline kernel still
+    # consumes mat_class (vacuum test), so make sure the class map is built
     if dmi.ft !== _static_time
-        return (sim.mat_class, false)
+        cls, _, _ = _fresh_mat_class(sim)
+        return (cls, false)
     end
 
     mesh = sim.mesh
@@ -402,25 +411,35 @@ function _dmi_tables!(sim::MicroSim, dmi::DMI{T}) where {T<:AbstractFloat}
         return (cls, false)
     end
 
-    pair_x = kernel_array(_pair_table(vx))
-    pair_y = kernel_array(_pair_table(vy))
-    pair_z = kernel_array(_pair_table(vz))
-    dmi.pair_Dx = pair_x
-    dmi.pair_Dy = pair_y
-    dmi.pair_Dz = pair_z
+    # R=1 no-vacuum: store the pair tables (and the interfacial per-class D)
+    # as Fills so the partition kernel folds all gathers (see _exchange_tables!).
+    scalar_path = cls isa Fill && cls.value == UInt8(1)
+    if scalar_path
+        dmi.pair_Dx = Fill(_pair_table(vx)[2, 2], (2, 2))
+        dmi.pair_Dy = Fill(_pair_table(vy)[2, 2], (2, 2))
+        dmi.pair_Dz = Fill(_pair_table(vz)[2, 2], (2, 2))
+    else
+        dmi.pair_Dx = kernel_array(_pair_table(vx))
+        dmi.pair_Dy = kernel_array(_pair_table(vy))
+        dmi.pair_Dz = kernel_array(_pair_table(vz))
+    end
 
     # interfacial DMI needs a per-class D to guard the case where the current
     # cell's D_I is zero but the neighbour's D_n is not (bulk DMI inlines this
     # with `if D_I != 0`; the interfacial partition kernel can't branch on that
     # per bond, so it uses Dcls[cI+1] as the effective D_I).
     if dmi.type === :interfacial
-        Dcls = zeros(T, R + 1)
-        @inbounds for c in 1:R
-            Dcls[c+1] = vx[c+1]   # Dx == Dy == Dz for interfacial (uniform D)
+        if scalar_path
+            dmi.Dcls = Fill(vx[2], 2)
+        else
+            Dcls = zeros(T, R + 1)
+            @inbounds for c in 1:R
+                Dcls[c+1] = vx[c+1]   # Dx == Dy == Dz for interfacial (uniform D)
+            end
+            dmi.Dcls = kernel_array(Dcls)
         end
-        dmi.Dcls = kernel_array(Dcls)
     else
-        empty!(dmi.Dcls)
+        dmi.Dcls = zeros(T, 0)
     end
 
     dmi.stencil_layout = lv
