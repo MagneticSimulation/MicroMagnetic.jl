@@ -303,7 +303,11 @@ end
 #need the FFT pipeline, fft=false falls back to the direct demag with
 #truncated images (macro-style)
 function _build_demag(sim, fft::Bool, Nx::Int, Ny::Int, Nz::Int, mode::Symbol, a::Int)
-    if !(fft && eltype(sim.spin) != AbstractFloat)
+    # FFT demag is Float64/Float32-only: symbolic modes (AbstractFloat/Epsilon,
+    # SFlat{CAP}) route to DirectDemag — the FFT pipeline never carries ε, and
+    # Route Y handles long-range terms with plain Float64 impulse columns.
+    Tspin = eltype(sim.spin)
+    if !(fft && (Tspin === Float64 || Tspin === Float32))
         return init_direct_demag(sim, Nx, Ny, Nz)
     end
     if mode == :pbc1d

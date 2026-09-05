@@ -50,6 +50,22 @@ have identical Dicts.
 struct FlatTerm <: AbstractFloat
     c::Float64
     coefs::Dict{Int,Float64}
+
+    # Public constructor: copy + exact-zero prune + collapse to plain Float64
+    # when no ε survives — semantics unchanged (moved INTO the struct: outer
+    # constructors cannot call `new`, and the previous outer-then-inner chain
+    # copied every Dict twice; SFLAT_PLAN.md §2.1).
+    function FlatTerm(c::Real, coefs::Dict{Int,<:Real})
+        cc = Float64(c)
+        dd = convert(Dict{Int,Float64}, copy(coefs))
+        _normalise_dict(dd)
+        isempty(dd) && return cc
+        return new(cc, dd)
+    end
+
+    # Raw constructor: trust (c, d) — no copy, no prune, no collapse.  For the
+    # arithmetic ops that just built a fresh Dict (kills the second copy).
+    FlatTerm(c::Float64, d::Dict{Int,Float64}, ::Val{:raw}) = new(c, d)
 end
 
 # ---------------------------------------------------------------------------
@@ -57,23 +73,27 @@ end
 # ---------------------------------------------------------------------------
 
 function _normalise_dict(d::Dict{Int,Float64})
+    # Exact-zero pruning only (SFLAT_PLAN.md §2.1): the old abs(v) ≤ eps(Float64)
+    # scan dropped ~1e-16 dust, but it ran on EVERY op construction. Downstream
+    # extraction thresholds at abs(v) > eps(Float64) anyway, so keeping dust in
+    # the Dict changes no downstream result while saving one full scan per op.
     for (k, v) in d
-        abs(v) <= eps(Float64) && delete!(d, k)
+        iszero(v) && delete!(d, k)
     end
     return d
 end
 
-function FlatTerm(c::Real, coefs::Dict{Int,<:Real})
-    cc = Float64(c)
-    dd = convert(Dict{Int,Float64}, copy(coefs))
-    _normalise_dict(dd)
-    # If only a constant survives, return a plain Float64 to keep types small.
-    isempty(dd) && return cc
-    return FlatTerm(cc, dd)
-end
-
 FlatTerm(x::Epsilon) = FlatTerm(0.0, Dict{Int,Float64}(x.id => x.value))
 FlatTerm(x::Real)    = iszero(x) ? 0.0 : Float64(x)   # plain constant, no wrapper
+
+# Helper for the arithmetic ops: they build a FRESH Dict and previously handed
+# it to the public constructor, which copied it a SECOND time — one Dict copy
+# per op wasted.  `_flatterm` skips the copy/prune (raw inner constructor) and
+# keeps the empty-Dict → plain-Float64 collapse.  Ops that reuse an EXISTING
+# Dict (e.g. `Real + FlatTerm` reusing f.coefs) must keep the copying
+# constructor for alias safety.
+@inline _flatterm(c::Real, d::Dict{Int,Float64}) =
+    isempty(d) ? Float64(c) : FlatTerm(Float64(c), d, Val(:raw))
 
 # ---------------------------------------------------------------------------
 # promote_rule — CORRECT signatures (no `::Type{Real}` which is UnionAll
@@ -149,7 +169,7 @@ function Base.:*(r::Real, e::Epsilon)
     iszero(r) && return 0.0
     rv = Float64(r) * e.value
     iszero(rv) && return 0.0
-    return FlatTerm(0.0, Dict{Int,Float64}(e.id => rv))
+    return _flatterm(0.0, Dict{Int,Float64}(e.id => rv))
 end
 Base.:*(e::Epsilon, r::Real) = r * e
 
@@ -164,7 +184,7 @@ function Base.:*(r::Real, f::FlatTerm)
         iszero(nv) && continue
         new_coefs[k] = nv
     end
-    return FlatTerm(new_c, new_coefs)   # will normalise
+    return _flatterm(new_c, new_coefs)
 end
 Base.:*(f::FlatTerm, r::Real) = r * f
 
@@ -198,7 +218,7 @@ function Base.:*(a::FlatTerm, b::FlatTerm)
             out[k] = get(out, k, 0.0) + nv
         end
     end
-    return FlatTerm(c_new, out)
+    return _flatterm(c_new, out)
 end
 
 # ---------------------------------------------------------------------------
@@ -260,7 +280,7 @@ function Base.inv(f::FlatTerm)
         iszero(nv) && continue
         new_coefs[k] = nv
     end
-    return FlatTerm(invc, new_coefs)
+    return _flatterm(invc, new_coefs)
 end
 
 # Left-division too:  `Real \ SymType`  =  inv(Real) * SymType.
@@ -279,14 +299,14 @@ function Base.:+(a::Epsilon, b::Epsilon)
     if a.id == b.id
         s = a.value + b.value
         iszero(s) && return 0.0
-        return FlatTerm(0.0, Dict{Int,Float64}(a.id => s))
+        return _flatterm(0.0, Dict{Int,Float64}(a.id => s))
     end
-    return FlatTerm(0.0, Dict{Int,Float64}(a.id => a.value, b.id => b.value))
+    return _flatterm(0.0, Dict{Int,Float64}(a.id => a.value, b.id => b.value))
 end
 
 function Base.:+(r::Real, e::Epsilon)
     iszero(r) && return FlatTerm(e)
-    return FlatTerm(Float64(r), Dict{Int,Float64}(e.id => e.value))
+    return _flatterm(Float64(r), Dict{Int,Float64}(e.id => e.value))
 end
 Base.:+(e::Epsilon, r::Real) = r + e
 
@@ -299,7 +319,7 @@ Base.:+(f::FlatTerm, r::Real) = r + f
 function Base.:+(e::Epsilon, f::FlatTerm)
     d = copy(f.coefs)
     d[e.id] = get(d, e.id, 0.0) + e.value
-    return FlatTerm(f.c, d)   # normalises
+    return _flatterm(f.c, d)   # normalises
 end
 Base.:+(f::FlatTerm, e::Epsilon) = e + f
 
@@ -316,12 +336,12 @@ function Base.:+(a::FlatTerm, b::FlatTerm)
             d[k] = get(d, k, 0.0) + v
         end
     end
-    return FlatTerm(a.c + b.c, d)   # normalises
+    return _flatterm(a.c + b.c, d)   # normalises
 end
 
 # Unary minus
 Base.:-(e::Epsilon)  = Epsilon(e.id, -e.value)
-Base.:-(f::FlatTerm) = FlatTerm(-f.c, Dict{Int,Float64}(k => -v for (k, v) in f.coefs))
+Base.:-(f::FlatTerm) = _flatterm(-f.c, Dict{Int,Float64}(k => -v for (k, v) in f.coefs))
 
 # Subtraction: reuse addition of negation
 Base.:-(a::Epsilon, b::Epsilon)  = a + (-b)
@@ -559,3 +579,281 @@ end
 # valued inputs; deleting this duplicate block fixed both the precompilation
 # blocker and the downstream DMI silent-zero bug.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# SFlat{CAP} — fixed-capacity isbits symbolic dual numbers (SFLAT_PLAN.md §2.2)
+#
+#   value = c + Σ_{j≤n} vs[j] · ε_{ids[j]}
+#
+# Same first-order semantics as FlatTerm (ε·ε = 0, same-id merge, constant
+# collapse), but the ε coefficients live in inline NTuples instead of a heap
+# Dict: isbits values, zero allocation per op, concrete-typed buffers (no
+# boxing).  Prototype measurements (2026-09-05, /tmp/fd_bench/sflat_proto.jl):
+# single-tag 82× vs FlatTerm (parity with ForwardDiff.Dual{Tag,Float64,1}),
+# dense multi-tag 10×, results bitwise identical in both regimes.
+#
+# CAP is a compile-time bound on the number of DISTINCT tags a scalar may
+# carry; exceeding it throws loudly (choose a larger CAP via
+# set_precision(SFlat{CAP}), or fall back to the unbounded
+# set_precision(AbstractFloat) mode).  3-D six-neighbour stencils stay ≤14
+# tags, so CAP = 16 covers exchange/DMI/anisotropy plus the LLG cross terms.
+#
+# `<: AbstractFloat` mirrors the Epsilon trick: existing kernel signatures
+# `where {T<:AbstractFloat}` accept SFlat unchanged.  Kernel bodies are
+# number-type clean — verified bitwise against the Float64 path.
+# ---------------------------------------------------------------------------
+struct SFlat{CAP} <: AbstractFloat
+    c::Float64
+    n::Int                            # active tag count (≤ CAP)
+    ids::NTuple{CAP,Int32}
+    vs::NTuple{CAP,Float64}
+end
+
+@inline _sflat_zids(::Val{CAP}) where CAP = ntuple(_ -> Int32(0), Val(CAP))
+@inline _sflat_zvs(::Val{CAP})  where CAP = ntuple(_ -> 0.0, Val(CAP))
+
+Base.zero(::Type{SFlat{CAP}}) where CAP =
+    SFlat{CAP}(0.0, 0, _sflat_zids(Val(CAP)), _sflat_zvs(Val(CAP)))
+Base.one(::Type{SFlat{CAP}}) where CAP =
+    SFlat{CAP}(1.0, 0, _sflat_zids(Val(CAP)), _sflat_zvs(Val(CAP)))
+SFlat{CAP}(x::Real) where CAP =
+    SFlat{CAP}(Float64(x), 0, _sflat_zids(Val(CAP)), _sflat_zvs(Val(CAP)))
+
+# Mixing symbolic modes is a bug (tags would be silently dropped) — loud,
+# mirroring the Epsilon/FlatTerm convert stub above.
+SFlat{CAP}(x::Union{Epsilon,FlatTerm}) where CAP =
+    error("Refusing to convert $(typeof(x)) to SFlat{$CAP} — this would silently drop ε. " *
+          "Use one symbolic mode per sim (set_precision(AbstractFloat) or set_precision(SFlat{CAP})).")
+
+Base.convert(::Type{SFlat{CAP}}, x::Real) where CAP = SFlat{CAP}(x)
+Base.promote_rule(::Type{SFlat{CAP}}, ::Type{SFlat{CAP}}) where CAP = SFlat{CAP}
+Base.promote_rule(::Type{SFlat{CAP}}, ::Type{T}) where {CAP, T<:Real} = SFlat{CAP}
+Base.promote_rule(::Type{T}, ::Type{SFlat{CAP}}) where {CAP, T<:Real} = SFlat{CAP}
+# Cross-mode / cross-CAP promotion falls back to the unbounded FlatTerm.
+Base.convert(::Type{FlatTerm}, x::SFlat) = FlatTerm(x.c, collect_terms(x))
+Base.promote_rule(::Type{SFlat{CAP}}, ::Type{Epsilon})  where CAP = FlatTerm
+Base.promote_rule(::Type{Epsilon},  ::Type{SFlat{CAP}}) where CAP = FlatTerm
+Base.promote_rule(::Type{SFlat{CAP}}, ::Type{FlatTerm}) where CAP = FlatTerm
+Base.promote_rule(::Type{FlatTerm}, ::Type{SFlat{CAP}}) where CAP = FlatTerm
+Base.promote_rule(::Type{SFlat{A}}, ::Type{SFlat{B}}) where {A, B} = FlatTerm
+
+# Constant-only SFlat values (the kind stored in parameter buffers) convert
+# losslessly to plain floats — this is what lets the Float64 demag path read
+# SFlat-mode parameter buffers.  Tagged values refuse loudly, same protection
+# as the Epsilon/FlatTerm stub above (KA CPU silent-truncation guard).
+for Tf in (:Float16, :Float32, :Float64)
+    @eval function Base.convert(::Type{$Tf}, x::SFlat)
+        iszero(x.n) || error("Refusing to convert a tagged SFlat to $($Tf) — this would " *
+                             "silently drop ε. Use cpart(x) / coefof(x, id).")
+        return $Tf(x.c)
+    end
+end
+Base.Float64(x::SFlat) = convert(Float64, x)
+
+@inline function _sflat_insert(n::Int, ids::NTuple{CAP,Int32}, vs::NTuple{CAP,Float64},
+                               id::Int32, v::Float64) where {CAP}
+    @inbounds for t in 1:n
+        ids[t] == id && return n, ids, Base.setindex(vs, vs[t] + v, t)
+    end
+    n + 1 <= CAP || throw(OverflowError("SFlat: tag capacity $CAP exceeded (need $(n + 1)). " *
+        "Use set_precision(SFlat{$(n + 2)}) or larger, or the unbounded set_precision(AbstractFloat) mode."))
+    return n + 1, Base.setindex(ids, id, n + 1), Base.setindex(vs, v, n + 1)
+end
+
+@inline function Base.:+(a::SFlat{CAP}, b::SFlat{CAP}) where {CAP}
+    # Constant fast paths: SFlat-mode parameter buffers hold n = 0 values, so
+    # bond arithmetic mostly hits these.
+    iszero(a.n) && return SFlat{CAP}(a.c + b.c, b.n, b.ids, b.vs)
+    iszero(b.n) && return SFlat{CAP}(a.c + b.c, a.n, a.ids, a.vs)
+    n, ids, vs = a.n, a.ids, a.vs
+    @inbounds for j in 1:b.n
+        n, ids, vs = _sflat_insert(n, ids, vs, b.ids[j], b.vs[j])
+    end
+    return SFlat{CAP}(a.c + b.c, n, ids, vs)
+end
+
+@inline _sflat_scale(r::Float64, a::SFlat{CAP}) where CAP =
+    SFlat{CAP}(r * a.c, a.n, a.ids, map(v -> r * v, a.vs))
+
+@inline _sflat_const(::Val{CAP}, v::Float64) where CAP =
+    SFlat{CAP}(v, 0, _sflat_zids(Val(CAP)), _sflat_zvs(Val(CAP)))
+
+# ---------------------------------------------------------------------------
+# First-order primitive rules (ForwardDiff-style, minimal flops).  For a
+# constant-only SFlat (n = 0) these reduce to the plain function applied to
+# the constant — this is what makes host-side helpers work in SFlat mode
+# (init_m0's normalise kernel calls sqrt on buffer values, and mesh
+# coordinates are precision-typed, so user-supplied m0 functions receive
+# SFlat constants).
+# ---------------------------------------------------------------------------
+@inline function Base.sqrt(a::SFlat{CAP}) where {CAP}
+    c = sqrt(a.c)
+    iszero(a.n) && return _sflat_const(Val(CAP), c)
+    iszero(a.c) &&
+        error("SFlat sqrt: derivative of sqrt at a zero constant is singular.")
+    s = 1.0 / (2.0 * c)
+    return SFlat{CAP}(c, a.n, a.ids, map(v -> s * v, a.vs))
+end
+
+@inline function Base.sin(a::SFlat{CAP}) where {CAP}
+    c = sin(a.c)
+    iszero(a.n) && return _sflat_const(Val(CAP), c)
+    s = cos(a.c)
+    return SFlat{CAP}(c, a.n, a.ids, map(v -> s * v, a.vs))
+end
+
+@inline function Base.cos(a::SFlat{CAP}) where {CAP}
+    c = cos(a.c)
+    iszero(a.n) && return _sflat_const(Val(CAP), c)
+    s = -sin(a.c)
+    return SFlat{CAP}(c, a.n, a.ids, map(v -> s * v, a.vs))
+end
+
+@inline function Base.exp(a::SFlat{CAP}) where {CAP}
+    c = exp(a.c)
+    iszero(a.n) && return _sflat_const(Val(CAP), c)
+    return SFlat{CAP}(c, a.n, a.ids, map(v -> c * v, a.vs))
+end
+
+@inline function Base.log(a::SFlat{CAP}) where {CAP}
+    c = log(a.c)          # DomainError for c ≤ 0 comes from Base naturally
+    iszero(a.n) && return _sflat_const(Val(CAP), c)
+    s = 1.0 / a.c
+    return SFlat{CAP}(c, a.n, a.ids, map(v -> s * v, a.vs))
+end
+
+@inline function Base.:^(a::SFlat{CAP}, p::Integer) where {CAP}
+    iszero(a.n) && return _sflat_const(Val(CAP), a.c^p)
+    c = a.c^p
+    s = p * a.c^(p - 1)
+    return SFlat{CAP}(c, a.n, a.ids, map(v -> s * v, a.vs))
+end
+
+@inline function Base.:^(a::SFlat{CAP}, p::Real) where {CAP}
+    iszero(a.n) && return _sflat_const(Val(CAP), a.c^p)
+    a.c > 0 ||
+        error("SFlat ^: non-integer power requires a positive constant part (got $(a.c)).")
+    c = a.c^p
+    s = p * a.c^(p - 1)
+    return SFlat{CAP}(c, a.n, a.ids, map(v -> s * v, a.vs))
+end
+
+@inline Base.:^(r::Real, a::SFlat{CAP}) where CAP = iszero(a.n) ?
+    _sflat_const(Val(CAP), Float64(r)^a.c) : exp(a * log(Float64(r)))
+
+@inline function Base.:*(a::SFlat{CAP}, b::SFlat{CAP}) where {CAP}
+    (iszero(a.c) && iszero(a.n)) && return zero(SFlat{CAP})
+    (iszero(b.c) && iszero(b.n)) && return zero(SFlat{CAP})
+    # ε·ε = 0 (first order): only constant×tag products survive — same rule as FlatTerm.
+    iszero(a.n) && iszero(b.n) &&
+        return SFlat{CAP}(a.c * b.c, 0, _sflat_zids(Val(CAP)), _sflat_zvs(Val(CAP)))
+    iszero(a.n) && return _sflat_scale(a.c, b)
+    iszero(b.n) && return _sflat_scale(b.c, a)
+    n, ids, vs = 0, _sflat_zids(Val(CAP)), _sflat_zvs(Val(CAP))
+    if !iszero(b.c)
+        @inbounds for j in 1:a.n
+            n, ids, vs = _sflat_insert(n, ids, vs, a.ids[j], a.vs[j] * b.c)
+        end
+    end
+    if !iszero(a.c)
+        @inbounds for j in 1:b.n
+            n, ids, vs = _sflat_insert(n, ids, vs, b.ids[j], b.vs[j] * a.c)
+        end
+    end
+    return SFlat{CAP}(a.c * b.c, n, ids, vs)
+end
+
+@inline Base.:*(r::Real, a::SFlat{CAP}) where CAP =
+    iszero(r) ? zero(SFlat{CAP}) : _sflat_scale(Float64(r), a)
+@inline Base.:*(a::SFlat{CAP}, r::Real) where CAP = r * a
+@inline Base.:+(r::Real, a::SFlat{CAP}) where CAP = SFlat{CAP}(r + a.c, a.n, a.ids, a.vs)
+@inline Base.:+(a::SFlat{CAP}, r::Real) where CAP = r + a
+@inline Base.:-(a::SFlat{CAP}) where CAP =
+    SFlat{CAP}(-a.c, a.n, a.ids, map(v -> -v, a.vs))
+@inline Base.:-(a::SFlat{CAP}, b::SFlat{CAP}) where CAP = a + (-b)
+@inline Base.:-(r::Real, a::SFlat{CAP}) where CAP = r + (-a)
+@inline Base.:-(a::SFlat{CAP}, r::Real) where CAP = a + (-r)
+
+# First-order inversion, mirroring inv(::FlatTerm): 1/(c + Σ) = 1/c − Σ/c².
+@inline function Base.inv(a::SFlat{CAP}) where {CAP}
+    iszero(a.n) && return SFlat{CAP}(1.0 / a.c, 0, _sflat_zids(Val(CAP)), _sflat_zvs(Val(CAP)))
+    iszero(a.c) && error("Cannot invert an SFlat with zero constant and non-zero ε part — " *
+                         "not first-order representable.")
+    invc = 1.0 / a.c
+    n, ids, vs = 0, _sflat_zids(Val(CAP)), _sflat_zvs(Val(CAP))
+    @inbounds for j in 1:a.n
+        n, ids, vs = _sflat_insert(n, ids, vs, a.ids[j], -invc * invc * a.vs[j])
+    end
+    return SFlat{CAP}(invc, n, ids, vs)
+end
+Base.:/(a::SFlat{CAP}, b::SFlat{CAP}) where CAP = a * inv(b)
+@inline Base.:/(a::SFlat{CAP}, r::Real) where CAP = a * inv(Float64(r))
+
+# Comparisons act on the constant part (ForwardDiff-style value semantics).
+@inline Base.:(==)(a::SFlat, b::Real)   = a.c == b
+@inline Base.:(==)(a::Real, b::SFlat)   = b.c == a
+@inline Base.:(==)(a::SFlat, b::SFlat)  = a.c == b.c
+@inline Base.:<(a::SFlat, b::Real)      = a.c < b
+@inline Base.:<(a::Real, b::SFlat)      = a < b.c
+@inline Base.:<(a::SFlat, b::SFlat)     = a.c < b.c
+@inline Base.:<=(a::SFlat, b::SFlat)    = a.c <= b.c
+@inline Base.isless(a::SFlat, b::SFlat) = isless(a.c, b.c)
+@inline Base.isless(a::SFlat, b::Real)  = isless(a.c, b)
+@inline Base.isless(a::Real, b::SFlat)  = isless(a, b.c)
+
+cpart(x::SFlat) = x.c
+
+function collect_terms(x::SFlat)
+    d = Dict{Int,Float64}()
+    sizehint!(d, 1 + x.n)
+    iszero(x.c) || (d[0] = x.c)
+    @inbounds for j in 1:x.n
+        iszero(x.vs[j]) && continue
+        d[Int(x.ids[j])] = x.vs[j]
+    end
+    return d
+end
+
+simplify(x::SFlat) = iszero(x.n) ? x.c : x
+
+"""
+    coefof(x, id) -> Float64
+
+The ε_id coefficient of a symbolic (or plain) number — a direct field/Dict
+lookup with NO per-call Dict copy, unlike `collect_terms`.  Hot-path accessor
+for the eigen extraction stages (`_δH_loc_single!`, dense B assembly).
+"""
+coefof(x::Real, id::Int)      = 0.0
+coefof(x::Epsilon, id::Int)   = x.id == id ? x.value : 0.0
+coefof(x::FlatTerm, id::Int)  = get(x.coefs, id, 0.0)
+function coefof(x::SFlat, id::Int)
+    @inbounds for j in 1:x.n
+        x.ids[j] == id && return x.vs[j]
+    end
+    return 0.0
+end
+
+@inline function mkterm(::Type{SFlat{CAP}}, c::Real, id::Int, v::Real) where CAP
+    iszero(v) && return SFlat{CAP}(Float64(c), 0, _sflat_zids(Val(CAP)), _sflat_zvs(Val(CAP)))
+    return SFlat{CAP}(Float64(c), 1,
+                      ntuple(i -> i == 1 ? Int32(id) : Int32(0), Val(CAP)),
+                      ntuple(i -> i == 1 ? Float64(v) : 0.0, Val(CAP)))
+end
+@inline function mkterm(::Type{SFlat{CAP}}, c::Real, id1::Int, v1::Real, id2::Int, v2::Real) where CAP
+    n1 = !iszero(v1)
+    n2 = !iszero(v2)
+    n = (n1 ? 1 : 0) + (n2 ? 1 : 0)
+    return SFlat{CAP}(Float64(c), n,
+                      ntuple(i -> i == 1 ? (n1 ? Int32(id1) : Int32(id2)) :
+                             i == 2 ? (n1 ? Int32(id2) : Int32(0)) : Int32(0), Val(CAP)),
+                      ntuple(i -> i == 1 ? (n1 ? Float64(v1) : Float64(v2)) :
+                             i == 2 ? (n1 ? Float64(v2) : 0.0) : 0.0, Val(CAP)))
+end
+
+function Base.show(io::IO, x::SFlat)
+    print(io, "SFlat(", x.c)
+    @inbounds for j in 1:x.n
+        print(io, " + ", x.vs[j], "ε_", x.ids[j])
+    end
+    print(io, "; CAP=", length(x.ids), ")")
+end
