@@ -49,6 +49,10 @@ sample** geometries.  References: Walton *et al.*, J. Phys. D **46**, 175005
 (2013) (MALTS); Keimpema *et al.* (2006) (mean inner potential phase);
 tilt/projection method after [MagRecon/maglab](https://github.com/MagRecon/maglab).
 
+A worked example that simulates the Fresnel images of a magnetic vortex and
+of Bloch/Néel skyrmions is given in
+[LTEM Imaging of Typical Magnetic Structures](ltem.md).
+
 ### Magnetic phase
 
 For a beam along `+z` the magnetic phase depends only on the beam-integrated

@@ -30,7 +30,7 @@ Miscellaneous = ["Skyrmion Phase (Monte Carlo)" => "monte_carlo/skyrmion.md",
 
 PAGES = ["Home" => "index.md",
          "User Guide" => ["install.md", "basics.md", "units.md", "equations.md",
-                          "gpu.md", "pbc.md", "dataio.md", "tools.md", "fem.md",
+                          "gpu.md", "pbc.md", "dataio.md", "tools.md", "ltem.md", "fem.md",
                           "eigen/eigenmodes.md", "gui.md", "docker.md"],
          "Atomistic" => Atomistic,
          "Micromagnetics (FD)" => Micromagnetic,
