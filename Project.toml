@@ -48,10 +48,11 @@ CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "DelimitedFiles", "NPZ"]
+test = ["Test", "DelimitedFiles", "NPZ", "Statistics"]
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
