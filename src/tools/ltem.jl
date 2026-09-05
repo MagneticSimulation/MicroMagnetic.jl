@@ -320,22 +320,22 @@ function LTEM(m::AbstractArray{<:Real,4}; V::Real=300, Ms::Real=1e5, V0::Real=-2
     phi_E = interaction_constant(1000 * V) * V0 .* thickness
     phi = phi_M .+ phi_E
 
-    # Fresnel defocus imaging on a linearly padded grid
-    N2 = 2N
-    rng = padding_range(N, N2)
-    psi = zeros(ComplexF64, N2, N2)
-    psi[rng, rng] .= exp.(1im .* phi)
-
+    # Fresnel defocus imaging on the same periodic grid as the phase (the
+    # sample is centered on the rotation grid, so the wrap seam carries no
+    # discontinuity for symmetric structures).  An amplitude window here is
+    # counterproductive: the Fresnel kernel does not decay, so the window's
+    # own edge diffraction leaks into the whole image with an amplitude that
+    # does not flip sign between +/- df and masks the phase contrast.
     dfm = df * 1e-6
-    kx = fftfreq(N2; d=dx)
-    ky = fftfreq(N2; d=dy)
+    kx = fftfreq(N; d=dx)
+    ky = fftfreq(N; d=dy)
     lambda = electron_wavelength(1000 * V)
-    k2 = [kx[i]^2 + ky[j]^2 for i in 1:N2, j in 1:N2]
+    k2 = [kx[i]^2 + ky[j]^2 for i in 1:N, j in 1:N]
     T = exp.(-1im .* pi .* lambda .* dfm .* k2)
     E = exp.(-(pi .* alpha .* dfm)^2 .* k2)
 
-    img = abs2.(ifft(fft(psi) .* E .* T))
-    return phi_M, img[rng, rng]
+    img = abs2.(ifft(fft(exp.(1im .* phi)) .* E .* T))
+    return phi_M, img
 end
 
 function LTEM(ovf::OVF2; kwargs...)

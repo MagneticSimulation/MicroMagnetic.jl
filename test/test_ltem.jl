@@ -1,4 +1,5 @@
 using MicroMagnetic
+using Statistics: cor
 using Test
 
 # ---------------------------------------------------------------------------
@@ -241,6 +242,12 @@ function test_ltem()
     @test maximum(img) - minimum(img) > 1e-3
     @test all(0 .<= img .<= 4)
     @test all(isfinite, phi)
+
+    # under/overfocus contrast of a pure phase object must flip sign
+    _, im_m = LTEM(m; Ms=Ms, dx=dx, dy=dy, dz=dz, df=-200, V0=0)
+    _, im_p = LTEM(m; Ms=Ms, dx=dx, dy=dy, dz=dz, df=+200, V0=0)
+    r = cor(vec(im_m .- 1), vec(im_p .- 1))
+    @test r < -0.5
 
     # tilted sample still yields a valid image
     phi_t, img_t = LTEM(m; Ms=Ms, dx=dx, dy=dy, dz=dz, df=200, V0=0, ty=deg2rad(30))
