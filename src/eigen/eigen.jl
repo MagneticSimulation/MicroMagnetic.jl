@@ -118,25 +118,32 @@ function _δH_loc_single!(δH_loc::Vector{Float64}, op::LLGJacOperator, dm::Vect
     N = op.N
     m0 = op.m0_F64
     # m = m0 + ε₁·dm  (single tag id=1, unit coefficient 1.0)
-    # Note: spin must be AbstractFloat so the KA kernel does T(0) / convert(T, _).
-    spin = zeros(AbstractFloat, 3N)
+    # The symbolic scalar type follows the sim's field buffer: AbstractFloat
+    # (Epsilon/FlatTerm, unbounded) or SFlat{CAP} (fixed capacity, isbits).
+    # In both cases the KA kernel sees T<:AbstractFloat and does T(0)/convert(T, _).
+    T = eltype(op.sim.field)
+    spin = zeros(T, 3N)
     @inbounds for k in 1:3N
-        m0k = m0[k]
-        dmk = dm[k]
-        spin[k] = ifelse(iszero(dmk), m0k,
-                         ifelse(iszero(m0k), Epsilon(1, dmk),
-                                m0k + Epsilon(1, dmk)))
+        spin[k] = _sym_scalar(T, m0[k], dm[k])
     end
 
     effective_field_local(op.sim, spin)
 
-    # Read ε₁ coefficient of sim.field → δH_loc.
-    SymT = Union{Float64, Epsilon, AddExpr}
+    # Read ε₁ coefficient of sim.field → δH_loc (direct lookup, no Dict copies).
     @inbounds for k in 1:3N
-        fld = convert(SymT, op.sim.field[k])
-        δH_loc[k] = get(collect_terms(fld), 1, 0.0)::Float64
+        δH_loc[k] = coefof(op.sim.field[k], 1)::Float64
     end
     nothing
+end
+
+@inline function _sym_scalar(::Type{AbstractFloat}, m0k::Float64, dmk::Float64)
+    return ifelse(iszero(dmk), m0k,
+                  ifelse(iszero(m0k), Epsilon(1, dmk),
+                         m0k + Epsilon(1, dmk)))
+end
+
+@inline function _sym_scalar(::Type{S}, m0k::Float64, dmk::Float64) where {S<:SFlat}
+    return mkterm(S, m0k, 1, dmk)
 end
 
 """
@@ -350,13 +357,14 @@ function _make_operator(sim; gamma, alpha)
     use_damping = abs(alpha) > eps(T)
     @info("Building LLGJacOperator (matrix-free, O(N) storage)  " *
           "N=$N  gamma=$gamma  alpha=$alpha  damping=$use_damping")
-    if eltype(sim.spin) !== AbstractFloat
-        @warn("""Operator mode requires MicroMagnetic.set_precision(AbstractFloat)
-                 BEFORE constructing the sim; eltype(sim.spin) = $(eltype(sim.spin)).
-                 Without it the single-ε local symbolic kernel may fail.""")
+    symT = eltype(sim.spin)
+    if !(symT === AbstractFloat || symT <: SFlat)
+        @warn("""Operator mode requires a symbolic precision (MicroMagnetic.set_precision(AbstractFloat)
+                 or MicroMagnetic.set_precision(SFlat{16})) BEFORE constructing the sim;
+                 eltype(sim.spin) = $(symT). Without it the single-ε local symbolic kernel may fail.""")
     end
 
-    m0_F64::Vector{T} = convert(Vector{T}, Array(sim.spin))
+    m0_F64::Vector{T} = cpart.(Array(sim.spin))
 
     Rs     = Vector{Matrix{T}}(undef, N)
     R_invs = similar(Rs)
@@ -429,7 +437,10 @@ end
 # Float64 baseline H0 of local + Zeeman interactions evaluated at m0_F64.
 function _compute_baseline_local!(out::Vector{Float64}, sim, m0_F64::Vector{Float64})
     N = length(m0_F64) ÷ 3
-    local_spin = Vector{AbstractFloat}(undef, 3N)
+    # Symbolic scalars must match the sim's buffer eltype (AbstractFloat in the
+    # Epsilon/FlatTerm mode, SFlat{CAP} in the fixed-capacity mode) so the KA
+    # kernels never mix modes.
+    local_spin = zeros(eltype(sim.spin), 3N)
     @inbounds for k in 1:(3N); local_spin[k] = m0_F64[k]; end
     effective_field_local(sim, local_spin)
     # Use cpart() rather than convert(Vector{Float64}, …): the latter would
@@ -504,10 +515,16 @@ swing frequencies first.  For non-Hermitian / damped cases `:LR` (largest real
 part) is the standard choice to pick physically interesting modes.
 """
 function build_matrix(sim; gamma=2.21e5, sparse=false, alpha=0.01, matrixfree=false)
-    if eltype(sim.spin) !== AbstractFloat
-        @warn("""build_matrix requires MicroMagnetic.set_precision(AbstractFloat)
-                 BEFORE constructing the sim; current eltype(sim.spin) = $(eltype(sim.spin)).
-                 Otherwise symbolic writes fail with MethodError: Float64(::AddExpr).""")
+    if eltype(sim.spin) <: SFlat && !matrixfree
+        error("Dense build_matrix runs the unbounded 2N-ε symbolic pass: call " *
+              "MicroMagnetic.set_precision(AbstractFloat) BEFORE creating the sim, " *
+              "or use matrixfree=true in SFlat mode.")
+    end
+    if eltype(sim.spin) !== AbstractFloat && !(eltype(sim.spin) <: SFlat)
+        @warn("""build_matrix requires a symbolic precision (MicroMagnetic.set_precision(AbstractFloat)
+                 or set_precision(SFlat{16})) BEFORE constructing the sim; current
+                 eltype(sim.spin) = $(eltype(sim.spin)). Otherwise symbolic writes fail
+                 with MethodError: Float64(::AddExpr).""")
     end
     if matrixfree
         sparse && @info("  sparse=true ignored with matrixfree=true; use " *
@@ -618,14 +635,12 @@ function _build_matrix_impl(sim; gamma, sparse, alpha)
     B = zeros(Float64, 2N, 2N)
     for i in 1:N
         x = 3(i-1)
-        terms1 = collect_terms(spin[x+1])
         @inbounds for j in 1:(2N)
-            v = get(terms1, j, 0.0)::Float64
+            v = coefof(spin[x+1], j)::Float64
             abs(v) > eps(Float64) && (B[2i-1, j] = v)
         end
-        terms2 = collect_terms(spin[x+2])
         @inbounds for j in 1:(2N)
-            v = get(terms2, j, 0.0)::Float64
+            v = coefof(spin[x+2], j)::Float64
             abs(v) > eps(Float64) && (B[2i, j] = v)
         end
     end

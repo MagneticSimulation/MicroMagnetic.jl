@@ -34,10 +34,18 @@ to_dense_matrix(like::AbstractArray, A::AbstractMatrix) = A
 
 Set the precision for MicroMagnetic simulations.
 
-This function allows you to specify the precision of floating-point numbers to be used in MicroMagnetic simulations. 
+This function allows you to specify the precision of floating-point numbers to be used in MicroMagnetic simulations.
 By default, it sets the precision to `Float64`. If single-precision computation is required, you can specify `Float32`.
 The allowed values are `Float64`, `Float32` and `AbstractFloat`; the last one enables
 the symbolic mode required by the eigenvalue analysis (see the eigenmodes page).
+
+Symbolic modes:
+- `AbstractFloat` — unbounded-tag symbolic dual numbers (`Epsilon`/`FlatTerm`),
+  required by the dense `build_matrix`.
+- `SFlat{CAP}` (e.g. `SFlat{16}`) — fixed-capacity isbits symbolic dual numbers
+  with the same semantics but O(1) storage per scalar; used by the matrix-free
+  `build_matrix(sim; matrixfree=true)` operator. The bare `SFlat` alias selects
+  the default capacity 16.
 
 !!! note "Call before creating Sims"
     `set_precision` is a constructor-time default: it only affects simulations created
@@ -49,13 +57,19 @@ set_precision(Float32)
 ```
 """
 function set_precision(x::Type{<:AbstractFloat}=Float64)
-    if !(x === Float64 || x === Float32 || x === AbstractFloat)
-        error("`set_precision` only accepts `Float64`, `Float32` or `AbstractFloat` (got $x). Use `AbstractFloat` for the symbolic mode required by the eigenvalue analysis.")
+    if x === Float64 || x === Float32 || x === AbstractFloat
+        Float[] = x
+    elseif x === SFlat
+        Float[] = SFlat{16}
+    elseif x <: SFlat
+        Float[] = x
+    else
+        error("`set_precision` only accepts `Float64`, `Float32`, `AbstractFloat` or `SFlat{CAP}` (got $x). Use `AbstractFloat` for the unbounded symbolic mode required by the dense eigenvalue analysis, or `SFlat{16}` for the fixed-capacity matrix-free mode.")
     end
     if _n_sims[] > 0
         @warn "There are $(_n_sims[]) existing Sim(s); this setting only affects Sims created afterwards."
     end
-    return Float[] = x
+    return Float[]
 end
 export set_precision
 
