@@ -43,6 +43,9 @@ LTEM 工具可以从微磁磁化组态出发,模拟洛伦兹透射电镜观测�
 J. Phys. D **46**, 175005 (2013)(MALTS);Keimpema 等(2006)(平均内电势
 相位);倾角/投影方法参考 [MagRecon/maglab](https://github.com/MagRecon/maglab)。
 
+[典型磁结构的 LTEM 成像](ltem.md)一节给出了磁涡旋与 Bloch/Néel skyrmion
+的 Fresnel 图像完整算例。
+
 ### 磁相位
 
 束流沿 `+z` 时,磁相位只依赖沿束流积分的面内磁化 `T = ∫ M⊥ dz`,以线性填充的

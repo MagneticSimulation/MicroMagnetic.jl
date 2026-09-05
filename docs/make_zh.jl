@@ -29,7 +29,7 @@ end
 
 PAGES = ["首页" => "index.md",
          "用户手册" => ["install.md", "basics.md", "units.md", "equations.md",
-                     "gpu.md", "pbc.md", "dataio.md", "tools.md", "fem.md",
+                     "gpu.md", "pbc.md", "dataio.md", "tools.md", "ltem.md", "fem.md",
                      "eigen/eigenmodes.md", "gui.md", "docker.md"],
          "原子模型" => ["atomistic/skyrmion.md",
                      "atomistic/saddle_point_search.md",
