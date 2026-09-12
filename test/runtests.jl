@@ -69,3 +69,5 @@ include("fem/test_interpolate.jl")
 include("fem/test_llg.jl")
 include("fem/test_fields.jl")
 include("fem/test_demag.jl")
+
+include("adjoint/test_duality.jl")
