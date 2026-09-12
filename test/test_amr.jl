@@ -633,6 +633,209 @@ function test_sim_default_behavior_unchanged()
     @test isempty(logger.logs)
 end
 
+"""
+P1 bookkeeping tool: `for_each_authoritative_cell` visits exactly the
+authoritative composite cells -- per level, the `auth ∧ ¬covered` mask, counted
+and index-summed independently below -- with `Ib` inside the region's own box,
+and `composite_ncells` equals the tool count.
+"""
+function test_authoritative_cell_tool()
+    function m0fun(i, j, k, dx, dy, dz)
+        x = (i - 0.5) * dx
+        s = (x - 40e-9) / 5e-9
+        (tanh(s), 0.0, sech(s))
+    end
+    mesh = FDMesh(dx=10e-9, dy=10e-9, nx=32, ny=8, nz=1)
+    amr = AMRSim(mesh; levels=3, Ms=8e5, A=1.3e-11, Ku=5e4, demag=true,
+                 alpha=0.02, remesh_interval=1000, name="_amr_fec", save_data=false)
+    init_m0(amr, m0fun)
+    @test sum(length.(amr.patches)) > 0
+    # independent per-level reference over the auth ∧ ¬covered masks
+    nref = zeros(Int, amr.levels)
+    sigref = zeros(Int, amr.levels)
+    for l in 1:amr.levels
+        for I in 1:length(amr.auth[l])
+            if amr.auth[l][I] && !amr.covered[l][I]
+                nref[l] += 1
+                sigref[l] += I
+            end
+        end
+    end
+    ntool = zeros(Int, amr.levels)
+    sigtool = zeros(Int, amr.levels)
+    MicroMagnetic.for_each_authoritative_cell(amr) do r, Ib, Ig
+        ntool[r.level] += 1
+        sigtool[r.level] += Ig
+        1 <= Ib <= r.sim.n_total || error("Ib outside the region box")
+    end
+    @test ntool == nref
+    @test sigtool == sigref
+    @test sum(ntool) == MicroMagnetic.composite_ncells(amr)
+    # the single-region traversal covers the same cells as the filtered
+    # whole-composite traversal (a region may legitimately hold zero
+    # authoritative cells, e.g. a patch fully covered by finer patches)
+    for r in MicroMagnetic.regions(amr)
+        nsingle = Ref(0)
+        MicroMagnetic.for_each_authoritative_cell(amr, r) do _r, _Ib, _Ig
+            nsingle[] += 1
+        end
+        njoint = Ref(0)
+        MicroMagnetic.for_each_authoritative_cell(amr) do rr, _Ib, _Ig
+            rr === r && (njoint[] += 1)
+        end
+        @test nsingle[] == njoint[]
+    end
+end
+
+"""
+P3 kernels vs inline host references (verbatim copies of the pre-kernelization
+triple loops): bitwise-equal divergence arrays and covered masks on small
+configs with mixed refined dimensions and boundary cells, plus the end-to-end
+`_divergence_arrays` and remesh-time masks on a real composite sim.
+"""
+function test_divergence_covered_kernels()
+    # standalone divergence kernel vs inline reference (mixed refined dims)
+    for (rx, ry, rz) in ((true, true, false), (true, false, false), (true, true, true))
+        nx = rx ? 12 : 7
+        ny = ry ? 9 : 5
+        nz = rz ? 6 : 1
+        C = zeros(3 * nx * ny * nz)
+        for k in 1:nz, j in 1:ny, i in 1:nx
+            I = MicroMagnetic._cell_index(i, j, k, nx, ny)
+            C[3I-2] = 0.5 * sin(0.7i + 0.3j + 0.11k)
+            C[3I-1] = 0.4 * cos(0.5i + 0.6j + 0.13k)
+            C[3I] = 0.3 * sin(0.9i + 0.2j + 0.17k)
+        end
+        hx, hy, hz = 1.7, 0.9, 2.3
+        div = zeros(nx * ny * nz)
+        kernel! = MicroMagnetic.amr_divergence_kernel!(KernelAbstractions.CPU(),
+                                                       MicroMagnetic.groupsize[])
+        kernel!(div, C, rx, ry, rz, nx, ny, nz, hx, hy, hz; ndrange=(nx, ny, nz))
+        ref = zeros(nx * ny * nz)
+        for k in 1:nz, j in 1:ny, i in 1:nx
+            I = MicroMagnetic._cell_index(i, j, k, nx, ny)
+            d = 0.0
+            if rx && nx > 1
+                ip = i == nx ? i : i + 1
+                im = i == 1 ? i : i - 1
+                d += (C[3 * MicroMagnetic._cell_index(ip, j, k, nx, ny) - 2] -
+                      C[3 * MicroMagnetic._cell_index(im, j, k, nx, ny) - 2]) /
+                     ((ip - im) * hx)
+            end
+            if ry && ny > 1
+                jp = j == ny ? j : j + 1
+                jm = j == 1 ? j : j - 1
+                d += (C[3 * MicroMagnetic._cell_index(i, jp, k, nx, ny) - 1] -
+                      C[3 * MicroMagnetic._cell_index(i, jm, k, nx, ny) - 1]) /
+                     ((jp - jm) * hy)
+            end
+            if rz && nz > 1
+                kp = k == nz ? k : k + 1
+                km = k == 1 ? k : k - 1
+                d += (C[3 * MicroMagnetic._cell_index(i, j, kp, nx, ny)] -
+                      C[3 * MicroMagnetic._cell_index(i, j, km, nx, ny)]) / ((kp - km) * hz)
+            end
+            ref[I] = abs(d)
+        end
+        @test div == ref
+    end
+    # standalone covered-mask kernel vs inline reference
+    for (rx, ry, rz) in ((true, true, false), (true, true, true))
+        ncx = rx ? 6 : 5
+        ncy = ry ? 7 : 4
+        ncz = rz ? 3 : 1
+        nfx = ncx * (rx ? 2 : 1)
+        nfy = ncy * (ry ? 2 : 1)
+        nfz = rz ? 2 * ncz : ncz
+        fine = zeros(Bool, nfx * nfy * nfz)
+        for k in 1:nfz, j in 1:nfy, i in 1:nfx
+            fine[MicroMagnetic._cell_index(i, j, k, nfx, nfy)] = (i + 2j + 3k) % 3 != 0
+        end
+        cov = zeros(Bool, ncx * ncy * ncz)
+        kernel! = MicroMagnetic.amr_covered_mask_kernel!(KernelAbstractions.CPU(),
+                                                         MicroMagnetic.groupsize[])
+        kernel!(cov, fine, rx, ry, rz, ncx, ncy, nfx, nfy; ndrange=(ncx, ncy, ncz))
+        ref = zeros(Bool, ncx * ncy * ncz)
+        for k in 1:ncz, j in 1:ncy, i in 1:ncx
+            ok = true
+            for kk in (rz ? 2 * k - 1 : k, rz ? 2 * k : k),
+                jj in (ry ? 2 * j - 1 : j, ry ? 2 * j : j),
+                ii in (rx ? 2 * i - 1 : i, rx ? 2 * i : i)
+                ok &= fine[MicroMagnetic._cell_index(ii, jj, kk, nfx, nfy)]
+            end
+            ref[MicroMagnetic._cell_index(i, j, k, ncx, ncy)] = ok
+        end
+        @test cov == ref
+    end
+    # end-to-end on a real composite sim: _divergence_arrays and the
+    # remesh-time covered masks against inline references
+    function m0fun(i, j, k, dx, dy, dz)
+        x = (i - 0.5) * dx
+        s = (x - 40e-9) / 5e-9
+        (tanh(s), 0.0, sech(s))
+    end
+    mesh = FDMesh(dx=10e-9, dy=10e-9, nx=16, ny=4, nz=1)
+    amr = AMRSim(mesh; levels=3, Ms=8e5, A=1.3e-11, Ku=5e4, demag=false,
+                 alpha=0.02, remesh_interval=1000, name="_amr_dvk", save_data=false)
+    init_m0(amr, m0fun)
+    @test sum(length.(amr.patches)) > 0
+    divs, divmax = MicroMagnetic._divergence_arrays(amr)
+    refmax = 0.0
+    for l in 1:(amr.levels - 1)
+        nx, ny, nz = amr.dims[l]
+        hx, hy, hz = MicroMagnetic._level_h(amr.base_mesh, amr.refined, l)
+        rx, ry, rz = amr.refined
+        C = Array(amr.C[l])
+        ref = zeros(nx * ny * nz)
+        for k in 1:nz, j in 1:ny, i in 1:nx
+            I = MicroMagnetic._cell_index(i, j, k, nx, ny)
+            d = 0.0
+            if rx && nx > 1
+                ip = i == nx ? i : i + 1
+                im = i == 1 ? i : i - 1
+                d += (C[3 * MicroMagnetic._cell_index(ip, j, k, nx, ny) - 2] -
+                      C[3 * MicroMagnetic._cell_index(im, j, k, nx, ny) - 2]) /
+                     ((ip - im) * hx)
+            end
+            if ry && ny > 1
+                jp = j == ny ? j : j + 1
+                jm = j == 1 ? j : j - 1
+                d += (C[3 * MicroMagnetic._cell_index(i, jp, k, nx, ny) - 1] -
+                      C[3 * MicroMagnetic._cell_index(i, jm, k, nx, ny) - 1]) /
+                     ((jp - jm) * hy)
+            end
+            if rz && nz > 1
+                kp = k == nz ? k : k + 1
+                km = k == 1 ? k : k - 1
+                d += (C[3 * MicroMagnetic._cell_index(i, j, kp, nx, ny)] -
+                      C[3 * MicroMagnetic._cell_index(i, j, km, nx, ny)]) / ((kp - km) * hz)
+            end
+            ref[I] = abs(d)
+        end
+        @test divs[l] == ref
+        refmax = max(refmax, maximum(ref))
+    end
+    @test divmax == refmax
+    for l in 1:(amr.levels - 1)
+        ncx, ncy, ncz = amr.dims[l]
+        rx, ry, rz = amr.refined
+        fine = amr.auth[l + 1]
+        nfx, nfy = ncx * (rx ? 2 : 1), ncy * (ry ? 2 : 1)
+        ref = zeros(Bool, ncx * ncy * ncz)
+        for k in 1:ncz, j in 1:ncy, i in 1:ncx
+            ok = true
+            for kk in (rz ? 2 * k - 1 : k, rz ? 2 * k : k),
+                jj in (ry ? 2 * j - 1 : j, ry ? 2 * j : j),
+                ii in (rx ? 2 * i - 1 : i, rx ? 2 * i : i)
+                ok &= fine[MicroMagnetic._cell_index(ii, jj, kk, nfx, nfy)]
+            end
+            ref[MicroMagnetic._cell_index(i, j, k, ncx, ncy)] = ok
+        end
+        @test amr.covered[l] == ref
+    end
+    @test !any(amr.covered[amr.levels])
+end
+
 @testset "AMR" begin
     test_br_cluster()
     test_interp_restrict()
@@ -645,6 +848,8 @@ end
     test_saver_energy_cache()
     test_first_step_no_remesh()
     test_remesh_coverage_warn()
+    test_authoritative_cell_tool()
+    test_divergence_covered_kernels()
     test_remesh_pump_canary()
     test_quiet_assembly_side_effects()
     test_sim_default_behavior_unchanged()
