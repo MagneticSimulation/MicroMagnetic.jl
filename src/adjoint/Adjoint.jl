@@ -8,3 +8,9 @@
 # added as new mul! methods for its lazy Adjoint/Transpose wrappers.
 include("kernels.jl")
 include("linearize.jl")
+
+# Steady-state adjoint solver: solves (Df)ᵀλ = P_t∇g at a frozen
+# steady state via :pseudotime / :krylov backends, against the VJP callback
+# interface (vjp!) — decoupled from the kernels above; apply_KT! from
+# linearize.jl plugs into solve_steady_adjoint's vjp! argument.
+include("steady.jl")
