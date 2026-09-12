@@ -14,3 +14,7 @@ include("linearize.jl")
 # interface (vjp!) — decoupled from the kernels above; apply_KT! from
 # linearize.jl plugs into solve_steady_adjoint's vjp! argument.
 include("steady.jl")
+
+# Scenario objects: each wires the layer above into the
+# run_forward!/gradient!/set_design! user protocol.
+include("freqmatch.jl")    # eigenvalue adjoint, FMR matching
