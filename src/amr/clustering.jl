@@ -20,6 +20,41 @@ AMRRect(ir, jr) = AMRRect(ir, jr, 1:1)
 
 _rect_volume(r::AMRRect) = length(r.ir) * length(r.jr) * length(r.kr)
 
+"""
+Cell-level |div m| with central differences (one-sided at the domain
+boundary) — the per-cell body of `_divergence_arrays`. The expressions and
+their summation order (x, y, z terms) are character-identical to the host
+triple loop this kernel replaced, so the divergence values stay bitwise.
+"""
+@kernel function amr_divergence_kernel!(div, @Const(C), rx::Bool, ry::Bool, rz::Bool,
+                                        nx::Int, ny::Int, nz::Int,
+                                        hx::T, hy::T, hz::T) where {T<:AbstractFloat}
+    i, j, k = @index(Global, NTuple)
+    I = _cell_index(i, j, k, nx, ny)
+    d = T(0)
+    @inbounds begin
+        if rx && nx > 1
+            ip = i == nx ? i : i + 1
+            im = i == 1 ? i : i - 1
+            d += (C[3 * _cell_index(ip, j, k, nx, ny) - 2] -
+                  C[3 * _cell_index(im, j, k, nx, ny) - 2]) / ((ip - im) * hx)
+        end
+        if ry && ny > 1
+            jp = j == ny ? j : j + 1
+            jm = j == 1 ? j : j - 1
+            d += (C[3 * _cell_index(i, jp, k, nx, ny) - 1] -
+                  C[3 * _cell_index(i, jm, k, nx, ny) - 1]) / ((jp - jm) * hy)
+        end
+        if rz && nz > 1
+            kp = k == nz ? k : k + 1
+            km = k == 1 ? k : k - 1
+            d += (C[3 * _cell_index(i, j, kp, nx, ny)] -
+                  C[3 * _cell_index(i, j, km, nx, ny)]) / ((kp - km) * hz)
+        end
+        div[I] = abs(d)
+    end
+end
+
 """Divergence |div m| per cell at every flagging level (1..levels-1),
 computed from the composite boxes with central differences (one-sided at the
 domain boundary). Returns the arrays and the global maximum."""
@@ -30,32 +65,11 @@ function _divergence_arrays(amr::AMRSim{T}) where {T<:AbstractFloat}
     for l in 1:(amr.levels - 1)
         nx, ny, nz = amr.dims[l]
         hx, hy, hz = _level_h(amr.base_mesh, amr.refined, l)
-        C = amr.C[l]
         div = zeros(T, nx * ny * nz)
-        for k in 1:nz, j in 1:ny, i in 1:nx
-            I = _cell_index(i, j, k, nx, ny)
-            d = T(0)
-            if rx && nx > 1
-                ip = i == nx ? i : i + 1
-                im = i == 1 ? i : i - 1
-                d += (C[3 * _cell_index(ip, j, k, nx, ny) - 2] -
-                      C[3 * _cell_index(im, j, k, nx, ny) - 2]) / ((ip - im) * hx)
-            end
-            if ry && ny > 1
-                jp = j == ny ? j : j + 1
-                jm = j == 1 ? j : j - 1
-                d += (C[3 * _cell_index(i, jp, k, nx, ny) - 1] -
-                      C[3 * _cell_index(i, jm, k, nx, ny) - 1]) / ((jp - jm) * hy)
-            end
-            if rz && nz > 1
-                kp = k == nz ? k : k + 1
-                km = k == 1 ? k : k - 1
-                d += (C[3 * _cell_index(i, j, kp, nx, ny)] -
-                      C[3 * _cell_index(i, j, km, nx, ny)]) / ((kp - km) * hz)
-            end
-            div[I] = abs(d)
-            div[I] > divmax && (divmax = div[I])
-        end
+        kernel! = amr_divergence_kernel!(get_backend(amr.C[l]), groupsize[])
+        kernel!(div, amr.C[l], rx, ry, rz, nx, ny, nz, T(hx), T(hy), T(hz);
+                ndrange=(nx, ny, nz))
+        divmax = max(divmax, maximum(div))
         push!(divs, div)
     end
     return divs, divmax
@@ -260,6 +274,24 @@ function _generate_patches(amr::AMRSim{T}, divs::Vector{Vector{T}}, theta::T,
 end
 
 """
+Cell-level covered mask: a coarse cell is covered iff all of its 2^r children
+lie in `fine_mask`. The boolean AND is order-independent, so the mask is
+bitwise identical to the host triple loop this kernel replaced.
+"""
+@kernel function amr_covered_mask_kernel!(covered, @Const(fine_mask),
+                                          rx::Bool, ry::Bool, rz::Bool,
+                                          ncx::Int, ncy::Int, nfx::Int, nfy::Int)
+    i, j, k = @index(Global, NTuple)
+    ok = true
+    @inbounds for kk in (rz ? 2 * k - 1 : k, rz ? 2 * k : k),
+                  jj in (ry ? 2 * j - 1 : j, ry ? 2 * j : j),
+                  ii in (rx ? 2 * i - 1 : i, rx ? 2 * i : i)
+        ok &= fine_mask[_cell_index(ii, jj, kk, nfx, nfy)]
+    end
+    @inbounds covered[_cell_index(i, j, k, ncx, ncy)] = ok
+end
+
+"""
     remesh!(amr)
 
 Regenerate the composite grid from the current magnetization state (which
@@ -303,16 +335,9 @@ function remesh!(amr::AMRSim)
         ncx, ncy, ncz = amr.dims[l]
         rx, ry, rz = amr.refined
         nfx, nfy = ncx * (rx ? 2 : 1), ncy * (ry ? 2 : 1)
-        cov = amr.covered[l]
-        for k in 1:ncz, j in 1:ncy, i in 1:ncx
-            ok = true
-            for kk in (rz ? 2 * k - 1 : k, rz ? 2 * k : k),
-                jj in (ry ? 2 * j - 1 : j, ry ? 2 * j : j),
-                ii in (rx ? 2 * i - 1 : i, rx ? 2 * i : i)
-                ok &= fine_mask[_cell_index(ii, jj, kk, nfx, nfy)]
-            end
-            cov[_cell_index(i, j, k, ncx, ncy)] = ok
-        end
+        kernel! = amr_covered_mask_kernel!(get_backend(amr.C[l]), groupsize[])
+        kernel!(amr.covered[l], fine_mask, rx, ry, rz, ncx, ncy, nfx, nfy;
+                ndrange=(ncx, ncy, ncz))
     end
     amr.covered[amr.levels] .= false
 
