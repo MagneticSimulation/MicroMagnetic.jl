@@ -3,7 +3,7 @@ using Printf
 
 export Sim, init_m0, set_Ms, run_until, relax, run_sim,
        set_driver, set_pinning, advance_step, set_alpha,
-       hysteresis
+       hysteresis, AMRSim
 
 # Saver output file name "<name>_<driver-tag>.txt" with the InertialLLG tag shortened
 # to "illg"; shared by the Sim constructor and set_driver so the two never diverge.
