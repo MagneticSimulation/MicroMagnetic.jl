@@ -19,3 +19,4 @@ include("steady.jl")
 # run_forward!/gradient!/set_design! user protocol.
 include("statematch.jl")   # static-configuration matching
 include("freqmatch.jl")    # eigenvalue adjoint, FMR matching
+include("sweepmatch.jl")   # stage-chain sweep; HysteresisMatch reuses it

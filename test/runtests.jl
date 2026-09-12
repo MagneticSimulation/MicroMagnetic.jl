@@ -72,3 +72,4 @@ include("fem/test_demag.jl")
 
 include("adjoint/test_duality.jl")
 include("adjoint/test_steady.jl")
+include("adjoint/test_sweepmatch.jl")
