@@ -36,6 +36,9 @@ Create a simulation instance for the given mesh with specified driver and integr
   - Adaptive step methods: `"DormandPrince"` (DOPRI54), `"BS23"`, `"CashKarp54"`, `"Fehlberg54"` (RKF54)
   - Cayley-transform methods: `"DormandPrinceCayley"`, `"RungeKuttaCayley"`
 - `save_data::Bool=true`: Whether to enable data saving during simulation
+- `quiet::Bool=false`: Skip creation bookkeeping (the `_n_sims` counter, the
+  creation `@info` and the server state push). Intended for internal helpers
+  assembling auxiliary sims (e.g. AMR regions); the default behavior is unchanged.
 
 # Returns
 - `MicroSim{Float}`: For FDMesh simulations
@@ -53,8 +56,8 @@ sim = Sim(mesh, driver="SD")
 ```
 """
 function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
-             save_data=true)
-    _n_sims[] += 1
+             save_data=true, quiet::Bool=false)
+    quiet || (_n_sims[] += 1)
     T = Float[]
     driver = _normalize_driver_name(driver)
 
@@ -104,15 +107,17 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
     sim.save_data = save_data
     sim.saver = create_saver(_saver_name(name, driver), driver)
 
-    if isa(mesh, FDMesh)
-        @info "MicroSim (FD) has been created."
-    elseif isa(mesh, FEMesh)
-        @info "MicroSim (FE) has been created."
-    else
-        @info "AtomisticSim has been created."
-    end
+    if !quiet
+        if isa(mesh, FDMesh)
+            @info "MicroSim (FD) has been created."
+        elseif isa(mesh, FEMesh)
+            @info "MicroSim (FE) has been created."
+        else
+            @info "AtomisticSim has been created."
+        end
 
-    send_sim_state(sim)
+        send_sim_state(sim)
+    end
     return sim
 end
 

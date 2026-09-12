@@ -20,6 +20,8 @@
 #   * open boundaries only, uniform Ms, CPU backend, exchange + uniaxial
 #     anisotropy + static Zeeman + demag energy terms.
 
+using Logging
+
 """
     AMRRegion
 
@@ -153,52 +155,34 @@ _level_h(base_mesh::FDMesh, refined::NTuple{3,Bool}, ell::Int) =
 """
     _region_sim(mesh, Ms, name) -> MicroSim
 
-A minimal `MicroSim` without the `Sim` factory side effects (`@info`, saver
-files, server state): only the array fields plus the parameter caches are
-initialised, so `set_Ms`, `make_param` and `build_exch_matrix` work on it.
+A region `MicroSim` assembled through the official `Sim` factory: `quiet=true`
+skips the `_n_sims` counter, the creation `@info` and the server state push,
+and `save_data=false` keeps the saver from ever writing files. The
+`NullLogger` window covers only the assembly statements so that the
+`set_Ms` bookkeeping `@info` is silenced without hiding real warnings later.
 """
 function _region_sim(mesh::FDMesh, Ms::Number, name::String)
-    T = Float[]
-    sim = MicroSim{T}()
-    sim.time = 0.0
-    sim.name = name
-    sim.mesh = mesh
-    sim.n_total = mesh.n_total
-    sim.spin = create_zeros(3 * mesh.n_total)
-    sim.prespin = create_zeros(3 * mesh.n_total)
-    sim.field = create_zeros(3 * mesh.n_total)
-    sim.energy = create_zeros(mesh.n_total)
-    sim.pins = Fill(false, mesh.n_total)
-    sim.mu0_Ms = Fill(T(0), mesh.n_total)
-    sim.mat_class = nothing
-    sim.n_classes = 0
-    sim.mat_class_layout = -1
-    sim.inv_ms = Fill(T(0), mesh.n_total)
-    sim.driver_name = "None"
-    sim.driver = EmptyDriver()
-    sim.interactions = []
-    sim.save_data = false
-    sim.saver = DataSaver(name, true, 0.0, 0, [])   # header_saved: never written
-    set_Ms(sim, Ms)
-    return sim
+    return Logging.with_logger(Logging.NullLogger()) do
+        sim = Sim(mesh; driver="None", name=name, save_data=false, quiet=true)
+        set_Ms(sim, Ms)
+        sim
+    end
 end
 
 """Exchange interaction with uniform stiffness on a region sim."""
 function _add_region_exch!(sim::MicroSim, A::Real)
-    T = eltype(sim.spin)
-    n = sim.n_total
-    A_kb = make_param(T, A, sim.mesh, n)
-    exch = Exchange(A_kb, A_kb, A_kb, create_zeros(3 * n), create_zeros(n),
-                    "exch", nothing, nothing, nothing, -1)
-    push!(sim.interactions, exch)
-    return exch
+    return Logging.with_logger(Logging.NullLogger()) do
+        add_exch(sim, A)
+    end
 end
 
-"""Demag interaction (open boundaries) on a region sim."""
+"""Demag interaction (open boundaries) on a region sim: `add_demag` follows
+the region mesh periodicity (none), which routes to `init_demag(sim, 0, 0, 0)`
+for Float64 spins — the exact call the hand-assembled version used."""
 function _add_region_demag!(sim::MicroSim)
-    demag = init_demag(sim, 0, 0, 0)
-    push!(sim.interactions, demag)
-    return demag
+    return Logging.with_logger(Logging.NullLogger()) do
+        add_demag(sim)
+    end
 end
 
 function _region_buffers(::Type{T}, n::Int) where {T<:AbstractFloat}

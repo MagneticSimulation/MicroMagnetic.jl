@@ -7,6 +7,7 @@
 using Test
 using MicroMagnetic
 import KernelAbstractions
+using Logging
 
 set_backend("cpu")
 set_precision(Float64)
@@ -573,6 +574,65 @@ function test_remesh_pump_canary()
     @test max_de < 8e-20
 end
 
+"""
+Quiet assembly through the official `Sim` factory: construction, init_m0,
+several steps and at least one remesh (rebuilding patches and demag boxes)
+must (a) leave no saver files in the working directory, (b) not bump the
+`_n_sims` counter, (c) not log any "has been created"/"has been added" @info.
+"""
+function test_quiet_assembly_side_effects()
+    function m0fun(i, j, k, dx, dy, dz)
+        x = (i - 0.5) * dx
+        s = (x - 40e-9) / 5e-9
+        (tanh(s), 0.0, sech(s))
+    end
+    mesh = FDMesh(dx=10e-9, dy=10e-9, nx=32, ny=8, nz=1)
+    n0 = MicroMagnetic._n_sims[]
+    before = Set(readdir("."))
+    logger = TestLogger(min_level=Logging.Info)
+    amr = Logging.with_logger(logger) do
+        amr = AMRSim(mesh; levels=2, Ms=8e5, A=1.3e-11, demag=true,
+                     remesh_interval=2, name="_amr_quiet", save_data=false)
+        init_m0(amr, m0fun)
+        for _ in 1:5
+            MicroMagnetic.amr_step!(amr, 5e-13)
+        end
+        amr
+    end
+    # (b) region sims are not user-visible sims
+    @test MicroMagnetic._n_sims[] == n0
+    # (c) no creation/addition @info leaks from the NullLogger windows
+    msgs = [rec.message for rec in logger.logs]
+    @test !any(contains(msg, "has been created") for msg in msgs)
+    @test !any(contains(msg, "has been added") for msg in msgs)
+    # (a) no saver files appear in the working directory
+    new = setdiff(Set(readdir(".")), before)
+    @test isempty(filter(f -> endswith(f, ".txt") || endswith(f, ".ovf"), collect(new)))
+    # the region sims really come from the official factory ("None" driver)
+    @test amr.base.sim.driver_name == "None"
+end
+
+"""
+`Sim()`'s default behavior is untouched by the `quiet` kwarg: the creation
+`@info` is still logged and the `_n_sims` counter still advances; with
+`quiet=true` nothing is logged at info level and the counter stays.
+"""
+function test_sim_default_behavior_unchanged()
+    n0 = MicroMagnetic._n_sims[]
+    @test_logs (:info, "MicroSim (FD) has been created.") match_mode = :any begin
+        Sim(FDMesh(nx=2, ny=2, nz=1))
+    end
+    @test MicroMagnetic._n_sims[] == n0 + 1
+    n1 = MicroMagnetic._n_sims[]
+    logger = TestLogger(min_level=Logging.Info)
+    Logging.with_logger(logger) do
+        Sim(FDMesh(nx=2, ny=2, nz=1); driver="None", name="_amr_quiet_sim",
+            save_data=false, quiet=true)
+    end
+    @test MicroMagnetic._n_sims[] == n1
+    @test isempty(logger.logs)
+end
+
 @testset "AMR" begin
     test_br_cluster()
     test_interp_restrict()
@@ -586,4 +646,6 @@ end
     test_first_step_no_remesh()
     test_remesh_coverage_warn()
     test_remesh_pump_canary()
+    test_quiet_assembly_side_effects()
+    test_sim_default_behavior_unchanged()
 end
