@@ -23,6 +23,25 @@
 using Logging
 
 """
+    RegionGeometry
+
+Derived, read-only box/level geometry of one `AMRRegion`: ghost widths (on
+refined dimensions only), the box origin in level coordinates (`1,1,1` for the
+base region), the ghosted box dims, the interior dims and the level dims.
+Constructed once per region (base region in the `AMRSim` constructor, patches
+in `_make_patch`); `ir/jr/kr` remain the authoritative data, this is a cache
+that keeps kernel call sites from recomputing offsets by hand.
+"""
+struct RegionGeometry
+    level::Int
+    gx::Int; gy::Int; gz::Int      # ghosts (refined dims only, 0 otherwise)
+    i0::Int; j0::Int; k0::Int      # region box origin in level coords (base: 1,1,1)
+    ngx::Int; ngy::Int; ngz::Int   # region box dims (ghosted for patches)
+    nxi::Int; nyi::Int; nzi::Int   # interior dims (base: = level dims)
+    nlx::Int; nly::Int; nlz::Int   # level dims
+end
+
+"""
     AMRRegion
 
 One integration region of the composite grid: the base level (`level == 1`,
@@ -60,6 +79,7 @@ mutable struct AMRRegion{T<:AbstractFloat}
     cx::T                             # dtg * exchange coupling per x bond
     cy::T                             # ... per y bond
     cz::T                             # ... per z bond
+    geo::RegionGeometry               # derived read-only geometry cache
 end
 
 """
@@ -265,6 +285,8 @@ function _make_patch(amr::AMRSim{T}, ell::Int, ir, jr, kr, old_auth) where {T<:A
     i0 = first(ir) - gx
     j0 = first(jr) - gy
     k0 = first(kr) - gz
+    geo = RegionGeometry(ell, gx, gy, gz, i0, j0, k0, ngx, ngy, ngz,
+                         nxi, nyi, nzi, amr.dims[ell]...)
     mesh = FDMesh(dx=hx, dy=hy, dz=hz, nx=ngx, ny=ngy, nz=ngz,
                   x0=amr.base_mesh.x0 + (i0 - 1) * hx,
                   y0=amr.base_mesh.y0 + (j0 - 1) * hy,
@@ -275,7 +297,7 @@ function _make_patch(amr::AMRSim{T}, ell::Int, ir, jr, kr, old_auth) where {T<:A
                      create_zeros(T, 1), create_zeros(T, 1), create_zeros(T, 1),
                      create_zeros(T, 1), create_zeros(T, 1), create_zeros(T, 1),
                      create_zeros(T, 1), create_zeros(T, 1),
-                     zeros(Bool, 1), T(0), T(0), T(0))
+                     zeros(Bool, 1), T(0), T(0), T(0), geo)
     _init_patch_interior!(amr, r, old_auth)
     _build_gpsm!(amr, r)
     return r
@@ -363,11 +385,12 @@ function AMRSim(mesh::FDMesh; levels::Int=2, Ms::Number, A::Real, Ku::Number=0.0
     base = _region_sim(base_mesh, Ms, name * "_L1")
     _add_region_exch!(base, A)
     amr.demag && _add_region_demag!(base)
+    base_geo = RegionGeometry(1, 0, 0, 0, 1, 1, 1, bx, by, bz, bx, by, bz, bx, by, bz)
     amr.base = AMRRegion{T}(1, base, 1:bx, 1:by, 1:bz, nothing,
                             create_zeros(T, 1), create_zeros(T, 1), create_zeros(T, 1),
                             create_zeros(T, 1), create_zeros(T, 1), create_zeros(T, 1),
                             create_zeros(T, 1), create_zeros(T, 1),
-                            zeros(Bool, bx * by * bz), T(0), T(0), T(0))
+                            zeros(Bool, bx * by * bz), T(0), T(0), T(0), base_geo)
 
     # per-level work arrays: C[1] aliases the base spin (the level-1
     # authoritative state), Phi[1] aliases the base Demag field buffer
@@ -423,17 +446,52 @@ function _region(::Type{T}) where {T<:AbstractFloat}
                         create_zeros(T, 1), create_zeros(T, 1), create_zeros(T, 1),
                         create_zeros(T, 1), create_zeros(T, 1), create_zeros(T, 1),
                         create_zeros(T, 1), create_zeros(T, 1),
-                        zeros(Bool, 1), T(0), T(0), T(0))
+                        zeros(Bool, 1), T(0), T(0), T(0),
+                        RegionGeometry(1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1))
 end
 
 """All integration regions: the base level followed by every patch."""
 regions(amr::AMRSim) = (amr.base, (p for ps in amr.patches for p in ps)...)
 
+"""
+    for_each_authoritative_cell(f, amr::AMRSim)
+    for_each_authoritative_cell(f, amr::AMRSim, r::AMRRegion)
+
+Call `f(r::AMRRegion, Ib::Int, Ig::Int)` once for every authoritative composite
+cell: `Ib` = flat index into the region's own arrays (ghosted box for patches),
+`Ig` = flat index into the level-`r.level` boxes (C/Gc/Phi/auth/covered).
+Cells under finer patches are skipped. Iteration order: base region first, then
+patches in stored order; within a region, (c, b, a) with a fastest — identical
+to the five inline copies it replaces, so float accumulation stays bitwise.
+The single-region form visits only `r`'s cells. All geometry comes from the
+regions' `geo` caches.
+"""
+function for_each_authoritative_cell(f, amr::AMRSim, r::AMRRegion)
+    g = r.geo
+    cov = amr.covered[r.level]
+    i0 = g.i0 + g.gx                # interior origin in level coords
+    j0 = g.j0 + g.gy
+    k0 = g.k0 + g.gz
+    for c in 1:g.nzi, b in 1:g.nyi, a in 1:g.nxi
+        Ig = _cell_index(i0 - 1 + a, j0 - 1 + b, k0 - 1 + c, g.nlx, g.nly)
+        cov[Ig] && continue
+        f(r, _cell_index(a + g.gx, b + g.gy, c + g.gz, g.ngx, g.ngy), Ig)
+    end
+    return nothing
+end
+
+function for_each_authoritative_cell(f, amr::AMRSim)
+    for r in regions(amr)
+        for_each_authoritative_cell(f, amr, r)
+    end
+    return nothing
+end
+
 """Number of composite-grid cells (sum over levels of authoritative cells)."""
 function composite_ncells(amr::AMRSim)
-    n = sum(!amr.covered[1][i] for i in 1:length(amr.covered[1]); init=0)
-    for l in 2:amr.levels
-        n += sum(!amr.covered[l][i] for i in 1:length(amr.covered[l]); init=0)
+    n = 0
+    for_each_authoritative_cell(amr) do _, _, _
+        n += 1
     end
     return n
 end

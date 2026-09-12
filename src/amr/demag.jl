@@ -259,16 +259,15 @@ function update_demag_boxes!(amr::AMRSim)
         rep = amr.shadow[l - 1].spin
         for pi in box.patches
             p = amr.patches[l - 1][pi]
-            nxi, nyi, nzi = length(p.ir), length(p.jr), length(p.kr)
-            gx, gy, gz = _ghosts(amr)
+            g = p.geo
             kernel! = amr_delta_kernel!(get_backend(box.sim.spin), groupsize[])
             kernel!(box.sim.spin, p.sim.spin, rep,
                     p.ir[1] - box.ir[1], p.jr[1] - box.jr[1], p.kr[1] - box.kr[1],
-                    p.ir[1], p.jr[1], p.kr[1],
-                    ngx, ngy, gx, gy, gz,
-                    p.sim.mesh.nx, p.sim.mesh.ny,
-                    amr.dims[l][1], amr.dims[l][2], amr.dims[l][3];
-                    ndrange=(nxi, nyi, nzi))
+                    g.i0 + g.gx, g.j0 + g.gy, g.k0 + g.gz,
+                    ngx, ngy, g.gx, g.gy, g.gz,
+                    g.ngx, g.ngy,
+                    g.nlx, g.nly, g.nlz;
+                    ndrange=(g.nxi, g.nyi, g.nzi))
         end
         bdem = box.sim.interactions[findfirst(x -> isa(x, Demag), box.sim.interactions)]
         effective_field(bdem, box.sim, box.sim.spin, 0.0)

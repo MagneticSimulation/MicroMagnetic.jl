@@ -306,11 +306,12 @@ function _up_pass!(amr::AMRSim)
         kernel!(amr.C[l], amr.C[l - 1], rx, ry, rz, ndx, ndy, ndz, npx, npy, npz, true;
                 ndrange=(ndx, ndy, ndz))
         for p in amr.patches[l - 1]
-            nxi, nyi, nzi = _patch_interior_dims(p)
+            g = p.geo
             ck! = amr_patch_to_box_kernel!(get_backend(amr.C[l]), groupsize[])
-            ck!(amr.C[l], p.sim.spin, _ghosts(amr)..., first(p.ir), first(p.jr),
-                first(p.kr), p.sim.mesh.nx, p.sim.mesh.ny, ndx, ndy;
-                ndrange=(nxi, nyi, nzi))
+            ck!(amr.C[l], p.sim.spin, g.gx, g.gy, g.gz,
+                g.i0 + g.gx, g.j0 + g.gy, g.k0 + g.gz,
+                g.ngx, g.ngy, g.nlx, g.nly;
+                ndrange=(g.nxi, g.nyi, g.nzi))
         end
     end
 end
@@ -324,11 +325,12 @@ function _down_pass!(amr::AMRSim)
                 ndrange=(ncx, ncy, ncz))
         if l >= 2
             for p in amr.patches[l - 1]
-                nxi, nyi, nzi = _patch_interior_dims(p)
+                g = p.geo
                 bk! = amr_box_to_patch_kernel!(get_backend(p.sim.spin), groupsize[])
-                bk!(p.sim.spin, amr.C[l], _ghosts(amr)..., first(p.ir), first(p.jr),
-                    first(p.kr), p.sim.mesh.nx, p.sim.mesh.ny, ncx, ncy;
-                    ndrange=(nxi, nyi, nzi))
+                bk!(p.sim.spin, amr.C[l], g.gx, g.gy, g.gz,
+                    g.i0 + g.gx, g.j0 + g.gy, g.k0 + g.gz,
+                    g.ngx, g.ngy, g.nlx, g.nly;
+                    ndrange=(g.nxi, g.nyi, g.nzi))
             end
         end
     end
@@ -375,11 +377,12 @@ function sync_g_boxes!(amr::AMRSim)
         kernel!(amr.Gc[l], amr.Gc[l - 1], rx, ry, rz, ndx, ndy, ndz, npx, npy, npz,
                 false; ndrange=(ndx, ndy, ndz))
         for p in amr.patches[l - 1]
-            nxi, nyi, nzi = _patch_interior_dims(p)
+            g = p.geo
             gk! = amr_g_to_box_kernel!(get_backend(amr.Gc[l]), groupsize[])
-            gk!(amr.Gc[l], p.g1, p.g2, p.g3, _ghosts(amr)..., first(p.ir), first(p.jr),
-                first(p.kr), p.sim.mesh.nx, p.sim.mesh.ny, ndx, ndy;
-                ndrange=(nxi, nyi, nzi))
+            gk!(amr.Gc[l], p.g1, p.g2, p.g3, g.gx, g.gy, g.gz,
+                g.i0 + g.gx, g.j0 + g.gy, g.k0 + g.gz,
+                g.ngx, g.ngy, g.nlx, g.nly;
+                ndrange=(g.nxi, g.nyi, g.nzi))
         end
     end
     # down: restricted fine g onto covered coarse cells (+ back into patches)
@@ -387,28 +390,33 @@ function sync_g_boxes!(amr::AMRSim)
         ncx, ncy, ncz = amr.dims[l]
         if l == 1
             # the base region's own g enters the composite box first
+            bg = amr.base.geo
             bx, by, bz = amr.dims[1]
             gk! = amr_g_to_box_kernel!(get_backend(amr.Gc[1]), groupsize[])
-            gk!(amr.Gc[1], amr.base.g1, amr.base.g2, amr.base.g3, 0, 0, 0, 1, 1, 1,
-                bx, by, bx, by; ndrange=(bx, by, bz))
+            gk!(amr.Gc[1], amr.base.g1, amr.base.g2, amr.base.g3,
+                bg.gx, bg.gy, bg.gz, bg.i0 + bg.gx, bg.j0 + bg.gy, bg.k0 + bg.gz,
+                bg.ngx, bg.ngy, bg.nlx, bg.nly; ndrange=(bx, by, bz))
         end
         kernel! = amr_restrict_kernel!(get_backend(amr.Gc[l]), groupsize[])
         kernel!(amr.Gc[l], amr.Gc[l + 1], rx, ry, rz, ncx, ncy, amr.covered[l], false;
                 ndrange=(ncx, ncy, ncz))
         if l >= 2
             for p in amr.patches[l - 1]
-                nxi, nyi, nzi = _patch_interior_dims(p)
+                g = p.geo
                 bg! = amr_box_to_g_kernel!(get_backend(p.g1), groupsize[])
-                bg!(p.g1, p.g2, p.g3, amr.Gc[l], _ghosts(amr)..., first(p.ir),
-                    first(p.jr), first(p.kr), p.sim.mesh.nx, p.sim.mesh.ny, ncx, ncy;
-                    ndrange=(nxi, nyi, nzi))
+                bg!(p.g1, p.g2, p.g3, amr.Gc[l], g.gx, g.gy, g.gz,
+                    g.i0 + g.gx, g.j0 + g.gy, g.k0 + g.gz,
+                    g.ngx, g.ngy, g.nlx, g.nly;
+                    ndrange=(g.nxi, g.nyi, g.nzi))
             end
         else
             # level 1: the base region's own g arrays follow the composite box
+            bg = amr.base.geo
             bx, by, bz = amr.dims[1]
             bg! = amr_box_to_g_kernel!(get_backend(amr.base.g1), groupsize[])
-            bg!(amr.base.g1, amr.base.g2, amr.base.g3, amr.Gc[1], 0, 0, 0, 1, 1, 1,
-                bx, by, bx, by; ndrange=(bx, by, bz))
+            bg!(amr.base.g1, amr.base.g2, amr.base.g3, amr.Gc[1],
+                bg.gx, bg.gy, bg.gz, bg.i0 + bg.gx, bg.j0 + bg.gy, bg.k0 + bg.gz,
+                bg.ngx, bg.ngy, bg.nlx, bg.nly; ndrange=(bx, by, bz))
         end
     end
     # up again with the updated coarser data
@@ -419,11 +427,12 @@ function sync_g_boxes!(amr::AMRSim)
         kernel!(amr.Gc[l], amr.Gc[l - 1], rx, ry, rz, ndx, ndy, ndz, npx, npy, npz,
                 false; ndrange=(ndx, ndy, ndz))
         for p in amr.patches[l - 1]
-            nxi, nyi, nzi = _patch_interior_dims(p)
+            g = p.geo
             gk! = amr_g_to_box_kernel!(get_backend(amr.Gc[l]), groupsize[])
-            gk!(amr.Gc[l], p.g1, p.g2, p.g3, _ghosts(amr)..., first(p.ir), first(p.jr),
-                first(p.kr), p.sim.mesh.nx, p.sim.mesh.ny, ndx, ndy;
-                ndrange=(nxi, nyi, nzi))
+            gk!(amr.Gc[l], p.g1, p.g2, p.g3, g.gx, g.gy, g.gz,
+                g.i0 + g.gx, g.j0 + g.gy, g.k0 + g.gz,
+                g.ngx, g.ngy, g.nlx, g.nly;
+                ndrange=(g.nxi, g.nyi, g.nzi))
         end
     end
     return nothing
@@ -436,17 +445,16 @@ Refresh the ghost cells of every patch from the next coarser composite box.
 """
 function fill_ghosts!(amr::AMRSim)
     rx, ry, rz = amr.refined
-    gx, gy, gz = _ghosts(amr)
     for l in 2:amr.levels
-        nlx, nly, nlz = amr.dims[l]
         npx, npy, npz = amr.dims[l - 1]
         for p in amr.patches[l - 1]
-            ngx, ngy, ngz = p.sim.mesh.nx, p.sim.mesh.ny, p.sim.mesh.nz
+            g = p.geo
             kernel! = amr_fill_ghosts_kernel!(get_backend(p.sim.spin), groupsize[])
-            kernel!(p.sim.spin, amr.C[l - 1], rx, ry, rz, gx, gy, gz,
-                    first(p.ir), first(p.jr), first(p.kr),
-                    ngx, ngy, ngz, nlx, nly, nlz, npx, npy, npz;
-                    ndrange=(ngx, ngy, ngz))
+            kernel!(p.sim.spin, amr.C[l - 1], rx, ry, rz,
+                    g.gx, g.gy, g.gz,
+                    g.i0 + g.gx, g.j0 + g.gy, g.k0 + g.gz,
+                    g.ngx, g.ngy, g.ngz, g.nlx, g.nly, g.nlz, npx, npy, npz;
+                    ndrange=(g.ngx, g.ngy, g.ngz))
         end
     end
     return nothing
@@ -458,16 +466,15 @@ copied from the level-`l` box, the rest are interpolated from level `l-1`."""
 function _init_patch_interior!(amr::AMRSim{T}, r::AMRRegion{T},
                                old_auth::Vector{Bool}) where {T<:AbstractFloat}
     rx, ry, rz = amr.refined
-    gx, gy, gz = _ghosts(amr)
     l = r.level
-    nlx, nly, nlz = amr.dims[l]
     npx, npy, npz = amr.dims[l - 1]
     use_fine = l <= length(amr.auth) && any(old_auth)
-    nxi, nyi, nzi = _patch_interior_dims(r)
+    g = r.geo
     kernel! = amr_init_patch_kernel!(get_backend(r.sim.spin), groupsize[])
     kernel!(r.sim.spin, amr.C[l], old_auth, amr.C[l - 1], use_fine, rx, ry, rz,
-            gx, gy, gz, first(r.ir), first(r.jr), first(r.kr),
-            r.sim.mesh.nx, r.sim.mesh.ny, nlx, nly, nlz, npx, npy, npz;
-            ndrange=(nxi, nyi, nzi))
+            g.gx, g.gy, g.gz,
+            g.i0 + g.gx, g.j0 + g.gy, g.k0 + g.gz,
+            g.ngx, g.ngy, g.nlx, g.nly, g.nlz, npx, npy, npz;
+            ndrange=(g.nxi, g.nyi, g.nzi))
     return nothing
 end

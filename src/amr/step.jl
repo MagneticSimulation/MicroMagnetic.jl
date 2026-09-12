@@ -112,13 +112,12 @@ function _region_step!(amr::AMRSim{T}, r::AMRRegion{T}, dtg::Float64) where {T<:
     back = get_backend(m)
     copyto!(r.prespin, m)
 
-    # level geometry for the Phi lookup (ghost widths on refined dims only)
-    gx, gy, gz = r.level == 1 ? (0, 0, 0) : _ghosts(amr)
-    i0 = r.level == 1 ? 1 : first(r.ir) - gx
-    j0 = r.level == 1 ? 1 : first(r.jr) - gy
-    k0 = r.level == 1 ? 1 : first(r.kr) - gz
-    ngx, ngy, ngz = sim.mesh.nx, sim.mesh.ny, sim.mesh.nz
-    nlx, nly, nlz = amr.dims[r.level]
+    # level geometry for the Phi lookup (from the region's geo cache: ghost
+    # widths on refined dims only, box origin/dims, level dims)
+    geo = r.geo
+    i0, j0, k0 = geo.i0, geo.j0, geo.k0
+    ngx, ngy, ngz = geo.ngx, geo.ngy, geo.ngz
+    nlx, nly, nlz = geo.nlx, geo.nly, geo.nlz
     phi = amr.Phi[r.level]
 
     for k in 1:3
@@ -154,21 +153,12 @@ function _region_step!(amr::AMRSim{T}, r::AMRRegion{T}, dtg::Float64) where {T<:
     end
     normalise(m, N)
 
-    # max |dm| over authoritative cells (host loop, CPU v1)
+    # max |dm| over authoritative cells (host reduction over the bookkeeping
+    # traversal; cells under finer patches are excluded)
     compute_dm!(r.dm, m, r.prespin, N)
     dm = Array(r.dm)
     maxdm = 0.0
-    nxi, nyi, nzi = length(r.ir), length(r.jr), length(r.kr)
-    nbx, nby = ngx, ngy
-    lbx, lby = amr.dims[r.level][1], amr.dims[r.level][2]
-    covered = r.level == 1 ? amr.covered[1] : nothing
-    for c in 1:nzi, b in 1:nyi, a in 1:nxi
-        Ib = _cell_index(a + gx, b + gy, c + gz, nbx, nby)
-        if covered !== nothing
-            Ig = _cell_index(first(r.ir) - 1 + a, first(r.jr) - 1 + b,
-                             first(r.kr) - 1 + c, lbx, lby)
-            covered[Ig] && continue
-        end
+    for_each_authoritative_cell(amr, r) do _, Ib, _
         dm[Ib] > maxdm && (maxdm = dm[Ib])
     end
     return maxdm
@@ -188,12 +178,10 @@ function _init_gpsm!(amr::AMRSim{T}, dt::Real) where {T<:AbstractFloat}
         N = sim.n_total
         m = sim.spin
         back = get_backend(m)
-        gx, gy, gz = r.level == 1 ? (0, 0, 0) : _ghosts(amr)
-        i0 = r.level == 1 ? 1 : first(r.ir) - gx
-        j0 = r.level == 1 ? 1 : first(r.jr) - gy
-        k0 = r.level == 1 ? 1 : first(r.kr) - gz
-        ngx, ngy, ngz = sim.mesh.nx, sim.mesh.ny, sim.mesh.nz
-        nlx, nly, nlz = amr.dims[r.level]
+        geo = r.geo
+        i0, j0, k0 = geo.i0, geo.j0, geo.k0
+        ngx, ngy, ngz = geo.ngx, geo.ngy, geo.ngz
+        nlx, nly, nlz = geo.nlx, geo.nly, geo.nlz
         phi = amr.Phi[r.level]
         for k in 1:3
             if amr.Ku != 0

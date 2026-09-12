@@ -13,36 +13,21 @@ function average_m(amr::AMRSim{T}) where {T<:AbstractFloat}
     smy = T(0)
     smz = T(0)
     sv = T(0)
-    for r in (amr.base, (p for ps in amr.patches for p in ps)...)
-        m = Array(r.sim.spin)
-        nxi, nyi, nzi = length(r.ir), length(r.jr), length(r.kr)
-        gx, gy, gz = r.level == 1 ? (0, 0, 0) : _ghosts(amr)
-        nbx, nby = r.sim.mesh.nx, r.sim.mesh.ny
-        lbx, lby = amr.dims[r.level][1], amr.dims[r.level][2]
-        V = T(_level_volume(amr, r.level))
-        if r.level == 1
-            for c in 1:nzi, b in 1:nyi, a in 1:nxi
-                Ig = _cell_index(a, b, c, lbx, lby)
-                amr.covered[1][Ig] && continue
-                j = 3 * _cell_index(a, b, c, nbx, nby) - 2
-                smx += m[j] * V
-                smy += m[j + 1] * V
-                smz += m[j + 2] * V
-                sv += V
-            end
-        else
-            cov = amr.covered[r.level]
-            for c in 1:nzi, b in 1:nyi, a in 1:nxi
-                Ig = _cell_index(first(r.ir) - 1 + a, first(r.jr) - 1 + b,
-                                 first(r.kr) - 1 + c, lbx, lby)
-                cov[Ig] && continue
-                j = 3 * _cell_index(a + gx, b + gy, c + gz, nbx, nby) - 2
-                smx += m[j] * V
-                smy += m[j + 1] * V
-                smz += m[j + 2] * V
-                sv += V
-            end
+    Vols = T[T(_level_volume(amr, l)) for l in 1:amr.levels]
+    r_cur = nothing
+    m = T[]
+    V = T(0)
+    for_each_authoritative_cell(amr) do r, Ib, Ig
+        if r !== r_cur
+            r_cur = r
+            m = Array(r.sim.spin)
+            V = Vols[r.level]
         end
+        j = 3 * Ib - 2
+        smx += m[j] * V
+        smy += m[j + 1] * V
+        smz += m[j + 2] * V
+        sv += V
     end
     return (smx / sv, smy / sv, smz / sv)
 end
@@ -112,29 +97,13 @@ end
 _level_volume(amr::AMRSim, l::Int) =
     prod(_level_h(amr.base_mesh, amr.refined, l))
 
-# masked sum helpers over a region: iterate the interior, skip cells under
-# finer patches
+# masked sum helpers over a region: iterate the authoritative cells, skip
+# cells under finer patches
 function _region_energy_sum(amr::AMRSim, r::AMRRegion, buf::AbstractArray{<:Any,1})
-    nxi, nyi, nzi = length(r.ir), length(r.jr), length(r.kr)
-    gx, gy, gz = r.level == 1 ? (0, 0, 0) : _ghosts(amr)
-    nbx, nby = r.sim.mesh.nx, r.sim.mesh.ny
-    lbx, lby = amr.dims[r.level][1], amr.dims[r.level][2]
     host = Array(buf)
     s = 0.0
-    if r.level == 1
-        for c in 1:nzi, b in 1:nyi, a in 1:nxi
-            Ig = _cell_index(a, b, c, lbx, lby)
-            amr.covered[1][Ig] && continue
-            s += host[_cell_index(a, b, c, nbx, nby)]
-        end
-    else
-        cov = amr.covered[r.level]
-        for c in 1:nzi, b in 1:nyi, a in 1:nxi
-            Ig = _cell_index(first(r.ir) - 1 + a, first(r.jr) - 1 + b,
-                             first(r.kr) - 1 + c, lbx, lby)
-            cov[Ig] && continue
-            s += host[_cell_index(a + gx, b + gy, c + gz, nbx, nby)]
-        end
+    for_each_authoritative_cell(amr, r) do _, Ib, _
+        s += host[Ib]
     end
     return s
 end
@@ -142,35 +111,14 @@ end
 function _region_demag_energy(amr::AMRSim{T}, r::AMRRegion{T}) where {T<:AbstractFloat}
     phi = Array(amr.Phi[r.level])
     m = Array(r.sim.spin)
-    nxi, nyi, nzi = length(r.ir), length(r.jr), length(r.kr)
-    gx, gy, gz = r.level == 1 ? (0, 0, 0) : _ghosts(amr)
-    nbx, nby = r.sim.mesh.nx, r.sim.mesh.ny
-    lbx, lby = amr.dims[r.level][1], amr.dims[r.level][2]
     mu0Ms = Array(r.sim.mu0_Ms)
     V = T(_level_volume(amr, r.level))
     s = T(0)
-    if r.level == 1
-        for c in 1:nzi, b in 1:nyi, a in 1:nxi
-            Ig = _cell_index(a, b, c, lbx, lby)
-            amr.covered[1][Ig] && continue
-            I = _cell_index(a, b, c, nbx, nby)
-            j = 3 * I - 2
-            e = 3 * Ig - 2
-            s -= 0.5 * mu0Ms[I] * V *
-                 (m[j] * phi[e] + m[j + 1] * phi[e + 1] + m[j + 2] * phi[e + 2])
-        end
-    else
-        cov = amr.covered[r.level]
-        for c in 1:nzi, b in 1:nyi, a in 1:nxi
-            Ig = _cell_index(first(r.ir) - 1 + a, first(r.jr) - 1 + b,
-                             first(r.kr) - 1 + c, lbx, lby)
-            cov[Ig] && continue
-            I = _cell_index(a + gx, b + gy, c + gz, nbx, nby)
-            j = 3 * I - 2
-            e = 3 * Ig - 2
-            s -= 0.5 * mu0Ms[I] * V *
-                 (m[j] * phi[e] + m[j + 1] * phi[e + 1] + m[j + 2] * phi[e + 2])
-        end
+    for_each_authoritative_cell(amr, r) do _, Ib, Ig
+        j = 3 * Ib - 2
+        e = 3 * Ig - 2
+        s -= 0.5 * mu0Ms[Ib] * V *
+             (m[j] * phi[e] + m[j + 1] * phi[e + 1] + m[j + 2] * phi[e + 2])
     end
     return s
 end
