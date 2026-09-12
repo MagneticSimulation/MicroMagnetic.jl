@@ -17,4 +17,5 @@ include("steady.jl")
 
 # Scenario objects: each wires the layer above into the
 # run_forward!/gradient!/set_design! user protocol.
+include("statematch.jl")   # static-configuration matching
 include("freqmatch.jl")    # eigenvalue adjoint, FMR matching
