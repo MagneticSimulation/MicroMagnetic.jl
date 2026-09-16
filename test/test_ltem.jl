@@ -1,5 +1,5 @@
 using MicroMagnetic
-using Statistics: cor
+using Statistics: cor, mean
 using Test
 
 # ---------------------------------------------------------------------------
@@ -284,6 +284,31 @@ function test_ovf_path()
     @test isapprox(phi_E, 6.53e6 * 20 * 20e-9, rtol=1e-2)
 end
 
+function test_thickness_smooth()
+    # tilted uniform film: the beam path length must be smooth.  The old hard
+    # m≠0 voxel count quantized it to whole voxels (8/9 jumps between adjacent
+    # columns), striping phi_E by sigma*V0*dz per jump.
+    m = zeros(3, 24, 24, 2)
+    m[3, :, :, :] .= 1.0
+    dz = 4e-9
+    ty = 0.4
+    N = MicroMagnetic.rotation_grid_size(24, 24, 2, 0.0, ty, 0.0)
+    ind_r = MicroMagnetic._rotate_with_axis(
+        MicroMagnetic.pad_array(MicroMagnetic._material_indicator(m), (N, N, N)),
+        0.0, 0.0, 0.0, 0.0, ty, 0.0)
+    th = dz .* MicroMagnetic.project3d(ind_r)
+
+    # interior: sub-voxel agreement with the analytic path length t/cos(tilt)
+    core = th[(N ÷ 2 - 6):(N ÷ 2 + 6), (N ÷ 2 - 6):(N ÷ 2 + 6)]
+    @test maximum(abs.(core .- (2dz / cos(ty)))) < 0.15dz
+
+    # no column-to-column staircase in the footprint interior
+    # (hard count: jumps of dz; the footprint edges themselves ramp to zero)
+    band = th[(N ÷ 2 - 8):(N ÷ 2 + 8), :]
+    colmean = vec(mean(band; dims=2))
+    @test maximum(abs.(diff(colmean))) < 0.1dz
+end
+
 @testset "tools/warp" begin
     test_warp2d()
 end
@@ -311,6 +336,7 @@ end
 
 @testset "tools/LTEM" begin
     test_ltem()
+    test_thickness_smooth()
 end
 
 @testset "tools/ovf path" begin

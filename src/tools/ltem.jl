@@ -126,6 +126,14 @@ function _projected_thickness(m::AbstractArray{T,4}, dz::Real) where {T}
     return dz .* dropdims(sum(s .> 1e-12; dims=3); dims=3)
 end
 
+# 0/1 material indicator on the voxel grid (vacuum = 0).  After the bilinear
+# rotation the interpolated fractional values at the rotated faces encode the
+# sub-voxel position of the surface; a hard m≠0 voxel count loses that and
+# quantizes the beam path through tilted slabs to whole voxels.
+function _material_indicator(m::AbstractArray{T,4}) where {T}
+    return Float64.(dropdims(maximum(abs.(m); dims=1); dims=1) .> 1e-12)
+end
+
 # beam-integrated in-plane magnetization (A) of a possibly rotated volume;
 # the mu0 factor belongs to the phase kernel, not to this projection
 function _induction_integral(m::AbstractArray{T,4}, Ms::Real, dz::Real) where {T}
@@ -282,8 +290,10 @@ end
 
 Simulate a Lorentz TEM image: tilt the sample (`tx/ty/tz` in rad, see
 `compute_magnetic_phase`), compute the magnetic phase, add the electric
-(mean inner potential) phase over the projected material footprint, and
-propagate with the Fresnel defocus transfer function
+(mean inner potential) phase proportional to the beam path length through
+the material — integrated from a smooth 0/1 indicator, so tilted samples
+do not pick up whole-voxel staircase noise — and propagate with the
+Fresnel defocus transfer function
 
     T(f) = exp(-i π λ df |f|²),   E(f) = exp(-(π α df |f|)²)
 
@@ -305,12 +315,19 @@ function LTEM(m::AbstractArray{<:Real,4}; V::Real=300, Ms::Real=1e5, V0::Real=-2
     N = N > 0 ? N : _rotation_N(nx, ny, nz, bx, by, bz, tx, ty, tz)
 
     if iszero(bx + by + bz + tx + ty + tz)
-        tbx, tby = _induction_integral(m, Ms, dz)
+        tbx, tby = _induction_integral(m, Ms, dz)           # fast path, no rotation
         thickness = _projected_thickness(m, dz)
     else
         mr = _rotate_with_axis(vector_padding(m, N), bx, by, bz, tx, ty, tz)
         tbx, tby = _induction_integral(mr, Ms, dz)
-        thickness = _projected_thickness(mr, dz)
+        # beam path length through the rotated material: integrate the
+        # interpolated indicator instead of counting m≠0 voxels.  A hard
+        # count jumps by whole voxels between adjacent columns of a tilted
+        # slab, and the resulting phi_E steps of sigma*V0*dz diffract into
+        # vertical stripes in the Fresnel image.
+        ind_r = _rotate_with_axis(pad_array(_material_indicator(m), (N, N, N)),
+                                  bx, by, bz, tx, ty, tz)
+        thickness = dz .* project3d(ind_r)
     end
 
     phi_M = magnetic_phase_fft(tbx, tby, dx, dy; Nout=N)
