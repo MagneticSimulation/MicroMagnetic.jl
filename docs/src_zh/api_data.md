@@ -42,6 +42,8 @@ gui
 
 ```@docs
 compute_magnetic_phase
+compute_phase
+defocus_image
 LTEM
 MicroMagnetic.magnetic_phase_fft
 MicroMagnetic.rotate3d
