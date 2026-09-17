@@ -284,6 +284,19 @@ function test_ovf_path()
     @test isapprox(phi_E, 6.53e6 * 20 * 20e-9, rtol=1e-2)
 end
 
+function test_phase_image_split()
+    # compute_phase + defocus_image reproduce LTEM exactly, and the phase is
+    # df-independent (a defocus series must not re-tilt/re-project per image)
+    m = vortex_m(16, 16, 4)
+    phi_m1, img1 = LTEM(m; Ms=8e5, dx=4e-9, dy=4e-9, dz=4e-9, df=200, V0=20, ty=0.2)
+    phi_m2, phi = compute_phase(m; Ms=8e5, dx=4e-9, dy=4e-9, dz=4e-9, V0=20, ty=0.2)
+    @test phi_m1 == phi_m2
+    img2 = defocus_image(phi; V=300, df=200, dx=4e-9, dy=4e-9)
+    @test img1 == img2
+    img3 = defocus_image(phi; V=300, df=-200, dx=4e-9, dy=4e-9)
+    @test maximum(abs.(img3 .- img2)) > 1e-3          # opposite df: different image
+end
+
 function test_thickness_smooth()
     # tilted uniform film: the beam path length must be smooth.  The old hard
     # m≠0 voxel count quantized it to whole voxels (8/9 jumps between adjacent
@@ -336,6 +349,7 @@ end
 
 @testset "tools/LTEM" begin
     test_ltem()
+    test_phase_image_split()
     test_thickness_smooth()
 end
 

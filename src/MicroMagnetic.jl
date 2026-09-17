@@ -237,7 +237,7 @@ function plot_hysteresis end
 function ovf2movie end
 
 export ovf2png, plot_m, plot_ts, plot_hysteresis, ovf2movie
-export compute_magnetic_phase, LTEM
+export compute_magnetic_phase, compute_phase, defocus_image, LTEM
 
 include("server.jl")
 include("const.jl")

@@ -279,36 +279,36 @@ function compute_electric_phase(V::Real, V0::Real, Lz::Real, beta::Real=0.0)
 end
 
 # ---------------------------------------------------------------------------
-# Full LTEM imaging (phase + Fresnel defocus contrast)
+# Full LTEM imaging: the phase (df-independent) and the Fresnel defocus
+# image (df-dependent) are separate steps, so a defocus series computes the
+# (expensive) tilt + projection + phase once and only re-propagates per df.
 # ---------------------------------------------------------------------------
 
 """
-    LTEM(m; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, tx=0, ty=0, tz=0,
-         axis=:z, N=-1, dx=1, dy=1, dz=1)
-    LTEM(ovf::OVF2; ...)
-    LTEM(fname::String; ...)
+    compute_phase(m; V=300, Ms=1e5, V0=-26, tx=0, ty=0, tz=0, axis=:z, N=-1,
+                  dx=1, dy=1, dz=1)
+    compute_phase(ovf::OVF2; ...)
+    compute_phase(fname::AbstractString; ...)
 
-Simulate a Lorentz TEM image: tilt the sample (`tx/ty/tz` in rad, see
-`compute_magnetic_phase`), compute the magnetic phase, add the electric
-(mean inner potential) phase proportional to the beam path length through
-the material — integrated from a smooth 0/1 indicator, so tilted samples
-do not pick up whole-voxel staircase noise — and propagate with the
-Fresnel defocus transfer function
+Total electron phase (rad) for an electron beam along +z: tilt the sample
+(`tx/ty/tz` in rad, see `compute_magnetic_phase`), compute the magnetic
+phase, and add the electric (mean inner potential) phase proportional to the
+beam path length through the material — integrated from a smooth 0/1
+indicator, so tilted samples do not pick up whole-voxel staircase noise.
 
-    T(f) = exp(-i π λ df |f|²),   E(f) = exp(-(π α df |f|)²)
+This is the df-independent part of [`LTEM`](@ref): a defocus series should
+compute the phase once and call [`defocus_image`](@ref) per `df` instead of
+re-tilting and re-projecting the volume for every image.
 
-with `df` the defocus in µm and `alpha` the beam divergence semiangle in rad
-(MALTS, Walton et al. 2013).
-
-Returns `(phi_M, intensity)`: the unwrapped magnetic phase (rad) and the
-normalized defocus image, both `N x N` and centered on the sample.  `V` is
+Returns `(phi_M, phi)`: the magnetic phase alone and the total phase
+(magnetic + electric), both `N x N` rad and centered on the sample.  `V` is
 the accelerating voltage in kV, `V0` the mean inner potential in V, `Ms` the
 magnetization in A/m; `dx, dy, dz` are the voxel sizes in meters (defaults
 of 1 give results in voxel units).
 """
-function LTEM(m::AbstractArray{<:Real,4}; V::Real=300, Ms::Real=1e5, V0::Real=-26,
-              df::Real=1600, alpha::Real=1e-5, tx::Real=0.0, ty::Real=0.0, tz::Real=0.0,
-              axis::Symbol=:z, N::Int=-1, dx::Real=1.0, dy::Real=1.0, dz::Real=1.0)
+function compute_phase(m::AbstractArray{<:Real,4}; V::Real=300, Ms::Real=1e5, V0::Real=-26,
+                       tx::Real=0.0, ty::Real=0.0, tz::Real=0.0,
+                       axis::Symbol=:z, N::Int=-1, dx::Real=1.0, dy::Real=1.0, dz::Real=1.0)
     size(m, 1) == 3 || throw(ArgumentError("m must be shaped (3, nx, ny, nz)"))
     bx, by, bz = _axis_tilts(axis)
     nx, ny, nz = size(m)[2:4]
@@ -335,14 +335,39 @@ function LTEM(m::AbstractArray{<:Real,4}; V::Real=300, Ms::Real=1e5, V0::Real=-2
     # the same N x N grid as the phase
     thickness = pad_array(thickness, (N, N))
     phi_E = interaction_constant(1000 * V) * V0 .* thickness
-    phi = phi_M .+ phi_E
+    return phi_M, phi_M .+ phi_E
+end
 
-    # Fresnel defocus imaging on the same periodic grid as the phase (the
-    # sample is centered on the rotation grid, so the wrap seam carries no
-    # discontinuity for symmetric structures).  An amplitude window here is
-    # counterproductive: the Fresnel kernel does not decay, so the window's
-    # own edge diffraction leaks into the whole image with an amplitude that
-    # does not flip sign between +/- df and masks the phase contrast.
+function compute_phase(ovf::OVF2; kwargs...)
+    m = reshape(ovf.data, (3, ovf.xnodes, ovf.ynodes, ovf.znodes))
+    return compute_phase(m; dx=ovf.xstepsize, dy=ovf.ystepsize, dz=ovf.zstepsize, kwargs...)
+end
+
+compute_phase(fname::AbstractString; kwargs...) = compute_phase(read_ovf(fname); kwargs...)
+
+
+"""
+    defocus_image(phi; V=300, df=1600, alpha=1e-5, dx=1, dy=1)
+
+Fresnel defocus image (normalized intensity, `N x N`) of a phase object with
+total phase `phi` (rad, magnetic + electric, from [`compute_phase`](@ref)).
+Propagates with the transfer function
+
+    T(f) = exp(-i π λ df |f|²),   E(f) = exp(-(π α df |f|)²)
+
+with `df` the defocus in µm, `alpha` the beam divergence semiangle in rad and
+`V` the accelerating voltage in kV; `dx, dy` are the pixel sizes in meters.
+This is the df-dependent part of [`LTEM`](@ref).
+"""
+function defocus_image(phi::AbstractMatrix; V::Real=300, df::Real=1600,
+                       alpha::Real=1e-5, dx::Real=1.0, dy::Real=1.0)
+    N = size(phi, 1)
+    # Imaging on the same periodic grid as the phase (the sample is centered
+    # on the rotation grid, so the wrap seam carries no discontinuity for
+    # symmetric structures).  An amplitude window here is counterproductive:
+    # the Fresnel kernel does not decay, so the window's own edge diffraction
+    # leaks into the whole image with an amplitude that does not flip sign
+    # between +/- df and masks the phase contrast.
     dfm = df * 1e-6
     kx = fftfreq(N; d=dx)
     ky = fftfreq(N; d=dy)
@@ -350,9 +375,34 @@ function LTEM(m::AbstractArray{<:Real,4}; V::Real=300, Ms::Real=1e5, V0::Real=-2
     k2 = [kx[i]^2 + ky[j]^2 for i in 1:N, j in 1:N]
     T = exp.(-1im .* pi .* lambda .* dfm .* k2)
     E = exp.(-(pi .* alpha .* dfm)^2 .* k2)
+    return abs2.(ifft(fft(exp.(1im .* phi)) .* E .* T))
+end
 
-    img = abs2.(ifft(fft(exp.(1im .* phi)) .* E .* T))
-    return phi_M, img
+
+"""
+    LTEM(m; V=300, Ms=1e5, V0=-26, df=1600, alpha=1e-5, tx=0, ty=0, tz=0,
+         axis=:z, N=-1, dx=1, dy=1, dz=1)
+    LTEM(ovf::OVF2; ...)
+    LTEM(fname::String; ...)
+
+Simulate a Lorentz TEM image at defocus `df` (µm; MALTS, Walton et al. 2013):
+a convenience wrapper that computes the total phase once with
+[`compute_phase`](@ref) (magnetic + electric, see there for the physics) and
+propagates it with [`defocus_image`](@ref).  For defocus series call the two
+steps directly so the expensive tilt + projection runs only once.
+
+Returns `(phi_M, intensity)`: the unwrapped magnetic phase (rad) and the
+normalized defocus image, both `N x N` and centered on the sample.  `V` is
+the accelerating voltage in kV, `V0` the mean inner potential in V, `Ms` the
+magnetization in A/m; `dx, dy, dz` are the voxel sizes in meters (defaults
+of 1 give results in voxel units).
+"""
+function LTEM(m::AbstractArray{<:Real,4}; V::Real=300, Ms::Real=1e5, V0::Real=-26,
+              df::Real=1600, alpha::Real=1e-5, tx::Real=0.0, ty::Real=0.0, tz::Real=0.0,
+              axis::Symbol=:z, N::Int=-1, dx::Real=1.0, dy::Real=1.0, dz::Real=1.0)
+    phi_M, phi = compute_phase(m; V=V, Ms=Ms, V0=V0, tx=tx, ty=ty, tz=tz,
+                               axis=axis, N=N, dx=dx, dy=dy, dz=dz)
+    return phi_M, defocus_image(phi; V=V, df=df, alpha=alpha, dx=dx, dy=dy)
 end
 
 function LTEM(ovf::OVF2; kwargs...)
