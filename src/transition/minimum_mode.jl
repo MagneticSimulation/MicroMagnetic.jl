@@ -409,12 +409,7 @@ function _relax_transition_state(backend::_TransitionBackend, spin;
     _set_transition_spin!(sim, spin)
     maximum_trajectory_frames >= 2 ||
         error("maximum_trajectory_frames must be at least 2.")
-    # Same SD pseudo-time mapping as relax(::AbstractSim): tau carries 1/field
-    # units, so the LLG-comparable dmdt scale follows the sim's field convention
-    # (_sd_gamma) — 2.21e5 for A/m, 2.21e5/mu_0 for atomistic Tesla fields.
-    time_factor = using_time_factor ? _sd_gamma(sim) / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1.0
-    dm = create_zeros(3 * sim.n_total)
     driver = sim.driver
     llg_driver = driver isa LLG
     stride = max(1, cld(maximum_steps, maximum_trajectory_frames - 1))
@@ -426,15 +421,11 @@ function _relax_transition_state(backend::_TransitionBackend, spin;
     for step in 1:maximum_steps
         run_step(sim, driver)
         if llg_driver && driver.integrator isa AdaptiveRK
-            copyto!(sim.prespin, sim.spin)
             copyto!(sim.spin, view(driver.integrator.y_current,
                                    1:(3 * sim.n_total)))
         end
-        step_size = llg_driver ? driver.integrator.step :
-                    driver.tau / time_factor
-        step_size > 0 || error("Relaxation step size must be positive.")
-        compute_dm!(dm, sim.prespin, sim.spin, sim.n_total)
-        maximum_dmdt = Float64(maximum(dm) / step_size / dmdt_factor)
+        maximum_dmdt = Float64(max_dmdt_reading(sim, driver, using_time_factor) /
+                               dmdt_factor)
         converged = maximum_dmdt < stopping_dmdt
         if step % stride == 0 || converged || step == maximum_steps
             push!(frames, Float64.(Array(sim.spin)))

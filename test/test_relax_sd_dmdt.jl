@@ -6,24 +6,22 @@ if !isdefined(Main, :test_functions)
     include("test_utils.jl")
 end
 
-# The SD driver reports dmdt in pseudo-time: its step tau carries units of
-# 1/field, and relax() maps it onto the LLG scale of the sim's field
-# convention (_sd_gamma): A/m fields -> gamma0/2, Tesla fields -> gamma0/(2*mu_0).
-# These tests pin the calibration for both conventions on a single-spin problem
-# where |g| = |H_zeeman| exactly (m starts perpendicular to the field, and the
+# The SD driver exposes the raw spherical-gradient norm max|gk| of the state it
+# just stepped from (driver.max_gk, pinned spins masked); relax scales it with
+# the gyromagnetic ratio of the sim's field convention (_sd_gamma: A/m fields ->
+# gamma0/2, Tesla fields -> gamma0/(2*mu_0)) into an LLG-comparable dmdt. These
+# tests pin the calibration for both conventions on a single-spin problem where
+# |gk| = |H_zeeman| exactly (m starts perpendicular to the field, and the
 # anisotropy/exchange fields vanish or stay parallel to m).
 
-# one SD step's relax-style dmdt reading, in 1/s
+# one SD step's relax-style dmdt reading, in 1/s of the sim's convention
 function sd_first_step_dmdt(sim)
-    m_pre = Array(sim.spin)
     MicroMagnetic.run_step(sim, sim.driver)
-    dm = Array(sim.spin) - m_pre
-    max_dm = maximum(sqrt.(dm[1:3:end] .^ 2 .+ dm[2:3:end] .^ 2 .+ dm[3:3:end] .^ 2))
-    return max_dm * MicroMagnetic._sd_gamma(sim) / (2 * sim.driver.tau)
+    return sim.driver.max_gk * MicroMagnetic._sd_gamma(sim) / 2
 end
 
 function test_sd_dmdt_micromagnetic()
-    # m = (1, 0.2, 0) has mz = 0, so anisotropy contributes nothing and |g| = H_z
+    # m = (1, 0.2, 0) has mz = 0, so anisotropy contributes nothing and |gk| = H_z
     mesh = FDMesh(; nx=4, ny=4, nz=1, dx=5e-9, dy=5e-9, dz=5e-9)
     sim = Sim(mesh; driver="SD", name="sd_dmdt_micro", save_data=false, quiet=true)
     set_Ms(sim, 4.2e5)
@@ -52,8 +50,8 @@ function test_sd_dmdt_atomistic()
     @test isapprox(dmdt, expected; rtol=0.05)
 
     # end to end: a 0.05 deg/ns threshold must not trigger during the large
-    # rotations (the pre-calibration reading was ~1e-3 deg/ns at step 1), and
-    # the criterion run must land on the unconstrained relaxation's state
+    # rotations, and the criterion run must land on the unconstrained
+    # relaxation's state
     function mk(name)
         s = Sim(mesh; driver="SD", name=name, save_data=false, quiet=true)
         set_mu_s(s, 2 * mu_B)

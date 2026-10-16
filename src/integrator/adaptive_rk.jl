@@ -2,12 +2,16 @@
 
 abstract type AbstractRKMethod end
 
+# `endpoint_stage` is the Butcher stage evaluated at c = 1, i.e. at
+# (t + h, y_endpoint): its buffer holds the analytic dm/dt of the endpoint state
+# after every step, which is what the relax convergence monitor reports.
 struct DOPRI54Method <: AbstractRKMethod
     name::String
     stages::Int
     order_main::Int
     order_embedded::Int
     FSAL::Bool
+    endpoint_stage::Int
 end
 
 struct BS23Method <: AbstractRKMethod
@@ -16,6 +20,7 @@ struct BS23Method <: AbstractRKMethod
     order_main::Int
     order_embedded::Int
     FSAL::Bool
+    endpoint_stage::Int
 end
 
 struct CashKarp54Method <: AbstractRKMethod
@@ -24,6 +29,7 @@ struct CashKarp54Method <: AbstractRKMethod
     order_main::Int
     order_embedded::Int
     FSAL::Bool
+    endpoint_stage::Int
 end
 
 struct Fehlberg54Method <: AbstractRKMethod
@@ -32,6 +38,7 @@ struct Fehlberg54Method <: AbstractRKMethod
     order_main::Int
     order_embedded::Int
     FSAL::Bool
+    endpoint_stage::Int
 end
 
 mutable struct AdaptiveRK{T<:AbstractFloat,A<:AbstractArray{T}} <: Integrator
@@ -52,6 +59,8 @@ mutable struct AdaptiveRK{T<:AbstractFloat,A<:AbstractArray{T}} <: Integrator
     succeed::Bool
     step_function::Function  # Method-specific step function
     y_temp::A # Pre-allocated temporary storage for RK stages
+    dmdt_buf::A # Per-cell |dm/dt| scratch for the convergence monitor
+    max_dmdt::Float64 # max |dm/dt| of the last accepted step (rad/s, sim convention)
 end
 
 function AdaptiveRK(::Type{T}, n_total::Int64, method::M, rhs_fun,
@@ -63,6 +72,7 @@ function AdaptiveRK(::Type{T}, n_total::Int64, method::M, rhs_fun,
     y_next = create_zeros(T, 3 * n_total)
     ks = [create_zeros(T, 3 * n_total) for _ in 1:stages]
     y_temp = create_zeros(T, 3 * n_total)  # Pre-allocate temporary storage
+    dmdt_buf = create_zeros(T, n_total)
 
     facmax = 5.0
     facmin = 0.2
@@ -82,7 +92,7 @@ function AdaptiveRK(::Type{T}, n_total::Int64, method::M, rhs_fun,
     end
 
     return AdaptiveRK(method, tol, 0.0, 0.0, 0.0, facmax, facmin, safety, 0, 0, y_current,
-                      y_next, ks, rhs_fun, false, step_function, y_temp)
+                      y_next, ks, rhs_fun, false, step_function, y_temp, dmdt_buf, 0.0)
 end
 
 # Generic step function (now delegates to method-specific implementation)
@@ -135,6 +145,16 @@ function advance_step(sim::AbstractSim, integrator::AdaptiveRK)
             factor = integrator.safety * (1.0 / max_error)^(1/(order+1))
             integrator.step_next = integrator.step *
                                    min(integrator.facmax, max(integrator.facmin, factor))
+
+            # Convergence monitor: the endpoint stage was evaluated at
+            # (t + h, y_next), so its buffer holds the analytic dm/dt of the new
+            # state — no extra rhs evaluation. For InertialLLG the state is
+            # y = [m, v] and the first 3N entries of the stage are dm/dt = v;
+            # cells beyond sim.n_total are zeroed by the norm kernel.
+            norm! = dmdt_norm_kernel!(get_backend(integrator.dmdt_buf), groupsize[])
+            norm!(integrator.dmdt_buf, integrator.ks[integrator.method.endpoint_stage],
+                  sim.n_total; ndrange=length(integrator.dmdt_buf))
+            integrator.max_dmdt = maximum(integrator.dmdt_buf)
             break
         else
             # Reduce step size and retry
@@ -247,22 +267,22 @@ end
 
 # Constructors for specific methods
 function DormandPrince(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) where {T<:AbstractFloat}
-    method = DOPRI54Method("DOPRI54", 7, 5, 4, false)
+    method = DOPRI54Method("DOPRI54", 7, 5, 4, false, 7)
     return AdaptiveRK(T, n_total, method, rhs_fun, tol)
 end
 
 function BogackiShampine23(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) where {T<:AbstractFloat}
-    method = BS23Method("BS23", 4, 3, 2, true)
+    method = BS23Method("BS23", 4, 3, 2, true, 4)
     return AdaptiveRK(T, n_total, method, rhs_fun, tol)
 end
 
 function CashKarp54(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) where {T<:AbstractFloat}
-    method = CashKarp54Method("CashKarp54", 6, 5, 4, false)
+    method = CashKarp54Method("CashKarp54", 6, 5, 4, false, 5)
     return AdaptiveRK(T, n_total, method, rhs_fun, tol)
 end
 
 function Fehlberg54(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) where {T<:AbstractFloat}
-    method = Fehlberg54Method("Fehlberg54", 6, 5, 4, false)
+    method = Fehlberg54Method("Fehlberg54", 6, 5, 4, false, 5)
     return AdaptiveRK(T, n_total, method, rhs_fun, tol)
 end
 

@@ -61,9 +61,10 @@ semantics, so `driver.gamma = 2.21e5` keeps working in Float32 sessions.
 Cayley-transformed integrators preserving `|m| = 1` (`RK_Cayley`,
 `DOPRI5_Cayley`), Heun and GPSM. Two contracts worth knowing:
 
-- integrator state lives inside the driver; `relax` currently maintains its own
-  `prespin` copies around the integrator (a known wart, see
-  [Performance](performance.md));
+- integrator state lives inside the driver; `relax` reads the driver-reported
+  `max_dmdt` (endpoint-stage RHS for integrators, spherical-gradient norm for
+  `SD`) instead of differencing spins, so no driver-owned state leaks into
+  `Sim`;
 - every RHS evaluation is the full effective-field pipeline, so the RHS count
   per step is the primary cost lever (a FSAL upgrade for DOPRI54 — 7 → 6
   evaluations — is on the roadmap).

@@ -230,7 +230,6 @@ function read_ovf(sim::AbstractSim, fname::String)
     if n_total != sim.n_total
         error("The ovf does not match the sim.mesh")
     end
-    copyto!(sim.prespin, ovf.data)
     copyto!(sim.spin, ovf.data)
 end
 

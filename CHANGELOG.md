@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- `relax` (and the NEB / minimum-mode relaxations) no longer difference spins
+  through `sim.prespin`: every driver now reports the analytic rate of the state
+  it just produced — integrator-based drivers the endpoint-stage LLG right-hand
+  side (the c = 1 Butcher stage, already computed each step; InertialLLG reads
+  its dm/dt = v block), `SD` the spherical-gradient norm `max|gk|` with pinned
+  spins masked, scaled in `relax` by the sim's gyromagnetic ratio (`_sd_gamma`)
+  into the LLG-comparable deg/ns reading. `sim.prespin` is removed from
+  `Sim`/`AtomisticSim`/`NEB` (user code touching it must switch to
+  `sim.spin`); `using_time_factor=false` (unitless models) now leaves the SD
+  reading as the raw gradient norm, matching the old `|Δm|/tau` semantics.
+  Convergence points shift only marginally: near convergence the analytic and
+  differenced readings coincide, but the analytic one no longer suffers the
+  geometric compression of large-rotation steps (difference = analytic x
+  cos(theta/2)), which previously allowed premature SD stopping
 - collapsed the uniform/spatial struct pairs into single types, following the Fill
   parameter representation (the types are unexported, so user code is unaffected):
   the DMI type (renamed from `BulkDMI`, which is no longer bulk-specific) stores

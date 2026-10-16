@@ -250,6 +250,25 @@ function compute_dm!(dm::AbstractArray{T,1}, m1::AbstractArray{T,1}, m2::Abstrac
     return nothing
 end
 
+# Per-cell norm of a dm/dt vector field, used as the relax convergence monitor.
+# Cells beyond n_cells are zeroed so the same kernel serves the doubled
+# InertialLLG buffers (first 3N entries are the m-block, dm/dt = v). Pinned
+# spins need no handling here: the rhs kernels already zero their dm/dt.
+@kernel function dmdt_norm_kernel!(buf, @Const(v), n_cells)
+    I = @index(Global)
+    @inbounds begin
+        if I <= n_cells
+            j = 3 * I - 2
+            vx = v[j]
+            vy = v[j + 1]
+            vz = v[j + 2]
+            buf[I] = sqrt(vx * vx + vy * vy + vz * vz)
+        else
+            buf[I] = 0
+        end
+    end
+end
+
 function omega_to_spin(omega::AbstractArray{T,1}, spin::AbstractArray{T,1},
                        spin_next::AbstractArray{T,1}, N::Int64) where {T<:AbstractFloat}
     #compute Cay(Omega).m where Cay(Omega) = (I - 1/2 Omega)^-1 (I + 1/2 Omega)

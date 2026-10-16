@@ -8,7 +8,6 @@ mutable struct AtomisticSim{T<:AbstractFloat} <: AbstractSim
     driver::Driver
     saver::DataSaver
     spin::AbstractArray{T,1}
-    prespin::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     mu_s::AbstractArray{T,1}

@@ -50,7 +50,6 @@ cells), interleaved as `[m₁ₓ, m₁ᵧ, m₁_z, m₂ₓ, ...]`:
 
 - `sim.spin` — the magnetization state,
 - `sim.field` — the accumulated effective field,
-- `sim.prespin` — scratch copy used by `relax`,
 - per-interaction `interaction.field` buffers.
 
 Cell `(i, j, k)` maps to the flat index `id = (k-1)*nx*ny + (j-1)*nx + i`, so the

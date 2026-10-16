@@ -9,6 +9,8 @@ mutable struct SD{T<:AbstractFloat} <: Driver
     max_tau::T
     min_tau::T
     steps::Int64
+    m_pre::AbstractArray{T,1}  # previous spin, needed by the BB step-size rule
+    max_gk::T                  # max spherical-gradient norm |gk| of the last step
 end
 
 # Landau-Lifshitz-Gilbert driver. The damping `alpha` is an n_total-length array,
@@ -92,8 +94,9 @@ function create_driver(::Type{T}, driver::String, integrator::String,
         ss = create_zeros(T, n_total)
         sf = create_zeros(T, n_total)
         ff = create_zeros(T, n_total)
+        m_pre = create_zeros(T, 3 * n_total)
         max_tau = 1.0
-        return SD(gk, ss, sf, ff, T(0.0), T(max_tau), T(1e-10), 0)
+        return SD(gk, ss, sf, ff, T(0.0), T(max_tau), T(1e-10), 0, m_pre, T(0.0))
     end
 
     supported_integrators = ["Heun", "RungeKutta", "RungeKuttaCayley", "DormandPrince",

@@ -18,6 +18,9 @@ mutable struct GPSM{T<:AbstractFloat} <: Integrator
     gn2::AbstractArray{T,1}
     gn3::AbstractArray{T,1}
     rhs::AbstractArray{T,1}
+    dm_dt::AbstractArray{T,1}       # scratch for the convergence monitor
+    dmdt_buf::AbstractArray{T,1}    # per-cell |dm/dt| scratch
+    max_dmdt::Float64               # max |dm/dt| of the last step (rad/s)
     exch::Union{Nothing, MicroEnergy}
     GPSM{T}() where {T<:AbstractFloat} = new()
 end
@@ -32,6 +35,9 @@ function GPSM(::Type{T}, n_total::Int64, step::Float64) where {T<:AbstractFloat}
     gpsm.gn2 = create_zeros(T, n_total)
     gpsm.gn3 = create_zeros(T, n_total)
     gpsm.rhs = create_zeros(T, n_total)
+    gpsm.dm_dt = create_zeros(T, 3 * n_total)
+    gpsm.dmdt_buf = create_zeros(T, n_total)
+    gpsm.max_dmdt = 0.0
     return gpsm
 end
 
@@ -90,8 +96,6 @@ function advance_step(sim::AbstractSim, integrator::GPSM)
         initialize!(integrator, sim)
     end
 
-    sim.prespin .= sim.spin
-
     alpha = first(as_param_array(sim.driver.alpha, sim.n_total))
     gamma_G = sim.driver.gamma
     dt = integrator.step * gamma_G / (1 + alpha * alpha)
@@ -144,10 +148,22 @@ function advance_step(sim::AbstractSim, integrator::GPSM)
     g3 .= integrator.G \ rhs
     
     normalise(sim.spin, sim.n_total)
-    
+
     integrator.nsteps += 1
     integrator.t = integrator.nsteps * integrator.step
-    
+
+    # Convergence monitor: full LLG RHS at the new state. The field was
+    # evaluated at the pre-normalization m* state (an O(dt^2) offset), which is
+    # plenty for a stopping criterion. Pinned spins are zeroed by the kernel.
+    driver = sim.driver
+    T = eltype(integrator.dm_dt)
+    kernel! = llg_rhs_kernel!(get_backend(sim.spin), groupsize[])
+    kernel!(integrator.dm_dt, sim.spin, sim.field, sim.pins, driver.alpha,
+            T(driver.gamma), driver.precession; ndrange=sim.n_total)
+    norm! = dmdt_norm_kernel!(get_backend(integrator.dmdt_buf), groupsize[])
+    norm!(integrator.dmdt_buf, integrator.dm_dt, sim.n_total; ndrange=sim.n_total)
+    integrator.max_dmdt = maximum(integrator.dmdt_buf)
+
     return nothing
 end
 

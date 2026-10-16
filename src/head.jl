@@ -116,7 +116,6 @@ mutable struct MicroSim{T<:AbstractFloat} <: AbstractSim
     driver::Driver
     saver::DataSaver
     spin::AbstractArray{T,1}
-    prespin::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     mu0_Ms::AbstractArray{T,1}
@@ -142,7 +141,6 @@ mutable struct MicroSimFE{T<:AbstractFloat} <: AbstractSim
     driver::Driver
     saver::DataSaver
     spin::AbstractArray{T,1}
-    prespin::AbstractArray{T,1}
     field::AbstractArray{T,1}
     energy::AbstractArray{T,1}
     mu0_Ms::Array{T,1}

@@ -82,7 +82,6 @@ function Sim(mesh::Mesh; driver="LLG", name="dyn", integrator="DormandPrince",
 
     sim.n_total = n_total
     sim.spin = create_zeros(3 * n_total)
-    sim.prespin = create_zeros(3 * n_total)
     sim.field = create_zeros(3 * n_total)
     sim.energy = create_zeros(n_total)
     sim.pins = Fill(false, n_total)
@@ -299,10 +298,14 @@ function init_m0(sim::AbstractSim, m0::TupleOrArrayOrFunction; norm=true)
     end
 
     copyto!(sim.spin, spin)
-    copyto!(sim.prespin, sim.spin)
 
-    if isdefined(sim.driver, :integrator) && sim.driver.integrator isa AdaptiveRK
-        set_initial_condition!(sim, sim.driver.integrator)
+    if isdefined(sim.driver, :integrator)
+        integ = sim.driver.integrator
+        if integ isa AdaptiveRK
+            set_initial_condition!(sim, integ)
+        elseif hasproperty(integ, :m_pre)
+            copyto!(integ.m_pre, sim.spin)  # Cayley anchor: the spin the omega map acts on
+        end
     end
 
     send_visualization_data(spin=sim.spin)
@@ -383,6 +386,16 @@ Tesla fields (`2.21e5/mu_0` rad/(T·s), see docs/src/units.md).
 """
 _sd_gamma(sim::AbstractSim) = isa(sim, AtomisticSim) ? 2.21e5 / mu_0 : 2.21e5
 
+# The convergence reading after one run_step, in rad/s of the sim's own unit
+# convention. Every integrator-based driver reports the analytic dm/dt of the
+# state it just produced (endpoint-stage RHS); SD reports the raw spherical
+# gradient norm max|gk|, which relax scales with gamma/2 into the LLG-comparable
+# rate — or leaves untouched for unitless models (using_time_factor=false).
+max_dmdt_reading(sim::AbstractSim, driver::SD, using_time_factor::Bool) =
+    (using_time_factor ? _sd_gamma(sim) / 2 : 1.0) * driver.max_gk
+max_dmdt_reading(sim::AbstractSim, driver::Driver, using_time_factor::Bool) =
+    driver.integrator.max_dmdt
+
 """
     relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=0,
            save_m_every=0, using_time_factor=true, output="ovf", update_time=1.0)
@@ -392,10 +405,10 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
 **Arguments:**
 
 - `max_steps::Int`: Maximum number of steps to run the simulation. Default is `10000`.
-- `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, the pseudo-time step is mapped with the gyromagnetic ratio of the sim's unit convention (`2.21e5` for micromagnetic A/m fields, `2.21e5/mu_0` for atomistic Tesla fields) so that `dmdt` is comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
+- `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers, in deg/ns (typical values `0.01` to `1`). Every driver reports the analytic rate of the state it just produced — LLG-family drivers the endpoint-stage LLG right-hand side, `SD` the spherical-gradient norm `max|gk|` scaled by the gyromagnetic ratio of the sim's unit convention (`2.21e5` for micromagnetic A/m fields, `2.21e5/mu_0` for atomistic Tesla fields) so both land on the same scale.
 - `save_data_every::Int`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving while `save_data_every=0` saves data only at the end of the relaxation (also when `max_steps` is reached without convergence).
 - `save_m_every::Int`: Interval for saving magnetization data. A negative value disables magnetization saving while `save_m_every=0` saves magnetization only at the end of the relaxation (also when `max_steps` is reached without convergence).
-- `using_time_factor::Bool`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
+- `using_time_factor::Bool`: Set to `false` for unitless models: the deg/ns conversion is dropped and the `SD` reading stays the raw gradient norm. Default is `true`.
 - `update_time::Float64`: Time interval (in seconds) for updating visualization data. Default is `1.0`.
 
 **Examples:**
@@ -418,21 +431,12 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         output = "vtu"
     end
 
-    # SD reports dmdt in pseudo-time: its step tau carries units of 1/field, so
-    # mapping tau to an equivalent physical time uses the gamma of THIS sim's
-    # unit convention (see _sd_gamma). Either way SD's dmdt lands on the same
-    # scale as the LLG driver (exact at alpha=1, gamma0/2 vs gamma0*alpha/(1+alpha^2)).
-    # Unitless atomistic models opt out of the mapping with using_time_factor=false.
-    time_factor = using_time_factor ? _sd_gamma(sim) / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
 
     output_folder = @sprintf("%s_%s", sim.name, nameof(typeof(sim.driver)))
     if save_m_every >= 0
         mkpath(output_folder)
     end
-
-    N_spins = sim.n_total
-    dm = create_zeros(3 * N_spins)
 
     last_update_time = time()
 
@@ -448,15 +452,12 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         last_step = i
 
         if llg_driver && isa(sim.driver.integrator, AdaptiveRK)
-            copyto!(sim.prespin, sim.spin)
             y = view(sim.driver.integrator.y_current, 1:(3 * sim.n_total))
             copyto!(sim.spin, y)
         end
 
-        step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
-
-        compute_dm!(dm, sim.prespin, sim.spin, N_spins)
-        max_dmdt = maximum(dm) / step_size
+        # every driver exposes the analytic rate of the state it just produced
+        max_dmdt = max_dmdt_reading(sim, driver, using_time_factor)
 
         stop_flag = max_dmdt < stopping_dmdt * dmdt_factor
 
@@ -464,10 +465,10 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         if llg_driver
             Verbose[] &&
                 @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e",
-                               i, step_size, t, max_dmdt / dmdt_factor)
+                               i, driver.integrator.step, t, max_dmdt / dmdt_factor)
         else
             Verbose[] &&
-                @info @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i, step_size,
+                @info @sprintf("step =%5d  tau=%10.6e  max_dmdt=%10.6e", i, driver.tau,
                                max_dmdt / dmdt_factor)
         end
 
@@ -528,7 +529,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayle
         return
     elseif t_end == integrator.t
         integrator.omega_t[:] = integrator.omega[:]
-        omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
+        omega_to_spin(integrator.omega_t, integrator.m_pre, sim.spin, sim.n_total)
         sim.saver.t = t_end
         sim.saver.nsteps += 1
         if save_data
@@ -540,7 +541,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayle
            integrator.step > 0 &&
            t_end < integrator.t
         interpolation_dopri5(integrator, t_end)
-        omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
+        omega_to_spin(integrator.omega_t, integrator.m_pre, sim.spin, sim.n_total)
         sim.saver.t = t_end
         sim.saver.nsteps += 1
         if save_data
@@ -565,7 +566,7 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::IntegratorCayle
     end
 
     interpolation_dopri5(integrator, t_end)
-    omega_to_spin(integrator.omega_t, sim.prespin, sim.spin, sim.n_total)
+    omega_to_spin(integrator.omega_t, integrator.m_pre, sim.spin, sim.n_total)
     sim.saver.t = t_end
     if save_data
         compute_system_energy(sim, sim.spin, t_end)
@@ -591,7 +592,6 @@ function run_until(sim::AbstractSim, t_end::Float64, integrator::Integrator,
         return
     end
 
-    copyto!(sim.prespin, sim.spin)
     integrate_to_time(sim, integrator, t_end)
     y = view(integrator.y_current, 1:(3 * sim.n_total))
     copyto!(sim.spin, y)

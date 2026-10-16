@@ -25,16 +25,14 @@ function set_Ms(sim::MicroSimFE, Ms::NumberOrArrayOrFunction; region_id=-1)
 end
 
 function init_m0(sim::MicroSimFE, m0::TupleOrArrayOrFunction; norm=true)
-    init_vector!(sim.prespin, sim.mesh, m0)
+    init_vector!(sim.spin, sim.mesh, m0)
     if norm
-        normalise(sim.prespin, sim.n_total)
+        normalise(sim.spin, sim.n_total)
     end
 
-    if any(isnan, sim.prespin)
+    if any(isnan, sim.spin)
         error("NaN is given by the input m0!")
     end
-
-    sim.spin[:] .= sim.prespin[:]
     if isdefined(sim.driver, :integrator) && sim.driver.integrator isa AdaptiveRK
         set_initial_condition!(sim, sim.driver.integrator)
     end

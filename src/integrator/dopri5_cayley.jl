@@ -18,6 +18,10 @@ mutable struct DormandPrinceCayley{T<:AbstractFloat} <: IntegratorCayley
     k5::AbstractArray{T,1}
     k6::AbstractArray{T,1}
     k7::AbstractArray{T,1}
+    m_pre::AbstractArray{T,1}       # spin at the start of the current step
+    dm_dt::AbstractArray{T,1}       # scratch for the convergence monitor
+    dmdt_buf::AbstractArray{T,1}    # per-cell |dm/dt| scratch
+    max_dmdt::Float64               # max |dm/dt| of the last accepted step (rad/s)
     rhs_fun::Function
     succeed::Bool
 end
@@ -32,11 +36,15 @@ function DormandPrinceCayley(::Type{T}, n_total::Int64, rhs_fun, tol::Float64) w
     k5 = create_zeros(T, 3 * n_total)
     k6 = create_zeros(T, 3 * n_total)
     k7 = create_zeros(T, 3 * n_total)
+    m_pre = create_zeros(T, 3 * n_total)
+    dm_dt = create_zeros(T, 3 * n_total)
+    dmdt_buf = create_zeros(T, n_total)
     facmax = 5.0
     facmin = 0.2
     safety = 0.824
     return DormandPrinceCayley(tol, 0.0, 0.0, 0.0, facmax, facmin, safety, 0, 0, omega,
-                               dw_dt, k1, k2, k3, k4, k5, k6, k7, rhs_fun, false)
+                               dw_dt, k1, k2, k3, k4, k5, k6, k7, m_pre, dm_dt, dmdt_buf,
+                               0.0, rhs_fun, false)
 end
 
 #https://en.wikipedia.org/wiki/List_of_Runge%E2%80%93Kutta_methods#Dormand%E2%80%93Prince
@@ -105,11 +113,13 @@ end
 
 function advance_step(sim::AbstractSim, integrator::IntegratorCayley)
     if integrator.succeed
-        omega_to_spin(integrator.omega, sim.prespin, sim.spin, sim.n_total)
+        omega_to_spin(integrator.omega, integrator.m_pre, sim.spin, sim.n_total)
         if integrator.nsteps % 10 == 0
             normalise(sim.spin, sim.n_total)
         end
-        sim.prespin .= sim.spin
+        integrator.m_pre .= sim.spin
+    elseif iszero(integrator.nsteps)
+        integrator.m_pre .= sim.spin  # seed the anchor before the very first step
     end
 
     t = integrator.t
@@ -138,7 +148,19 @@ function advance_step(sim::AbstractSim, integrator::IntegratorCayley)
                               min(integrator.facmax, max(integrator.facmin, factor))
         end
     end
-    omega_to_spin(integrator.omega, sim.prespin, sim.spin, sim.n_total)
+    omega_to_spin(integrator.omega, integrator.m_pre, sim.spin, sim.n_total)
+
+    # Convergence monitor: the k7 stage call_back left sim.field evaluated at
+    # the final omega (k7's stage state IS the accepted endpoint), so the full
+    # LLG RHS at the new state comes for free (pinned spins zeroed by the kernel).
+    driver = sim.driver
+    T = eltype(integrator.dm_dt)
+    kernel! = llg_rhs_kernel!(get_backend(sim.spin), groupsize[])
+    kernel!(integrator.dm_dt, sim.spin, sim.field, sim.pins, driver.alpha,
+            T(driver.gamma), driver.precession; ndrange=sim.n_total)
+    norm! = dmdt_norm_kernel!(get_backend(integrator.dmdt_buf), groupsize[])
+    norm!(integrator.dmdt_buf, integrator.dm_dt, sim.n_total; ndrange=sim.n_total)
+    integrator.max_dmdt = maximum(integrator.dmdt_buf)
     return true
 end
 

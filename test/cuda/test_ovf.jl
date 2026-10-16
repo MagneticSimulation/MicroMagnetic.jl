@@ -31,8 +31,6 @@ using Test
             read_ovf(sim, f)
             spin = Array(sim.spin)
             @test isapprox(spin, m, atol=1e-6)
-            spin = Array(sim.prespin)
-            @test isapprox(spin, m, atol=1e-6)
             relax(sim; max_steps=20, save_m_every=-1)
         end
     end

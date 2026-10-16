@@ -81,11 +81,28 @@ function compute_tau(driver::SD, m_pre::AbstractArray{T,1}, m::AbstractArray{T,1
     return nothing
 end
 
+# Per-cell spherical-gradient norm with pinned spins masked: pinned cells keep a
+# nonzero gk (their field is computed), so the monitor must exclude them.
+@kernel function gk_norm_kernel!(buf, @Const(gk), @Const(pins))
+    I = @index(Global)
+    @inbounds begin
+        if pins[I]
+            buf[I] = 0
+        else
+            j = 3 * I - 2
+            gx = gk[j]
+            gy = gk[j + 1]
+            gz = gk[j + 2]
+            buf[I] = sqrt(gx * gx + gy * gy + gz * gz)
+        end
+    end
+end
+
 function run_step(sim::AbstractSim, driver::SD)
     effective_field(sim, sim.spin, 0.0)
-    compute_tau(driver, sim.prespin, sim.spin, sim.field, sim.n_total)
+    compute_tau(driver, driver.m_pre, sim.spin, sim.field, sim.n_total)
 
-    sim.prespin .= sim.spin
+    driver.m_pre .= sim.spin
 
     kernel! = run_step_kernel!(get_backend(sim.spin), groupsize[])
     kernel!(driver.gk, sim.spin, sim.field, sim.pins, driver.tau; ndrange=sim.n_total)
@@ -93,5 +110,12 @@ function run_step(sim::AbstractSim, driver::SD)
     if driver.steps % 10 == 0
         normalise(sim.spin, sim.n_total)
     end
+
+    # Convergence monitor: raw max spherical-gradient norm |gk| (pinned spins
+    # masked). relax scales it with gamma/2 into an LLG-comparable dmdt, or
+    # leaves it dimensionless for unitless models (using_time_factor=false).
+    norm! = gk_norm_kernel!(get_backend(driver.ss), groupsize[])
+    norm!(driver.ss, driver.gk, sim.pins; ndrange=sim.n_total)
+    driver.max_gk = maximum(driver.ss)
     return nothing
 end

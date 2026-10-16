@@ -14,7 +14,6 @@ mutable struct NEB{T<:AbstractFloat} <: AbstractSim
     image_l::AbstractArray{T,1} # left image
     image_r::AbstractArray{T,1} # right image
     spin::AbstractArray{T,1}
-    prespin::AbstractArray{T,1}
     field::AbstractArray{T,1}
     tangent::AbstractArray{T,1}
     energy::AbstractArray{T,1}
@@ -101,7 +100,6 @@ function NEB(sim::AbstractSim, given_images::TupleOrArray,
     neb.image_l = create_zeros(3 * sim.n_total)
     neb.image_r = create_zeros(3 * sim.n_total)
     neb.spin = create_zeros(3 * neb.n_total)
-    neb.prespin = create_zeros(3 * neb.n_total)
     neb.field = create_zeros(3 * neb.n_total)
     neb.tangent = create_zeros(3 * neb.n_total)
     neb.energy = create_zeros(neb.n_images + 2)
@@ -131,7 +129,6 @@ function NEB(sim::AbstractSim, given_images::TupleOrArray,
     copyto!(neb.image_l, images[:, 1])
     copyto!(neb.image_r, images[:, end])
     copyto!(neb.spin, images[:, 2:(neb.n_images + 1)])
-    copyto!(neb.prespin, neb.spin)
 
     compute_system_energy(sim, neb.image_l, 0.0)
     neb.energy_cpu[1] = sum(sim.energy)
@@ -268,16 +265,16 @@ function compute_tangents(neb::NEB, spin::AbstractArray)
     return nothing
 end
 
+# The NEB band inherits the unit convention of its template image (neb.sim):
+# A/m fields for micromagnetic, Tesla fields for atomistic.
+_sd_gamma(neb::NEB) = _sd_gamma(neb.sim)
+
 function relax(sim::NEB; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
                save_vtk_every=-1, using_time_factor=true, vtk_folder="vtks")
 
     # relax works with any driver that carries an integrator
     llg_driver = hasproperty(sim.driver, :integrator)
 
-    # Same SD pseudo-time mapping as relax(::AbstractSim): tau carries 1/field
-    # units, so the LLG-comparable dmdt scale follows the image convention
-    # (neb.sim is the template image) — 2.21e5 for A/m, 2.21e5/mu_0 for Tesla.
-    time_factor = using_time_factor ? _sd_gamma(sim.sim) / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
 
     if save_vtk_every > 0 && !isdir(vtk_folder)
@@ -287,9 +284,6 @@ function relax(sim::NEB; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
     if save_vtk_every > 0
         save_vtk(sim, joinpath(vtk_folder, @sprintf("%s_%d", sim.name, 0)))
     end
-
-    N_spins = sim.n_total
-    dm = create_zeros(3 * N_spins)
 
     driver = sim.driver
     @info @sprintf("Running Driver : %s.", typeof(driver))
@@ -303,17 +297,14 @@ function relax(sim::NEB; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
             copyto!(sim.spin, driver.integrator.y_current)
         end
 
-        step_size = llg_driver ? driver.integrator.step : driver.tau / time_factor
-
-        compute_dm!(dm, sim.prespin, sim.spin, N_spins)
-        max_dmdt = maximum(dm) / step_size
+        max_dmdt = max_dmdt_reading(sim, driver, using_time_factor)
 
         t = llg_driver ? sim.driver.integrator.t : 0.0
         if llg_driver
             @info @sprintf("step =%5d  step_size=%10.6e  sim.t=%10.6e  max_dmdt=%10.6e", i,
-                           step_size, t, max_dmdt / dmdt_factor)
+                           driver.integrator.step, t, max_dmdt / dmdt_factor)
         else
-            @info @sprintf("step =%5d  step_size=%10.6e  max_dmdt=%10.6e", i, step_size,
+            @info @sprintf("step =%5d  tau=%10.6e  max_dmdt=%10.6e", i, driver.tau,
                            max_dmdt / dmdt_factor)
         end
 

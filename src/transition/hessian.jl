@@ -272,7 +272,6 @@ end
 
 function _set_transition_spin!(sim, spin)
     _copy_transition!(sim.spin, spin)
-    _copy_transition!(sim.prespin, spin)
     return sim
 end
 
