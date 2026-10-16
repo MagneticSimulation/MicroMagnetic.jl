@@ -274,7 +274,10 @@ function relax(sim::NEB; max_steps=10000, stopping_dmdt=0.01, save_data_every=1,
     # relax works with any driver that carries an integrator
     llg_driver = hasproperty(sim.driver, :integrator)
 
-    time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
+    # Same SD pseudo-time mapping as relax(::AbstractSim): tau carries 1/field
+    # units, so the LLG-comparable dmdt scale follows the image convention
+    # (neb.sim is the template image) — 2.21e5 for A/m, 2.21e5/mu_0 for Tesla.
+    time_factor = using_time_factor ? _sd_gamma(sim.sim) / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
 
     if save_vtk_every > 0 && !isdir(vtk_folder)

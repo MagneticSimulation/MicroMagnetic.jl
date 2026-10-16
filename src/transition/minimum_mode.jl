@@ -409,7 +409,10 @@ function _relax_transition_state(backend::_TransitionBackend, spin;
     _set_transition_spin!(sim, spin)
     maximum_trajectory_frames >= 2 ||
         error("maximum_trajectory_frames must be at least 2.")
-    time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
+    # Same SD pseudo-time mapping as relax(::AbstractSim): tau carries 1/field
+    # units, so the LLG-comparable dmdt scale follows the sim's field convention
+    # (_sd_gamma) — 2.21e5 for A/m, 2.21e5/mu_0 for atomistic Tesla fields.
+    time_factor = using_time_factor ? _sd_gamma(sim) / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1.0
     dm = create_zeros(3 * sim.n_total)
     driver = sim.driver

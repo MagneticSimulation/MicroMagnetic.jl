@@ -374,6 +374,16 @@ function _save_m_snapshot(sim::AbstractSim, step::Int, output::String)
 end
 
 """
+    _sd_gamma(sim::AbstractSim)
+
+Gyromagnetic ratio of the sim's unit convention, used to map the SD driver's
+pseudo-time step `tau` (units of 1/field) onto an LLG-comparable `dmdt` scale:
+micromagnetic sims carry A/m fields (`2.21e5` m/(A·s)), atomistic sims carry
+Tesla fields (`2.21e5/mu_0` rad/(T·s), see docs/src/units.md).
+"""
+_sd_gamma(sim::AbstractSim) = isa(sim, AtomisticSim) ? 2.21e5 / mu_0 : 2.21e5
+
+"""
     relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_every=0,
            save_m_every=0, using_time_factor=true, output="ovf", update_time=1.0)
 
@@ -382,7 +392,7 @@ Relaxes the system using either the `LLG` or `SD` driver. This function is compa
 **Arguments:**
 
 - `max_steps::Int`: Maximum number of steps to run the simulation. Default is `10000`.
-- `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, a factor of `γ` is applied to make it comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
+- `stopping_dmdt::Float64`: Primary stopping condition for both `LLG` and `SD` drivers. For standard micromagnetic simulations, typical values range from `0.01` to `1`. In `SD` driver mode, where time is not strictly defined, the pseudo-time step is mapped with the gyromagnetic ratio of the sim's unit convention (`2.21e5` for micromagnetic A/m fields, `2.21e5/mu_0` for atomistic Tesla fields) so that `dmdt` is comparable to the `LLG` driver. For atomistic models using dimensionless units, set `using_time_factor` to `false` to disable this factor.
 - `save_data_every::Int`: Interval for saving overall data such as energies and average magnetization. A negative value disables data saving while `save_data_every=0` saves data only at the end of the relaxation (also when `max_steps` is reached without convergence).
 - `save_m_every::Int`: Interval for saving magnetization data. A negative value disables magnetization saving while `save_m_every=0` saves magnetization only at the end of the relaxation (also when `max_steps` is reached without convergence).
 - `using_time_factor::Bool`: Boolean flag to apply a time factor in `SD` mode for comparison with `LLG` mode. Default is `true`.
@@ -408,7 +418,12 @@ function relax(sim::AbstractSim; max_steps=10000, stopping_dmdt=0.01, save_data_
         output = "vtu"
     end
 
-    time_factor = using_time_factor ? 2.21e5 / 2 : 1.0
+    # SD reports dmdt in pseudo-time: its step tau carries units of 1/field, so
+    # mapping tau to an equivalent physical time uses the gamma of THIS sim's
+    # unit convention (see _sd_gamma). Either way SD's dmdt lands on the same
+    # scale as the LLG driver (exact at alpha=1, gamma0/2 vs gamma0*alpha/(1+alpha^2)).
+    # Unitless atomistic models opt out of the mapping with using_time_factor=false.
+    time_factor = using_time_factor ? _sd_gamma(sim) / 2 : 1.0
     dmdt_factor = using_time_factor ? (2 * pi / 360) * 1e9 : 1
 
     output_folder = @sprintf("%s_%s", sim.name, nameof(typeof(sim.driver)))

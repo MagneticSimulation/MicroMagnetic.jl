@@ -37,6 +37,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `ZhangLiTorque` stores the current density as three per-spin components
   (`bJx/bJy/bJz`, O(1) `Fill`s for a uniform `J`) instead of one 3N dense array
 
+### Fixed
+
+- SD-driver `dmdt` in `relax` (and the NEB / minimum-mode relaxations sharing it) is now
+  reported on the LLG scale of the sim's field convention instead of the hardcoded
+  micromagnetic one: micromagnetic sims (A/m fields) keep `gamma0/2`, atomistic sims
+  (Tesla fields) use `gamma0/(2*mu_0)`. Previously the atomistic reading was `mu_0`
+  (~8e5x) too small, so any `stopping_dmdt >= ~1e-4` deg/ns falsely converged on the
+  first SD step; dimensionless models opt out as before with `using_time_factor=false`
+
 ### Removed
 
 - `create_sim` is fully removed (it stayed exported but deprecated in v0.6.0), converging
