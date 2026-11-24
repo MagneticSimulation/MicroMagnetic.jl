@@ -79,6 +79,12 @@ const navTemp = {
 const nav = [
   ...navTemp.nav,
   {
+    text: '致谢',
+    items: [
+      { text: '本项目的开发得到中国科学院强磁场科学中心的支持', link: 'https://hmfl.cas.cn/' }
+    ]
+  },
+  {
     text: 'English',
     link: 'https://magneticsimulation.github.io/MicroMagnetic.jl/dev/'
   }
