@@ -112,5 +112,13 @@ graph LR;
     Atomistic --> M[蒙特卡洛]
 ```
 
+<h2> 致谢 </h2>
+
+<p style="text-align:center; margin-top:1.5cm">
+  本项目的开发得到
+  <a href="https://hmfl.cas.cn/" target="_blank" rel="noopener"><strong>中国科学院强磁场科学中心</strong></a>
+  的支持。
+</p>
+
 </div>
 ````
